@@ -177,3 +177,4 @@ func (r *InventoryRepository) UpdateBatchStock(batchID string, quantityChange in
 	}
 	return nil
 }
+

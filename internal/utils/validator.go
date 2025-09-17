@@ -2,6 +2,7 @@ package utils
 
 import (
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -113,5 +114,17 @@ func IsValidEmail(email string) bool {
 	return ValidateVar(email, "email") == nil
 }
 
+// ParseIntParam parses a string parameter to int with error handling
+func ParseIntParam(param string) (int, error) {
+	return strconv.Atoi(param)
+}
 
+// ParseInt64Param parses a string parameter to int64 with error handling
+func ParseInt64Param(param string) (int64, error) {
+	return strconv.ParseInt(param, 10, 64)
+}
 
+// ParseFloatParam parses a string parameter to float64 with error handling
+func ParseFloatParam(param string) (float64, error) {
+	return strconv.ParseFloat(param, 64)
+}

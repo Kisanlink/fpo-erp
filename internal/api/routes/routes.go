@@ -25,6 +25,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	taxRepo := repositories.NewTaxRepository(db)
 	refundPoliciesRepo := repositories.NewRefundPoliciesRepository(db)
 	bankPaymentsRepo := repositories.NewBankPaymentsRepository(db)
+	webhookRepo := repositories.NewWebhookRepository(db)
 
 	// Initialize S3 service
 	s3Service, err := services.NewS3Service(cfg)
@@ -51,6 +52,13 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	refundPoliciesService := services.NewRefundPoliciesService(refundPoliciesRepo)
 	bankPaymentsService := services.NewBankPaymentsService(bankPaymentsRepo, salesRepo, returnsRepo)
 
+	// Initialize webhook services
+	webhookSecurityService := services.NewWebhookSecurityService()
+	webhookHistoryService := services.NewWebhookHistoryService(webhookRepo)
+	ecommerceWebhookService := services.NewEcommerceWebhookService(inventoryService, inventoryRepo, salesService, productRepo, warehouseRepo, webhookHistoryService)
+	webhookConfigService := services.NewWebhookConfigService(webhookRepo, webhookHistoryService)
+	_ = services.NewOutboundWebhookService(webhookRepo, webhookHistoryService, webhookSecurityService, warehouseRepo, productRepo)
+
 	// AAA middleware is now passed as parameter
 
 	// Initialize handlers
@@ -65,6 +73,10 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	attachmentHandler := handlers.NewAttachmentHandler(attachmentService, aaaMiddleware)
 	refundPoliciesHandler := handlers.NewRefundPoliciesHandler(refundPoliciesService, aaaMiddleware)
 	bankPaymentsHandler := handlers.NewBankPaymentsHandler(bankPaymentsService, aaaMiddleware)
+
+	// Initialize webhook handlers
+	webhookHandler := handlers.NewWebhookHandler(webhookSecurityService, ecommerceWebhookService, webhookHistoryService, webhookRepo, aaaMiddleware)
+	webhookConfigHandler := handlers.NewWebhookConfigHandler(webhookConfigService, aaaMiddleware)
 
 	// API v1 routes
 	v1 := router.Group("/api/v1")
@@ -81,5 +93,9 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 		attachmentHandler.RegisterRoutes(v1)
 		refundPoliciesHandler.RegisterRoutes(v1)
 		bankPaymentsHandler.RegisterRoutes(v1)
+
+		// Register webhook routes
+		webhookHandler.RegisterRoutes(v1)
+		webhookConfigHandler.RegisterRoutes(v1)
 	}
 }

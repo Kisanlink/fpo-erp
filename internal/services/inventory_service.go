@@ -367,3 +367,4 @@ func (s *InventoryService) buildFullAddress(address *aaa.Address) string {
 	}
 	return fullAddress
 }
+

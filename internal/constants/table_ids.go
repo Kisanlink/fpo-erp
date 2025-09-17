@@ -36,4 +36,10 @@ const (
 	// Payment and attachments
 	TableBankPayment = "BPAY" // Bank Payments
 	TableAttachment  = "ATCH" // Attachments
+
+	// Webhook related
+	TableWebhookConfig  = "WHCF" // Webhook Configurations
+	TableWebhookHistory = "WHIS" // Webhook History
+	TableWebhookEvent   = "WEVT" // Webhook Events
+	TableWebhookQueue   = "WQUE" // Webhook Queue
 )

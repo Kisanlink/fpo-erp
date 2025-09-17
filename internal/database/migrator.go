@@ -32,6 +32,12 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.TaxTier{},
 		&models.TaxApplication{},
 		&models.TaxSummary{},
+
+		// Webhook models
+		&models.WebhookConfiguration{},
+		&models.WebhookHistory{},
+		&models.WebhookEvent{},
+		&models.WebhookQueue{},
 	}
 
 	// Perform auto-migration
