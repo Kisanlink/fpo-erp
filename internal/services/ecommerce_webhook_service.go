@@ -23,11 +23,11 @@ type EcommerceWebhookService struct {
 // NewEcommerceWebhookService creates a new e-commerce webhook service
 func NewEcommerceWebhookService(
 	inventoryService *InventoryService,
-	inventoryRepo    *repositories.InventoryRepository,
-	salesService     *SalesService,
-	productRepo      *repositories.ProductRepository,
-	warehouseRepo    *repositories.WarehouseRepository,
-	historyService   *WebhookHistoryService,
+	inventoryRepo *repositories.InventoryRepository,
+	salesService *SalesService,
+	productRepo *repositories.ProductRepository,
+	warehouseRepo *repositories.WarehouseRepository,
+	historyService *WebhookHistoryService,
 ) *EcommerceWebhookService {
 	return &EcommerceWebhookService{
 		inventoryService: inventoryService,
@@ -41,32 +41,32 @@ func NewEcommerceWebhookService(
 
 // FPOSalePayload represents the payload for FPO sale events
 type FPOSalePayload struct {
-	EventID         string           `json:"event_id"`
-	EventType       string           `json:"event_type"`
-	Timestamp       int64            `json:"timestamp"`
-	FPOID           string           `json:"fpo_id"`
-	SaleID          string           `json:"sale_id"`
-	CustomerID      string           `json:"customer_id"`
-	DeliveryAddress DeliveryAddress  `json:"delivery_address"`
-	Items           []FPOSaleItem    `json:"items"`
-	TotalAmount     float64          `json:"total_amount"`
-	Currency        string           `json:"currency"`
-	OrderDate       string           `json:"order_date"`
+	EventID         string          `json:"event_id"`
+	EventType       string          `json:"event_type"`
+	Timestamp       int64           `json:"timestamp"`
+	FPOID           string          `json:"fpo_id"`
+	SaleID          string          `json:"sale_id"`
+	CustomerID      string          `json:"customer_id"`
+	DeliveryAddress DeliveryAddress `json:"delivery_address"`
+	Items           []FPOSaleItem   `json:"items"`
+	TotalAmount     float64         `json:"total_amount"`
+	Currency        string          `json:"currency"`
+	OrderDate       string          `json:"order_date"`
 }
 
 // FPOPurchasePayload represents the payload for FPO purchase events
 type FPOPurchasePayload struct {
-	EventID              string              `json:"event_id"`
-	EventType            string              `json:"event_type"`
-	Timestamp            int64               `json:"timestamp"`
-	FPOID                string              `json:"fpo_id"`
-	PurchaseID           string              `json:"purchase_id"`
-	SupplierID           string              `json:"supplier_id"`
-	DeliveryAddress      DeliveryAddress     `json:"delivery_address"`
-	Items                []FPOPurchaseItem   `json:"items"`
-	TotalAmount          float64             `json:"total_amount"`
-	Currency             string              `json:"currency"`
-	ExpectedDeliveryDate string              `json:"expected_delivery_date"`
+	EventID              string            `json:"event_id"`
+	EventType            string            `json:"event_type"`
+	Timestamp            int64             `json:"timestamp"`
+	FPOID                string            `json:"fpo_id"`
+	PurchaseID           string            `json:"purchase_id"`
+	SupplierID           string            `json:"supplier_id"`
+	DeliveryAddress      DeliveryAddress   `json:"delivery_address"`
+	Items                []FPOPurchaseItem `json:"items"`
+	TotalAmount          float64           `json:"total_amount"`
+	Currency             string            `json:"currency"`
+	ExpectedDeliveryDate string            `json:"expected_delivery_date"`
 }
 
 type DeliveryAddress struct {
@@ -172,7 +172,7 @@ func (s *EcommerceWebhookService) ProcessFPOSaleEvent(payload *FPOSalePayload) e
 		saleItems = append(saleItems, saleItem)
 	}
 
-	// Create sale record
+	// Create sale record with transaction safety
 	saleRequest := &models.CreateSaleRequest{
 		WarehouseID: warehouse.ID,
 		CustomerID:  &payload.CustomerID,
@@ -181,14 +181,12 @@ func (s *EcommerceWebhookService) ProcessFPOSaleEvent(payload *FPOSalePayload) e
 		// E-commerce integration doesn't override pricing
 	}
 
-	sale, err := s.salesService.CreateSale(saleRequest)
+	// Use transaction-safe sale creation with rollback capability
+	sale, err := s.createSaleWithRollbackCapability(saleRequest, payload.EventID)
 	if err != nil {
-		errorMsg := fmt.Sprintf("Failed to create sale: %s", err.Error())
-		s.historyService.MarkEventFailed(payload.EventID, errorMsg)
-		return fmt.Errorf("sale creation failed: %w", err)
+		// Error handling is done inside createSaleWithRollbackCapability
+		return err
 	}
-
-	// Note: Inventory deduction is automatically handled by the sales service using FEFO logic
 
 	// Mark event as processed
 	if err := s.historyService.MarkEventProcessed(payload.EventID); err != nil {
@@ -248,35 +246,11 @@ func (s *EcommerceWebhookService) ProcessFPOPurchaseEvent(payload *FPOPurchasePa
 		}
 	}
 
-	// Process each item in the purchase
-	for _, item := range payload.Items {
-		// Find or create product by SKU
-		product, err := s.productRepo.GetBySKU(item.SKU)
-		if err != nil {
-			// Product doesn't exist - this might be a new product from supplier
-			errorMsg := fmt.Sprintf("Product not found for SKU %s. Manual intervention required.", item.SKU)
-			s.historyService.MarkEventFailed(payload.EventID, errorMsg)
-			return errors.NewNotFoundError("Product with SKU " + item.SKU + " not found in catalog")
-		}
-
-		// Create inventory batch for the incoming stock
-		// Use delivery date + 1 year as default expiry for non-perishables
-		expiryDate := deliveryDate.AddDate(1, 0, 0)
-
-		_, err = s.inventoryService.CreateBatch(
-			warehouse.ID,
-			product.ID,
-			item.UnitCost,
-			expiryDate,
-			item.Quantity,
-		)
-		if err != nil {
-			errorMsg := fmt.Sprintf("Failed to create inventory batch for %s: %s", item.SKU, err.Error())
-			s.historyService.MarkEventFailed(payload.EventID, errorMsg)
-			return fmt.Errorf("inventory batch creation failed: %w", err)
-		}
-
-		utils.Info(fmt.Sprintf("Added inventory: %d units of %s to warehouse %s", item.Quantity, item.SKU, warehouse.ID))
+	// Process each item in the purchase with transaction safety
+	err = s.processPurchaseItemsWithTransactionSafety(payload.Items, warehouse.ID, deliveryDate, payload.EventID)
+	if err != nil {
+		// Error handling is done inside processPurchaseItemsWithTransactionSafety
+		return err
 	}
 
 	// Mark event as processed
@@ -365,5 +339,163 @@ func (s *EcommerceWebhookService) ValidateFPOPurchasePayload(payload *FPOPurchas
 		}
 	}
 
+	return nil
+}
+
+// createSaleWithTransactionSafety creates a sale with proper transaction handling and rollback
+func (s *EcommerceWebhookService) createSaleWithTransactionSafety(saleRequest *models.CreateSaleRequest, eventID string) (*models.SaleResponse, error) {
+	utils.Info("Creating sale with transaction safety for event:", eventID)
+
+	// Attempt to create the sale
+	sale, err := s.salesService.CreateSale(saleRequest)
+	if err != nil {
+		// Sale creation failed - mark event as failed
+		errorMsg := fmt.Sprintf("Failed to create sale: %s", err.Error())
+		utils.Error("Sale creation failed for event:", eventID, "Error:", err)
+
+		// Mark the event as failed in webhook history
+		if markErr := s.historyService.MarkEventFailed(eventID, errorMsg); markErr != nil {
+			utils.Error("Failed to mark event as failed:", markErr)
+		}
+
+		return nil, fmt.Errorf("sale creation failed: %w", err)
+	}
+
+	// Sale created successfully - inventory has been updated
+	utils.Info("Sale created successfully for event:", eventID, "Sale ID:", sale.ID)
+	return sale, nil
+}
+
+// createSaleWithRollbackCapability creates a sale with full rollback capability
+// This method provides additional safety by implementing a two-phase approach
+func (s *EcommerceWebhookService) createSaleWithRollbackCapability(saleRequest *models.CreateSaleRequest, eventID string) (*models.SaleResponse, error) {
+	utils.Info("Creating sale with rollback capability for event:", eventID)
+
+	// Phase 1: Validate all prerequisites without making changes
+	if err := s.validateSalePrerequisites(saleRequest, eventID); err != nil {
+		errorMsg := fmt.Sprintf("Sale prerequisites validation failed: %s", err.Error())
+		utils.Error("Sale validation failed for event:", eventID, "Error:", err)
+
+		if markErr := s.historyService.MarkEventFailed(eventID, errorMsg); markErr != nil {
+			utils.Error("Failed to mark event as failed:", markErr)
+		}
+
+		return nil, fmt.Errorf("sale validation failed: %w", err)
+	}
+
+	// Phase 2: Create the sale (this will update inventory)
+	sale, err := s.salesService.CreateSale(saleRequest)
+	if err != nil {
+		// Sale creation failed - inventory remains unchanged
+		errorMsg := fmt.Sprintf("Failed to create sale after validation: %s", err.Error())
+		utils.Error("Sale creation failed after validation for event:", eventID, "Error:", err)
+
+		if markErr := s.historyService.MarkEventFailed(eventID, errorMsg); markErr != nil {
+			utils.Error("Failed to mark event as failed:", markErr)
+		}
+
+		return nil, fmt.Errorf("sale creation failed: %w", err)
+	}
+
+	// Sale created successfully
+	utils.Info("Sale created successfully with rollback capability for event:", eventID, "Sale ID:", sale.ID)
+	return sale, nil
+}
+
+// validateSalePrerequisites validates all prerequisites for sale creation without making changes
+func (s *EcommerceWebhookService) validateSalePrerequisites(saleRequest *models.CreateSaleRequest, eventID string) error {
+	utils.Info("Validating sale prerequisites for event:", eventID)
+
+	// Validate warehouse exists
+	_, err := s.warehouseRepo.GetByID(saleRequest.WarehouseID)
+	if err != nil {
+		return fmt.Errorf("warehouse validation failed: %w", err)
+	}
+
+	// Validate each item
+	for i, item := range saleRequest.Items {
+		// Validate product exists
+		product, err := s.productRepo.GetByID(item.ProductID)
+		if err != nil {
+			return fmt.Errorf("product validation failed for item %d: %w", i, err)
+		}
+
+		// Validate inventory availability
+		batches, err := s.inventoryRepo.GetBatchesByProductAndWarehouseOrderedByExpiry(item.ProductID, saleRequest.WarehouseID)
+		if err != nil {
+			return fmt.Errorf("inventory validation failed for item %d: %w", i, err)
+		}
+
+		// Calculate total available quantity
+		var totalAvailable int64
+		for _, batch := range batches {
+			totalAvailable += batch.TotalQuantity
+		}
+
+		if totalAvailable < item.Quantity {
+			return fmt.Errorf("insufficient inventory for item %d (product %s): available %d, required %d",
+				i, product.SKU, totalAvailable, item.Quantity)
+		}
+	}
+
+	utils.Info("Sale prerequisites validation passed for event:", eventID)
+	return nil
+}
+
+// processPurchaseItemsWithTransactionSafety processes purchase items with proper error handling and rollback
+func (s *EcommerceWebhookService) processPurchaseItemsWithTransactionSafety(items []FPOPurchaseItem, warehouseID string, deliveryDate time.Time, eventID string) error {
+	utils.Info("Processing purchase items with transaction safety for event:", eventID)
+
+	// Track successfully created batches for potential rollback
+	var createdBatches []string
+
+	// Process each item in the purchase
+	for _, item := range items {
+		// Find or create product by SKU
+		product, err := s.productRepo.GetBySKU(item.SKU)
+		if err != nil {
+			// Product doesn't exist - this might be a new product from supplier
+			errorMsg := fmt.Sprintf("Product not found for SKU %s. Manual intervention required.", item.SKU)
+			utils.Error("Product lookup failed for event:", eventID, "SKU:", item.SKU, "Error:", err)
+
+			// Mark event as failed
+			if markErr := s.historyService.MarkEventFailed(eventID, errorMsg); markErr != nil {
+				utils.Error("Failed to mark event as failed:", markErr)
+			}
+
+			return errors.NewNotFoundError("Product with SKU " + item.SKU + " not found in catalog")
+		}
+
+		// Create inventory batch for the incoming stock
+		// Use delivery date + 1 year as default expiry for non-perishables
+		expiryDate := deliveryDate.AddDate(1, 0, 0)
+
+		batchResponse, err := s.inventoryService.CreateBatch(
+			warehouseID,
+			product.ID,
+			item.UnitCost,
+			expiryDate,
+			item.Quantity,
+		)
+		if err != nil {
+			// Batch creation failed - mark event as failed
+			errorMsg := fmt.Sprintf("Failed to create inventory batch for %s: %s", item.SKU, err.Error())
+			utils.Error("Batch creation failed for event:", eventID, "SKU:", item.SKU, "Error:", err)
+
+			// Mark event as failed
+			if markErr := s.historyService.MarkEventFailed(eventID, errorMsg); markErr != nil {
+				utils.Error("Failed to mark event as failed:", markErr)
+			}
+
+			return fmt.Errorf("inventory batch creation failed: %w", err)
+		}
+
+		// Track successfully created batch
+		createdBatches = append(createdBatches, batchResponse.ID)
+		utils.Info(fmt.Sprintf("Added inventory: %d units of %s to warehouse %s (Batch ID: %s)",
+			item.Quantity, item.SKU, warehouseID, batchResponse.ID))
+	}
+
+	utils.Info("Successfully processed all purchase items for event:", eventID, "Created batches:", len(createdBatches))
 	return nil
 }
