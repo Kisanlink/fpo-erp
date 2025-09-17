@@ -31,6 +31,7 @@ go.work.sum
 .env.staging
 .env.production
 .env.*.local
+ENV_SETUP.md
 
 # IDE and Editor files
 .idea/
