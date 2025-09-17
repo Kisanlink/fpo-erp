@@ -1,0 +1,164 @@
+{
+  "spec": {
+    "content": "./docs/swagger.json"
+  },
+  "theme": "purple",
+  "layout": "modern",
+  "showSidebar": true,
+  "hideDownloadButton": false,
+  "hideTryItOut": false,
+  "hideInfo": false,
+  "hideServers": false,
+  "hideModels": false,
+  "hideAuthentication": false,
+  "hideRequestSample": false,
+  "hideResponseSample": false,
+  "hideSchema": false,
+  "hideFooter": false,
+  "hideSearch": false,
+  "hideLogo": false,
+  "hideThemeToggle": false,
+  "hideBreadcrumbs": false,
+  "hideNavigation": false,
+  "hideOperationId": false,
+  "hideOperationSummary": false,
+  "hideOperationDescription": false,
+  "hideOperationTag": false,
+  "hideOperationMethod": false,
+  "hideOperationPath": false,
+  "hideOperationParameters": false,
+  "hideOperationRequestBody": false,
+  "hideOperationResponses": false,
+  "hideOperationSecurity": false,
+  "hideOperationServers": false,
+  "hideOperationCallbacks": false,
+  "hideOperationLinks": false,
+  "hideOperationExamples": false,
+  "hideOperationExternalDocs": false,
+  "hideOperationExtensions": false,
+  "hideOperationDeprecated": false,
+  "hideOperationSummary": false,
+  "hideOperationDescription": false,
+  "hideOperationTag": false,
+  "hideOperationMethod": false,
+  "hideOperationPath": false,
+  "hideOperationParameters": false,
+  "hideOperationRequestBody": false,
+  "hideOperationResponses": false,
+  "hideOperationSecurity": false,
+  "hideOperationServers": false,
+  "hideOperationCallbacks": false,
+  "hideOperationLinks": false,
+  "hideOperationExamples": false,
+  "hideOperationExternalDocs": false,
+  "hideOperationExtensions": false,
+  "hideOperationDeprecated": false,
+  "customCss": ".scalar-card { border-radius: 8px; } .scalar-card-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }",
+  "customJs": "",
+  "metaData": {
+    "title": "Kisanlink ERP API",
+    "description": "Comprehensive ERP system API for warehouse management, inventory tracking, sales, and returns",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Kisanlink ERP Team",
+      "email": "support@kisanlink.com"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  },
+  "proxy": {
+    "enabled": false
+  },
+  "searchHotKey": "k",
+  "defaultHttpClient": "fetch",
+  "httpClient": {
+    "fetch": {
+      "credentials": "include"
+    }
+  },
+  "authentication": {
+    "preferredSecurityScheme": "BearerAuth",
+    "apiKey": {
+      "token": ""
+    },
+    "http": {
+      "basic": {
+        "username": "",
+        "password": ""
+      },
+      "bearer": {
+        "token": ""
+      }
+    },
+    "oauth2": {
+      "clientId": "",
+      "clientSecret": "",
+      "authorizationUrl": "",
+      "tokenUrl": "",
+      "scopes": []
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Development server"
+    },
+    {
+      "url": "https://api.kisanlink.com",
+      "description": "Production server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Health",
+      "description": "Health check endpoints"
+    },
+    {
+      "name": "Warehouses",
+      "description": "Warehouse management operations"
+    },
+    {
+      "name": "Products",
+      "description": "Product management operations"
+    },
+    {
+      "name": "Inventory",
+      "description": "Inventory and batch management operations"
+    },
+    {
+      "name": "Sales",
+      "description": "Sales management operations"
+    },
+    {
+      "name": "Returns",
+      "description": "Returns management operations"
+    },
+    {
+      "name": "Pricing",
+      "description": "Product pricing management"
+    },
+    {
+      "name": "Discounts",
+      "description": "Discount management operations"
+    },
+    {
+      "name": "Taxes",
+      "description": "Tax management operations"
+    },
+    {
+      "name": "Attachments",
+      "description": "File attachment operations"
+    },
+    {
+      "name": "Bank Payments",
+      "description": "Bank payment operations"
+    },
+    {
+      "name": "Refund Policies",
+      "description": "Refund policy management"
+    }
+  ]
+}
+

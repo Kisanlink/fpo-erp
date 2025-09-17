@@ -1,0 +1,155 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Kisanlink ERP API Documentation</title>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1" />
+  </head>
+
+  <body>
+    <div id="app"></div>
+
+    <!-- Load the Script -->
+    <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@latest/dist/browser/standalone.js"></script>
+
+    <!-- Initialize the Scalar API Reference -->
+    <script>
+      Scalar.createApiReference('#app', {
+        // The URL of your local OpenAPI/Swagger document
+        url: 'http://localhost:3000/api-docs',
+        // Avoid CORS issues
+        proxyUrl: 'https://proxy.scalar.com',
+        
+        // Configuration options based on Scalar documentation
+        configuration: {
+          // Theme configuration
+          theme: 'default',
+          layout: 'modern',
+          darkMode: false,
+          
+          // UI elements to show/hide
+          hideDownloadButton: false,
+          hideTryItPanel: false,
+          hideSearch: false,
+          hideInfo: false,
+          hideServers: false,
+          hideModels: false,
+          hideAuthentication: false,
+          hideSidebar: false,
+          hideTabs: false,
+          hideRequestSample: false,
+          hideResponseSample: false,
+          hideSchema: false,
+          hideSecurity: false,
+          hideParameters: false,
+          hideRequestBody: false,
+          hideResponseHeaders: false,
+          hideResponseBody: false,
+          hideStatusCode: false,
+          hideDescription: false,
+          hideSummary: false,
+          hideTags: false,
+          hideOperationId: false,
+          hideDeprecated: false,
+          hideExternalDocs: false,
+          hideContact: false,
+          hideLicense: false,
+          hideTermsOfService: false,
+          
+          // Custom styling
+          customCss: `
+            .scalar-card {
+              border-radius: 8px;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            }
+            .scalar-header {
+              background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+              color: white;
+            }
+            .scalar-sidebar {
+              background-color: #f8f9fa;
+            }
+            .scalar-content {
+              background-color: #ffffff;
+            }
+            .scalar-button {
+              background-color: #4CAF50;
+              border-color: #4CAF50;
+            }
+            .scalar-button:hover {
+              background-color: #45a049;
+              border-color: #45a049;
+            }
+          `,
+          
+          // Meta information
+          metaData: {
+            title: 'Kisanlink ERP API',
+            description: 'Comprehensive ERP system for agricultural cooperatives with multi-tenant architecture',
+            favicon: 'https://via.placeholder.com/32x32/4CAF50/FFFFFF?text=K',
+            logo: 'https://via.placeholder.com/200x60/4CAF50/FFFFFF?text=Kisanlink+ERP',
+          },
+          
+          // Authentication configuration
+          authentication: {
+            enabled: true,
+            showAuthentication: true,
+            showSecurity: true,
+            showBearerToken: true,
+            showApiKey: false,
+            showBasicAuth: false,
+            showOAuth2: false,
+          },
+          
+          // Request configuration
+          request: {
+            enabled: true,
+            showRequestSample: true,
+            showRequestBody: true,
+            showRequestHeaders: true,
+            showRequestParameters: true,
+            showRequestSecurity: true,
+          },
+          
+          // Response configuration
+          response: {
+            enabled: true,
+            showResponseSample: true,
+            showResponseBody: true,
+            showResponseHeaders: true,
+            showResponseStatus: true,
+            showResponseSchema: true,
+          },
+          
+          // Code generation
+          codeGeneration: {
+            enabled: true,
+            showCodeGeneration: true,
+            showCurl: true,
+            showJavaScript: true,
+            showPython: true,
+            showGo: true,
+            showJava: true,
+            showCSharp: true,
+            showPHP: true,
+            showRuby: true,
+          },
+          
+          // Advanced configuration
+          advanced: {
+            showAdvanced: true,
+            showSchema: true,
+            showExamples: true,
+            showDeprecated: true,
+            showExternalDocs: true,
+            showContact: true,
+            showLicense: true,
+            showTermsOfService: true,
+          }
+        }
+      })
+    </script>
+  </body>
+</html>

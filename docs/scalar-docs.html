@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kisanlink ERP API Documentation</title>
+    <link rel="icon" type="image/svg+xml" href="https://cdn.jsdelivr.net/npm/@scalar/api-reference@latest/dist/favicon.svg">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 300;
+        }
+        .header p {
+            margin: 0.5rem 0 0 0;
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        .status-badge {
+            display: inline-block;
+            background: #4CAF50;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-top: 1rem;
+        }
+        .api-reference {
+            height: calc(100vh - 200px);
+            min-height: 600px;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 2rem;
+            text-align: center;
+            border-top: 1px solid #e9ecef;
+        }
+        .footer p {
+            margin: 0;
+            color: #6c757d;
+        }
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Kisanlink ERP API</h1>
+        <p>Comprehensive Enterprise Resource Planning System</p>
+        <div class="status-badge">✅ Production Ready</div>
+    </div>
+    
+    <div class="api-reference" id="api-reference"></div>
+    
+    <div class="footer">
+        <p>
+            <strong>Kisanlink ERP API v1.0.0</strong> | 
+            <a href="mailto:support@kisanlink.com">support@kisanlink.com</a> | 
+            <a href="https://docs.kisanlink.com">Documentation</a> | 
+            <a href="https://status.kisanlink.com">Status</a>
+        </p>
+        <p>Built with ❤️ using Go, Gin, GORM, and Scalar</p>
+    </div>
+
+    <script id="api-reference" type="application/json">
+    {
+        "spec": {
+            "content": "./swagger.json"
+        },
+        "theme": "purple",
+        "layout": "modern",
+        "showSidebar": true,
+        "hideDownloadButton": false,
+        "hideTryItOut": false,
+        "hideInfo": false,
+        "hideServers": false,
+        "hideModels": false,
+        "hideAuthentication": false,
+        "hideRequestSample": false,
+        "hideResponseSample": false,
+        "hideSchema": false,
+        "hideFooter": false,
+        "hideSearch": false,
+        "hideLogo": false,
+        "hideThemeToggle": false,
+        "hideBreadcrumbs": false,
+        "hideNavigation": false,
+        "hideOperationId": false,
+        "hideOperationSummary": false,
+        "hideOperationDescription": false,
+        "hideOperationTag": false,
+        "hideOperationMethod": false,
+        "hideOperationPath": false,
+        "hideOperationParameters": false,
+        "hideOperationRequestBody": false,
+        "hideOperationResponses": false,
+        "hideOperationSecurity": false,
+        "hideOperationServers": false,
+        "hideOperationCallbacks": false,
+        "hideOperationLinks": false,
+        "hideOperationExamples": false,
+        "hideOperationExternalDocs": false,
+        "hideOperationExtensions": false,
+        "hideOperationDeprecated": false,
+        "customCss": ".scalar-card { border-radius: 8px; } .scalar-card-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }",
+        "customJs": "",
+        "metaData": {
+            "title": "Kisanlink ERP API",
+            "description": "Comprehensive ERP system API for warehouse management, inventory tracking, sales, and returns",
+            "version": "1.0.0",
+            "contact": {
+                "name": "Kisanlink ERP Team",
+                "email": "support@kisanlink.com"
+            },
+            "license": {
+                "name": "MIT",
+                "url": "https://opensource.org/licenses/MIT"
+            }
+        },
+        "proxy": {
+            "enabled": false
+        },
+        "searchHotKey": "k",
+        "defaultHttpClient": "fetch",
+        "httpClient": {
+            "fetch": {
+                "credentials": "include"
+            }
+        },
+        "authentication": {
+            "preferredSecurityScheme": "BearerAuth",
+            "apiKey": {
+                "token": ""
+            },
+            "http": {
+                "basic": {
+                    "username": "",
+                    "password": ""
+                },
+                "bearer": {
+                    "token": ""
+                }
+            },
+            "oauth2": {
+                "clientId": "",
+                "clientSecret": "",
+                "authorizationUrl": "",
+                "tokenUrl": "",
+                "scopes": []
+            }
+        },
+        "servers": [
+            {
+                "url": "http://localhost:8080",
+                "description": "Development server"
+            },
+            {
+                "url": "https://api.kisanlink.com",
+                "description": "Production server"
+            }
+        ],
+        "tags": [
+            {
+                "name": "Health",
+                "description": "Health check endpoints"
+            },
+            {
+                "name": "Warehouses",
+                "description": "Warehouse management operations"
+            },
+            {
+                "name": "Products",
+                "description": "Product management operations"
+            },
+            {
+                "name": "Inventory",
+                "description": "Inventory and batch management operations"
+            },
+            {
+                "name": "Sales",
+                "description": "Sales management operations"
+            },
+            {
+                "name": "Returns",
+                "description": "Returns management operations"
+            },
+            {
+                "name": "Pricing",
+                "description": "Product pricing management"
+            },
+            {
+                "name": "Discounts",
+                "description": "Discount management operations"
+            },
+            {
+                "name": "Taxes",
+                "description": "Tax management operations"
+            },
+            {
+                "name": "Attachments",
+                "description": "File attachment operations"
+            },
+            {
+                "name": "Bank Payments",
+                "description": "Bank payment operations"
+            },
+            {
+                "name": "Refund Policies",
+                "description": "Refund policy management"
+            }
+        ]
+    }
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@latest/dist/browser/standalone.js"></script>
+    <script>
+        // Initialize Scalar API Reference
+        ScalarApiReference({
+            spec: {
+                content: './swagger.json'
+            },
+            theme: 'purple',
+            layout: 'modern',
+            showSidebar: true,
+            hideDownloadButton: false,
+            hideTryItOut: false,
+            hideInfo: false,
+            hideServers: false,
+            hideModels: false,
+            hideAuthentication: false,
+            hideRequestSample: false,
+            hideResponseSample: false,
+            hideSchema: false,
+            hideFooter: false,
+            hideSearch: false,
+            hideLogo: false,
+            hideThemeToggle: false,
+            hideBreadcrumbs: false,
+            hideNavigation: false,
+            hideOperationId: false,
+            hideOperationSummary: false,
+            hideOperationDescription: false,
+            hideOperationTag: false,
+            hideOperationMethod: false,
+            hideOperationPath: false,
+            hideOperationParameters: false,
+            hideOperationRequestBody: false,
+            hideOperationResponses: false,
+            hideOperationSecurity: false,
+            hideOperationServers: false,
+            hideOperationCallbacks: false,
+            hideOperationLinks: false,
+            hideOperationExamples: false,
+            hideOperationExternalDocs: false,
+            hideOperationExtensions: false,
+            hideOperationDeprecated: false,
+            customCss: `
+                .scalar-card { 
+                    border-radius: 8px; 
+                } 
+                .scalar-card-header { 
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                }
+                .scalar-card-header h3 {
+                    color: white !important;
+                }
+                .scalar-card-header .scalar-card-header-method {
+                    background: rgba(255, 255, 255, 0.2) !important;
+                    color: white !important;
+                }
+            `,
+            customJs: "",
+            metaData: {
+                title: "Kisanlink ERP API",
+                description: "Comprehensive ERP system API for warehouse management, inventory tracking, sales, and returns",
+                version: "1.0.0",
+                contact: {
+                    name: "Kisanlink ERP Team",
+                    email: "support@kisanlink.com"
+                },
+                license: {
+                    name: "MIT",
+                    url: "https://opensource.org/licenses/MIT"
+                }
+            },
+            proxy: {
+                enabled: false
+            },
+            searchHotKey: "k",
+            defaultHttpClient: "fetch",
+            httpClient: {
+                fetch: {
+                    credentials: "include"
+                }
+            },
+            authentication: {
+                preferredSecurityScheme: "BearerAuth",
+                apiKey: {
+                    token: ""
+                },
+                http: {
+                    basic: {
+                        username: "",
+                        password: ""
+                    },
+                    bearer: {
+                        token: ""
+                    }
+                },
+                oauth2: {
+                    clientId: "",
+                    clientSecret: "",
+                    authorizationUrl: "",
+                    tokenUrl: "",
+                    scopes: []
+                }
+            },
+            servers: [
+                {
+                    url: "http://localhost:8080",
+                    description: "Development server"
+                },
+                {
+                    url: "https://api.kisanlink.com",
+                    description: "Production server"
+                }
+            ],
+            tags: [
+                {
+                    name: "Health",
+                    description: "Health check endpoints"
+                },
+                {
+                    name: "Warehouses",
+                    description: "Warehouse management operations"
+                },
+                {
+                    name: "Products",
+                    description: "Product management operations"
+                },
+                {
+                    name: "Inventory",
+                    description: "Inventory and batch management operations"
+                },
+                {
+                    name: "Sales",
+                    description: "Sales management operations"
+                },
+                {
+                    name: "Returns",
+                    description: "Returns management operations"
+                },
+                {
+                    name: "Pricing",
+                    description: "Product pricing management"
+                },
+                {
+                    name: "Discounts",
+                    description: "Discount management operations"
+                },
+                {
+                    name: "Taxes",
+                    description: "Tax management operations"
+                },
+                {
+                    name: "Attachments",
+                    description: "File attachment operations"
+                },
+                {
+                    name: "Bank Payments",
+                    description: "Bank payment operations"
+                },
+                {
+                    name: "Refund Policies",
+                    description: "Refund policy management"
+                }
+            ]
+        }, document.getElementById('api-reference'));
+    </script>
+</body>
+</html>
+

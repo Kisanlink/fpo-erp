@@ -1,0 +1,5537 @@
+basePath: /
+definitions:
+  models.AddressInfo:
+    properties:
+      address_line_1:
+        type: string
+      address_line_2:
+        type: string
+      city:
+        type: string
+      country:
+        type: string
+      full_address:
+        type: string
+      id:
+        type: string
+      postal_code:
+        type: string
+      state:
+        type: string
+      type:
+        type: string
+    type: object
+  models.AppliedTax:
+    properties:
+      amount:
+        type: number
+      base_amount:
+        type: number
+      rate:
+        type: number
+      tax_code:
+        type: string
+      tax_id:
+        type: string
+      tax_name:
+        type: string
+      tax_type:
+        $ref: '#/definitions/models.TaxType'
+    type: object
+  models.AttachmentInfoResponse:
+    properties:
+      created_at:
+        type: string
+      file_path:
+        type: string
+      file_size:
+        type: integer
+      file_type:
+        type: string
+      id:
+        type: string
+      return_id:
+        type: string
+      sale_id:
+        type: string
+      updated_at:
+        type: string
+      uploaded_at:
+        type: string
+      uploaded_by:
+        type: string
+    type: object
+  models.AttachmentResponse:
+    properties:
+      created_at:
+        type: string
+      file_path:
+        type: string
+      file_type:
+        type: string
+      id:
+        type: string
+      return_id:
+        type: string
+      sale_id:
+        type: string
+      updated_at:
+        type: string
+      uploaded_at:
+        type: string
+      uploaded_by:
+        type: string
+    type: object
+  models.BankPaymentResponse:
+    properties:
+      amount:
+        type: number
+      created_at:
+        type: string
+      id:
+        type: string
+      paid_at:
+        type: string
+      payment_method:
+        type: string
+      return_id:
+        type: string
+      sale_id:
+        type: string
+      transaction_ref:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  models.CreateAddressRequest:
+    properties:
+      address_line_1:
+        type: string
+      address_line_2:
+        type: string
+      city:
+        type: string
+      country:
+        type: string
+      is_primary:
+        type: boolean
+      postal_code:
+        type: string
+      state:
+        type: string
+      type:
+        description: HOME, WORK, OTHER
+        type: string
+    required:
+    - address_line_1
+    - city
+    - country
+    - postal_code
+    - state
+    - type
+    type: object
+  models.CreateBankPaymentRequest:
+    properties:
+      amount:
+        type: number
+      payment_method:
+        type: string
+      return_id:
+        type: string
+      sale_id:
+        type: string
+    required:
+    - amount
+    - payment_method
+    type: object
+  models.CreateDiscountRequest:
+    properties:
+      applicable_categories:
+        type: string
+      applicable_products:
+        type: string
+      applicable_warehouses:
+        type: string
+      code:
+        type: string
+      customer_groups:
+        type: string
+      description:
+        type: string
+      discount_type:
+        $ref: '#/definitions/models.DiscountType'
+      excluded_categories:
+        type: string
+      excluded_products:
+        type: string
+      is_active:
+        type: boolean
+      is_stackable:
+        type: boolean
+      max_discount_amount:
+        type: number
+      max_order_value:
+        type: number
+      min_order_value:
+        type: number
+      name:
+        type: string
+      priority:
+        type: integer
+      terms:
+        type: string
+      usage_limit:
+        type: integer
+      usage_per_customer:
+        type: integer
+      valid_from:
+        type: string
+      valid_until:
+        type: string
+      value:
+        type: number
+    required:
+    - code
+    - discount_type
+    - name
+    - valid_from
+    - valid_until
+    - value
+    type: object
+  models.CreateInventoryBatchRequest:
+    properties:
+      cost_price:
+        type: number
+      expiry_date:
+        type: string
+      product_id:
+        type: string
+      quantity:
+        type: integer
+      warehouse_id:
+        type: string
+    required:
+    - cost_price
+    - expiry_date
+    - product_id
+    - quantity
+    - warehouse_id
+    type: object
+  models.CreateInventoryTransactionRequest:
+    properties:
+      note:
+        type: string
+      quantity_change:
+        type: integer
+      related_entity_id:
+        type: string
+      transaction_type:
+        type: string
+    required:
+    - quantity_change
+    - transaction_type
+    type: object
+  models.CreateProductPriceRequest:
+    properties:
+      currency:
+        type: string
+      effective_from:
+        type: string
+      effective_to:
+        type: string
+      is_active:
+        type: boolean
+      price:
+        type: number
+      price_type:
+        type: string
+      product_id:
+        type: string
+    required:
+    - price
+    - price_type
+    - product_id
+    type: object
+  models.CreateProductRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      sku:
+        type: string
+    required:
+    - name
+    - sku
+    type: object
+  models.CreateRefundPolicyRequest:
+    properties:
+      description:
+        type: string
+      max_days:
+        type: integer
+      policy_name:
+        type: string
+      restocking_fee:
+        type: number
+    required:
+    - max_days
+    - policy_name
+    type: object
+  models.CreateReturnItemRequest:
+    properties:
+      batch_id:
+        type: string
+      quantity:
+        type: integer
+      refund_amount:
+        type: number
+    required:
+    - batch_id
+    - quantity
+    - refund_amount
+    type: object
+  models.CreateReturnRequest:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/models.CreateReturnItemRequest'
+        type: array
+      return_date:
+        type: string
+      sale_id:
+        type: string
+    required:
+    - items
+    - sale_id
+    type: object
+  models.CreateSaleItemRequest:
+    properties:
+      product_id:
+        type: string
+      quantity:
+        type: integer
+    required:
+    - product_id
+    - quantity
+    type: object
+  models.CreateSaleRequest:
+    properties:
+      customer_gstin:
+        description: Customer's GSTIN for tax calculation
+        type: string
+      customer_id:
+        type: string
+      customer_pan:
+        description: Customer's PAN for tax calculation
+        type: string
+      customer_state:
+        description: Customer's state for tax calculation
+        type: string
+      discount_id:
+        description: Optional discount to apply
+        type: string
+      is_inter_state:
+        description: Whether it's an inter-state transaction
+        type: boolean
+      items:
+        items:
+          $ref: '#/definitions/models.CreateSaleItemRequest'
+        type: array
+      sale_date:
+        type: string
+      warehouse_id:
+        type: string
+      warehouse_state:
+        description: Warehouse's state for tax calculation
+        type: string
+    required:
+    - items
+    - warehouse_id
+    type: object
+  models.CreateTaxRequest:
+    properties:
+      applicable_categories:
+        items:
+          type: string
+        type: array
+      applicable_customer_groups:
+        items:
+          type: string
+        type: array
+      applicable_products:
+        items:
+          type: string
+        type: array
+      applicable_states:
+        items:
+          type: string
+        type: array
+      applicable_warehouses:
+        items:
+          type: string
+        type: array
+      calculation_type:
+        $ref: '#/definitions/models.TaxCalculationType'
+      code:
+        type: string
+      description:
+        type: string
+      excluded_categories:
+        items:
+          type: string
+        type: array
+      excluded_customer_groups:
+        items:
+          type: string
+        type: array
+      excluded_products:
+        items:
+          type: string
+        type: array
+      excluded_states:
+        items:
+          type: string
+        type: array
+      excluded_warehouses:
+        items:
+          type: string
+        type: array
+      hsn_code:
+        type: string
+      is_active:
+        type: boolean
+      is_inter_state:
+        type: boolean
+      is_stackable:
+        type: boolean
+      max_amount:
+        type: number
+      max_order_value:
+        type: number
+      min_amount:
+        type: number
+      min_order_value:
+        type: number
+      name:
+        type: string
+      priority:
+        type: integer
+      rate:
+        minimum: 0
+        type: number
+      requires_gstin:
+        type: boolean
+      requires_pan:
+        type: boolean
+      sac_code:
+        type: string
+      stacking_order:
+        type: integer
+      tax_category:
+        type: string
+      tax_type:
+        $ref: '#/definitions/models.TaxType'
+      valid_from:
+        type: string
+      valid_until:
+        type: string
+    required:
+    - calculation_type
+    - code
+    - name
+    - rate
+    - tax_type
+    - valid_from
+    type: object
+  models.CreateWarehouseRequest:
+    properties:
+      address:
+        allOf:
+        - $ref: '#/definitions/models.CreateAddressRequest'
+        description: Inline address creation
+      address_id:
+        description: 'Optional: can create address inline'
+        type: string
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  models.DiscountResponse:
+    properties:
+      applicable_categories:
+        type: string
+      applicable_products:
+        type: string
+      applicable_warehouses:
+        type: string
+      code:
+        type: string
+      created_at:
+        type: string
+      current_usage:
+        type: integer
+      customer_groups:
+        type: string
+      description:
+        type: string
+      discount_type:
+        $ref: '#/definitions/models.DiscountType'
+      excluded_categories:
+        type: string
+      excluded_products:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      is_stackable:
+        type: boolean
+      max_discount_amount:
+        type: number
+      max_order_value:
+        type: number
+      min_order_value:
+        type: number
+      name:
+        type: string
+      priority:
+        type: integer
+      status:
+        description: '"active", "expired", "inactive", "usage_limit_reached", "scheduled"'
+        type: string
+      terms:
+        type: string
+      updated_at:
+        type: string
+      usage_limit:
+        type: integer
+      usage_per_customer:
+        type: integer
+      valid_from:
+        type: string
+      valid_until:
+        type: string
+      value:
+        type: number
+    type: object
+  models.DiscountType:
+    enum:
+    - flat
+    - percentage
+    - buy_x_get_y
+    - first_order
+    - loyalty
+    - seasonal
+    - bulk
+    - referral
+    type: string
+    x-enum-comments:
+      DiscountTypeFlat: Fixed amount discount
+      DiscountTypePercentage: Percentage discount
+    x-enum-descriptions:
+    - Fixed amount discount
+    - Percentage discount
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    x-enum-varnames:
+    - DiscountTypeFlat
+    - DiscountTypePercentage
+    - DiscountTypeBuyXGetY
+    - DiscountTypeFirstOrder
+    - DiscountTypeLoyalty
+    - DiscountTypeSeasonal
+    - DiscountTypeBulk
+    - DiscountTypeReferral
+  models.DiscountUsageResponse:
+    properties:
+      amount:
+        type: number
+      created_at:
+        type: string
+      customer_id:
+        type: string
+      discount_id:
+        type: string
+      id:
+        type: string
+      sale_id:
+        type: string
+      used_at:
+        type: string
+    type: object
+  models.DiscountValidationResponse:
+    properties:
+      calculated_discount:
+        type: number
+      discount_code:
+        type: string
+      discount_id:
+        type: string
+      discount_name:
+        type: string
+      discount_type:
+        type: string
+      is_valid:
+        type: boolean
+      max_discount_amount:
+        type: number
+      message:
+        type: string
+      value:
+        type: number
+    type: object
+  models.InventoryBatchResponse:
+    properties:
+      cost_price:
+        type: number
+      created_at:
+        type: string
+      expiry_date:
+        type: string
+      id:
+        type: string
+      product_id:
+        type: string
+      total_quantity:
+        type: integer
+      updated_at:
+        type: string
+      warehouse_id:
+        type: string
+    type: object
+  models.InventoryTransactionResponse:
+    properties:
+      batch_id:
+        type: string
+      id:
+        type: string
+      note:
+        type: string
+      occurred_at:
+        type: string
+      performed_by:
+        type: string
+      quantity_change:
+        type: integer
+      related_entity_id:
+        type: string
+      transaction_type:
+        type: string
+    type: object
+  models.MostReturnedProductResponse:
+    properties:
+      product_id:
+        type: string
+      product_name:
+        type: string
+      return_amount:
+        type: number
+      total_returned:
+        type: integer
+    type: object
+  models.ProductAvailabilityResponse:
+    properties:
+      address:
+        allOf:
+        - $ref: '#/definitions/models.AddressInfo'
+        description: Embedded address info from AAA
+      cost_price:
+        type: number
+      created_at:
+        type: string
+      expiry_date:
+        type: string
+      id:
+        type: string
+      product_description:
+        type: string
+      product_id:
+        type: string
+      product_name:
+        type: string
+      product_sku:
+        type: string
+      total_quantity:
+        type: integer
+      updated_at:
+        type: string
+      warehouse_id:
+        type: string
+      warehouse_name:
+        type: string
+    type: object
+  models.ProductPriceResponse:
+    properties:
+      created_at:
+        type: string
+      currency:
+        type: string
+      effective_from:
+        type: string
+      effective_to:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      price:
+        type: number
+      price_type:
+        type: string
+      product_id:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  models.ProductResponse:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      sku:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  models.ProductWithPricesResponse:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      prices:
+        items:
+          $ref: '#/definitions/models.ProductPriceResponse'
+        type: array
+      sku:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  models.RefundPolicyResponse:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      max_days:
+        type: integer
+      policy_name:
+        type: string
+      restocking_fee:
+        type: number
+      updated_at:
+        type: string
+    type: object
+  models.ReturnItemResponse:
+    properties:
+      batch_id:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      quantity:
+        type: integer
+      refund_amount:
+        type: number
+      return_id:
+        type: string
+    type: object
+  models.ReturnResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/models.ReturnItemResponse'
+        type: array
+      return_date:
+        type: string
+      sale_id:
+        type: string
+      status:
+        type: string
+      total_refund:
+        type: number
+      updated_at:
+        type: string
+    type: object
+  models.SaleItemResponse:
+    properties:
+      batch_id:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      line_total:
+        type: number
+      quantity:
+        type: integer
+      sale_id:
+        type: string
+      selling_price:
+        type: number
+    type: object
+  models.SaleResponse:
+    properties:
+      created_at:
+        type: string
+      customer_id:
+        type: string
+      id:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/models.SaleItemResponse'
+        type: array
+      sale_date:
+        type: string
+      status:
+        type: string
+      total_amount:
+        type: number
+      updated_at:
+        type: string
+      warehouse_id:
+        type: string
+    type: object
+  models.TaxApplicationResponse:
+    properties:
+      base_amount:
+        type: number
+      cgst_amount:
+        type: number
+      created_at:
+        type: string
+      customs_amount:
+        type: number
+      excise_amount:
+        type: number
+      grand_total:
+        type: number
+      id:
+        type: string
+      igst_amount:
+        type: number
+      other_tax_amount:
+        type: number
+      sale_id:
+        type: string
+      sgst_amount:
+        type: number
+      stt_amount:
+        type: number
+      sub_total:
+        type: number
+      tax_amount:
+        type: number
+      tax_id:
+        type: string
+      tax_rate:
+        type: number
+      taxable_amount:
+        type: number
+      tcs_amount:
+        type: number
+      tds_amount:
+        type: number
+      total_tax_amount:
+        type: number
+      updated_at:
+        type: string
+      vat_amount:
+        type: number
+    type: object
+  models.TaxBreakdown:
+    properties:
+      amount:
+        type: number
+      hsn_code:
+        type: string
+      rate:
+        type: number
+      sac_code:
+        type: string
+      tax_code:
+        type: string
+      tax_name:
+        type: string
+      tax_type:
+        $ref: '#/definitions/models.TaxType'
+    type: object
+  models.TaxCalculationItem:
+    properties:
+      category_id:
+        type: string
+      line_total:
+        minimum: 0
+        type: number
+      product_id:
+        type: string
+      quantity:
+        minimum: 1
+        type: integer
+      unit_price:
+        minimum: 0
+        type: number
+    required:
+    - line_total
+    - product_id
+    - quantity
+    - unit_price
+    type: object
+  models.TaxCalculationRequest:
+    properties:
+      customer_gstin:
+        type: string
+      customer_id:
+        type: string
+      customer_pan:
+        type: string
+      customer_state:
+        type: string
+      is_inter_state:
+        type: boolean
+      items:
+        items:
+          $ref: '#/definitions/models.TaxCalculationItem'
+        minItems: 1
+        type: array
+      warehouse_id:
+        type: string
+      warehouse_state:
+        type: string
+    required:
+    - customer_id
+    - customer_state
+    - items
+    - warehouse_id
+    - warehouse_state
+    type: object
+  models.TaxCalculationResponse:
+    properties:
+      applied_taxes:
+        items:
+          $ref: '#/definitions/models.AppliedTax'
+        type: array
+      grand_total:
+        type: number
+      sub_total:
+        type: number
+      tax_breakdown:
+        items:
+          $ref: '#/definitions/models.TaxBreakdown'
+        type: array
+      total_tax_amount:
+        type: number
+    type: object
+  models.TaxCalculationType:
+    enum:
+    - percentage
+    - fixed
+    - tiered
+    type: string
+    x-enum-comments:
+      TaxCalculationFixed: Fixed amount per unit
+      TaxCalculationPercentage: Percentage of base amount
+      TaxCalculationTiered: Tiered calculation
+    x-enum-descriptions:
+    - Percentage of base amount
+    - Fixed amount per unit
+    - Tiered calculation
+    x-enum-varnames:
+    - TaxCalculationPercentage
+    - TaxCalculationFixed
+    - TaxCalculationTiered
+  models.TaxResponse:
+    properties:
+      applicable_categories:
+        items:
+          type: string
+        type: array
+      applicable_customer_groups:
+        items:
+          type: string
+        type: array
+      applicable_products:
+        items:
+          type: string
+        type: array
+      applicable_states:
+        items:
+          type: string
+        type: array
+      applicable_warehouses:
+        items:
+          type: string
+        type: array
+      calculation_type:
+        $ref: '#/definitions/models.TaxCalculationType'
+      code:
+        type: string
+      created_at:
+        type: string
+      created_by:
+        type: string
+      description:
+        type: string
+      excluded_categories:
+        items:
+          type: string
+        type: array
+      excluded_customer_groups:
+        items:
+          type: string
+        type: array
+      excluded_products:
+        items:
+          type: string
+        type: array
+      excluded_states:
+        items:
+          type: string
+        type: array
+      excluded_warehouses:
+        items:
+          type: string
+        type: array
+      hsn_code:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      is_inter_state:
+        type: boolean
+      is_stackable:
+        type: boolean
+      max_amount:
+        type: number
+      max_order_value:
+        type: number
+      min_amount:
+        type: number
+      min_order_value:
+        type: number
+      name:
+        type: string
+      priority:
+        type: integer
+      rate:
+        type: number
+      requires_gstin:
+        type: boolean
+      requires_pan:
+        type: boolean
+      sac_code:
+        type: string
+      stacking_order:
+        type: integer
+      status:
+        type: string
+      tax_category:
+        type: string
+      tax_type:
+        $ref: '#/definitions/models.TaxType'
+      updated_at:
+        type: string
+      updated_by:
+        type: string
+      valid_from:
+        type: string
+      valid_until:
+        type: string
+    type: object
+  models.TaxSummaryResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      summary_date:
+        type: string
+      total_cgst:
+        type: number
+      total_customs:
+        type: number
+      total_excise:
+        type: number
+      total_igst:
+        type: number
+      total_other_tax:
+        type: number
+      total_sgst:
+        type: number
+      total_stt:
+        type: number
+      total_tax:
+        type: number
+      total_tcs:
+        type: number
+      total_tds:
+        type: number
+      total_vat:
+        type: number
+      updated_at:
+        type: string
+      warehouse_id:
+        type: string
+    type: object
+  models.TaxType:
+    enum:
+    - cgst
+    - sgst
+    - igst
+    - vat
+    - stt
+    - tds
+    - tcs
+    - excise
+    - customs
+    - item_specific
+    - category
+    - flat
+    type: string
+    x-enum-comments:
+      TaxTypeCGST: Central Goods and Services Tax
+      TaxTypeCategory: Category-based tax
+      TaxTypeCustoms: Customs Duty
+      TaxTypeExcise: Excise Duty
+      TaxTypeFlat: Flat tax amount
+      TaxTypeIGST: Integrated Goods and Services Tax
+      TaxTypeItemSpecific: Item-specific tax
+      TaxTypeSGST: State Goods and Services Tax
+      TaxTypeSTT: Securities Transaction Tax
+      TaxTypeTCS: Tax Collected at Source
+      TaxTypeTDS: Tax Deducted at Source
+      TaxTypeVAT: Value Added Tax
+    x-enum-descriptions:
+    - Central Goods and Services Tax
+    - State Goods and Services Tax
+    - Integrated Goods and Services Tax
+    - Value Added Tax
+    - Securities Transaction Tax
+    - Tax Deducted at Source
+    - Tax Collected at Source
+    - Excise Duty
+    - Customs Duty
+    - Item-specific tax
+    - Category-based tax
+    - Flat tax amount
+    x-enum-varnames:
+    - TaxTypeCGST
+    - TaxTypeSGST
+    - TaxTypeIGST
+    - TaxTypeVAT
+    - TaxTypeSTT
+    - TaxTypeTDS
+    - TaxTypeTCS
+    - TaxTypeExcise
+    - TaxTypeCustoms
+    - TaxTypeItemSpecific
+    - TaxTypeCategory
+    - TaxTypeFlat
+  models.TopSellingProductResponse:
+    properties:
+      product_id:
+        type: string
+      product_name:
+        type: string
+      total_amount:
+        type: number
+      total_sold:
+        type: integer
+    type: object
+  models.UpdateAddressRequest:
+    properties:
+      address_line_1:
+        type: string
+      address_line_2:
+        type: string
+      city:
+        type: string
+      country:
+        type: string
+      id:
+        type: string
+      is_primary:
+        type: boolean
+      postal_code:
+        type: string
+      state:
+        type: string
+      type:
+        type: string
+    required:
+    - id
+    type: object
+  models.UpdateDiscountRequest:
+    properties:
+      applicable_categories:
+        type: string
+      applicable_products:
+        type: string
+      applicable_warehouses:
+        type: string
+      customer_groups:
+        type: string
+      description:
+        type: string
+      excluded_categories:
+        type: string
+      excluded_products:
+        type: string
+      is_active:
+        type: boolean
+      is_stackable:
+        type: boolean
+      max_discount_amount:
+        type: number
+      max_order_value:
+        type: number
+      min_order_value:
+        type: number
+      name:
+        type: string
+      priority:
+        type: integer
+      terms:
+        type: string
+      usage_limit:
+        type: integer
+      usage_per_customer:
+        type: integer
+      valid_from:
+        type: string
+      valid_until:
+        type: string
+      value:
+        type: number
+    type: object
+  models.UpdateProductPriceRequest:
+    properties:
+      currency:
+        type: string
+      effective_from:
+        type: string
+      effective_to:
+        type: string
+      is_active:
+        type: boolean
+      price:
+        type: number
+      price_type:
+        type: string
+    type: object
+  models.UpdateProductRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+    type: object
+  models.UpdateRefundPolicyRequest:
+    properties:
+      description:
+        type: string
+      max_days:
+        type: integer
+      restocking_fee:
+        type: number
+    type: object
+  models.UpdateReturnRequest:
+    properties:
+      status:
+        type: string
+    type: object
+  models.UpdateReturnStatusRequest:
+    properties:
+      status:
+        type: string
+    required:
+    - status
+    type: object
+  models.UpdateSaleRequest:
+    properties:
+      status:
+        type: string
+    type: object
+  models.UpdateSaleStatusRequest:
+    properties:
+      status:
+        type: string
+    required:
+    - status
+    type: object
+  models.UpdateTaxRequest:
+    properties:
+      applicable_categories:
+        items:
+          type: string
+        type: array
+      applicable_customer_groups:
+        items:
+          type: string
+        type: array
+      applicable_products:
+        items:
+          type: string
+        type: array
+      applicable_states:
+        items:
+          type: string
+        type: array
+      applicable_warehouses:
+        items:
+          type: string
+        type: array
+      calculation_type:
+        $ref: '#/definitions/models.TaxCalculationType'
+      description:
+        type: string
+      excluded_categories:
+        items:
+          type: string
+        type: array
+      excluded_customer_groups:
+        items:
+          type: string
+        type: array
+      excluded_products:
+        items:
+          type: string
+        type: array
+      excluded_states:
+        items:
+          type: string
+        type: array
+      excluded_warehouses:
+        items:
+          type: string
+        type: array
+      hsn_code:
+        type: string
+      is_active:
+        type: boolean
+      is_inter_state:
+        type: boolean
+      is_stackable:
+        type: boolean
+      max_amount:
+        type: number
+      max_order_value:
+        type: number
+      min_amount:
+        type: number
+      min_order_value:
+        type: number
+      name:
+        type: string
+      priority:
+        type: integer
+      rate:
+        type: number
+      requires_gstin:
+        type: boolean
+      requires_pan:
+        type: boolean
+      sac_code:
+        type: string
+      stacking_order:
+        type: integer
+      tax_category:
+        type: string
+      valid_from:
+        type: string
+      valid_until:
+        type: string
+    type: object
+  models.UpdateWarehouseRequest:
+    properties:
+      address:
+        $ref: '#/definitions/models.UpdateAddressRequest'
+      address_id:
+        type: string
+      name:
+        type: string
+    type: object
+  models.ValidateDiscountRequest:
+    properties:
+      customer_id:
+        type: string
+      discount_code:
+        type: string
+      order_value:
+        type: number
+      product_ids:
+        items:
+          type: string
+        type: array
+      warehouse_id:
+        type: string
+    required:
+    - discount_code
+    - order_value
+    - warehouse_id
+    type: object
+  models.WarehouseResponse:
+    properties:
+      address:
+        allOf:
+        - $ref: '#/definitions/models.AddressInfo'
+        description: Embedded address info
+      created_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  utils.ErrorResponseModel:
+    properties:
+      error:
+        example: Detailed error message
+        type: string
+      message:
+        example: Error occurred
+        type: string
+      success:
+        example: false
+        type: boolean
+      timestamp:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+    type: object
+  utils.Response:
+    properties:
+      data: {}
+      error:
+        type: string
+      message:
+        type: string
+      success:
+        type: boolean
+      timestamp:
+        type: string
+    type: object
+host: localhost:3000
+info:
+  contact:
+    email: support@kisanlink.com
+    name: Kisanlink Support
+    url: http://www.kisanlink.com/support
+  description: Comprehensive ERP system for agricultural cooperatives with multi-tenant
+    architecture
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: Kisanlink ERP API
+  version: "1.0"
+paths:
+  /api/v1/attachments:
+    get:
+      description: Retrieve attachments with optional filters and pagination
+      parameters:
+      - description: Filter by Sale ID
+        example: SALE_12345678
+        in: query
+        name: sale_id
+        type: string
+      - description: Filter by Return ID
+        example: RET_12345678
+        in: query
+        name: return_id
+        type: string
+      - description: 'Number of records to return (default: 10, max: 100)'
+        example: 10
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Attachments retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.AttachmentResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Attachments
+      tags:
+      - Attachments
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload a file attachment for sales or returns (requires authentication)
+      parameters:
+      - description: File to upload
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: Sale ID (optional)
+        example: SALE_12345678
+        in: formData
+        name: sale_id
+        type: string
+      - description: Return ID (optional)
+        example: RET_12345678
+        in: formData
+        name: return_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Attachment uploaded successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.AttachmentResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Upload Attachment
+      tags:
+      - Attachments
+  /api/v1/attachments/{id}:
+    delete:
+      description: Delete an attachment and its associated file
+      parameters:
+      - description: Attachment ID
+        example: ATT_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Attachment deleted successfully
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Attachment not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Delete Attachment
+      tags:
+      - Attachments
+    get:
+      description: Retrieve attachment metadata by ID
+      parameters:
+      - description: Attachment ID
+        example: ATT_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Attachment retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.AttachmentResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Attachment not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Attachment
+      tags:
+      - Attachments
+  /api/v1/attachments/{id}/download:
+    get:
+      description: Download the actual file content of an attachment
+      parameters:
+      - description: Attachment ID
+        example: ATT_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: File download
+          schema:
+            type: file
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Attachment not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Download Attachment
+      tags:
+      - Attachments
+  /api/v1/attachments/{id}/info:
+    get:
+      description: Get detailed information about an attachment including metadata
+      parameters:
+      - description: Attachment ID
+        example: ATT_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Attachment info retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.AttachmentInfoResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Attachment not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Attachment Info
+      tags:
+      - Attachments
+  /api/v1/attachments/{id}/url:
+    get:
+      description: Generate a presigned URL for downloading an attachment
+      parameters:
+      - description: Attachment ID
+        example: ATT_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 'URL expiration in seconds (default: 3600, max: 86400)'
+        example: 3600
+        in: query
+        name: expiration
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Download URL generated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  properties:
+                    download_url:
+                      type: string
+                    expires_in:
+                      type: integer
+                  type: object
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Attachment not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Generate Download URL
+      tags:
+      - Attachments
+  /api/v1/attachments/return/{return_id}:
+    get:
+      description: Retrieve all attachments associated with a specific return
+      parameters:
+      - description: Return ID
+        example: RET_12345678
+        in: path
+        name: return_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Return attachments retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.AttachmentResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Attachments by Return
+      tags:
+      - Attachments
+  /api/v1/attachments/sale/{sale_id}:
+    get:
+      description: Retrieve all attachments associated with a specific sale
+      parameters:
+      - description: Sale ID
+        example: SALE_12345678
+        in: path
+        name: sale_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sale attachments retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.AttachmentResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Attachments by Sale
+      tags:
+      - Attachments
+  /api/v1/bank-payments:
+    get:
+      description: Retrieve all bank payments with pagination
+      parameters:
+      - description: 'Number of records to return (default: 10)'
+        example: 10
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Bank payments retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.BankPaymentResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get All Bank Payments
+      tags:
+      - Bank Payments
+    post:
+      consumes:
+      - application/json
+      description: Create a new bank payment record (requires authentication)
+      parameters:
+      - description: Bank payment data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateBankPaymentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Bank payment created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.BankPaymentResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Create Bank Payment
+      tags:
+      - Bank Payments
+  /api/v1/bank-payments/{id}:
+    get:
+      description: Retrieve a specific bank payment by ID
+      parameters:
+      - description: Payment ID
+        example: PAY_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Bank payment retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.BankPaymentResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Bank payment not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Bank Payment
+      tags:
+      - Bank Payments
+  /api/v1/bank-payments/return/{returnID}:
+    get:
+      description: Retrieve all bank payments for a specific return
+      parameters:
+      - description: Return ID
+        example: RET_12345678
+        in: path
+        name: returnID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Bank payments for return retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.BankPaymentResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Bank Payments by Return
+      tags:
+      - Bank Payments
+  /api/v1/bank-payments/sale/{saleID}:
+    get:
+      description: Retrieve all bank payments for a specific sale
+      parameters:
+      - description: Sale ID
+        example: SALE_12345678
+        in: path
+        name: saleID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Bank payments for sale retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.BankPaymentResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Bank Payments by Sale
+      tags:
+      - Bank Payments
+  /api/v1/batches:
+    post:
+      consumes:
+      - application/json
+      description: Create a new inventory batch (requires authentication)
+      parameters:
+      - description: Batch data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateInventoryBatchRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Batch created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.InventoryBatchResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Create Inventory Batch
+      tags:
+      - Inventory
+  /api/v1/batches/{id}:
+    get:
+      description: Retrieve a specific inventory batch by ID
+      parameters:
+      - description: Batch ID
+        example: BTCH_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Batch retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.InventoryBatchResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Batch not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Inventory Batch
+      tags:
+      - Inventory
+  /api/v1/batches/{id}/transactions:
+    get:
+      description: Retrieve all inventory transactions for a specific batch
+      parameters:
+      - description: Batch ID
+        example: BTCH_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Transactions retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.InventoryTransactionResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Transactions by Batch
+      tags:
+      - Inventory
+    post:
+      consumes:
+      - application/json
+      description: Create a new inventory transaction for a batch (requires authentication)
+      parameters:
+      - description: Batch ID
+        example: BTCH_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Transaction data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateInventoryTransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Transaction created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.InventoryTransactionResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Create Inventory Transaction
+      tags:
+      - Inventory
+  /api/v1/batches/expiring:
+    get:
+      description: Retrieve inventory batches that are expiring within specified days
+      parameters:
+      - description: 'Number of days to check (default: 30)'
+        example: 30
+        in: query
+        name: days
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Expiring batches retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.InventoryBatchResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Expiring Batches
+      tags:
+      - Inventory
+  /api/v1/batches/low-stock:
+    get:
+      description: Retrieve inventory batches with stock below threshold
+      parameters:
+      - description: 'Stock threshold (default: 10)'
+        example: 10
+        in: query
+        name: threshold
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Low stock batches retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.InventoryBatchResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Low Stock Batches
+      tags:
+      - Inventory
+  /api/v1/discounts:
+    get:
+      description: Retrieve all discounts with pagination
+      parameters:
+      - description: 'Number of records to return (default: 10)'
+        example: 10
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Discounts retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.DiscountResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get All Discounts
+      tags:
+      - Discounts
+    post:
+      consumes:
+      - application/json
+      description: Create a new discount (requires authentication)
+      parameters:
+      - description: Discount data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateDiscountRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Discount created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.DiscountResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Create Discount
+      tags:
+      - Discounts
+  /api/v1/discounts/{id}:
+    delete:
+      description: Delete a discount by ID
+      parameters:
+      - description: Discount ID
+        example: DISC_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Discount deleted successfully
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Discount not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Delete Discount
+      tags:
+      - Discounts
+    get:
+      description: Retrieve a specific discount by ID
+      parameters:
+      - description: Discount ID
+        example: DISC_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Discount retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.DiscountResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Discount not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Discount
+      tags:
+      - Discounts
+    put:
+      consumes:
+      - application/json
+      description: Update an existing discount by ID
+      parameters:
+      - description: Discount ID
+        example: DISC_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated discount data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateDiscountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Discount updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.DiscountResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Discount not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Update Discount
+      tags:
+      - Discounts
+  /api/v1/discounts/active:
+    get:
+      description: Retrieve all currently active discounts
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Active discounts retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.DiscountResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Active Discounts
+      tags:
+      - Discounts
+  /api/v1/discounts/status/{status}:
+    get:
+      description: Retrieve all discounts with a specific status
+      parameters:
+      - description: Discount status
+        example: active
+        in: path
+        name: status
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Discounts retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.DiscountResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Discounts by Status
+      tags:
+      - Discounts
+  /api/v1/discounts/type/{type}:
+    get:
+      description: Retrieve all discounts of a specific type
+      parameters:
+      - description: Discount type
+        example: percentage
+        in: path
+        name: type
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Discounts retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.DiscountResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Discounts by Type
+      tags:
+      - Discounts
+  /api/v1/discounts/usage/sale/{saleID}:
+    get:
+      description: Retrieve all discount usage for a specific sale
+      parameters:
+      - description: Sale ID
+        example: SALE_12345678
+        in: path
+        name: saleID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Discount usage retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.DiscountUsageResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Discount Usage by Sale
+      tags:
+      - Discounts
+  /api/v1/discounts/validate:
+    post:
+      consumes:
+      - application/json
+      description: Validate if a discount can be applied to a transaction
+      parameters:
+      - description: Discount validation data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ValidateDiscountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Discount validation completed
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.DiscountValidationResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Validate Discount
+      tags:
+      - Discounts
+  /api/v1/prices:
+    post:
+      consumes:
+      - application/json
+      description: Create a new product price configuration (requires authentication)
+      parameters:
+      - description: Product price data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateProductPriceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Product price created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ProductPriceResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Create Product Price
+      tags:
+      - Product Prices
+  /api/v1/prices/{id}:
+    delete:
+      description: Delete a product price by ID
+      parameters:
+      - description: Price ID
+        example: PRICE_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product price deleted successfully
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Product price not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Delete Product Price
+      tags:
+      - Product Prices
+    get:
+      description: Retrieve a specific product price by ID
+      parameters:
+      - description: Price ID
+        example: PRICE_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product price retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ProductPriceResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Product price not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Product Price
+      tags:
+      - Product Prices
+    patch:
+      consumes:
+      - application/json
+      description: Update an existing product price by ID
+      parameters:
+      - description: Price ID
+        example: PRICE_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated price data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateProductPriceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product price updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ProductPriceResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Product price not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Update Product Price
+      tags:
+      - Product Prices
+  /api/v1/prices/expired:
+    get:
+      description: Retrieve all expired product prices
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Expired prices retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.ProductPriceResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Expired Prices
+      tags:
+      - Product Prices
+  /api/v1/products:
+    get:
+      description: Retrieve all products (requires authentication)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Products retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.ProductResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get All Products
+      tags:
+      - Products
+    post:
+      consumes:
+      - application/json
+      description: Create a new product (requires authentication)
+      parameters:
+      - description: Product data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateProductRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Product created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ProductResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Create Product
+      tags:
+      - Products
+  /api/v1/products/{id}:
+    delete:
+      description: Delete a product by ID (requires authentication)
+      parameters:
+      - description: Product ID
+        example: PROD_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product deleted successfully
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Product not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Delete Product
+      tags:
+      - Products
+    get:
+      description: Retrieve a specific product by ID
+      parameters:
+      - description: Product ID
+        example: PROD_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product details
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ProductResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Product not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Product
+      tags:
+      - Products
+    patch:
+      consumes:
+      - application/json
+      description: Update an existing product by ID (requires authentication)
+      parameters:
+      - description: Product ID
+        example: PROD_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated product data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateProductRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ProductResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Product not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Update Product
+      tags:
+      - Products
+  /api/v1/products/{id}/batches:
+    get:
+      description: Retrieve all inventory batches for a specific product
+      parameters:
+      - description: Product ID
+        example: PROD_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Batches retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.InventoryBatchResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Batches by Product
+      tags:
+      - Inventory
+  /api/v1/products/{id}/prices:
+    get:
+      description: Retrieve all prices for a specific product
+      parameters:
+      - description: Product ID
+        example: PROD_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product prices retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.ProductPriceResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Product Prices
+      tags:
+      - Product Prices
+    post:
+      consumes:
+      - application/json
+      description: Create a new price for a specific product
+      parameters:
+      - description: Product ID
+        example: PROD_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Product price data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateProductPriceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Product price created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ProductPriceResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Create Product Price for Product
+      tags:
+      - Product Prices
+  /api/v1/products/{id}/prices/current:
+    get:
+      description: Retrieve the current active price for a specific product
+      parameters:
+      - description: Product ID
+        example: PROD_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 'Price type (default: retail)'
+        example: retail
+        in: query
+        name: type
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Current price retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ProductPriceResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Current price not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Current Product Price
+      tags:
+      - Product Prices
+  /api/v1/products/{id}/with-prices:
+    get:
+      description: Retrieve a product with all associated pricing information
+      parameters:
+      - description: Product ID
+        example: PROD_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product with prices retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ProductWithPricesResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Product not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Product with Prices
+      tags:
+      - Products
+  /api/v1/products/availability:
+    get:
+      description: Retrieve availability information for all products across warehouses
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Products availability retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.ProductAvailabilityResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Products Availability
+      tags:
+      - Inventory
+  /api/v1/products/search:
+    get:
+      description: Search products by query string (requires authentication)
+      parameters:
+      - description: Search query
+        in: query
+        name: q
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Products found
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.ProductResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Search Products
+      tags:
+      - Products
+  /api/v1/products/sku/{sku}:
+    get:
+      description: Retrieve a specific product by SKU
+      parameters:
+      - description: Product SKU
+        example: SKU123
+        in: path
+        name: sku
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ProductResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Product not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Product by SKU
+      tags:
+      - Products
+  /api/v1/refund-policies:
+    get:
+      description: Retrieve all refund policies with pagination
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Refund policies retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.RefundPolicyResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get All Refund Policies
+      tags:
+      - Refund Policies
+    post:
+      consumes:
+      - application/json
+      description: Create a new refund policy (requires authentication)
+      parameters:
+      - description: Refund policy data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateRefundPolicyRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Refund policy created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.RefundPolicyResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Create Refund Policy
+      tags:
+      - Refund Policies
+  /api/v1/refund-policies/{id}:
+    get:
+      description: Retrieve a specific refund policy by ID
+      parameters:
+      - description: Policy ID
+        example: RFPOL_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Refund policy retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.RefundPolicyResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Refund policy not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Refund Policy
+      tags:
+      - Refund Policies
+    patch:
+      consumes:
+      - application/json
+      description: Update an existing refund policy by ID
+      parameters:
+      - description: Policy ID
+        example: RFPOL_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated refund policy data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateRefundPolicyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Refund policy updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.RefundPolicyResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Refund policy not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Update Refund Policy
+      tags:
+      - Refund Policies
+  /api/v1/returns:
+    get:
+      description: Retrieve all returns with pagination
+      parameters:
+      - description: 'Number of records to return (default: 10)'
+        example: 10
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.ReturnResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get All Returns
+      tags:
+      - Returns
+    post:
+      consumes:
+      - application/json
+      description: Create a new return record (requires authentication)
+      parameters:
+      - description: Return data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateReturnRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Return created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ReturnResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Create Return
+      tags:
+      - Returns
+  /api/v1/returns/{id}:
+    delete:
+      description: Delete a return by ID
+      parameters:
+      - description: Return ID
+        example: RET_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Return deleted successfully
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Return not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Delete Return
+      tags:
+      - Returns
+    get:
+      description: Retrieve a specific return by ID
+      parameters:
+      - description: Return ID
+        example: RET_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Return retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ReturnResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Return not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Return
+      tags:
+      - Returns
+    put:
+      consumes:
+      - application/json
+      description: Update an existing return by ID
+      parameters:
+      - description: Return ID
+        example: RET_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated return data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateReturnRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Return updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ReturnResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Return not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Update Return
+      tags:
+      - Returns
+  /api/v1/returns/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Update the status of a specific return
+      parameters:
+      - description: Return ID
+        example: RET_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: New status
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateReturnStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Return status updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ReturnResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Return not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Update Return Status
+      tags:
+      - Returns
+  /api/v1/returns/customer/{customerID}:
+    get:
+      description: Retrieve all returns for a specific customer
+      parameters:
+      - description: Customer ID
+        example: CUST_12345678
+        in: path
+        name: customerID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.ReturnResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Returns by Customer
+      tags:
+      - Returns
+  /api/v1/returns/date-range:
+    get:
+      description: Retrieve returns within a specific date range
+      parameters:
+      - description: Start date (YYYY-MM-DD)
+        example: "2024-01-01"
+        in: query
+        name: start_date
+        required: true
+        type: string
+      - description: End date (YYYY-MM-DD)
+        example: "2024-12-31"
+        in: query
+        name: end_date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.ReturnResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Returns by Date Range
+      tags:
+      - Returns
+  /api/v1/returns/most-returned:
+    get:
+      description: Retrieve the most frequently returned products
+      parameters:
+      - description: 'Number of products to return (default: 10)'
+        example: 10
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Most returned products retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.MostReturnedProductResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Most Returned Products
+      tags:
+      - Returns
+  /api/v1/returns/return-rate/{productID}:
+    get:
+      description: Calculate return rate for a specific product within a date range
+      parameters:
+      - description: Product ID
+        example: PROD_12345678
+        in: path
+        name: productID
+        required: true
+        type: string
+      - description: Start date (YYYY-MM-DD)
+        example: "2024-01-01"
+        in: query
+        name: start_date
+        required: true
+        type: string
+      - description: End date (YYYY-MM-DD)
+        example: "2024-12-31"
+        in: query
+        name: end_date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Return rate calculated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  properties:
+                    end_date:
+                      type: string
+                    product_id:
+                      type: string
+                    return_rate:
+                      type: number
+                    start_date:
+                      type: string
+                  type: object
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Return Rate by Product
+      tags:
+      - Returns
+  /api/v1/returns/sale/{saleID}:
+    get:
+      description: Retrieve all returns for a specific sale
+      parameters:
+      - description: Sale ID
+        example: SALE_12345678
+        in: path
+        name: saleID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.ReturnResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Returns by Sale ID
+      tags:
+      - Returns
+  /api/v1/returns/status/{status}:
+    get:
+      description: Retrieve all returns with a specific status
+      parameters:
+      - description: Return status
+        example: processed
+        in: path
+        name: status
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.ReturnResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Returns by Status
+      tags:
+      - Returns
+  /api/v1/returns/total-amount:
+    get:
+      description: Calculate total returns amount within a date range
+      parameters:
+      - description: Start date (YYYY-MM-DD)
+        example: "2024-01-01"
+        in: query
+        name: start_date
+        required: true
+        type: string
+      - description: End date (YYYY-MM-DD)
+        example: "2024-12-31"
+        in: query
+        name: end_date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Total returns amount calculated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  properties:
+                    end_date:
+                      type: string
+                    start_date:
+                      type: string
+                    total_amount:
+                      type: number
+                  type: object
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Total Returns Amount
+      tags:
+      - Returns
+  /api/v1/sales:
+    get:
+      description: Retrieve all sales with pagination (requires authentication)
+      parameters:
+      - description: 'Number of records to return (default: 10)'
+        example: 10
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sales retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.SaleResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get All Sales
+      tags:
+      - Sales
+    post:
+      consumes:
+      - application/json
+      description: Create a new sale (requires authentication)
+      parameters:
+      - description: Sale data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateSaleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Sale created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.SaleResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Create Sale
+      tags:
+      - Sales
+  /api/v1/sales/{id}:
+    delete:
+      description: Delete a sale by ID (requires authentication)
+      parameters:
+      - description: Sale ID
+        example: SALE_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sale deleted successfully
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Sale not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Delete Sale
+      tags:
+      - Sales
+    get:
+      description: Retrieve a specific sale by ID
+      parameters:
+      - description: Sale ID
+        example: SALE_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sale retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.SaleResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Sale not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Sale
+      tags:
+      - Sales
+    put:
+      consumes:
+      - application/json
+      description: Update an existing sale by ID (requires authentication)
+      parameters:
+      - description: Sale ID
+        example: SALE_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated sale data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateSaleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sale updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.SaleResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Sale not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Update Sale
+      tags:
+      - Sales
+  /api/v1/sales/{id}/returns:
+    get:
+      description: Retrieve all returns associated with a specific sale
+      parameters:
+      - description: Sale ID
+        example: SALE_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns for sale retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.ReturnResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Sale not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Returns for Sale
+      tags:
+      - Sales
+  /api/v1/sales/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Update the status of a specific sale
+      parameters:
+      - description: Sale ID
+        example: SALE_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: New status
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateSaleStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sale status updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.SaleResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Sale not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Update Sale Status
+      tags:
+      - Sales
+  /api/v1/sales/customer/{customerID}:
+    get:
+      description: Retrieve all sales for a specific customer
+      parameters:
+      - description: Customer ID
+        example: CUST_12345678
+        in: path
+        name: customerID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sales retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.SaleResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Sales by Customer
+      tags:
+      - Sales
+  /api/v1/sales/date-range:
+    get:
+      description: Retrieve sales within a specific date range
+      parameters:
+      - description: Start date (YYYY-MM-DD)
+        example: "2024-01-01"
+        in: query
+        name: start_date
+        required: true
+        type: string
+      - description: End date (YYYY-MM-DD)
+        example: "2024-12-31"
+        in: query
+        name: end_date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sales retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.SaleResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Sales by Date Range
+      tags:
+      - Sales
+  /api/v1/sales/status/{status}:
+    get:
+      description: Retrieve all sales with a specific status
+      parameters:
+      - description: Sale status
+        example: completed
+        in: path
+        name: status
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sales retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.SaleResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Sales by Status
+      tags:
+      - Sales
+  /api/v1/sales/summary:
+    get:
+      description: Get overall sales summary statistics
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sales summary retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  properties:
+                    period:
+                      type: string
+                    total_amount:
+                      type: number
+                    total_sales:
+                      type: integer
+                  type: object
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Sales Summary
+      tags:
+      - Sales
+  /api/v1/sales/top-selling:
+    get:
+      description: Retrieve the top selling products
+      parameters:
+      - description: 'Number of products to return (default: 10)'
+        example: 10
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Top selling products retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.TopSellingProductResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Top Selling Products
+      tags:
+      - Sales
+  /api/v1/sales/total-amount:
+    get:
+      description: Calculate total sales amount within a date range
+      parameters:
+      - description: Start date (YYYY-MM-DD)
+        example: "2024-01-01"
+        in: query
+        name: start_date
+        required: true
+        type: string
+      - description: End date (YYYY-MM-DD)
+        example: "2024-12-31"
+        in: query
+        name: end_date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Total sales amount calculated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  properties:
+                    end_date:
+                      type: string
+                    start_date:
+                      type: string
+                    total_amount:
+                      type: number
+                  type: object
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Total Sales Amount
+      tags:
+      - Sales
+  /api/v1/taxes:
+    get:
+      description: Retrieve all tax configurations with pagination
+      parameters:
+      - description: 'Number of records to return (default: 10)'
+        example: 10
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Taxes retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.TaxResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get All Taxes
+      tags:
+      - Taxes
+    post:
+      consumes:
+      - application/json
+      description: Create a new tax configuration (requires authentication)
+      parameters:
+      - description: Tax data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateTaxRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Tax created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.TaxResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Create Tax
+      tags:
+      - Taxes
+  /api/v1/taxes/{id}:
+    delete:
+      description: Delete a tax configuration by ID
+      parameters:
+      - description: Tax ID
+        example: TAX_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tax deleted successfully
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Tax not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Delete Tax
+      tags:
+      - Taxes
+    get:
+      description: Retrieve a specific tax configuration by ID
+      parameters:
+      - description: Tax ID
+        example: TAX_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tax retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.TaxResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Tax not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Tax
+      tags:
+      - Taxes
+    put:
+      consumes:
+      - application/json
+      description: Update an existing tax configuration by ID
+      parameters:
+      - description: Tax ID
+        example: TAX_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated tax data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateTaxRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tax updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.TaxResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Tax not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Update Tax
+      tags:
+      - Taxes
+  /api/v1/taxes/active:
+    get:
+      description: Retrieve all currently active tax configurations
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Active taxes retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.TaxResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Active Taxes
+      tags:
+      - Taxes
+  /api/v1/taxes/applications/return/{returnID}:
+    get:
+      description: Retrieve all tax applications for a specific return
+      parameters:
+      - description: Return ID
+        example: RET_12345678
+        in: path
+        name: returnID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tax applications retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.TaxApplicationResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Tax Applications by Return
+      tags:
+      - Taxes
+  /api/v1/taxes/applications/sale/{saleID}:
+    get:
+      description: Retrieve all tax applications for a specific sale
+      parameters:
+      - description: Sale ID
+        example: SALE_12345678
+        in: path
+        name: saleID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tax applications retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.TaxApplicationResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Tax Applications by Sale
+      tags:
+      - Taxes
+  /api/v1/taxes/calculate:
+    post:
+      consumes:
+      - application/json
+      description: Calculate taxes for a transaction with given items
+      parameters:
+      - description: Tax calculation data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.TaxCalculationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tax calculation completed successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.TaxCalculationResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Calculate Tax
+      tags:
+      - Taxes
+  /api/v1/taxes/status/{status}:
+    get:
+      description: Retrieve all taxes with a specific status
+      parameters:
+      - description: Tax status
+        enum:
+        - active
+        - inactive
+        - expired
+        - scheduled
+        in: path
+        name: status
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Taxes retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.TaxResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Taxes by Status
+      tags:
+      - Taxes
+  /api/v1/taxes/summary/return/{returnID}:
+    get:
+      description: Retrieve tax summary for a specific return
+      parameters:
+      - description: Return ID
+        example: RET_12345678
+        in: path
+        name: returnID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tax summary retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.TaxSummaryResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Tax summary not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Tax Summary by Return
+      tags:
+      - Taxes
+  /api/v1/taxes/summary/sale/{saleID}:
+    get:
+      description: Retrieve tax summary for a specific sale
+      parameters:
+      - description: Sale ID
+        example: SALE_12345678
+        in: path
+        name: saleID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tax summary retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.TaxSummaryResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Tax summary not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Tax Summary by Sale
+      tags:
+      - Taxes
+  /api/v1/taxes/type/{type}:
+    get:
+      description: Retrieve all taxes of a specific type
+      parameters:
+      - description: Tax type
+        enum:
+        - cgst
+        - sgst
+        - igst
+        - vat
+        - stt
+        - tds
+        - tcs
+        - excise
+        - customs
+        - item_specific
+        - category
+        - flat
+        in: path
+        name: type
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Taxes retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.TaxResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Taxes by Type
+      tags:
+      - Taxes
+  /api/v1/warehouses:
+    get:
+      description: Retrieve all warehouses (requires authentication)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Warehouses retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.WarehouseResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get All Warehouses
+      tags:
+      - Warehouses
+    post:
+      consumes:
+      - application/json
+      description: Create a new warehouse (requires authentication)
+      parameters:
+      - description: Warehouse data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateWarehouseRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Warehouse created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.WarehouseResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Create Warehouse
+      tags:
+      - Warehouses
+  /api/v1/warehouses/{id}:
+    delete:
+      description: Delete a warehouse by ID (requires authentication)
+      parameters:
+      - description: 'Warehouse ID (format: WHSE_xxxxxxxx)'
+        example: WHSE_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Warehouse deleted successfully
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Warehouse not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Delete Warehouse
+      tags:
+      - Warehouses
+    get:
+      description: Retrieve a specific warehouse by ID
+      parameters:
+      - description: 'Warehouse ID (format: WHSE_xxxxxxxx)'
+        example: WHSE_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Warehouse details
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.WarehouseResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Warehouse not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: Get Warehouse
+      tags:
+      - Warehouses
+    patch:
+      consumes:
+      - application/json
+      description: Update an existing warehouse by ID (requires authentication)
+      parameters:
+      - description: 'Warehouse ID (format: WHSE_xxxxxxxx)'
+        example: WHSE_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated warehouse data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateWarehouseRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Warehouse updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.WarehouseResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Warehouse not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Update Warehouse
+      tags:
+      - Warehouses
+  /api/v1/warehouses/{id}/batches:
+    get:
+      description: Retrieve all inventory batches for a specific warehouse
+      parameters:
+      - description: Warehouse ID
+        example: WHSE_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Batches retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.InventoryBatchResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Batches by Warehouse
+      tags:
+      - Inventory
+  /api/v1/warehouses/search:
+    get:
+      description: Search warehouses by query string (requires authentication)
+      parameters:
+      - description: Search query
+        in: query
+        name: q
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Warehouses search completed
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.WarehouseResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Search Warehouses
+      tags:
+      - Warehouses
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

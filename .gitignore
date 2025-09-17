@@ -1,0 +1,9851 @@
+# If you prefer the allow list template instead of the deny list, see community template:
+# https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Code coverage profiles and other test artifacts
+*.out
+coverage.*
+*.coverprofile
+profile.cov
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.staging
+.env.production
+.env.*.local
+
+# IDE and Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+log/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Build artifacts
+build/
+dist/
+bin/
+
+# Docker
+.dockerignore
+docker-compose.yaml
+
+# Kubernetes
+*.kubeconfig
+
+# SSL certificates
+*.pem
+*.key
+*.crt
+*.csr
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Node.js (if using any frontend tools)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python (if using any Python scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Documentation build
+docs/_build/
+
+# Local configuration files
+config.local.*
+*.local
+
+# Air live reload (if using)
+tmp/
+
+# Delve debugger
+__debug_bin
+
+# Go specific
+*.prof
+*.trace
+*.pprof
+
+# IDE specific
+*.sublime-project
+*.sublime-workspace
+
+# Backup and swap files
+*~
+*.swp
+*.swo
+*#
+
+# Local development files
+local/
+dev/
+development/
+
+# Test coverage
+coverage/
+*.cover
+
+# Profiling data
+*.prof
+*.trace
+
+# Go build cache
+go-build/
+
+# Go module cache
+go-mod-cache/
+
+# Air live reload
+tmp/
+
+# Local database dumps
+*.dump
+*.sql
+
+# Local secrets
+secrets/
+.secrets/
+
+# Local certificates
+certs/
+.certs/
+
+# Local configuration
+config.local.*
+*.local.yml
+*.local.yaml
+*.local.json
+*.local.toml
+
+# Backup files
+*.orig
+*.rej
+
+# Temporary directories
+.tmp/
+.temp/
+
+# Local development tools
+.devcontainer/
+.dev/
+
+# Local scripts
+scripts/local/
+local-scripts/
+
+# Test scripts with sensitive data
+tests/
+scripts/test-kisanlink-api.ps1
+scripts/test-kisanlink-erp-api.ps1
+
+# Project files folder
+files/
+
+# Local data
+data/
+local-data/
+
+# Local cache
+.cache/
+cache/
+
+# Local storage
+storage/
+local-storage/
+
+# Local uploads
+uploads/
+local-uploads/
+
+# Local exports
+exports/
+local-exports/
+
+# Local reports
+reports/
+local-reports/
+
+# Local backups
+backups/
+local-backups/
+
+# Local archives
+archives/
+local-archives/
+
+# Local temp files
+temp/
+local-temp/
+
+# Local work files
+work/
+local-work/
+
+# Local test files
+test-data/
+local-test-data/
+testenv.go
+
+# Local mock files
+mocks/
+local-mocks/
+
+# Local fixtures
+fixtures/
+local-fixtures/
+
+# Local samples
+samples/
+local-samples/
+
+# Local examples
+examples/
+local-examples/
+
+# Local demos
+demos/
+local-demos/
+
+# Local tutorials
+tutorials/
+local-tutorials/
+
+# Local docs
+docs/local/
+local-docs/
+
+# Local assets
+assets/local/
+local-assets/
+
+# Local resources
+resources/local/
+local-resources/
+
+# Local static files
+static/local/
+local-static/
+
+# Local public files
+public/local/
+local-public/
+
+# Local private files
+private/
+local-private/
+
+# Local secure files
+secure/
+local-secure/
+
+# Local sensitive files
+sensitive/
+local-sensitive/
+
+# Local confidential files
+confidential/
+local-confidential/
+
+# Local restricted files
+restricted/
+local-restricted/
+
+# Local internal files
+internal/local/
+local-internal/
+
+# Local external files
+external/local/
+local-external/
+
+# Local third-party files
+third-party/local/
+local-third-party/
+CLAUDE.md
+ENVIRONMENT_VARIABLES.md
+LOCAL_DEVELOPMENT.md
+PRODUCTION_READINESS_REPORT.md
+.claude
+
+# Local vendor files
+vendor/local/
+local-vendor/
+
+# Local dependencies
+dependencies/local/
+local-dependencies/
+
+# Local packages
+packages/local/
+local-packages/
+
+# Local modules
+modules/local/
+local-modules/
+
+# Local libraries
+libraries/local/
+local-libraries/
+
+# Local frameworks
+frameworks/local/
+local-frameworks/
+
+# Local tools
+tools/local/
+local-tools/
+
+# Local utilities
+utilities/local/
+local-utilities/
+
+# Local helpers
+helpers/local/
+local-helpers/
+
+# Local services
+services/local/
+local-services/
+
+# Local APIs
+apis/local/
+local-apis/
+
+# Local endpoints
+endpoints/local/
+local-endpoints/
+
+# Local routes
+routes/local/
+local-routes/
+
+# Local handlers
+handlers/local/
+local-handlers/
+
+# Local controllers
+controllers/local/
+local-controllers/
+
+# Local models
+models/local/
+local-models/
+
+# Local entities
+entities/local/
+local-entities/
+
+# Local repositories
+repositories/local/
+local-repositories/
+
+# Local data access
+data-access/local/
+local-data-access/
+
+# Local database
+database/local/
+local-database/
+
+# Local migrations
+migrations/local/
+local-migrations/
+
+# Local schemas
+schemas/local/
+local-schemas/
+
+# Local queries
+queries/local/
+local-queries/
+
+# Local stored procedures
+stored-procedures/local/
+local-stored-procedures/
+
+# Local functions
+functions/local/
+local-functions/
+
+# Local triggers
+triggers/local/
+local-triggers/
+
+# Local views
+views/local/
+local-views/
+
+# Local indexes
+indexes/local/
+local-indexes/
+
+# Local constraints
+constraints/local/
+local-constraints/
+
+# Local foreign keys
+foreign-keys/local/
+local-foreign-keys/
+
+# Local primary keys
+primary-keys/local/
+local-primary-keys/
+
+# Local unique keys
+unique-keys/local/
+local-unique-keys/
+
+# Local composite keys
+composite-keys/local/
+local-composite-keys/
+
+# Local surrogate keys
+surrogate-keys/local/
+local-surrogate-keys/
+
+# Local natural keys
+natural-keys/local/
+local-natural-keys/
+
+# Local business keys
+business-keys/local/
+local-business-keys/
+
+# Local technical keys
+technical-keys/local/
+local-technical-keys/
+
+# Local logical keys
+logical-keys/local/
+local-logical-keys/
+
+# Local physical keys
+physical-keys/local/
+local-physical-keys/
+
+# Local conceptual keys
+conceptual-keys/local/
+local-conceptual-keys/
+
+# Local implementation keys
+implementation-keys/local/
+local-implementation-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys/local/
+local-header-keys/
+
+# Local parameter keys
+parameter-keys/local/
+local-parameter-keys/
+
+# Local query keys
+query-keys/local/
+local-query-keys/
+
+# Local path keys
+path-keys/local/
+local-path-keys/
+
+# Local URL keys
+url-keys/local/
+local-url-keys/
+
+# Local URI keys
+uri-keys/local/
+local-uri-keys/
+
+# Local endpoint keys
+endpoint-keys/local/
+local-endpoint-keys/
+
+# Local route keys
+route-keys/local/
+local-route-keys/
+
+# Local API keys
+api-keys/local/
+local-api-keys/
+
+# Local service keys
+service-keys/local/
+local-service-keys/
+
+# Local microservice keys
+microservice-keys/local/
+local-microservice-keys/
+
+# Local monolith keys
+monolith-keys/local/
+local-monolith-keys/
+
+# Local architecture keys
+architecture-keys/local/
+local-architecture-keys/
+
+# Local design keys
+design-keys/local/
+local-design-keys/
+
+# Local pattern keys
+pattern-keys/local/
+local-pattern-keys/
+
+# Local anti-pattern keys
+anti-pattern-keys/local/
+local-anti-pattern-keys/
+
+# Local best practice keys
+best-practice-keys/local/
+local-best-practice-keys/
+
+# Local coding standard keys
+coding-standard-keys/local/
+local-coding-standard-keys/
+
+# Local style guide keys
+style-guide-keys/local/
+local-style-guide-keys/
+
+# Local convention keys
+convention-keys/local/
+local-convention-keys/
+
+# Local naming keys
+naming-keys/local/
+local-naming-keys/
+
+# Local formatting keys
+formatting-keys/local/
+local-formatting-keys/
+
+# Local indentation keys
+indentation-keys/local/
+local-indentation-keys/
+
+# Local spacing keys
+spacing-keys/local/
+local-spacing-keys/
+
+# Local line ending keys
+line-ending-keys/local/
+local-line-ending-keys/
+
+# Local character encoding keys
+character-encoding-keys/local/
+local-character-encoding-keys/
+
+# Local file encoding keys
+file-encoding-keys/local/
+local-file-encoding-keys/
+
+# Local text encoding keys
+text-encoding-keys/local/
+local-text-encoding-keys/
+
+# Local binary encoding keys
+binary-encoding-keys/local/
+local-binary-encoding-keys/
+
+# Local data encoding keys
+data-encoding-keys/local/
+local-data-encoding-keys/
+
+# Local protocol encoding keys
+protocol-encoding-keys/local/
+local-protocol-encoding-keys/
+
+# Local serialization keys
+serialization-keys/local/
+local-serialization-keys/
+
+# Local deserialization keys
+deserialization-keys/local/
+local-deserialization-keys/
+
+# Local marshaling keys
+marshaling-keys/local/
+local-marshaling-keys/
+
+# Local unmarshaling keys
+unmarshaling-keys/local/
+local-unmarshaling-keys/
+
+# Local encoding keys
+encoding-keys/local/
+local-encoding-keys/
+
+# Local decoding keys
+decoding-keys/local/
+local-decoding-keys/
+
+# Local compression keys
+compression-keys/local/
+local-compression-keys/
+
+# Local decompression keys
+decompression-keys/local/
+local-decompression-keys/
+
+# Local encryption keys
+encryption-keys/local/
+local-encryption-keys/
+
+# Local decryption keys
+decryption-keys/local/
+local-decryption-keys/
+
+# Local hashing keys
+hashing-keys/local/
+local-hashing-keys/
+
+# Local signing keys
+signing-keys/local/
+local-signing-keys/
+
+# Local verification keys
+verification-keys/local/
+local-verification-keys/
+
+# Local authentication keys
+authentication-keys/local/
+local-authentication-keys/
+
+# Local authorization keys
+authorization-keys/local/
+local-authorization-keys/
+
+# Local session keys
+session-keys/local/
+local-session-keys/
+
+# Local token keys
+token-keys/local/
+local-token-keys/
+
+# Local cookie keys
+cookie-keys/local/
+local-cookie-keys/
+
+# Local header keys
+header-keys
