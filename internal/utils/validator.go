@@ -113,5 +113,24 @@ func IsValidEmail(email string) bool {
 	return ValidateVar(email, "email") == nil
 }
 
+// ParseCommaSeparatedString splits a comma-separated string into a slice of trimmed strings
+func ParseCommaSeparatedString(input string) []string {
+	if input == "" {
+		return []string{}
+	}
+
+	parts := strings.Split(input, ",")
+	result := make([]string, 0, len(parts))
+
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+
+	return result
+}
+
 
 

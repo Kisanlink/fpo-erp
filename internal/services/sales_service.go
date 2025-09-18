@@ -19,20 +19,22 @@ type SalesService struct {
 	productRepo   *repositories.ProductRepository
 	inventoryRepo *repositories.InventoryRepository
 	priceRepo     *repositories.ProductPriceRepository
-	discountsRepo *repositories.DiscountsRepository // Add discount repository
-	taxRepo       *repositories.TaxRepository       // Add tax repository
-	taxService    *TaxService                       // Add tax service
+	discountsRepo *repositories.DiscountsRepository
+	taxRepo       *repositories.TaxRepository
+	taxService    *TaxService
+	warehouseRepo *repositories.WarehouseRepository
 }
 
-func NewSalesService(salesRepo *repositories.SalesRepository, productRepo *repositories.ProductRepository, inventoryRepo *repositories.InventoryRepository, priceRepo *repositories.ProductPriceRepository, discountsRepo *repositories.DiscountsRepository, taxRepo *repositories.TaxRepository) *SalesService {
+func NewSalesService(salesRepo *repositories.SalesRepository, productRepo *repositories.ProductRepository, inventoryRepo *repositories.InventoryRepository, priceRepo *repositories.ProductPriceRepository, discountsRepo *repositories.DiscountsRepository, taxRepo *repositories.TaxRepository, warehouseRepo *repositories.WarehouseRepository) *SalesService {
 	return &SalesService{
 		salesRepo:     salesRepo,
 		productRepo:   productRepo,
 		inventoryRepo: inventoryRepo,
 		priceRepo:     priceRepo,
-		discountsRepo: discountsRepo,          // Add discount repository
-		taxRepo:       taxRepo,                // Add tax repository
-		taxService:    NewTaxService(taxRepo), // Initialize tax service
+		discountsRepo: discountsRepo,
+		taxRepo:       taxRepo,
+		taxService:    NewTaxService(taxRepo),
+		warehouseRepo: warehouseRepo,
 	}
 }
 
@@ -66,8 +68,8 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 	}
 
 	// Create sale using the proper constructor
-	log.Printf("[DEBUG] Creating sale with warehouse: %s, customer: %v, date: %v", req.WarehouseID, req.CustomerID, saleDate)
-	sale := models.NewSale(req.WarehouseID, req.CustomerID, saleDate, 0, "pending")
+	log.Printf("[DEBUG] Creating sale with warehouse: %s, date: %v", req.WarehouseID, saleDate)
+	sale := models.NewSale(req.WarehouseID, saleDate, 0, "pending")
 	log.Printf("[DEBUG] Sale created with ID: %s", sale.ID)
 
 	if err := s.salesRepo.CreateSale(sale); err != nil {
@@ -180,33 +182,63 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 		log.Printf("[DEBUG] Running total: %.2f", totalAmount)
 	}
 
-	// Apply discount if provided
-	var discountAmount float64
-	if req.DiscountID != nil && *req.DiscountID != "" {
-		log.Printf("[DEBUG] Applying discount: %s", *req.DiscountID)
-		var err error
-		discountAmount, err = s.applyDiscountToSale(*req.DiscountID, req.CustomerID, sale.ID, totalAmount)
-		if err != nil {
-			log.Printf("[ERROR] Failed to apply discount: %v", err)
-			return nil, err
+	// Collect product IDs for discount discovery
+	var productIDs []string
+	for _, item := range saleItems {
+		batch, err := s.inventoryRepo.GetBatchByID(item.BatchID)
+		if err == nil {
+			productIDs = append(productIDs, batch.ProductID)
 		}
-		log.Printf("[DEBUG] Discount applied: %.2f", discountAmount)
 	}
+
+	// Apply discounts using priority-based resolution
+	var discountAmount float64
+	var appliedDiscounts []models.DiscountApplication
+	// Convert saleItems to pointer slice for discount calculation
+	var saleItemPtrs []*models.SaleItem
+	for i := range saleItems {
+		saleItemPtrs = append(saleItemPtrs, &saleItems[i])
+	}
+
+	finalDiscounts, applications, totalDiscountAmount, err := s.resolveDiscountsWithPriority(req, totalAmount, productIDs, saleItemPtrs)
+	if err != nil {
+		log.Printf("[ERROR] Failed to resolve discounts: %v", err)
+		return nil, err
+	}
+
+	discountAmount = totalDiscountAmount
+	appliedDiscounts = applications
+
+	// Create discount usage records for applied discounts
+	for _, discount := range finalDiscounts {
+		discountUsage := s.discountsRepo.CalculateDiscount(&discount, totalAmount)
+		usage := models.NewDiscountUsage(discount.ID, sale.ID, discountUsage)
+		if err := s.discountsRepo.CreateDiscountUsage(usage); err != nil {
+			log.Printf("[WARN] Failed to create discount usage record: %v", err)
+		}
+		if err := s.discountsRepo.IncrementUsage(discount.ID); err != nil {
+			log.Printf("[WARN] Failed to increment discount usage: %v", err)
+		}
+	}
+
+	log.Printf("[DEBUG] Total discount applied: %.2f from %d discounts", discountAmount, len(finalDiscounts))
 
 	// Calculate final amount after discount
 	finalAmount := totalAmount - discountAmount
 	log.Printf("[DEBUG] Final amount after discount: %.2f", finalAmount)
 
-	// Calculate and apply taxes
+	// Apply taxes using the existing tax service (no customer data needed)
 	var taxAmount float64
-	if req.CustomerState != nil && req.WarehouseState != nil {
-		var err error
-		taxAmount, _, err = s.applyTaxesToSale(sale.ID, saleItems, req)
+	if len(saleItems) > 0 {
+		taxSummary, err := s.applyTaxesToSale(sale.ID, saleItems, req.WarehouseID)
 		if err != nil {
-			return nil, err
+			log.Printf("[WARN] Tax calculation failed: %v", err)
+			// Continue without tax if calculation fails
+		} else if taxSummary != nil {
+			taxAmount = taxSummary.TotalTaxAmount
+			finalAmount += taxAmount
+			log.Printf("[DEBUG] Tax applied successfully: %.2f", taxAmount)
 		}
-		finalAmount += taxAmount
-		log.Printf("[DEBUG] Final amount after tax: %.2f", finalAmount)
 	}
 
 	// Update sale with final amount
@@ -228,7 +260,37 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 	log.Printf("[DEBUG] Complete sale retrieved successfully")
 
 	log.Printf("[DEBUG] Sale creation completed successfully")
-	return s.mapSaleToResponse(completeSale), nil
+
+	// Create detailed response with breakdown
+	response := s.mapSaleToResponse(completeSale)
+
+	// Add breakdown information
+	var taxBreakdown *models.TaxSummaryBreakdown
+	if taxAmount > 0 {
+		taxSummary, err := s.taxRepo.GetTaxSummaryBySale(sale.ID)
+		if err == nil {
+			taxBreakdown = &models.TaxSummaryBreakdown{
+				CGSTAmount:     taxSummary.CGSTAmount,
+				SGSTAmount:     taxSummary.SGSTAmount,
+				IGSTAmount:     taxSummary.IGSTAmount,
+				VATAmount:      taxSummary.VATAmount,
+				OtherTaxAmount: taxSummary.OtherTaxAmount,
+				TotalTaxAmount: taxSummary.TotalTaxAmount,
+			}
+		}
+	}
+
+	response.Breakdown = &models.SaleBreakdown{
+		BaseAmount:       totalAmount,
+		AppliedDiscounts: appliedDiscounts,
+		DiscountAmount:   discountAmount,
+		TaxBreakdown:     taxBreakdown,
+		TaxAmount:        taxAmount,
+		TotalSavings:     discountAmount,
+		FinalAmount:      finalAmount,
+	}
+
+	return response, nil
 }
 
 // GetSale retrieves a sale by ID
@@ -279,20 +341,6 @@ func (s *SalesService) DeleteSale(id string) error {
 	return s.salesRepo.DeleteSale(id)
 }
 
-// GetSalesByCustomer retrieves sales for a specific customer
-func (s *SalesService) GetSalesByCustomer(customerID string) ([]models.SaleResponse, error) {
-	sales, err := s.salesRepo.GetSalesByCustomer(customerID)
-	if err != nil {
-		return nil, err
-	}
-
-	var responses []models.SaleResponse
-	for _, sale := range sales {
-		responses = append(responses, *s.mapSaleToResponse(&sale))
-	}
-
-	return responses, nil
-}
 
 // GetSalesByDateRange retrieves sales within a date range
 func (s *SalesService) GetSalesByDateRange(startDate, endDate time.Time) ([]models.SaleResponse, error) {
@@ -403,7 +451,6 @@ func (s *SalesService) mapSaleToResponse(sale *models.Sale) *models.SaleResponse
 	response := &models.SaleResponse{
 		ID:          sale.ID,
 		WarehouseID: sale.WarehouseID,
-		CustomerID:  sale.CustomerID,
 		SaleDate:    sale.SaleDate.Format("2006-01-02T15:04:05Z07:00"),
 		TotalAmount: sale.TotalAmount,
 		Status:      sale.Status,
@@ -427,119 +474,46 @@ func (s *SalesService) mapSaleToResponse(sale *models.Sale) *models.SaleResponse
 	return response
 }
 
-// applyTaxesToSale applies taxes to a sale and returns the tax amount and summary
-func (s *SalesService) applyTaxesToSale(saleID string, saleItems []models.SaleItem, req *models.CreateSaleRequest) (float64, *models.TaxSummary, error) {
-	// Convert sale items to tax calculation items
-	var taxItems []models.TaxCalculationItem
-	for _, item := range saleItems {
-		// Get batch to retrieve product ID
-		batch, err := s.inventoryRepo.GetBatchByID(item.BatchID)
-		if err != nil {
-			return 0, nil, err
-		}
-
-		taxItem := models.TaxCalculationItem{
-			ProductID: batch.ProductID,
-			Quantity:  int(item.Quantity),
-			UnitPrice: item.SellingPrice,
-			LineTotal: item.LineTotal,
-		}
-		taxItems = append(taxItems, taxItem)
-	}
-
-	// Create tax calculation request
-	taxReq := &models.TaxCalculationRequest{
-		CustomerID:     *req.CustomerID,
-		CustomerState:  *req.CustomerState,
-		CustomerGSTIN:  req.CustomerGSTIN,
-		CustomerPAN:    req.CustomerPAN,
-		WarehouseID:    req.WarehouseID,
-		WarehouseState: *req.WarehouseState,
-		Items:          taxItems,
-		IsInterState:   req.IsInterState != nil && *req.IsInterState,
-	}
-
-	// Calculate taxes
-	taxCalculation, err := s.taxService.CalculateTax(taxReq)
-	if err != nil {
-		return 0, nil, err
-	}
-
-	// Create tax summary
-	taxSummary := models.NewTaxSummary()
-	taxSummary.SaleID = &saleID
-	taxSummary.SubTotal = taxCalculation.SubTotal
-	taxSummary.TotalTaxAmount = taxCalculation.TotalTaxAmount
-	taxSummary.GrandTotal = taxCalculation.GrandTotal
-
-	// Calculate tax breakdown by type
-	for _, breakdown := range taxCalculation.TaxBreakdown {
-		switch breakdown.TaxType {
-		case models.TaxTypeCGST:
-			taxSummary.CGSTAmount = breakdown.Amount
-		case models.TaxTypeSGST:
-			taxSummary.SGSTAmount = breakdown.Amount
-		case models.TaxTypeIGST:
-			taxSummary.IGSTAmount = breakdown.Amount
-		case models.TaxTypeVAT:
-			taxSummary.VATAmount = breakdown.Amount
-		case models.TaxTypeSTT:
-			taxSummary.STTAmount = breakdown.Amount
-		case models.TaxTypeTDS:
-			taxSummary.TDSAmount = breakdown.Amount
-		case models.TaxTypeTCS:
-			taxSummary.TCSAmount = breakdown.Amount
-		case models.TaxTypeExcise:
-			taxSummary.ExciseAmount = breakdown.Amount
-		case models.TaxTypeCustoms:
-			taxSummary.CustomsAmount = breakdown.Amount
-		default:
-			taxSummary.OtherTaxAmount += breakdown.Amount
-		}
-	}
-
-	// Save tax summary
-	if err := s.taxRepo.CreateTaxSummary(taxSummary); err != nil {
-		return 0, nil, err
-	}
-
-	// Create tax applications for each applied tax
-	for _, appliedTax := range taxCalculation.AppliedTaxes {
-		taxApp := models.NewTaxApplication()
-		taxApp.TaxID = appliedTax.TaxID
-		taxApp.SaleID = &saleID
-		taxApp.BaseAmount = appliedTax.BaseAmount
-		taxApp.TaxRate = appliedTax.Rate
-		taxApp.TaxAmount = appliedTax.Amount
-		taxApp.TaxType = appliedTax.TaxType
-
-		if err := s.taxRepo.CreateTaxApplication(taxApp); err != nil {
-			return 0, nil, err
-		}
-	}
-
-	return taxCalculation.TotalTaxAmount, taxSummary, nil
-}
 
 // applyDiscountToSale applies a discount to a sale and returns the discount amount
-func (s *SalesService) applyDiscountToSale(discountID string, customerID *string, saleID string, orderValue float64) (float64, error) {
+func (s *SalesService) applyDiscountToSale(discountID string, saleID string, orderValue float64) (float64, error) {
 	// Get discount by ID
 	discount, err := s.discountsRepo.GetDiscountByID(discountID)
 	if err != nil {
 		return 0, err
 	}
 
-	// Validate discount for this order
-	_, err = s.discountsRepo.ValidateDiscount(discount.Code, customerID, orderValue, nil, "") // TODO: Add product IDs and warehouse ID
-	if err != nil {
-		return 0, err
+	// Basic discount validation (no customer-specific validation)
+	if !discount.IsActive {
+		return 0, errors.New("discount is not active")
+	}
+
+	// Check usage limits
+	if discount.UsageLimit != nil && discount.CurrentUsage >= *discount.UsageLimit {
+		return 0, errors.New("discount usage limit reached")
+	}
+
+	// Check date validity
+	now := time.Now()
+	if now.Before(discount.ValidFrom) || now.After(discount.ValidUntil) {
+		return 0, errors.New("discount is not valid for the current date")
+	}
+
+	// Check minimum order value
+	if discount.MinOrderValue != nil && orderValue < *discount.MinOrderValue {
+		return 0, errors.New("order value does not meet minimum requirement")
+	}
+
+	// Check maximum order value
+	if discount.MaxOrderValue != nil && orderValue > *discount.MaxOrderValue {
+		return 0, errors.New("order value exceeds maximum limit")
 	}
 
 	// Calculate discount amount
 	discountAmount := s.discountsRepo.CalculateDiscount(discount, orderValue)
 
-	// Create discount usage record
-	usage := models.NewDiscountUsage(discountID, *customerID, saleID, discountAmount)
+	// Create discount usage record (without customer ID)
+	usage := models.NewDiscountUsage(discountID, saleID, discountAmount)
 	if err := s.discountsRepo.CreateDiscountUsage(usage); err != nil {
 		return 0, err
 	}
@@ -550,4 +524,203 @@ func (s *SalesService) applyDiscountToSale(discountID string, customerID *string
 	}
 
 	return discountAmount, nil
+}
+
+// discoverApplicableDiscounts automatically finds the best applicable discounts for an order
+func (s *SalesService) discoverApplicableDiscounts(orderValue float64, productIDs []string, warehouseID string) ([]models.Discount, error) {
+	// Get all applicable discounts for this order
+	applicableDiscounts, err := s.discountsRepo.GetApplicableDiscountsForOrder(orderValue, productIDs, nil, warehouseID)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(applicableDiscounts) == 0 {
+		return []models.Discount{}, nil
+	}
+
+	// Calculate optimal discount combination
+	optimalDiscounts, _, err := s.discountsRepo.CalculateOptimalDiscounts(orderValue, productIDs, nil, warehouseID)
+	if err != nil {
+		// If optimal calculation fails, return single best discount
+		bestDiscount := s.findBestSingleDiscount(applicableDiscounts, orderValue)
+		if bestDiscount != nil {
+			return []models.Discount{*bestDiscount}, nil
+		}
+		return []models.Discount{}, nil
+	}
+
+	// Convert responses to models for internal use
+	var result []models.Discount
+	for _, discountResp := range optimalDiscounts {
+		discount, err := s.discountsRepo.GetDiscountByID(discountResp.ID)
+		if err == nil {
+			result = append(result, *discount)
+		}
+	}
+
+	return result, nil
+}
+
+// findBestSingleDiscount finds the single best discount from available options
+func (s *SalesService) findBestSingleDiscount(discounts []models.Discount, orderValue float64) *models.Discount {
+	var bestDiscount *models.Discount
+	var maxSavings float64
+
+	for _, discount := range discounts {
+		savings := s.discountsRepo.CalculateDiscount(&discount, orderValue)
+		if savings > maxSavings {
+			maxSavings = savings
+			bestDiscount = &discount
+		}
+	}
+
+	return bestDiscount
+}
+
+// resolveDiscountsWithPriority resolves which discounts to apply based on priority
+func (s *SalesService) resolveDiscountsWithPriority(req *models.CreateSaleRequest, orderValue float64, productIDs []string, saleItems []*models.SaleItem) ([]models.Discount, []models.DiscountApplication, float64, error) {
+	var finalDiscounts []models.Discount
+	var applications []models.DiscountApplication
+	var totalDiscountAmount float64
+
+	// Priority 1: Manual discount by ID
+	if req.DiscountID != nil && *req.DiscountID != "" {
+		discount, err := s.discountsRepo.GetDiscountByID(*req.DiscountID)
+		if err != nil {
+			return nil, nil, 0, err
+		}
+
+		discountAmount := s.calculateDiscountAmount(discount, orderValue, saleItems)
+		finalDiscounts = append(finalDiscounts, *discount)
+		applications = append(applications, models.DiscountApplication{
+			DiscountID:   discount.ID,
+			DiscountCode: discount.Code,
+			DiscountName: discount.Name,
+			DiscountType: string(discount.DiscountType),
+			Amount:       discountAmount,
+			AppliedBy:    "manual",
+		})
+		totalDiscountAmount += discountAmount
+
+		return finalDiscounts, applications, totalDiscountAmount, nil
+	}
+
+	// Priority 2: Manual discount by coupon code
+	if req.CouponCode != nil && *req.CouponCode != "" {
+		discount, err := s.discountsRepo.GetDiscountByCode(*req.CouponCode)
+		if err != nil {
+			return nil, nil, 0, err
+		}
+
+		discountAmount := s.calculateDiscountAmount(discount, orderValue, saleItems)
+		finalDiscounts = append(finalDiscounts, *discount)
+		applications = append(applications, models.DiscountApplication{
+			DiscountID:   discount.ID,
+			DiscountCode: discount.Code,
+			DiscountName: discount.Name,
+			DiscountType: string(discount.DiscountType),
+			Amount:       discountAmount,
+			AppliedBy:    "coupon",
+		})
+		totalDiscountAmount += discountAmount
+
+		return finalDiscounts, applications, totalDiscountAmount, nil
+	}
+
+	// Priority 3: Auto-discovered discounts (default enabled)
+	autoApply := true // Default value
+	if req.AutoApplyDiscounts != nil {
+		autoApply = *req.AutoApplyDiscounts
+	}
+
+	if autoApply {
+		autoDiscounts, err := s.discoverApplicableDiscounts(orderValue, productIDs, req.WarehouseID)
+		if err != nil {
+			log.Printf("[WARN] Failed to discover automatic discounts: %v", err)
+			return []models.Discount{}, []models.DiscountApplication{}, 0, nil
+		}
+
+		for _, discount := range autoDiscounts {
+			discountAmount := s.discountsRepo.CalculateDiscount(&discount, orderValue)
+			finalDiscounts = append(finalDiscounts, discount)
+			applications = append(applications, models.DiscountApplication{
+				DiscountID:   discount.ID,
+				DiscountCode: discount.Code,
+				DiscountName: discount.Name,
+				DiscountType: string(discount.DiscountType),
+				Amount:       discountAmount,
+				AppliedBy:    "auto",
+			})
+			totalDiscountAmount += discountAmount
+		}
+	}
+
+	return finalDiscounts, applications, totalDiscountAmount, nil
+}
+
+// applyTaxesToSale applies taxes to a sale using warehouse-based calculation (no customer data needed)
+func (s *SalesService) applyTaxesToSale(saleID string, saleItems []models.SaleItem, warehouseID string) (*models.TaxSummary, error) {
+	// Convert sale items to tax calculation items
+	var taxItems []models.TaxCalculationItem
+	for _, item := range saleItems {
+		// Get batch to retrieve product ID
+		batch, err := s.inventoryRepo.GetBatchByID(item.BatchID)
+		if err != nil {
+			return nil, err
+		}
+
+
+		taxItem := models.TaxCalculationItem{
+			ProductID:  batch.ProductID,
+			CategoryID: nil, // No category management in current model
+			Quantity:   int(item.Quantity),
+			UnitPrice:  item.SellingPrice,
+			LineTotal:  item.LineTotal,
+		}
+		taxItems = append(taxItems, taxItem)
+	}
+
+	// Default state since warehouse doesn't store state directly (can be configurable)
+	defaultState := "DefaultState" // This should be configurable or fetched from address service
+
+	// Create tax calculation request without customer information
+	taxReq := &models.TaxCalculationRequest{
+		CustomerID:     nil, // No customer management
+		CustomerState:  nil, // No customer management
+		CustomerGSTIN:  nil, // No customer GSTIN
+		CustomerPAN:    nil, // No customer PAN
+		WarehouseID:    warehouseID,
+		WarehouseState: defaultState, // Use default state for warehouse
+		Items:          taxItems,
+		IsInterState:   false, // Default to intra-state for warehouse-based taxation
+	}
+
+	// Use the existing tax service to apply taxes
+	return s.taxService.ApplyTaxesToSale(saleID, saleItems, taxReq, "system")
+}
+
+// calculateDiscountAmount calculates discount amount based on discount type
+func (s *SalesService) calculateDiscountAmount(discount *models.Discount, orderValue float64, saleItems []*models.SaleItem) float64 {
+	if discount.DiscountType == models.DiscountTypeBuyXGetY {
+		// Convert SaleItem to repository SaleItem format
+		var repoItems []repositories.SaleItem
+		for _, item := range saleItems {
+			// Get batch to extract product ID
+			batch, err := s.inventoryRepo.GetBatchByID(item.BatchID)
+			productID := item.BatchID // fallback to batch ID if product ID can't be retrieved
+			if err == nil && batch != nil {
+				productID = batch.ProductID
+			}
+
+			repoItems = append(repoItems, repositories.SaleItem{
+				ProductID: productID,
+				Quantity:  item.Quantity,
+				Price:     item.SellingPrice,
+			})
+		}
+		return s.discountsRepo.CalculateBuyXGetYDiscount(*discount, repoItems)
+	}
+
+	// For other discount types, use the regular calculation
+	return s.discountsRepo.CalculateDiscount(discount, orderValue)
 }

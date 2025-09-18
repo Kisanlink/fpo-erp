@@ -187,33 +187,6 @@ func (h *SalesHandler) DeleteSale(c *gin.Context) {
 	utils.OKResponse(c, "Sale deleted successfully", nil)
 }
 
-// GetSalesByCustomer handles GET /api/v1/sales/customer/:customerID
-// @Summary Get Sales by Customer
-// @Description Retrieve all sales for a specific customer
-// @Tags Sales
-// @Produce json
-// @Param customerID path string true "Customer ID" example(CUST_12345678)
-// @Success 200 {object} utils.Response{data=[]models.SaleResponse} "Sales retrieved successfully"
-// @Failure 400 {object} utils.ErrorResponseModel "Bad request"
-// @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
-// @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
-// @Security BearerAuth
-// @Router /api/v1/sales/customer/{customerID} [get]
-func (h *SalesHandler) GetSalesByCustomer(c *gin.Context) {
-	customerID := c.Param("customerID")
-	if customerID == "" {
-		utils.BadRequestResponse(c, "Customer ID is required", nil)
-		return
-	}
-
-	sales, err := h.salesService.GetSalesByCustomer(customerID)
-	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve sales", err)
-		return
-	}
-
-	utils.OKResponse(c, "Sales retrieved successfully", sales)
-}
 
 // GetSalesByDateRange handles GET /api/v1/sales/date-range
 // @Summary Get Sales by Date Range
@@ -466,7 +439,6 @@ func (h *SalesHandler) RegisterRoutes(router *gin.RouterGroup) {
 		sales.GET("/summary", h.aaaMiddleware.RequirePermission("aaa/sale_summary", "*", "read"), h.GetSalesSummary)
 		sales.GET("/:id", h.aaaMiddleware.RequirePermission("aaa/sale", "*", "read"), h.GetSale)
 		sales.GET("/:id/returns", h.aaaMiddleware.RequirePermission("aaa/sale", "*", "read"), h.GetReturnsForSale)
-		sales.GET("/customer/:customerID", h.aaaMiddleware.RequirePermission("aaa/sale", "*", "read"), h.GetSalesByCustomer)
 		sales.GET("/date-range", h.aaaMiddleware.RequirePermission("aaa/sale", "*", "read"), h.GetSalesByDateRange)
 		sales.GET("/status/:status", h.aaaMiddleware.RequirePermission("aaa/sale", "*", "read"), h.GetSalesByStatus)
 		sales.GET("/total-amount", h.aaaMiddleware.RequirePermission("aaa/sale", "*", "read"), h.GetTotalSalesAmount)

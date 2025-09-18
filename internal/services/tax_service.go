@@ -360,7 +360,11 @@ func (s *TaxService) calculateItemTaxes(item models.TaxCalculationItem, req *mod
 	var appliedTaxes []models.AppliedTax
 
 	// Get product-specific taxes
-	productTaxes, err := s.taxRepo.GetTaxesByProduct(item.ProductID, req.WarehouseID, req.CustomerState, req.IsInterState)
+	customerState := ""
+	if req.CustomerState != nil {
+		customerState = *req.CustomerState
+	}
+	productTaxes, err := s.taxRepo.GetTaxesByProduct(item.ProductID, req.WarehouseID, customerState, req.IsInterState)
 	if err != nil {
 		return nil, err
 	}
@@ -368,7 +372,7 @@ func (s *TaxService) calculateItemTaxes(item models.TaxCalculationItem, req *mod
 	// Get category-specific taxes if category is provided
 	var categoryTaxes []models.Tax
 	if item.CategoryID != nil {
-		categoryTaxes, err = s.taxRepo.GetTaxesByCategory(*item.CategoryID, req.WarehouseID, req.CustomerState, req.IsInterState)
+		categoryTaxes, err = s.taxRepo.GetTaxesByCategory(*item.CategoryID, req.WarehouseID, customerState, req.IsInterState)
 		if err != nil {
 			return nil, err
 		}
