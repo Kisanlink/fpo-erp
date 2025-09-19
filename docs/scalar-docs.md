@@ -69,9 +69,9 @@ The Kisanlink ERP API is a comprehensive enterprise resource planning system des
 ### Permission Format
 - **Resource-based**: `{resource_type}:{action}`
 - **Examples**: 
-  - `aaa/warehouse:create`
-  - `aaa/product:read`
-  - `aaa/sale:update`
+  - `warehouse:create`
+  - `product:read`
+  - `sale:update`
 
 ### Required Headers
 ```http

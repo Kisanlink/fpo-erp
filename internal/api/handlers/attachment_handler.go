@@ -35,17 +35,17 @@ func (h *AttachmentHandler) RegisterRoutes(router *gin.RouterGroup) {
 		attachments.Use(h.aaaMiddleware.Authenticate())
 
 		// Create/Delete routes - CEO=CRUD, Tech_Support=R/W (temp)
-		attachments.POST("", h.aaaMiddleware.RequirePermission("aaa/attachment", "*", "create"), h.UploadAttachment)
-		attachments.DELETE("/:id", h.aaaMiddleware.RequirePermission("aaa/attachment", "*", "delete"), h.DeleteAttachment)
+		attachments.POST("", h.aaaMiddleware.RequirePermission("attachment", "*", "create"), h.UploadAttachment)
+		attachments.DELETE("/:id", h.aaaMiddleware.RequirePermission("attachment", "*", "delete"), h.DeleteAttachment)
 
 		// Read routes - Director=R, CEO=CRUD, Auditor=R, Accountant=R, Tech_Support=R/W (temp), Store_Manager=R, Store_Staff=R
-		attachments.GET("/:id/download", h.aaaMiddleware.RequirePermission("aaa/attachment", "*", "read"), h.DownloadAttachment)
-		attachments.GET("/:id/url", h.aaaMiddleware.RequirePermission("aaa/attachment", "*", "read"), h.GenerateDownloadURL)
-		attachments.GET("", h.aaaMiddleware.RequirePermission("aaa/attachment", "*", "read"), h.GetAttachments)
-		attachments.GET("/:id", h.aaaMiddleware.RequirePermission("aaa/attachment", "*", "read"), h.GetAttachment)
-		attachments.GET("/:id/info", h.aaaMiddleware.RequirePermission("aaa/attachment", "*", "read"), h.GetAttachmentInfo)
-		attachments.GET("/sale/:sale_id", h.aaaMiddleware.RequirePermission("aaa/attachment", "*", "read"), h.GetAttachmentsBySale)
-		attachments.GET("/return/:return_id", h.aaaMiddleware.RequirePermission("aaa/attachment", "*", "read"), h.GetAttachmentsByReturn)
+		attachments.GET("/:id/download", h.aaaMiddleware.RequirePermission("attachment", "*", "read"), h.DownloadAttachment)
+		attachments.GET("/:id/url", h.aaaMiddleware.RequirePermission("attachment", "*", "read"), h.GenerateDownloadURL)
+		attachments.GET("", h.aaaMiddleware.RequirePermission("attachment", "*", "read"), h.GetAttachments)
+		attachments.GET("/:id", h.aaaMiddleware.RequirePermission("attachment", "*", "read"), h.GetAttachment)
+		attachments.GET("/:id/info", h.aaaMiddleware.RequirePermission("attachment", "*", "read"), h.GetAttachmentInfo)
+		attachments.GET("/sale/:sale_id", h.aaaMiddleware.RequirePermission("attachment", "*", "read"), h.GetAttachmentsBySale)
+		attachments.GET("/return/:return_id", h.aaaMiddleware.RequirePermission("attachment", "*", "read"), h.GetAttachmentsByReturn)
 	}
 }
 

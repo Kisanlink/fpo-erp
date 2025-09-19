@@ -447,22 +447,22 @@ func (h *DiscountsHandler) RegisterRoutes(router *gin.RouterGroup) {
 		discounts.Use(h.aaaMiddleware.Authenticate())
 
 		// Create/Update/Delete routes - CEO=CRUD, Store_Staff=CRUD, Tech_Support=R/W (temp)
-		discounts.POST("", h.aaaMiddleware.RequirePermission("aaa/discount", "*", "create"), h.CreateDiscount)
-		discounts.PUT("/:id", h.aaaMiddleware.RequirePermission("aaa/discount", "*", "update"), h.UpdateDiscount)
-		discounts.DELETE("/:id", h.aaaMiddleware.RequirePermission("aaa/discount", "*", "delete"), h.DeleteDiscount)
+		discounts.POST("", h.aaaMiddleware.RequirePermission("discount", "*", "create"), h.CreateDiscount)
+		discounts.PUT("/:id", h.aaaMiddleware.RequirePermission("discount", "*", "update"), h.UpdateDiscount)
+		discounts.DELETE("/:id", h.aaaMiddleware.RequirePermission("discount", "*", "delete"), h.DeleteDiscount)
 
 		// Read routes - Director=R, CEO=CRUD, Auditor=R, Accountant=R, Tech_Support=R/W (temp), Store_Manager=R, Store_Staff=CRUD
-		discounts.GET("", h.aaaMiddleware.RequirePermission("aaa/discount", "*", "read"), h.GetAllDiscounts)
-		discounts.GET("/active", h.aaaMiddleware.RequirePermission("aaa/discount", "*", "read"), h.GetActiveDiscounts)
-		discounts.GET("/applicable", h.aaaMiddleware.RequirePermission("aaa/discount", "*", "read"), h.GetApplicableDiscounts)
-		discounts.GET("/:id", h.aaaMiddleware.RequirePermission("aaa/discount", "*", "read"), h.GetDiscount)
-		discounts.GET("/type/:type", h.aaaMiddleware.RequirePermission("aaa/discount", "*", "read"), h.GetDiscountsByType)
-		discounts.GET("/status/:status", h.aaaMiddleware.RequirePermission("aaa/discount", "*", "read"), h.GetDiscountsByStatus)
-		discounts.GET("/usage/sale/:saleID", h.aaaMiddleware.RequirePermission("aaa/discount", "*", "read"), h.GetDiscountUsageBySale)
-		discounts.GET("/usage/stats/:discountID", h.aaaMiddleware.RequirePermission("aaa/discount", "*", "read"), h.GetDiscountUsageStats)
+		discounts.GET("", h.aaaMiddleware.RequirePermission("discount", "*", "read"), h.GetAllDiscounts)
+		discounts.GET("/active", h.aaaMiddleware.RequirePermission("discount", "*", "read"), h.GetActiveDiscounts)
+		discounts.GET("/applicable", h.aaaMiddleware.RequirePermission("discount", "*", "read"), h.GetApplicableDiscounts)
+		discounts.GET("/:id", h.aaaMiddleware.RequirePermission("discount", "*", "read"), h.GetDiscount)
+		discounts.GET("/type/:type", h.aaaMiddleware.RequirePermission("discount", "*", "read"), h.GetDiscountsByType)
+		discounts.GET("/status/:status", h.aaaMiddleware.RequirePermission("discount", "*", "read"), h.GetDiscountsByStatus)
+		discounts.GET("/usage/sale/:saleID", h.aaaMiddleware.RequirePermission("discount", "*", "read"), h.GetDiscountUsageBySale)
+		discounts.GET("/usage/stats/:discountID", h.aaaMiddleware.RequirePermission("discount", "*", "read"), h.GetDiscountUsageStats)
 
 		// Validation and calculation routes - accessible to all authenticated users
-		discounts.POST("/validate", h.aaaMiddleware.RequirePermission("aaa/discount", "*", "read"), h.ValidateDiscount)
-		discounts.POST("/calculate-optimal", h.aaaMiddleware.RequirePermission("aaa/discount", "*", "read"), h.CalculateOptimalDiscounts)
+		discounts.POST("/validate", h.aaaMiddleware.RequirePermission("discount", "*", "read"), h.ValidateDiscount)
+		discounts.POST("/calculate-optimal", h.aaaMiddleware.RequirePermission("discount", "*", "read"), h.CalculateOptimalDiscounts)
 	}
 }

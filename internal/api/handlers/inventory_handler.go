@@ -336,32 +336,32 @@ func (h *InventoryHandler) RegisterRoutes(router *gin.RouterGroup) {
 		batches.Use(h.aaaMiddleware.Authenticate())
 
 		// Create routes - CEO=CRUD, Store_Manager=CRUD, Tech_Support=R/W (temp)
-		batches.POST("", h.aaaMiddleware.RequirePermission("aaa/inventory_batch", "*", "create"), h.CreateBatch)
-		batches.POST("/:id/transactions", h.aaaMiddleware.RequirePermission("aaa/inventory_transaction", "*", "create"), h.CreateTransaction)
+		batches.POST("", h.aaaMiddleware.RequirePermission("inventory_batch", "*", "create"), h.CreateBatch)
+		batches.POST("/:id/transactions", h.aaaMiddleware.RequirePermission("inventory_transaction", "*", "create"), h.CreateTransaction)
 
 		// Read routes - Director=R, CEO=CRUD, Auditor=R, Accountant=–, Tech_Support=R/W (temp), Store_Manager=CRUD, Store_Staff=R
-		batches.GET("/expiring", h.aaaMiddleware.RequirePermission("aaa/inventory_batch", "*", "read"), h.GetExpiringBatches)
-		batches.GET("/low-stock", h.aaaMiddleware.RequirePermission("aaa/inventory_batch", "*", "read"), h.GetLowStockBatches)
-		batches.GET("/:id", h.aaaMiddleware.RequirePermission("aaa/inventory_batch", "*", "read"), h.GetBatch)
-		batches.GET("/:id/transactions", h.aaaMiddleware.RequirePermission("aaa/inventory_transaction", "*", "read"), h.GetTransactionsByBatch)
+		batches.GET("/expiring", h.aaaMiddleware.RequirePermission("inventory_batch", "*", "read"), h.GetExpiringBatches)
+		batches.GET("/low-stock", h.aaaMiddleware.RequirePermission("inventory_batch", "*", "read"), h.GetLowStockBatches)
+		batches.GET("/:id", h.aaaMiddleware.RequirePermission("inventory_batch", "*", "read"), h.GetBatch)
+		batches.GET("/:id/transactions", h.aaaMiddleware.RequirePermission("inventory_transaction", "*", "read"), h.GetTransactionsByBatch)
 	}
 
 	// Warehouse batch routes
 	warehouses := router.Group("/warehouses")
 	{
 		warehouses.Use(h.aaaMiddleware.Authenticate())
-		warehouses.GET("/:id/batches", h.aaaMiddleware.RequirePermission("aaa/inventory_batch", "*", "read"), h.GetBatchesByWarehouse)
+		warehouses.GET("/:id/batches", h.aaaMiddleware.RequirePermission("inventory_batch", "*", "read"), h.GetBatchesByWarehouse)
 	}
 
 	// Product batch routes
 	products := router.Group("/products")
 	{
 		products.Use(h.aaaMiddleware.Authenticate())
-		products.GET("/:id/batches", h.aaaMiddleware.RequirePermission("aaa/inventory_batch", "*", "read"), h.GetBatchesByProduct)
+		products.GET("/:id/batches", h.aaaMiddleware.RequirePermission("inventory_batch", "*", "read"), h.GetBatchesByProduct)
 	}
 	// Protected product availability route
 	protected := products.Group("")
 	{
-		protected.GET("/availability", h.aaaMiddleware.RequirePermission("aaa/inventory_batch", "*", "read"), h.GetAllProductsAvailability)
+		protected.GET("/availability", h.aaaMiddleware.RequirePermission("inventory_batch", "*", "read"), h.GetAllProductsAvailability)
 	}
 }

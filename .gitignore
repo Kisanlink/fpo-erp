@@ -187,6 +187,7 @@ config.local.*
 .dev/
 
 # Local scripts
+scripts/
 scripts/local/
 local-scripts/
 

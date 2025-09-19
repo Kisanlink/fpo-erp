@@ -48,7 +48,7 @@ func (c *AuthzClient) CheckPermission(ctx context.Context, userID, resourceType,
 	// Create the permission check request
 	req := &proto.CheckRequest{
 		PrincipalId:  userID,       // The user asking for permission
-		ResourceType: resourceType, // What type of resource (e.g., "aaa/user")
+		ResourceType: resourceType, // What type of resource (e.g., "user")
 		ResourceId:   resourceID,   // Which specific resource (e.g., "USER_123" or "*")
 		Action:       action,       // What action (e.g., "read", "create", "delete")
 	}
@@ -128,7 +128,7 @@ func (c *AuthzClient) GetUserRoles(ctx context.Context, userID string) ([]string
 
 // Permission represents a permission to check
 type Permission struct {
-	ResourceType string // e.g., "aaa/user"
+	ResourceType string // e.g., "user"
 	ResourceID   string // e.g., "USER_123" or "*"
 	Action       string // e.g., "read", "create", "delete"
 }
