@@ -2,7 +2,7 @@
 
 A comprehensive Enterprise Resource Planning (ERP) system built with Go, designed for agricultural businesses and FPOs (Farmer Producer Organizations).
 
-[![Production Ready](https://img.shields.io/badge/Status-Production%20Ready-green)](https://github.com/kisanlink/erp)
+[![Production Ready](https://img.shields.io/badge/Status-Production%20Ready-green)](https://github.com/kisanlink/fpo-erp)
 [![Go Version](https://img.shields.io/badge/Go-1.21+-blue)](https://golang.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 
@@ -217,7 +217,7 @@ For testing purposes, you can generate JWT tokens using the provided script:
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/Kisanlink/fpo-erp.git
    cd Kisanlink-erp-v1
    ```
 
