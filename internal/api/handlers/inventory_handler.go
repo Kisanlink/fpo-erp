@@ -40,30 +40,11 @@ func NewInventoryHandler(inventoryService *services.InventoryService, aaaMiddlew
 // @Security BearerAuth
 // @Router /api/v1/batches [post]
 func (h *InventoryHandler) CreateBatch(c *gin.Context) {
-	var request struct {
-		WarehouseID string  `json:"warehouse_id" binding:"required"`
-		ProductID   string  `json:"product_id" binding:"required"`
-		CostPrice   float64 `json:"cost_price" binding:"required,gt=0"`
-		ExpiryDate  string  `json:"expiry_date" binding:"required"`
-		Quantity    int64   `json:"quantity" binding:"required,gt=0"`
-	}
+	var request models.CreateInventoryBatchRequest
 
 	// Validate request
 	if err := utils.ValidateRequest(c, &request); err != nil {
 		utils.BadRequestResponse(c, "Invalid request data", err)
-		return
-	}
-
-	// Parse UUIDs
-	warehouseID := request.WarehouseID
-	if warehouseID == "" {
-		utils.BadRequestResponse(c, "Warehouse ID is required", nil)
-		return
-	}
-
-	productID := request.ProductID
-	if productID == "" {
-		utils.BadRequestResponse(c, "Product ID is required", nil)
 		return
 	}
 
@@ -74,8 +55,18 @@ func (h *InventoryHandler) CreateBatch(c *gin.Context) {
 		return
 	}
 
-	// Create batch
-	response, err := h.inventoryService.CreateBatch(warehouseID, productID, request.CostPrice, expiryDate, request.Quantity)
+	// Create batch with tax configuration
+	response, err := h.inventoryService.CreateBatch(
+		request.WarehouseID,
+		request.ProductID,
+		request.CostPrice,
+		expiryDate,
+		request.Quantity,
+		request.CGSTRate,
+		request.SGSTRate,
+		request.CustomTaxIDs,
+		request.IsTaxExempt,
+	)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "Failed to create batch", err)
 		return

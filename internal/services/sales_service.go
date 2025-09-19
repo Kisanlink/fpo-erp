@@ -141,11 +141,23 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 
 			// Calculate line total for this batch allocation
 			batchLineTotal := sellingPrice * float64(quantityFromBatch)
+
+			// Calculate taxes for this batch allocation
+			log.Printf("[DEBUG] Calculating taxes for batch allocation")
+			taxCalculation, err := s.taxService.CalculateBatchTax(batch, quantityFromBatch, sellingPrice)
+			if err != nil {
+				log.Printf("[ERROR] Failed to calculate taxes: %v", err)
+				return nil, err
+			}
+			log.Printf("[DEBUG] Tax calculation completed: CGST=%.2f, SGST=%.2f, Custom=%.2f, Total=%.2f",
+				taxCalculation.CGSTAmount, taxCalculation.SGSTAmount, taxCalculation.CustomTaxAmount, taxCalculation.TotalTaxAmount)
+
 			itemTotal += batchLineTotal
 
-			// Create sale item for this batch allocation
-			saleItem := models.NewSaleItem(sale.ID, batch.ID, quantityFromBatch, sellingPrice, batchLineTotal)
-			log.Printf("[DEBUG] Sale item created with ID: %s", saleItem.ID)
+			// Create sale item with tax amounts
+			saleItem := models.NewSaleItemWithTax(sale.ID, batch.ID, quantityFromBatch, sellingPrice, batchLineTotal,
+				taxCalculation.CGSTAmount, taxCalculation.SGSTAmount, taxCalculation.CustomTaxAmount)
+			log.Printf("[DEBUG] Sale item created with ID: %s (includes tax amounts)", saleItem.ID)
 
 			if err := s.salesRepo.CreateSaleItem(saleItem); err != nil {
 				log.Printf("[ERROR] Failed to create sale item: %v", err)

@@ -641,3 +641,86 @@ func (s *TaxService) GetTaxApplicationsBySale(saleID string) ([]models.TaxApplic
 func (s *TaxService) GetTaxApplicationsByReturn(returnID string) ([]models.TaxApplication, error) {
 	return s.taxRepo.GetTaxApplicationsByReturn(returnID)
 }
+
+// CalculateBatchTax calculates taxes for a sale item based on its inventory batch
+func (s *TaxService) CalculateBatchTax(batch models.InventoryBatch, quantity int64, unitPrice float64) (*models.BatchTaxCalculation, error) {
+	lineTotal := float64(quantity) * unitPrice
+
+	// Check if batch is tax exempt
+	if batch.IsTaxExempt {
+		return &models.BatchTaxCalculation{
+			BatchID:         batch.ID,
+			LineTotal:       lineTotal,
+			CGSTAmount:      0,
+			SGSTAmount:      0,
+			CustomTaxAmount: 0,
+			TotalTaxAmount:  0,
+		}, nil
+	}
+
+	// Calculate CGST
+	cgstAmount := s.roundToNearestPaisa(lineTotal * (batch.CGSTRate / 100))
+
+	// Calculate SGST
+	sgstAmount := s.roundToNearestPaisa(lineTotal * (batch.SGSTRate / 100))
+
+	// Calculate custom taxes
+	customTaxAmount := float64(0)
+	if len(batch.CustomTaxIDs) > 0 {
+		customTaxes, err := s.taxRepo.GetTaxesByIDs(batch.CustomTaxIDs)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, tax := range customTaxes {
+			if tax.IsActive {
+				taxAmount := s.calculateCustomTaxAmount(tax, lineTotal, quantity)
+				customTaxAmount += taxAmount
+			}
+		}
+	}
+
+	totalTaxAmount := cgstAmount + sgstAmount + customTaxAmount
+
+	return &models.BatchTaxCalculation{
+		BatchID:         batch.ID,
+		LineTotal:       lineTotal,
+		CGSTAmount:      cgstAmount,
+		SGSTAmount:      sgstAmount,
+		CustomTaxAmount: customTaxAmount,
+		TotalTaxAmount:  totalTaxAmount,
+	}, nil
+}
+
+// calculateCustomTaxAmount calculates the amount for a custom tax
+func (s *TaxService) calculateCustomTaxAmount(tax models.Tax, lineTotal float64, quantity int64) float64 {
+	switch tax.CalculationType {
+	case models.TaxCalculationPercentage:
+		amount := lineTotal * (tax.Rate / 100)
+		if tax.MinAmount != nil && amount < *tax.MinAmount {
+			amount = *tax.MinAmount
+		}
+		if tax.MaxAmount != nil && amount > *tax.MaxAmount {
+			amount = *tax.MaxAmount
+		}
+		return s.roundToNearestPaisa(amount)
+
+	case models.TaxCalculationFixed:
+		amount := tax.Rate * float64(quantity)
+		if tax.MinAmount != nil && amount < *tax.MinAmount {
+			amount = *tax.MinAmount
+		}
+		if tax.MaxAmount != nil && amount > *tax.MaxAmount {
+			amount = *tax.MaxAmount
+		}
+		return s.roundToNearestPaisa(amount)
+
+	default:
+		return 0
+	}
+}
+
+// roundToNearestPaisa rounds amount to nearest paisa (2 decimal places) for GST compliance
+func (s *TaxService) roundToNearestPaisa(amount float64) float64 {
+	return float64(int(amount*100+0.5)) / 100
+}

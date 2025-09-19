@@ -34,6 +34,12 @@ type SaleItem struct {
 	SellingPrice float64 `gorm:"type:numeric(12,4);not null" json:"selling_price"`
 	LineTotal    float64 `gorm:"type:numeric(14,4);not null" json:"line_total"`
 
+	// Tax amounts (calculated from batch tax configuration)
+	CGSTAmount      float64 `gorm:"type:numeric(12,4);default:0" json:"cgst_amount"`
+	SGSTAmount      float64 `gorm:"type:numeric(12,4);default:0" json:"sgst_amount"`
+	CustomTaxAmount float64 `gorm:"type:numeric(12,4);default:0" json:"custom_tax_amount"`
+	TotalTaxAmount  float64 `gorm:"type:numeric(12,4);default:0" json:"total_tax_amount"`
+
 	// Associations
 	Sale  Sale           `gorm:"foreignKey:SaleID" json:"sale,omitempty"`
 	Batch InventoryBatch `gorm:"foreignKey:BatchID" json:"batch,omitempty"`
@@ -75,12 +81,34 @@ func NewSale(warehouseID string, saleDate time.Time, totalAmount float64, status
 func NewSaleItem(saleID, batchID string, quantity int64, sellingPrice, lineTotal float64) *SaleItem {
 	baseModel := base.NewBaseModel(constants.TableSaleItem, hash.Medium)
 	return &SaleItem{
-		BaseModel:    *baseModel,
-		SaleID:       saleID,
-		BatchID:      batchID,
-		Quantity:     quantity,
-		SellingPrice: sellingPrice,
-		LineTotal:    lineTotal,
+		BaseModel:       *baseModel,
+		SaleID:          saleID,
+		BatchID:         batchID,
+		Quantity:        quantity,
+		SellingPrice:    sellingPrice,
+		LineTotal:       lineTotal,
+		CGSTAmount:      0,
+		SGSTAmount:      0,
+		CustomTaxAmount: 0,
+		TotalTaxAmount:  0,
+	}
+}
+
+// NewSaleItemWithTax creates a new SaleItem with tax amounts
+func NewSaleItemWithTax(saleID, batchID string, quantity int64, sellingPrice, lineTotal, cgstAmount, sgstAmount, customTaxAmount float64) *SaleItem {
+	baseModel := base.NewBaseModel(constants.TableSaleItem, hash.Medium)
+	totalTaxAmount := cgstAmount + sgstAmount + customTaxAmount
+	return &SaleItem{
+		BaseModel:       *baseModel,
+		SaleID:          saleID,
+		BatchID:         batchID,
+		Quantity:        quantity,
+		SellingPrice:    sellingPrice,
+		LineTotal:       lineTotal,
+		CGSTAmount:      cgstAmount,
+		SGSTAmount:      sgstAmount,
+		CustomTaxAmount: customTaxAmount,
+		TotalTaxAmount:  totalTaxAmount,
 	}
 }
 
@@ -142,13 +170,20 @@ type TaxSummaryBreakdown struct {
 
 // SaleItemResponse represents the API response for sale item
 type SaleItemResponse struct {
-	ID           string  `json:"id"`
-	SaleID       string  `json:"sale_id"`
-	BatchID      string  `json:"batch_id"`
-	Quantity     int64   `json:"quantity"`
-	SellingPrice float64 `json:"selling_price"`
-	LineTotal    float64 `json:"line_total"`
-	CreatedAt    string  `json:"created_at"`
+	ID              string  `json:"id"`
+	SaleID          string  `json:"sale_id"`
+	BatchID         string  `json:"batch_id"`
+	Quantity        int64   `json:"quantity"`
+	SellingPrice    float64 `json:"selling_price"`
+	LineTotal       float64 `json:"line_total"`
+
+	// Tax amounts
+	CGSTAmount      float64 `json:"cgst_amount"`
+	SGSTAmount      float64 `json:"sgst_amount"`
+	CustomTaxAmount float64 `json:"custom_tax_amount"`
+	TotalTaxAmount  float64 `json:"total_tax_amount"`
+
+	CreatedAt       string  `json:"created_at"`
 }
 
 // CreateSaleRequest represents the request to create a sale

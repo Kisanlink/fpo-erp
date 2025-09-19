@@ -1593,6 +1593,168 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/discounts/applicable": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve all discounts applicable for an order with given criteria",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Discounts"
+                ],
+                "summary": "Get Applicable Discounts",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "example": 1000,
+                        "description": "Order value",
+                        "name": "order_value",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"PROD_1,PROD_2\"",
+                        "description": "Comma-separated product IDs",
+                        "name": "product_ids",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"CAT_1,CAT_2\"",
+                        "description": "Comma-separated category IDs",
+                        "name": "category_ids",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"WH_123\"",
+                        "description": "Warehouse ID",
+                        "name": "warehouse_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Applicable discounts retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.DiscountResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/discounts/calculate-optimal": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Calculate the optimal combination of discounts for an order",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Discounts"
+                ],
+                "summary": "Calculate Optimal Discounts",
+                "parameters": [
+                    {
+                        "description": "Order details for optimization",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.ValidateDiscountRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Optimal discounts calculated successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.DiscountResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/discounts/status/{status}": {
             "get": {
                 "security": [
@@ -1784,6 +1946,78 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/discounts/usage/stats/{discountID}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve usage statistics for a specific discount",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Discounts"
+                ],
+                "summary": "Get Discount Usage Statistics",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "DISC_12345678",
+                        "description": "Discount ID",
+                        "name": "discountID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Discount usage statistics retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "additionalProperties": true
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "404": {
+                        "description": "Discount not found",
                         "schema": {
                             "$ref": "#/definitions/utils.ErrorResponseModel"
                         }
@@ -4606,74 +4840,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/sales/customer/{customerID}": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Retrieve all sales for a specific customer",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Sales"
-                ],
-                "summary": "Get Sales by Customer",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "example": "CUST_12345678",
-                        "description": "Customer ID",
-                        "name": "customerID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Sales retrieved successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/utils.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/models.SaleResponse"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request",
-                        "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponseModel"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponseModel"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponseModel"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/sales/date-range": {
             "get": {
                 "security": [
@@ -6964,10 +7130,11 @@ const docTemplate = `{
                 "applicable_warehouses": {
                     "type": "string"
                 },
-                "code": {
-                    "type": "string"
+                "buy_quantity": {
+                    "description": "Buy X Get Y specific fields",
+                    "type": "integer"
                 },
-                "customer_groups": {
+                "code": {
                     "type": "string"
                 },
                 "description": {
@@ -6981,6 +7148,15 @@ const docTemplate = `{
                 },
                 "excluded_products": {
                     "type": "string"
+                },
+                "get_discount_type": {
+                    "type": "string"
+                },
+                "get_discount_value": {
+                    "type": "number"
+                },
+                "get_quantity": {
+                    "type": "integer"
                 },
                 "is_active": {
                     "type": "boolean"
@@ -7009,9 +7185,6 @@ const docTemplate = `{
                 "usage_limit": {
                     "type": "integer"
                 },
-                "usage_per_customer": {
-                    "type": "integer"
-                },
                 "valid_from": {
                     "type": "string"
                 },
@@ -7033,17 +7206,37 @@ const docTemplate = `{
                 "warehouse_id"
             ],
             "properties": {
+                "cgst_rate": {
+                    "description": "Tax Configuration",
+                    "type": "number",
+                    "maximum": 100,
+                    "minimum": 0
+                },
                 "cost_price": {
                     "type": "number"
                 },
+                "custom_tax_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "expiry_date": {
                     "type": "string"
+                },
+                "is_tax_exempt": {
+                    "type": "boolean"
                 },
                 "product_id": {
                     "type": "string"
                 },
                 "quantity": {
                     "type": "integer"
+                },
+                "sgst_rate": {
+                    "type": "number",
+                    "maximum": 100,
+                    "minimum": 0
                 },
                 "warehouse_id": {
                     "type": "string"
@@ -7203,28 +7396,17 @@ const docTemplate = `{
                 "warehouse_id"
             ],
             "properties": {
-                "customer_gstin": {
-                    "description": "Customer's GSTIN for tax calculation",
-                    "type": "string"
+                "auto_apply_discounts": {
+                    "description": "Enable automatic discount discovery (default: true)",
+                    "type": "boolean"
                 },
-                "customer_id": {
-                    "type": "string"
-                },
-                "customer_pan": {
-                    "description": "Customer's PAN for tax calculation",
-                    "type": "string"
-                },
-                "customer_state": {
-                    "description": "Customer's state for tax calculation",
+                "coupon_code": {
+                    "description": "Manual discount by code (second priority)",
                     "type": "string"
                 },
                 "discount_id": {
-                    "description": "Optional discount to apply",
+                    "description": "Manual discount by ID (highest priority)",
                     "type": "string"
-                },
-                "is_inter_state": {
-                    "description": "Whether it's an inter-state transaction",
-                    "type": "boolean"
                 },
                 "items": {
                     "type": "array",
@@ -7236,10 +7418,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "warehouse_id": {
-                    "type": "string"
-                },
-                "warehouse_state": {
-                    "description": "Warehouse's state for tax calculation",
                     "type": "string"
                 }
             }
@@ -7407,6 +7585,30 @@ const docTemplate = `{
                 }
             }
         },
+        "models.DiscountApplication": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "applied_by": {
+                    "description": "\"manual\", \"coupon\", \"auto\"",
+                    "type": "string"
+                },
+                "discount_code": {
+                    "type": "string"
+                },
+                "discount_id": {
+                    "type": "string"
+                },
+                "discount_name": {
+                    "type": "string"
+                },
+                "discount_type": {
+                    "type": "string"
+                }
+            }
+        },
         "models.DiscountResponse": {
             "type": "object",
             "properties": {
@@ -7419,6 +7621,10 @@ const docTemplate = `{
                 "applicable_warehouses": {
                     "type": "string"
                 },
+                "buy_quantity": {
+                    "description": "Buy X Get Y specific fields",
+                    "type": "integer"
+                },
                 "code": {
                     "type": "string"
                 },
@@ -7427,9 +7633,6 @@ const docTemplate = `{
                 },
                 "current_usage": {
                     "type": "integer"
-                },
-                "customer_groups": {
-                    "type": "string"
                 },
                 "description": {
                     "type": "string"
@@ -7442,6 +7645,15 @@ const docTemplate = `{
                 },
                 "excluded_products": {
                     "type": "string"
+                },
+                "get_discount_type": {
+                    "type": "string"
+                },
+                "get_discount_value": {
+                    "type": "number"
+                },
+                "get_quantity": {
+                    "type": "integer"
                 },
                 "id": {
                     "type": "string"
@@ -7480,9 +7692,6 @@ const docTemplate = `{
                 "usage_limit": {
                     "type": "integer"
                 },
-                "usage_per_customer": {
-                    "type": "integer"
-                },
                 "valid_from": {
                     "type": "string"
                 },
@@ -7500,11 +7709,8 @@ const docTemplate = `{
                 "flat",
                 "percentage",
                 "buy_x_get_y",
-                "first_order",
-                "loyalty",
                 "seasonal",
-                "bulk",
-                "referral"
+                "bulk"
             ],
             "x-enum-comments": {
                 "DiscountTypeFlat": "Fixed amount discount",
@@ -7515,20 +7721,14 @@ const docTemplate = `{
                 "Percentage discount",
                 "",
                 "",
-                "",
-                "",
-                "",
                 ""
             ],
             "x-enum-varnames": [
                 "DiscountTypeFlat",
                 "DiscountTypePercentage",
                 "DiscountTypeBuyXGetY",
-                "DiscountTypeFirstOrder",
-                "DiscountTypeLoyalty",
                 "DiscountTypeSeasonal",
-                "DiscountTypeBulk",
-                "DiscountTypeReferral"
+                "DiscountTypeBulk"
             ]
         },
         "models.DiscountUsageResponse": {
@@ -7538,9 +7738,6 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "created_at": {
-                    "type": "string"
-                },
-                "customer_id": {
                     "type": "string"
                 },
                 "discount_id": {
@@ -7592,11 +7789,21 @@ const docTemplate = `{
         "models.InventoryBatchResponse": {
             "type": "object",
             "properties": {
+                "cgst_rate": {
+                    "description": "Tax Configuration",
+                    "type": "number"
+                },
                 "cost_price": {
                     "type": "number"
                 },
                 "created_at": {
                     "type": "string"
+                },
+                "custom_tax_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "expiry_date": {
                     "type": "string"
@@ -7604,8 +7811,14 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "is_tax_exempt": {
+                    "type": "boolean"
+                },
                 "product_id": {
                     "type": "string"
+                },
+                "sgst_rate": {
+                    "type": "number"
                 },
                 "total_quantity": {
                     "type": "integer"
@@ -7675,17 +7888,30 @@ const docTemplate = `{
                         }
                     ]
                 },
+                "cgst_rate": {
+                    "description": "Tax Configuration",
+                    "type": "number"
+                },
                 "cost_price": {
                     "type": "number"
                 },
                 "created_at": {
                     "type": "string"
                 },
+                "custom_tax_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "expiry_date": {
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
+                },
+                "is_tax_exempt": {
+                    "type": "boolean"
                 },
                 "product_description": {
                     "type": "string"
@@ -7698,6 +7924,9 @@ const docTemplate = `{
                 },
                 "product_sku": {
                     "type": "string"
+                },
+                "sgst_rate": {
+                    "type": "number"
                 },
                 "total_quantity": {
                     "type": "integer"
@@ -7881,14 +8110,61 @@ const docTemplate = `{
                 }
             }
         },
+        "models.SaleBreakdown": {
+            "type": "object",
+            "properties": {
+                "applied_discounts": {
+                    "description": "All discounts applied",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.DiscountApplication"
+                    }
+                },
+                "base_amount": {
+                    "description": "Total before discounts and taxes",
+                    "type": "number"
+                },
+                "discount_amount": {
+                    "description": "Total discount amount",
+                    "type": "number"
+                },
+                "final_amount": {
+                    "description": "Final amount after discounts and taxes",
+                    "type": "number"
+                },
+                "tax_amount": {
+                    "description": "Total tax amount",
+                    "type": "number"
+                },
+                "tax_breakdown": {
+                    "description": "Tax details",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.TaxSummaryBreakdown"
+                        }
+                    ]
+                },
+                "total_savings": {
+                    "description": "Total discount savings",
+                    "type": "number"
+                }
+            }
+        },
         "models.SaleItemResponse": {
             "type": "object",
             "properties": {
                 "batch_id": {
                     "type": "string"
                 },
+                "cgst_amount": {
+                    "description": "Tax amounts",
+                    "type": "number"
+                },
                 "created_at": {
                     "type": "string"
+                },
+                "custom_tax_amount": {
+                    "type": "number"
                 },
                 "id": {
                     "type": "string"
@@ -7904,16 +8180,27 @@ const docTemplate = `{
                 },
                 "selling_price": {
                     "type": "number"
+                },
+                "sgst_amount": {
+                    "type": "number"
+                },
+                "total_tax_amount": {
+                    "type": "number"
                 }
             }
         },
         "models.SaleResponse": {
             "type": "object",
             "properties": {
-                "created_at": {
-                    "type": "string"
+                "breakdown": {
+                    "description": "Detailed breakdown of amounts",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.SaleBreakdown"
+                        }
+                    ]
                 },
-                "customer_id": {
+                "created_at": {
                     "type": "string"
                 },
                 "id": {
@@ -8071,8 +8358,6 @@ const docTemplate = `{
         "models.TaxCalculationRequest": {
             "type": "object",
             "required": [
-                "customer_id",
-                "customer_state",
                 "items",
                 "warehouse_id",
                 "warehouse_state"
@@ -8082,12 +8367,14 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "customer_id": {
+                    "description": "Optional - not required when no customer management",
                     "type": "string"
                 },
                 "customer_pan": {
                     "type": "string"
                 },
                 "customer_state": {
+                    "description": "Optional - not required when no customer management",
                     "type": "string"
                 },
                 "is_inter_state": {
@@ -8306,6 +8593,29 @@ const docTemplate = `{
                 }
             }
         },
+        "models.TaxSummaryBreakdown": {
+            "type": "object",
+            "properties": {
+                "cgst_amount": {
+                    "type": "number"
+                },
+                "igst_amount": {
+                    "type": "number"
+                },
+                "other_tax_amount": {
+                    "type": "number"
+                },
+                "sgst_amount": {
+                    "type": "number"
+                },
+                "total_tax_amount": {
+                    "type": "number"
+                },
+                "vat_amount": {
+                    "type": "number"
+                }
+            }
+        },
         "models.TaxSummaryResponse": {
             "type": "object",
             "properties": {
@@ -8482,9 +8792,6 @@ const docTemplate = `{
                 "applicable_warehouses": {
                     "type": "string"
                 },
-                "customer_groups": {
-                    "type": "string"
-                },
                 "description": {
                     "type": "string"
                 },
@@ -8519,9 +8826,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "usage_limit": {
-                    "type": "integer"
-                },
-                "usage_per_customer": {
                     "type": "integer"
                 },
                 "valid_from": {
@@ -8768,8 +9072,11 @@ const docTemplate = `{
                 "warehouse_id"
             ],
             "properties": {
-                "customer_id": {
-                    "type": "string"
+                "category_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "discount_code": {
                     "type": "string"

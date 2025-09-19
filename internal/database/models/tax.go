@@ -301,6 +301,16 @@ type TaxCalculationResponse struct {
 	AppliedTaxes   []AppliedTax   `json:"applied_taxes"`
 }
 
+// BatchTaxCalculation represents tax calculation for a specific inventory batch
+type BatchTaxCalculation struct {
+	BatchID         string  `json:"batch_id"`
+	LineTotal       float64 `json:"line_total"`
+	CGSTAmount      float64 `json:"cgst_amount"`
+	SGSTAmount      float64 `json:"sgst_amount"`
+	CustomTaxAmount float64 `json:"custom_tax_amount"`
+	TotalTaxAmount  float64 `json:"total_tax_amount"`
+}
+
 type TaxBreakdown struct {
 	TaxType TaxType `json:"tax_type"`
 	TaxName string  `json:"tax_name"`

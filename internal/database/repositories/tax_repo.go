@@ -49,6 +49,19 @@ func (r *TaxRepository) GetTaxByCode(code string) (*models.Tax, error) {
 	return &tax, nil
 }
 
+// GetTaxesByIDs retrieves multiple taxes by their IDs
+func (r *TaxRepository) GetTaxesByIDs(ids []string) ([]models.Tax, error) {
+	if len(ids) == 0 {
+		return []models.Tax{}, nil
+	}
+
+	var taxes []models.Tax
+	if err := r.db.Where("id IN ?", ids).Find(&taxes).Error; err != nil {
+		return nil, errors.NewInternalServerError("Failed to retrieve taxes by IDs")
+	}
+	return taxes, nil
+}
+
 // GetAllTaxes retrieves all taxes with pagination
 func (r *TaxRepository) GetAllTaxes(limit, offset int) ([]models.Tax, error) {
 	var taxes []models.Tax

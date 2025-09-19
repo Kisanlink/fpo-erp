@@ -9,6 +9,7 @@ import (
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
+	scalar "github.com/MarceloPetrucio/go-scalar-api-reference"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"gorm.io/gorm"
@@ -91,10 +92,32 @@ func (s *Server) setupMiddleware() {
 		c.File("./docs/swagger.json")
 	})
 
-	// Scalar documentation route - serves the HTML page
+	// Scalar documentation route - serves the HTML page using Go package
 	s.Router.GET("/docs", func(c *gin.Context) {
-		c.Header("Content-Type", "text/html")
-		c.File("./docs/scalar.html")
+		// Configure Scalar options
+		options := scalar.Options{
+			SpecURL:            "http://localhost:3000/api-docs",
+			Theme:              scalar.ThemePurple,
+			Layout:             scalar.LayoutModern,
+			ShowSidebar:        true,
+			HideDownloadButton: false,
+			DarkMode:           false,
+			WithDefaultFonts:   true,
+			CustomOptions: scalar.CustomOptions{
+				PageTitle: "Kisanlink ERP API Documentation",
+			},
+		}
+
+		// Generate Scalar HTML
+		html, err := scalar.ApiReferenceHTML(&options)
+		if err != nil {
+			utils.Error("Failed to generate Scalar documentation:", err)
+			c.String(500, "Failed to generate API documentation")
+			return
+		}
+
+		c.Header("Content-Type", "text/html; charset=utf-8")
+		c.String(200, html)
 	})
 }
 
