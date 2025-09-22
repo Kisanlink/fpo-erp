@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"kisanlink-erp/pkg/proto"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"kisanlink-erp/pkg/proto"
 )
 
 type AddressClient struct {
@@ -122,6 +123,73 @@ func (ac *AddressClient) DeleteAddress(ctx context.Context, addressID string, so
 	}
 
 	return nil
+}
+
+// GetAddressesByUser retrieves all addresses for a user
+func (ac *AddressClient) GetAddressesByUser(ctx context.Context, userID string, activeOnly bool) ([]*Address, error) {
+	req := &proto.GetAddressesByUserRequest{
+		UserId:     userID,
+		ActiveOnly: activeOnly,
+	}
+
+	resp, err := ac.client.GetAddressesByUser(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get addresses by user: %w", err)
+	}
+
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("AAA service error: %s (code: %d)", resp.Message, resp.StatusCode)
+	}
+
+	var addresses []*Address
+	for _, protoAddr := range resp.Addresses {
+		addresses = append(addresses, convertProtoAddressToAddress(protoAddr))
+	}
+
+	return addresses, nil
+}
+
+// ListAddresses retrieves addresses with pagination and filtering
+func (ac *AddressClient) ListAddresses(ctx context.Context, req *ListAddressesRequest) (*ListAddressesResponse, error) {
+	protoReq := &proto.ListAddressesRequest{
+		Page:       req.Page,
+		PageSize:   req.PageSize,
+		Search:     req.Search,
+		UserId:     req.UserID,
+		Type:       req.Type,
+		ActiveOnly: req.ActiveOnly,
+	}
+
+	resp, err := ac.client.ListAddresses(ctx, protoReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list addresses: %w", err)
+	}
+
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("AAA service error: %s (code: %d)", resp.Message, resp.StatusCode)
+	}
+
+	var addresses []*Address
+	for _, protoAddr := range resp.Addresses {
+		addresses = append(addresses, convertProtoAddressToAddress(protoAddr))
+	}
+
+	return &ListAddressesResponse{
+		Addresses:  addresses,
+		TotalCount: resp.TotalCount,
+		Page:       resp.Page,
+		PageSize:   resp.PageSize,
+	}, nil
+}
+
+// GetStateByAddressID retrieves state from address (for tax system)
+func (ac *AddressClient) GetStateByAddressID(ctx context.Context, addressID string) (string, error) {
+	address, err := ac.GetAddress(ctx, addressID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get address for state: %w", err)
+	}
+
+	return address.State, nil
 }
 
 // convertProtoAddressToAddress converts proto.Address to internal Address
