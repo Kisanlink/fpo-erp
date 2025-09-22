@@ -28,39 +28,28 @@ func (s *WarehouseService) CreateWarehouse(ctx context.Context, request *models.
 
 	// Handle inline address creation if provided
 	if request.Address != nil {
-		// TODO: Implement address creation via AAA service when AddressService is available
-		// For now, we'll skip address creation and store address data directly in warehouse
-		// address, err := s.addressClient.CreateAddress(ctx, &aaa.CreateAddressRequest{
-		// 	UserID:       "system", // or get from context
-		// 	Type:         request.Address.Type,
-		// 	AddressLine1: request.Address.AddressLine1,
-		// 	AddressLine2: request.Address.AddressLine2,
-		// 	City:         request.Address.City,
-		// 	State:        request.Address.State,
-		// 	PostalCode:   request.Address.PostalCode,
-		// 	Country:      request.Address.Country,
-		// 	IsPrimary:    request.Address.IsPrimary,
-		// })
-		// if err != nil {
-		// 	return nil, fmt.Errorf("failed to create address: %w", err)
-		// }
-		// addressID = &address.ID
-
-		// For now, set addressID to nil - address data will be stored in warehouse
-		addressID = nil
+		// Create address via AAA service
+		address, err := s.addressClient.CreateAddress(ctx, &aaa.CreateAddressRequest{
+			UserID:       "system", // or get from context
+			Type:         request.Address.Type,
+			AddressLine1: request.Address.AddressLine1,
+			AddressLine2: request.Address.AddressLine2,
+			City:         request.Address.City,
+			State:        request.Address.State,
+			PostalCode:   request.Address.PostalCode,
+			Country:      request.Address.Country,
+			IsPrimary:    request.Address.IsPrimary,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create address: %w", err)
+		}
+		addressID = &address.ID
 	} else if request.AddressID != nil {
 		addressID = request.AddressID
 	}
 
 	// Create warehouse model using the proper constructor
-	var warehouse *models.Warehouse
-	if request.Address != nil {
-		// Use constructor with direct address fields
-		warehouse = models.NewWarehouseWithAddress(request.Name, request.Address)
-	} else {
-		// Use constructor with address ID
-		warehouse = models.NewWarehouse(request.Name, addressID)
-	}
+	warehouse := models.NewWarehouse(request.Name, addressID)
 
 	// Save to database
 	if err := s.warehouseRepo.Create(warehouse); err != nil {
@@ -111,6 +100,7 @@ func (s *WarehouseService) UpdateWarehouse(ctx context.Context, id string, reque
 
 	// Handle inline address updates if provided
 	if request.Address != nil {
+		// Update address via AAA service
 		address, err := s.addressClient.UpdateAddress(ctx, &aaa.UpdateAddressRequest{
 			ID:           request.Address.ID,
 			Type:         request.Address.Type,

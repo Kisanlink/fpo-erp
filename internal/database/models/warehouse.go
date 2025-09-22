@@ -12,7 +12,7 @@ type Warehouse struct {
 	base.BaseModel
 	Name      string  `gorm:"type:varchar(100);not null" json:"name"`
 	AddressID *string `gorm:"type:varchar(50)" json:"address_id"` // Reference to AAA address
-	
+
 	// Direct address fields (for when AAA address service is not available)
 	AddressType      *string `gorm:"type:varchar(50)" json:"address_type,omitempty"`
 	AddressLine1     *string `gorm:"type:varchar(255)" json:"address_line_1,omitempty"`
@@ -42,7 +42,7 @@ func NewWarehouseWithAddress(name string, address *CreateAddressRequest) *Wareho
 		Name:      name,
 		AddressID: nil, // No external address ID
 	}
-	
+
 	if address != nil {
 		warehouse.AddressType = &address.Type
 		warehouse.AddressLine1 = &address.AddressLine1
@@ -53,7 +53,7 @@ func NewWarehouseWithAddress(name string, address *CreateAddressRequest) *Wareho
 		warehouse.Country = &address.Country
 		warehouse.IsPrimaryAddress = &address.IsPrimary
 	}
-	
+
 	return warehouse
 }
 
