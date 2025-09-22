@@ -33,7 +33,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	}
 
 	// Initialize AAA address client
-	addressClient, err := aaa.NewAddressClient(cfg.AAA.ServiceURL)
+	addressClient, err := aaa.NewAddressClient(cfg.AAA.GRPCAddress)
 	if err != nil {
 		panic("Failed to initialize AAA address client: " + err.Error())
 	}
