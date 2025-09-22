@@ -96,7 +96,7 @@ func (s *Server) setupMiddleware() {
 	s.Router.GET("/docs", func(c *gin.Context) {
 		// Configure Scalar options
 		options := scalar.Options{
-			SpecURL:            "http://localhost:3000/api-docs",
+			SpecURL:            s.config.Server.PublicURL + "/api-docs",
 			Theme:              scalar.ThemePurple,
 			Layout:             scalar.LayoutModern,
 			ShowSidebar:        true,

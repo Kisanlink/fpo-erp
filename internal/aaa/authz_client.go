@@ -9,6 +9,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 )
 
 // AuthzClient wraps the gRPC authorization client
@@ -45,12 +46,22 @@ func (c *AuthzClient) Close() error {
 
 // CheckPermission checks if a user has permission to perform an action on a resource
 func (c *AuthzClient) CheckPermission(ctx context.Context, userID, resourceType, resourceID, action string) (bool, error) {
+	return c.CheckPermissionWithToken(ctx, userID, resourceType, resourceID, action, "")
+}
+
+// CheckPermissionWithToken checks if a user has permission to perform an action on a resource with JWT token
+func (c *AuthzClient) CheckPermissionWithToken(ctx context.Context, userID, resourceType, resourceID, action, jwtToken string) (bool, error) {
 	// Create the permission check request
 	req := &proto.CheckRequest{
 		PrincipalId:  userID,       // The user asking for permission
 		ResourceType: resourceType, // What type of resource (e.g., "user")
 		ResourceId:   resourceID,   // Which specific resource (e.g., "USER_123" or "*")
 		Action:       action,       // What action (e.g., "read", "create", "delete")
+	}
+
+	// Add authorization token to context if provided
+	if jwtToken != "" {
+		ctx = c.addAuthTokenToContext(ctx, jwtToken)
 	}
 
 	// Send request to AAA service
@@ -65,6 +76,11 @@ func (c *AuthzClient) CheckPermission(ctx context.Context, userID, resourceType,
 
 // CheckMultiplePermissions checks multiple permissions in a single request
 func (c *AuthzClient) CheckMultiplePermissions(ctx context.Context, userID string, permissions []Permission) (map[string]bool, error) {
+	return c.CheckMultiplePermissionsWithToken(ctx, userID, permissions, "")
+}
+
+// CheckMultiplePermissionsWithToken checks multiple permissions in a single request with JWT token
+func (c *AuthzClient) CheckMultiplePermissionsWithToken(ctx context.Context, userID string, permissions []Permission, jwtToken string) (map[string]bool, error) {
 	var items []*proto.CheckItem
 
 	// Convert our permissions to gRPC format
@@ -81,6 +97,11 @@ func (c *AuthzClient) CheckMultiplePermissions(ctx context.Context, userID strin
 
 	req := &proto.BatchCheckRequest{
 		Items: items,
+	}
+
+	// Add authorization token to context if provided
+	if jwtToken != "" {
+		ctx = c.addAuthTokenToContext(ctx, jwtToken)
 	}
 
 	resp, err := c.client.BatchCheck(ctx, req)
@@ -124,6 +145,17 @@ func (c *AuthzClient) GetUserRoles(ctx context.Context, userID string) ([]string
 	}
 
 	return resp.Roles, nil
+}
+
+// addAuthTokenToContext adds the JWT token to gRPC metadata
+func (c *AuthzClient) addAuthTokenToContext(ctx context.Context, jwtToken string) context.Context {
+	// Create metadata with authorization header
+	md := metadata.New(map[string]string{
+		"authorization": "Bearer " + jwtToken,
+	})
+
+	// Add metadata to context
+	return metadata.NewOutgoingContext(ctx, md)
 }
 
 // Permission represents a permission to check

@@ -71,6 +71,7 @@ func (m *AAAMiddleware) Authenticate() gin.HandlerFunc {
 			c.Set("username", cached.Username)
 			c.Set("roles", cached.Roles)
 			c.Set("permissions", cached.Permissions)
+			c.Set("jwt_token", tokenString) // Store JWT token for gRPC calls
 			c.Next()
 			return
 		}
@@ -99,6 +100,7 @@ func (m *AAAMiddleware) Authenticate() gin.HandlerFunc {
 		c.Set("username", claims.Username)
 		c.Set("roles", claims.RoleIDs)
 		c.Set("permissions", permissions)
+		c.Set("jwt_token", tokenString) // Store JWT token for gRPC calls
 
 		c.Next()
 	}
@@ -108,9 +110,10 @@ func (m *AAAMiddleware) Authenticate() gin.HandlerFunc {
 func (m *AAAMiddleware) RequirePermission(resourceType, resourceID, action string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.MustGet("user_id").(string)
+		jwtToken := c.GetString("jwt_token") // Get JWT token from context
 
-		// Check permission via gRPC
-		allowed, err := m.authzClient.CheckPermission(c.Request.Context(), userID, resourceType, resourceID, action)
+		// Check permission via gRPC with JWT token
+		allowed, err := m.authzClient.CheckPermissionWithToken(c.Request.Context(), userID, resourceType, resourceID, action, jwtToken)
 		if err != nil {
 			utils.ErrorResponse(c, 500, "Permission check failed: "+err.Error(), err)
 			c.Abort()
@@ -131,9 +134,10 @@ func (m *AAAMiddleware) RequirePermission(resourceType, resourceID, action strin
 func (m *AAAMiddleware) RequireAnyPermission(permissions []Permission) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.MustGet("user_id").(string)
+		jwtToken := c.GetString("jwt_token") // Get JWT token from context
 
-		// Check permissions via gRPC
-		results, err := m.authzClient.CheckMultiplePermissions(c.Request.Context(), userID, permissions)
+		// Check permissions via gRPC with JWT token
+		results, err := m.authzClient.CheckMultiplePermissionsWithToken(c.Request.Context(), userID, permissions, jwtToken)
 		if err != nil {
 			utils.ErrorResponse(c, 500, "Permission check failed: "+err.Error(), err)
 			c.Abort()
@@ -157,9 +161,10 @@ func (m *AAAMiddleware) RequireAnyPermission(permissions []Permission) gin.Handl
 func (m *AAAMiddleware) RequireAllPermissions(permissions []Permission) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.MustGet("user_id").(string)
+		jwtToken := c.GetString("jwt_token") // Get JWT token from context
 
-		// Check permissions via gRPC
-		results, err := m.authzClient.CheckMultiplePermissions(c.Request.Context(), userID, permissions)
+		// Check permissions via gRPC with JWT token
+		results, err := m.authzClient.CheckMultiplePermissionsWithToken(c.Request.Context(), userID, permissions, jwtToken)
 		if err != nil {
 			utils.ErrorResponse(c, 500, "Permission check failed: "+err.Error(), err)
 			c.Abort()
