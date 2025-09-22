@@ -81,11 +81,14 @@ func (m *AAAMiddleware) Authenticate() gin.HandlerFunc {
 			expiresAt = claims.ExpiresAt.Time
 		}
 
+		// Extract permissions from the new role structure
+		permissions := ExtractPermissions(claims.RoleIDs)
+
 		cachedUser := &CachedUser{
 			UserID:      claims.UserID,
 			Username:    claims.Username,
-			Roles:       claims.Roles,
-			Permissions: claims.Permissions,
+			Roles:       claims.RoleIDs,
+			Permissions: permissions,
 			ExpiresAt:   expiresAt,
 		}
 
@@ -94,8 +97,8 @@ func (m *AAAMiddleware) Authenticate() gin.HandlerFunc {
 		// Set in context
 		c.Set("user_id", claims.UserID)
 		c.Set("username", claims.Username)
-		c.Set("roles", claims.Roles)
-		c.Set("permissions", claims.Permissions)
+		c.Set("roles", claims.RoleIDs)
+		c.Set("permissions", permissions)
 
 		c.Next()
 	}
@@ -232,10 +235,14 @@ func (m *AAAMiddleware) parseToken(tokenString string) (*AAATokenClaims, error) 
 			return nil, errors.New("missing username in token")
 		}
 
+		// Extract permissions for debugging
+		permissions := ExtractPermissions(claims.RoleIDs)
+
 		// Log token info for debugging
 		utils.Debug("Token validated for user:", claims.Username)
-		utils.Debug("User roles count:", len(claims.Roles))
-		utils.Debug("User permissions count:", len(claims.Permissions))
+		utils.Debug("User roles count:", len(claims.RoleIDs))
+		utils.Debug("User permissions count:", len(permissions))
+		utils.Debug("Token isvalidate field:", claims.IsValidated)
 
 		return claims, nil
 	}
