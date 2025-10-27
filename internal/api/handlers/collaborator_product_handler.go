@@ -191,12 +191,12 @@ func (h *CollaboratorProductHandler) UpdateCollaboratorProduct(c *gin.Context) {
 	utils.OKResponse(c, "Association updated successfully", response)
 }
 
-// RemoveProductFromCollaborator handles DELETE /api/v1/collaborators/:collaborator_id/products/:product_id
+// RemoveProductFromCollaborator handles DELETE /api/v1/collaborators/:id/products/:product_id
 // @Summary Remove Product from Collaborator
 // @Description Remove product association from collaborator (soft delete, requires authentication)
 // @Tags Collaborator Products
 // @Produce json
-// @Param collaborator_id path string true "Collaborator ID (format: CLAB_xxxxxxxx)" example(CLAB_12345678)
+// @Param id path string true "Collaborator ID (format: CLAB_xxxxxxxx)" example(CLAB_12345678)
 // @Param product_id path string true "Product ID (format: PROD_xxxxxxxx)" example(PROD_12345678)
 // @Success 200 {object} utils.Response "Product removed successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
@@ -204,10 +204,10 @@ func (h *CollaboratorProductHandler) UpdateCollaboratorProduct(c *gin.Context) {
 // @Failure 404 {object} utils.ErrorResponseModel "Association not found"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
-// @Router /api/v1/collaborators/{collaborator_id}/products/{product_id} [delete]
+// @Router /api/v1/collaborators/{id}/products/{product_id} [delete]
 func (h *CollaboratorProductHandler) RemoveProductFromCollaborator(c *gin.Context) {
 	// Get IDs from URL
-	collaboratorID := c.Param("collaborator_id")
+	collaboratorID := c.Param("id")
 	productID := c.Param("product_id")
 
 	if collaboratorID == "" || productID == "" {
@@ -267,7 +267,7 @@ func (h *CollaboratorProductHandler) RegisterRoutes(router *gin.RouterGroup) {
 	{
 		collaborators.POST("/:id/products", h.aaaMiddleware.RequirePermission("collaborator_product", "*", "create"), h.AddProductToCollaborator)
 		collaborators.GET("/:id/products", h.aaaMiddleware.RequirePermission("collaborator_product", "*", "read"), h.GetProductsByCollaborator)
-		collaborators.DELETE("/:collaborator_id/products/:product_id", h.aaaMiddleware.RequirePermission("collaborator_product", "*", "delete"), h.RemoveProductFromCollaborator)
+		collaborators.DELETE("/:id/products/:product_id", h.aaaMiddleware.RequirePermission("collaborator_product", "*", "delete"), h.RemoveProductFromCollaborator)
 	}
 
 	// Nested routes under products

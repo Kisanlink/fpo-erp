@@ -3,8 +3,8 @@
 // @description Comprehensive ERP system for agricultural cooperatives with multi-tenant architecture
 // @termsOfService http://swagger.io/terms/
 // @contact.name Kisanlink Support
-// @contact.url http://www.kisanlink.com/support
-// @contact.email support@kisanlink.com
+// @contact.url https://github.com/Kisanlink/fpo-erp
+// @contact.email karthikeya@kisanlink.com
 // @license.name MIT
 // @license.url https://opensource.org/licenses/MIT
 // @host localhost:3000
