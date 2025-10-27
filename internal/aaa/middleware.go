@@ -82,13 +82,22 @@ func (m *AAAMiddleware) Authenticate() gin.HandlerFunc {
 			expiresAt = claims.ExpiresAt.Time
 		}
 
-		// Extract permissions from the new role structure
-		permissions := ExtractPermissions(claims.RoleIDs)
+		// Convert JWT roles to AAARole structure for backward compatibility
+		var roles []AAARole
+		if claims.UserContext != nil && claims.UserContext.Roles != nil {
+			roles = ConvertJWTRolesToAAARole(claims.UserContext.Roles)
+		} else {
+			roles = []AAARole{} // Empty array if no user context
+		}
+
+		// Extract permissions from the role structure
+		// Note: JWT roles don't contain permissions - actual checking is done via gRPC
+		permissions := ExtractPermissions(roles)
 
 		cachedUser := &CachedUser{
 			UserID:      claims.UserID,
 			Username:    claims.Username,
-			Roles:       claims.RoleIDs,
+			Roles:       roles,
 			Permissions: permissions,
 			ExpiresAt:   expiresAt,
 		}
@@ -98,7 +107,7 @@ func (m *AAAMiddleware) Authenticate() gin.HandlerFunc {
 		// Set in context
 		c.Set("user_id", claims.UserID)
 		c.Set("username", claims.Username)
-		c.Set("roles", claims.RoleIDs)
+		c.Set("roles", roles)
 		c.Set("permissions", permissions)
 		c.Set("jwt_token", tokenString) // Store JWT token for gRPC calls
 
@@ -240,14 +249,22 @@ func (m *AAAMiddleware) parseToken(tokenString string) (*AAATokenClaims, error) 
 			return nil, errors.New("missing username in token")
 		}
 
-		// Extract permissions for debugging
-		permissions := ExtractPermissions(claims.RoleIDs)
+		// Convert JWT roles for debugging
+		var roles []AAARole
+		roleCount := 0
+		if claims.UserContext != nil && claims.UserContext.Roles != nil {
+			roles = ConvertJWTRolesToAAARole(claims.UserContext.Roles)
+			roleCount = len(claims.UserContext.Roles)
+		}
+		permissions := ExtractPermissions(roles)
 
 		// Log token info for debugging
 		utils.Debug("Token validated for user:", claims.Username)
-		utils.Debug("User roles count:", len(claims.RoleIDs))
+		utils.Debug("User role IDs from token:", claims.RoleIDs)
+		utils.Debug("User roles from user_context:", roleCount)
 		utils.Debug("User permissions count:", len(permissions))
 		utils.Debug("Token isvalidate field:", claims.IsValidated)
+		utils.Debug("UserContext present:", claims.UserContext != nil)
 
 		return claims, nil
 	}

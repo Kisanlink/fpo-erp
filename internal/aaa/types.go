@@ -68,7 +68,7 @@ type AAAUserRole struct {
 	Permissions    interface{} `json:"permissions"`
 }
 
-// AAARole represents a role from the AAA service (new structure)
+// AAARole represents a role from the AAA service (full structure for cache/context)
 type AAARole struct {
 	ID        string      `json:"id"`
 	CreatedAt time.Time   `json:"created_at"`
@@ -82,12 +82,27 @@ type AAARole struct {
 	Role      AAAUserRole `json:"role"`
 }
 
-// AAATokenClaims represents JWT claims from AAA service (new structure)
+// JWTRole represents simplified role structure in JWT token
+type JWTRole struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Scope    string `json:"scope"`
+	IsActive bool   `json:"is_active"`
+}
+
+// JWTUserContext represents the user_context field in JWT token
+type JWTUserContext struct {
+	Roles []JWTRole `json:"roles"`
+}
+
+// AAATokenClaims represents JWT claims from AAA service (updated to match actual JWT structure)
 type AAATokenClaims struct {
-	UserID      string    `json:"user_id"`
-	Username    string    `json:"username"`
-	IsValidated bool      `json:"isvalidate"`
-	RoleIDs     []AAARole `json:"roleIds"`
+	UserID      string          `json:"user_id"`
+	Username    string          `json:"username"`
+	IsValidated bool            `json:"isvalidate"`
+	RoleIDs     []string        `json:"roleIds"`        // Array of role ID strings
+	Permissions interface{}     `json:"permissions"`    // Permissions (may be null)
+	UserContext *JWTUserContext `json:"user_context"`   // Contains actual role objects
 	jwt.RegisteredClaims
 }
 
@@ -128,7 +143,31 @@ func GetRoleNames(roles []AAARole) []string {
 	return roleNames
 }
 
-// ExtractPermissions extracts permissions from the new role structure
+// ConvertJWTRolesToAAARole converts JWT roles to AAARole structure for backward compatibility
+// Note: JWT roles don't contain full role information, so we create minimal AAARole objects
+func ConvertJWTRolesToAAARole(jwtRoles []JWTRole) []AAARole {
+	if jwtRoles == nil {
+		return []AAARole{}
+	}
+
+	aaaRoles := make([]AAARole, len(jwtRoles))
+	for i, jwtRole := range jwtRoles {
+		aaaRoles[i] = AAARole{
+			ID:       jwtRole.ID,
+			RoleID:   jwtRole.ID,
+			IsActive: jwtRole.IsActive,
+			Role: AAAUserRole{
+				Name:     jwtRole.Name,
+				Scope:    jwtRole.Scope,
+				IsActive: jwtRole.IsActive,
+			},
+		}
+	}
+	return aaaRoles
+}
+
+// ExtractPermissions extracts permissions from the full AAARole structure
+// Note: JWT tokens don't contain permissions - actual permission checking is done via gRPC
 func ExtractPermissions(roles []AAARole) []string {
 	var permissions []string
 	for _, role := range roles {
