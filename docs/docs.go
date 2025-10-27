@@ -12,8 +12,8 @@ const docTemplate = `{
         "termsOfService": "http://swagger.io/terms/",
         "contact": {
             "name": "Kisanlink Support",
-            "url": "http://www.kisanlink.com/support",
-            "email": "support@kisanlink.com"
+            "url": "https://github.com/Kisanlink/fpo-erp",
+            "email": "info@kisanlink.in"
         },
         "license": {
             "name": "MIT",

@@ -2049,9 +2049,9 @@ definitions:
 host: localhost:3000
 info:
   contact:
-    email: support@kisanlink.com
+    email: info@kisanlink.in
     name: Kisanlink Support
-    url: http://www.kisanlink.com/support
+    url: https://github.com/Kisanlink/fpo-erp
   description: Comprehensive ERP system for agricultural cooperatives with multi-tenant
     architecture
   license:

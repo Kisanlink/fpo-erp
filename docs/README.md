@@ -169,7 +169,7 @@ curl -H "Authorization: Bearer <token>" \
 
 ## 📞 Support
 
-- **Email**: support@kisanlink.com
+- **Email**: info@kisanlink.in
 - **Documentation**: [API Documentation](https://docs.kisanlink.com)
 - **Status Page**: [Status Dashboard](https://status.kisanlink.com)
 

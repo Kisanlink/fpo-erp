@@ -4,7 +4,7 @@
 // @termsOfService http://swagger.io/terms/
 // @contact.name Kisanlink Support
 // @contact.url https://github.com/Kisanlink/fpo-erp
-// @contact.email karthikeya@kisanlink.com
+// @contact.email info@kisanlink.in
 // @license.name MIT
 // @license.url https://opensource.org/licenses/MIT
 // @host localhost:3000
