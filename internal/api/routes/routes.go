@@ -26,6 +26,13 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	refundPoliciesRepo := repositories.NewRefundPoliciesRepository(db)
 	bankPaymentsRepo := repositories.NewBankPaymentsRepository(db)
 
+	// Procurement repositories
+	collaboratorRepo := repositories.NewCollaboratorRepository(db)
+	collaboratorProductRepo := repositories.NewCollaboratorProductRepository(db)
+	productVariantRepo := repositories.NewProductVariantRepository(db)
+	purchaseOrderRepo := repositories.NewPurchaseOrderRepository(db)
+	grnRepo := repositories.NewGRNRepository(db)
+
 	// Initialize S3 service
 	s3Service, err := services.NewS3Service(cfg)
 	if err != nil {
@@ -51,6 +58,13 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	refundPoliciesService := services.NewRefundPoliciesService(refundPoliciesRepo)
 	bankPaymentsService := services.NewBankPaymentsService(bankPaymentsRepo, salesRepo, returnsRepo)
 
+	// Procurement services
+	collaboratorService := services.NewCollaboratorService(collaboratorRepo, addressClient, s3Service)
+	collaboratorProductService := services.NewCollaboratorProductService(collaboratorProductRepo, collaboratorRepo, productRepo)
+	productVariantService := services.NewProductVariantService(productVariantRepo, productRepo)
+	purchaseOrderService := services.NewPurchaseOrderService(purchaseOrderRepo, collaboratorRepo, warehouseRepo, productRepo)
+	grnService := services.NewGRNService(grnRepo, purchaseOrderRepo, warehouseRepo, productRepo, inventoryRepo)
+
 	// AAA middleware is now passed as parameter
 
 	// Initialize handlers
@@ -65,6 +79,13 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	attachmentHandler := handlers.NewAttachmentHandler(attachmentService, aaaMiddleware)
 	refundPoliciesHandler := handlers.NewRefundPoliciesHandler(refundPoliciesService, aaaMiddleware)
 	bankPaymentsHandler := handlers.NewBankPaymentsHandler(bankPaymentsService, aaaMiddleware)
+
+	// Procurement handlers
+	collaboratorHandler := handlers.NewCollaboratorHandler(collaboratorService, aaaMiddleware)
+	collaboratorProductHandler := handlers.NewCollaboratorProductHandler(collaboratorProductService, aaaMiddleware)
+	productVariantHandler := handlers.NewProductVariantHandler(productVariantService, aaaMiddleware)
+	purchaseOrderHandler := handlers.NewPurchaseOrderHandler(purchaseOrderService, aaaMiddleware)
+	grnHandler := handlers.NewGRNHandler(grnService, aaaMiddleware)
 
 	// API v1 routes
 	v1 := router.Group("/api/v1")
@@ -81,5 +102,12 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 		attachmentHandler.RegisterRoutes(v1)
 		refundPoliciesHandler.RegisterRoutes(v1)
 		bankPaymentsHandler.RegisterRoutes(v1)
+
+		// Procurement handlers
+		collaboratorHandler.RegisterRoutes(v1)
+		collaboratorProductHandler.RegisterRoutes(v1)
+		productVariantHandler.RegisterRoutes(v1)
+		purchaseOrderHandler.RegisterRoutes(v1)
+		grnHandler.RegisterRoutes(v1)
 	}
 }
