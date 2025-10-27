@@ -16,14 +16,22 @@ A comprehensive Enterprise Resource Planning (ERP) system built with Go, designe
 ## 🚀 Features
 
 ### Core ERP Modules
-- **Inventory Management**: Track products, batches, and stock levels
+- **Procurement Management**: Complete vendor-to-inventory workflow
+  - Vendor/Supplier (Collaborator) Management
+  - Vendor-Product Associations (many-to-many)
+  - Product Variants (separate table)
+  - Purchase Order workflow with ALL-IN pricing
+  - GRN (Goods Receipt Notes) with 3 input patterns
+  - Auto-GRN creation with quality inspection
+  - Automatic inventory batch creation from GRN
+- **Inventory Management**: Track products, batches, and stock levels with automatic batch creation from GRN and FEFO integration
 - **Sales Management**: Handle sales orders, invoices, and customer data
 - **Returns Management**: Process returns and refunds
 - **Warehouse Management**: Multi-warehouse support with location tracking
 - **Product Management**: SKU management with pricing and categorization
 - **Tax Management**: Comprehensive tax calculation and compliance system
 - **Discount System**: Advanced discount management with validation
-- **File Attachments**: S3 integration for document storage
+- **File Attachments**: Generic entity-based system (S3) for logos, POs, GRNs, and documents
 - **Bank Payments**: Track payment transactions for sales and returns
 - **Refund Policies**: Manage return and refund policies
 - **Reporting**: Sales analytics and inventory reports
@@ -72,9 +80,14 @@ Kisanlink-erp-v1/
 │   ├── config/                    # Configuration management
 │   ├── database/
 │   │   ├── models/                # Database models (organized by domain)
-│   │   │   ├── attachments.go     # File attachment models
+│   │   │   ├── attachments.go     # Generic entity-based attachment models
 │   │   │   ├── bank_payments.go   # Bank payment models
-│   │   │   ├── inventory.go       # Inventory models
+│   │   │   ├── collaborator.go    # Vendor/supplier models
+│   │   │   ├── collaborator_product.go  # Vendor-product associations
+│   │   │   ├── product_variant.go # Product size/quantity variants
+│   │   │   ├── purchase_order.go  # Purchase order models
+│   │   │   ├── grn.go            # Goods receipt note models
+│   │   │   ├── inventory.go       # Inventory batch and transaction models
 │   │   │   ├── price.go          # Product pricing models
 │   │   │   ├── product.go        # Product/SKU models
 │   │   │   ├── returns.go        # Return and refund policy models
@@ -304,17 +317,65 @@ Authorization: Bearer <jwt-token>
 - `PUT /api/v1/refund-policies/:id` - Update refund policy
 - `DELETE /api/v1/refund-policies/:id` - Delete refund policy
 
+#### Collaborators (Vendors/Suppliers)
+- `GET /api/v1/collaborators` - List all vendors
+- `POST /api/v1/collaborators` - Create vendor
+- `GET /api/v1/collaborators/:id` - Get vendor details
+- `GET /api/v1/collaborators/active` - Get active vendors
+- `PATCH /api/v1/collaborators/:id` - Update vendor
+- `PATCH /api/v1/collaborators/:id/status` - Activate/deactivate vendor
+- `DELETE /api/v1/collaborators/:id` - Delete vendor
+
+#### Collaborator Products (Vendor-Product Associations)
+- `GET /api/v1/collaborator-products` - List vendor-product associations
+- `POST /api/v1/collaborator-products` - Create association
+- `GET /api/v1/collaborator-products/:id` - Get association details
+- `GET /api/v1/collaborator-products/collaborator/:id` - Get products by vendor
+- `GET /api/v1/collaborator-products/product/:id` - Get vendors by product
+- `PATCH /api/v1/collaborator-products/:id` - Update association
+- `PATCH /api/v1/collaborator-products/:id/status` - Activate/deactivate
+- `DELETE /api/v1/collaborator-products/:id` - Delete association
+
+#### Product Variants
+- `GET /api/v1/product-variants` - List all variants
+- `POST /api/v1/product-variants` - Create variant
+- `GET /api/v1/product-variants/:id` - Get variant details
+- `GET /api/v1/product-variants/product/:id` - Get variants by product
+- `PATCH /api/v1/product-variants/:id` - Update variant
+- `PATCH /api/v1/product-variants/:id/status` - Activate/deactivate
+- `DELETE /api/v1/product-variants/:id` - Delete variant
+
+#### Purchase Orders
+- `GET /api/v1/purchase-orders` - List all purchase orders
+- `POST /api/v1/purchase-orders` - Create purchase order
+- `GET /api/v1/purchase-orders/:id` - Get PO details
+- `GET /api/v1/purchase-orders/pending-deliveries` - Get pending deliveries
+- `GET /api/v1/purchase-orders/status/:status` - Get POs by status
+- `PATCH /api/v1/purchase-orders/:id/status` - Update status (with auto-GRN support)
+- `PATCH /api/v1/purchase-orders/:id/payment` - Update payment status
+- `GET /api/v1/collaborators/:id/purchase-orders` - Get POs by vendor
+
+#### Goods Receipt Notes (GRN)
+- `GET /api/v1/grns` - List all GRNs
+- `POST /api/v1/grns` - Create GRN manually
+- `GET /api/v1/grns/:id` - Get GRN details
+- `GET /api/v1/grns/warehouse/:id` - Get GRNs by warehouse
+- `GET /api/v1/grns/purchase-order/:id` - Get GRN by purchase order
+
 #### Bank Payments
 - `GET /api/v1/bank-payments` - List all bank payments
 - `POST /api/v1/bank-payments` - Create bank payment
 - `GET /api/v1/bank-payments/:id` - Get bank payment details
 - `PUT /api/v1/bank-payments/:id` - Update bank payment
 
-#### Attachments
-- `GET /api/v1/attachments` - List attachments
-- `POST /api/v1/attachments` - Upload attachment
-- `GET /api/v1/attachments/:id` - Get attachment details
-- `GET /api/v1/attachments/:id/download` - Download attachment
+#### Attachments (Entity-Based)
+- `GET /api/v1/attachments` - List attachments (with entity filters)
+- `POST /api/v1/attachments` - Upload attachment (requires entity_type & entity_id)
+- `GET /api/v1/attachments/:id` - Get attachment metadata
+- `GET /api/v1/attachments/:id/download` - Download attachment file
+- `GET /api/v1/attachments/:id/url` - Get presigned URL for display
+- `GET /api/v1/attachments/:id/info` - Get detailed file information
+- `GET /api/v1/attachments/entity/:entity_type/:entity_id` - Get all attachments for entity
 - `DELETE /api/v1/attachments/:id` - Delete attachment
 
 ## Usage Examples
@@ -393,6 +454,80 @@ curl -X POST http://localhost:8080/api/v1/refund-policies \
   }'
 ```
 
+### Creating a Collaborator (Vendor)
+```bash
+curl -X POST http://localhost:8080/api/v1/collaborators \
+  -H "Authorization: Bearer <your-jwt-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "company_name": "ABC Traders",
+    "contact_person": "Rajesh Kumar",
+    "contact_number": "+91-9876543210",
+    "email": "rajesh@abctraders.com",
+    "gst_number": "27AABCU9603R1ZM",
+    "bank_account_no": "123456789012",
+    "bank_ifsc": "SBIN0001234",
+    "address": {
+      "line1": "123 Market Street",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "pincode": "400001",
+      "country": "India"
+    }
+  }'
+```
+
+### Creating a Purchase Order
+```bash
+curl -X POST http://localhost:8080/api/v1/purchase-orders \
+  -H "Authorization: Bearer <your-jwt-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "collaborator_id": "CLAB_abc12345",
+    "warehouse_id": "WH_xyz67890",
+    "expected_delivery_date": "2025-02-15",
+    "items": [
+      {
+        "product_id": "SKU_rice001",
+        "quantity": 1000,
+        "unit_price": 45.50
+      },
+      {
+        "product_id": "SKU_wheat002",
+        "quantity": 500,
+        "unit_price": 38.00
+      }
+    ]
+  }'
+```
+
+### Creating GRN with Auto-Acceptance (Pattern 1)
+```bash
+curl -X PATCH http://localhost:8080/api/v1/purchase-orders/PO_123/status \
+  -H "Authorization: Bearer <your-jwt-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "delivered",
+    "accept_all": true,
+    "default_expiry_date": "2025-12-31"
+  }'
+```
+
+### Uploading an Attachment (Logo)
+```bash
+curl -X POST http://localhost:8080/api/v1/attachments \
+  -H "Authorization: Bearer <your-jwt-token>" \
+  -F "file=@company_logo.png" \
+  -F "entity_type=logo" \
+  -F "entity_id=CLAB_abc12345"
+```
+
+### Getting Presigned URL for Logo Display
+```bash
+curl -X GET http://localhost:8080/api/v1/attachments/ATT_xyz789/url \
+  -H "Authorization: Bearer <your-jwt-token>"
+```
+
 ## Testing
 
 Run the test suite:
@@ -464,25 +599,51 @@ For support and questions:
 
 ## 📈 Recent Updates
 
-### ✅ Latest Completed Features (2024)
+### ✅ Latest Completed Features (January 2025)
+
+#### 🏭 Complete Procurement Module
+- **Vendor/Supplier Management**: Full collaborator (vendor) profiles with AAA address integration
+- **Vendor-Product Associations**: Many-to-many relationships with brand info and compliance data
+- **Product Variants**: Separate table for size/quantity variants (500g, 1kg, 5kg, etc.)
+- **Purchase Order Workflow**: ALL-IN pricing with status tracking (placed → confirmed → delivered → paid)
+- **GRN (Goods Receipt Notes)**: 3 flexible input patterns (Accept All, Simple Accept/Reject, Detailed Quantities)
+- **Auto-GRN Creation**: Automatic GRN generation with quality inspection and batch tracking
+- **Automatic Inventory Updates**: GRN accepted quantities automatically create inventory batches
+
+#### 📎 Generic Attachment System
+- **Entity-Based Architecture**: Refactored from sale/return-specific to generic `entity_type` + `entity_id` pattern
+- **Multi-Entity Support**: Works for logos, purchase orders, GRNs, and any future entity types
+- **Frontend-Friendly**: Two-step workflow (upload → get attachment ID → create entity) with presigned URLs
+- **S3 Folder Structure**: Organized by entity type (logos/, purchase-orders/{ID}/, grns/{ID}/, misc/)
+- **Database Migration**: Complete migration script for existing data (`migrations/20250128_refactor_attachments_to_entity.sql`)
+
+#### 📦 GRN → Inventory Integration
+- **Automatic Batch Creation**: Accepted quantities from GRN automatically create inventory batches
+- **FEFO Integration**: New batches immediately participate in First-Expired-First-Out allocation
+- **Transaction Audit Trail**: Complete history of inventory movements from GRN to sales
+- **Batch Number Tracking**: Vendor batch numbers stored separately from system batch IDs
+- **ALL-IN Cost Pricing**: PO unit price becomes inventory batch cost price
+
+#### 🔐 JWT Structure Updates
+- **Nested Role Support**: Enhanced parsing for AAA tokens with `user_context.roles` structure
+- **Backward Compatibility**: Conversion layer maintains compatibility with existing code
+- **Improved Permission Extraction**: Better handling of roleIds and permissions fields
+
+### ✅ Previously Completed Features (2024)
 - **🏷️ Production-Ready Tax System**: Complete inventory-based tax management with CGST, SGST, and custom taxes
 - **📚 Scalar Go Documentation**: Interactive API documentation using Scalar Go package
 - **🔧 Advanced Tax Calculation**: Automatic tax computation during sales with GST compliance
-- **📋 Comprehensive API Docs**: Updated with tax endpoints and examples
 - **🎯 Real-world Tax Scenarios**: Support for multiple tax rates and exemptions
 - **🔐 Enhanced Validation**: Complete input validation and business rule enforcement
-
-### ✅ Previously Completed Features
 - **Permission Matrix Implementation**: Complete role-based access control for all entities
-- **Model Reorganization**: Moved models from misc files to domain-specific files
 - **AAA Service Integration**: Full integration with external AAA service
-- **User Management Removal**: Removed local user management (handled by AAA service)
 - **JWT Token Support**: Support for external JWT tokens with custom payload format
-- **Enhanced Security**: Route-level permission enforcement
 - **Discount System**: Comprehensive discount management and validation
 
 ### 🎯 Current Status: Production Ready
+- **✅ Procurement Module**: Complete vendor-to-inventory workflow (40+ endpoints)
 - **✅ Tax System**: Fully implemented and tested
+- **✅ Inventory Management**: Automatic updates from GRN with FEFO integration
 - **✅ API Documentation**: Complete with Scalar Registry integration
 - **✅ GST Compliance**: Indian tax regulations supported
 - **✅ Performance**: Optimized with TTL caching and efficient queries
