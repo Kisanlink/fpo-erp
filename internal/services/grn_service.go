@@ -60,7 +60,7 @@ func (s *GRNService) CreateGRN(ctx context.Context, request *models.CreateGRNReq
 	}
 
 	// Validate warehouse exists
-	warehouse, err := s.warehouseRepo.GetByID(po.WarehouseID)
+	_, err = s.warehouseRepo.GetByID(po.WarehouseID)
 	if err != nil {
 		return nil, err
 	}

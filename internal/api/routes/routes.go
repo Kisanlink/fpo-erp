@@ -62,7 +62,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	collaboratorService := services.NewCollaboratorService(collaboratorRepo, addressClient, s3Service)
 	collaboratorProductService := services.NewCollaboratorProductService(collaboratorProductRepo, collaboratorRepo, productRepo)
 	productVariantService := services.NewProductVariantService(productVariantRepo, productRepo)
-	purchaseOrderService := services.NewPurchaseOrderService(purchaseOrderRepo, collaboratorRepo, warehouseRepo, productRepo)
+	purchaseOrderService := services.NewPurchaseOrderService(purchaseOrderRepo, collaboratorRepo, warehouseRepo, productRepo, grnRepo, inventoryRepo)
 	grnService := services.NewGRNService(grnRepo, purchaseOrderRepo, warehouseRepo, productRepo, inventoryRepo)
 
 	// AAA middleware is now passed as parameter

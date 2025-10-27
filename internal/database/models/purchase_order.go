@@ -158,8 +158,32 @@ type CreatePurchaseOrderItemRequest struct {
 
 // UpdatePOStatusRequest represents the request to update purchase order status
 type UpdatePOStatusRequest struct {
-	Status         string     `json:"status" binding:"required"` // placed, confirmed, out_for_delivery, delivered, paid
+	Status string     `json:"status" binding:"required"` // placed, confirmed, out_for_delivery, delivered, paid
 	ActualDelivery *time.Time `json:"actual_delivery_date"`      // Set when status = delivered
+
+	// Pattern 1: Accept All (simplest - for quick processing)
+	AcceptAll         *bool   `json:"accept_all"`           // If true, accept all items with default expiry
+	DefaultExpiryDate *string `json:"default_expiry_date"`  // Applied to all items when accept_all is true
+
+	// Pattern 2 & 3: Per-item details
+	Items []DeliveryItemRequest `json:"items"` // Optional: for auto-GRN creation
+}
+
+// DeliveryItemRequest represents item details for delivery processing
+type DeliveryItemRequest struct {
+	POItemID string `json:"po_item_id" binding:"required"`
+
+	// Pattern 2: Simple Accept/Reject (for yes/no buttons)
+	Accept          *bool   `json:"accept"`           // true = accept, false = reject
+	RejectionReason *string `json:"rejection_reason"` // Optional reason for rejection
+
+	// Pattern 3: Detailed Quantities (for partial acceptances)
+	ReceivedQuantity *int64 `json:"received_quantity"` // Actual quantity received
+	AcceptedQuantity *int64 `json:"accepted_quantity"` // Quantity accepted after inspection
+
+	// Common fields (required for accepted items)
+	ExpiryDate  string  `json:"expiry_date" binding:"required"` // Format: YYYY-MM-DD
+	BatchNumber *string `json:"batch_number"`                   // Optional vendor batch number
 }
 
 // UpdatePOPaymentRequest represents the request to update payment information

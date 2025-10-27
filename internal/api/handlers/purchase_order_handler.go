@@ -212,8 +212,14 @@ func (h *PurchaseOrderHandler) UpdatePurchaseOrderStatus(c *gin.Context) {
 		return
 	}
 
+	// Get authenticated user ID from context
+	userID := c.GetString("user_id")
+	if userID == "" {
+		userID = "system" // Fallback if user_id not found in context
+	}
+
 	// Update status
-	response, err := h.poService.UpdatePurchaseOrderStatus(c.Request.Context(), id, &request)
+	response, err := h.poService.UpdatePurchaseOrderStatus(c.Request.Context(), id, &request, userID)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "Failed to update status", err)
 		return

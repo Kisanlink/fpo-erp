@@ -17,6 +17,8 @@ type PurchaseOrderService struct {
 	collaboratorRepo *repositories.CollaboratorRepository
 	warehouseRepo    *repositories.WarehouseRepository
 	productRepo      *repositories.ProductRepository
+	grnRepo          *repositories.GRNRepository
+	inventoryRepo    *repositories.InventoryRepository
 }
 
 // NewPurchaseOrderService creates a new purchase order service
@@ -25,12 +27,16 @@ func NewPurchaseOrderService(
 	collaboratorRepo *repositories.CollaboratorRepository,
 	warehouseRepo *repositories.WarehouseRepository,
 	productRepo *repositories.ProductRepository,
+	grnRepo *repositories.GRNRepository,
+	inventoryRepo *repositories.InventoryRepository,
 ) *PurchaseOrderService {
 	return &PurchaseOrderService{
 		poRepo:           poRepo,
 		collaboratorRepo: collaboratorRepo,
 		warehouseRepo:    warehouseRepo,
 		productRepo:      productRepo,
+		grnRepo:          grnRepo,
+		inventoryRepo:    inventoryRepo,
 	}
 }
 
@@ -46,7 +52,7 @@ func (s *PurchaseOrderService) CreatePurchaseOrder(ctx context.Context, request 
 	}
 
 	// Validate warehouse exists
-	warehouse, err := s.warehouseRepo.GetByID(request.WarehouseID)
+	_, err = s.warehouseRepo.GetByID(request.WarehouseID)
 	if err != nil {
 		return nil, err
 	}
@@ -263,14 +269,15 @@ func (s *PurchaseOrderService) GetPendingDeliveries(ctx context.Context) ([]mode
 }
 
 // UpdatePurchaseOrderStatus updates the status of a purchase order
-func (s *PurchaseOrderService) UpdatePurchaseOrderStatus(ctx context.Context, id string, request *models.UpdatePOStatusRequest) (*models.PurchaseOrderResponse, error) {
+// Supports auto-GRN creation when status = "delivered" with delivery details
+func (s *PurchaseOrderService) UpdatePurchaseOrderStatus(ctx context.Context, id string, request *models.UpdatePOStatusRequest, userID string) (*models.PurchaseOrderResponse, error) {
 	// Validate status
 	if !isValidPOStatus(request.Status) {
 		return nil, fmt.Errorf("invalid status: %s", request.Status)
 	}
 
-	// Get existing PO
-	po, err := s.poRepo.GetByID(id)
+	// Get existing PO with items
+	po, err := s.poRepo.GetByIDWithItems(id)
 	if err != nil {
 		return nil, err
 	}
@@ -280,15 +287,47 @@ func (s *PurchaseOrderService) UpdatePurchaseOrderStatus(ctx context.Context, id
 		return nil, fmt.Errorf("invalid status transition from %s to %s", po.Status, request.Status)
 	}
 
-	// Update status
-	po.Status = request.Status
-
 	// Set actual delivery date if status is delivered
-	if request.Status == "delivered" && request.ActualDelivery != nil {
-		po.ActualDelivery = request.ActualDelivery
-	} else if request.Status == "delivered" && request.ActualDelivery == nil {
-		now := time.Now().UTC()
-		po.ActualDelivery = &now
+	var actualDelivery time.Time
+	if request.Status == "delivered" {
+		if request.ActualDelivery != nil {
+			actualDelivery = *request.ActualDelivery
+		} else {
+			actualDelivery = time.Now().UTC()
+		}
+	}
+
+	// Pattern Detection: Auto-create GRN if status = "delivered" and delivery details provided
+	if request.Status == "delivered" && (request.AcceptAll != nil || len(request.Items) > 0) {
+		// Check if GRN already exists for this PO
+		grnExists, err := s.grnRepo.GRNExistsForPO(po.ID)
+		if err != nil {
+			return nil, err
+		}
+		if grnExists {
+			return nil, fmt.Errorf("GRN already exists for this purchase order")
+		}
+
+		// Pattern 1: Accept All
+		if request.AcceptAll != nil && *request.AcceptAll {
+			if err := s.processAcceptAll(ctx, po, actualDelivery, request.DefaultExpiryDate, userID); err != nil {
+				return nil, fmt.Errorf("failed to process accept all: %w", err)
+			}
+		} else if len(request.Items) > 0 {
+			// Pattern 2 & 3: Per-item details
+			if err := s.processDeliveryItems(ctx, po, actualDelivery, request.Items, userID); err != nil {
+				return nil, fmt.Errorf("failed to process delivery items: %w", err)
+			}
+		}
+
+		// Update PO status and delivery date (already done in transaction above)
+		return s.GetPurchaseOrder(ctx, id)
+	}
+
+	// Traditional flow: Just update status without auto-GRN
+	po.Status = request.Status
+	if request.Status == "delivered" {
+		po.ActualDelivery = &actualDelivery
 	}
 
 	// Save to database
@@ -335,6 +374,296 @@ func (s *PurchaseOrderService) UpdatePaymentStatus(ctx context.Context, id strin
 	}
 
 	return s.GetPurchaseOrder(ctx, id)
+}
+
+// processAcceptAll handles Pattern 1: Accept all items with default expiry
+func (s *PurchaseOrderService) processAcceptAll(ctx context.Context, po *models.PurchaseOrder, actualDelivery time.Time, defaultExpiryDate *string, userID string) error {
+	// Validate default expiry date
+	if defaultExpiryDate == nil || *defaultExpiryDate == "" {
+		return fmt.Errorf("default_expiry_date is required when accept_all is true")
+	}
+
+	_, err := time.Parse("2006-01-02", *defaultExpiryDate)
+	if err != nil {
+		return fmt.Errorf("invalid default_expiry_date format: %w", err)
+	}
+
+	// Build delivery items from all PO items
+	var deliveryItems []models.DeliveryItemRequest
+	for _, poItem := range po.Items {
+		acceptTrue := true
+		deliveryItems = append(deliveryItems, models.DeliveryItemRequest{
+			POItemID:         poItem.ID,
+			Accept:           &acceptTrue,
+			ReceivedQuantity: &poItem.Quantity,
+			AcceptedQuantity: &poItem.Quantity,
+			ExpiryDate:       *defaultExpiryDate,
+			BatchNumber:      nil,
+		})
+	}
+
+	// Process with standard flow
+	return s.processDeliveryItems(ctx, po, actualDelivery, deliveryItems, userID)
+}
+
+// processDeliveryItems handles Pattern 2 & 3: Per-item details
+func (s *PurchaseOrderService) processDeliveryItems(ctx context.Context, po *models.PurchaseOrder, actualDelivery time.Time, items []models.DeliveryItemRequest, userID string) error {
+	// Validate delivery items
+	if err := s.validateDeliveryItems(po, items); err != nil {
+		return err
+	}
+
+	// Generate GRN number
+	grnNumber, err := s.generateGRNNumber()
+	if err != nil {
+		return err
+	}
+
+	// Process in transaction
+	return s.poRepo.WithTransaction(func(tx *gorm.DB) error {
+		// Create GRN
+		grn := models.NewGRN(
+			grnNumber,
+			po.ID,
+			po.WarehouseID,
+			userID,
+			actualDelivery,
+			"", // Quality status calculated later
+		)
+
+		if err := s.grnRepo.CreateWithTx(tx, grn); err != nil {
+			return err
+		}
+
+		// Process each item
+		for _, itemReq := range items {
+			// Find corresponding PO item
+			var poItem *models.PurchaseOrderItem
+			for i := range po.Items {
+				if po.Items[i].ID == itemReq.POItemID {
+					poItem = &po.Items[i]
+					break
+				}
+			}
+			if poItem == nil {
+				return fmt.Errorf("PO item %s not found", itemReq.POItemID)
+			}
+
+			// Determine quantities based on pattern
+			var receivedQty, acceptedQty int64
+			if itemReq.Accept != nil {
+				// Pattern 2: Simple Accept/Reject
+				receivedQty = poItem.Quantity
+				if *itemReq.Accept {
+					acceptedQty = poItem.Quantity
+				} else {
+					acceptedQty = 0
+				}
+			} else if itemReq.ReceivedQuantity != nil && itemReq.AcceptedQuantity != nil {
+				// Pattern 3: Detailed Quantities
+				receivedQty = *itemReq.ReceivedQuantity
+				acceptedQty = *itemReq.AcceptedQuantity
+			} else {
+				return fmt.Errorf("item %s must have either accept field or quantity fields", itemReq.POItemID)
+			}
+
+			// Parse expiry date
+			expiryDate, err := time.Parse("2006-01-02", itemReq.ExpiryDate)
+			if err != nil {
+				return fmt.Errorf("invalid expiry_date for item %s: %w", itemReq.POItemID, err)
+			}
+
+			// Create GRN item
+			grnItem := models.NewGRNItem(
+				grn.ID,
+				itemReq.POItemID,
+				poItem.ProductID,
+				poItem.Quantity,
+				receivedQty,
+				acceptedQty,
+				expiryDate,
+			)
+			grnItem.BatchNumber = itemReq.BatchNumber
+
+			// Create inventory batch for accepted quantity
+			if acceptedQty > 0 {
+				batch := models.NewInventoryBatch(
+					po.WarehouseID,
+					poItem.ProductID,
+					poItem.UnitPrice, // ALL-IN cost price from PO
+					expiryDate,
+					acceptedQty,
+					0, // CGST rate 0 (price is ALL-IN)
+					0, // SGST rate 0 (price is ALL-IN)
+					[]string{}, // No custom taxes
+					false,      // Not tax exempt
+				)
+
+				if err := s.inventoryRepo.CreateBatch(batch); err != nil {
+					return err
+				}
+
+				// Link inventory batch to GRN item
+				grnItem.InventoryBatchID = &batch.ID
+
+				// Create initial inventory transaction
+				note := fmt.Sprintf("Initial stock from GRN %s", grnNumber)
+				transaction := models.NewInventoryTransaction(
+					batch.ID,
+					"purchase",
+					acceptedQty,
+					&grn.ID,
+					&userID,
+					&note,
+					actualDelivery,
+				)
+				if err := s.inventoryRepo.CreateTransaction(transaction); err != nil {
+					return err
+				}
+			}
+
+			// Save GRN item
+			if err := s.grnRepo.CreateItemWithTx(tx, grnItem); err != nil {
+				return err
+			}
+
+			// Update PO item received quantity
+			if err := s.poRepo.UpdateItemReceivedQuantity(poItem.ID, receivedQty); err != nil {
+				return err
+			}
+		}
+
+		// Calculate quality status
+		qualityStatus := s.calculateQualityStatus(items)
+		grn.QualityStatus = qualityStatus
+
+		// Update GRN with quality status
+		if err := tx.Model(grn).Update("quality_status", qualityStatus).Error; err != nil {
+			return err
+		}
+
+		// Update PO status and delivery date
+		po.Status = "delivered"
+		po.ActualDelivery = &actualDelivery
+		if err := s.poRepo.UpdateWithTx(tx, po); err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
+// validateDeliveryItems validates delivery items against PO
+func (s *PurchaseOrderService) validateDeliveryItems(po *models.PurchaseOrder, items []models.DeliveryItemRequest) error {
+	// Build PO item map
+	poItemMap := make(map[string]*models.PurchaseOrderItem)
+	for i := range po.Items {
+		poItemMap[po.Items[i].ID] = &po.Items[i]
+	}
+
+	// Track seen items to prevent duplicates
+	seenItems := make(map[string]bool)
+
+	for _, item := range items {
+		// Check duplicate
+		if seenItems[item.POItemID] {
+			return fmt.Errorf("duplicate po_item_id: %s", item.POItemID)
+		}
+		seenItems[item.POItemID] = true
+
+		// Validate item belongs to this PO
+		poItem, exists := poItemMap[item.POItemID]
+		if !exists {
+			return fmt.Errorf("po_item_id %s does not belong to this purchase order", item.POItemID)
+		}
+
+		// Validate pattern usage
+		hasAccept := item.Accept != nil
+		hasQuantities := item.ReceivedQuantity != nil && item.AcceptedQuantity != nil
+
+		if !hasAccept && !hasQuantities {
+			return fmt.Errorf("item %s must have either accept field or quantity fields", item.POItemID)
+		}
+
+		if hasAccept && hasQuantities {
+			return fmt.Errorf("item %s cannot have both accept field and quantity fields", item.POItemID)
+		}
+
+		// Validate quantities if using Pattern 3
+		if hasQuantities {
+			if *item.ReceivedQuantity <= 0 {
+				return fmt.Errorf("received_quantity must be greater than 0 for item %s", item.POItemID)
+			}
+			if *item.AcceptedQuantity < 0 {
+				return fmt.Errorf("accepted_quantity cannot be negative for item %s", item.POItemID)
+			}
+			if *item.AcceptedQuantity > *item.ReceivedQuantity {
+				return fmt.Errorf("accepted_quantity cannot exceed received_quantity for item %s", item.POItemID)
+			}
+			if *item.ReceivedQuantity > poItem.Quantity {
+				return fmt.Errorf("received_quantity (%d) cannot exceed ordered quantity (%d) for item %s", *item.ReceivedQuantity, poItem.Quantity, item.POItemID)
+			}
+		}
+
+		// Validate expiry date format
+		if item.ExpiryDate != "" {
+			if _, err := time.Parse("2006-01-02", item.ExpiryDate); err != nil {
+				return fmt.Errorf("invalid expiry_date format for item %s: must be YYYY-MM-DD", item.POItemID)
+			}
+		}
+	}
+
+	return nil
+}
+
+// calculateQualityStatus determines overall quality status from items
+func (s *PurchaseOrderService) calculateQualityStatus(items []models.DeliveryItemRequest) string {
+	allAccepted := true
+	allRejected := true
+
+	for _, item := range items {
+		if item.Accept != nil {
+			if *item.Accept {
+				allRejected = false
+			} else {
+				allAccepted = false
+			}
+		} else if item.ReceivedQuantity != nil && item.AcceptedQuantity != nil {
+			if *item.AcceptedQuantity > 0 {
+				allRejected = false
+			}
+			if *item.AcceptedQuantity < *item.ReceivedQuantity {
+				allAccepted = false
+			}
+		}
+	}
+
+	if allAccepted {
+		return "accepted"
+	}
+	if allRejected {
+		return "rejected"
+	}
+	return "partial"
+}
+
+// generateGRNNumber generates a unique GRN number in format: GRN-YYYY-NNNN
+func (s *PurchaseOrderService) generateGRNNumber() (string, error) {
+	year := time.Now().UTC().Year()
+
+	// Try to find the next available number
+	for i := 1; i <= 9999; i++ {
+		grnNumber := fmt.Sprintf("GRN-%d-%04d", year, i)
+		exists, err := s.grnRepo.GRNNumberExists(grnNumber)
+		if err != nil {
+			return "", err
+		}
+		if !exists {
+			return grnNumber, nil
+		}
+	}
+
+	return "", fmt.Errorf("failed to generate unique GRN number")
 }
 
 // generatePONumber generates a unique PO number in format: PO-YYYY-NNNN
