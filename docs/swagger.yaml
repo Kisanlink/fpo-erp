@@ -42,44 +42,55 @@ definitions:
     properties:
       created_at:
         type: string
+      entity_id:
+        description: Entity ID (CLAB_xxx, PO_xxx, etc.)
+        type: string
+      entity_type:
+        description: '"logo", "po", "grn", etc.'
+        type: string
       file_path:
+        description: S3 key/path
         type: string
       file_size:
+        description: File size in bytes
         type: integer
       file_type:
+        description: MIME type
         type: string
       id:
-        type: string
-      return_id:
-        type: string
-      sale_id:
         type: string
       updated_at:
         type: string
       uploaded_at:
         type: string
       uploaded_by:
+        description: User ID
         type: string
     type: object
   models.AttachmentResponse:
     properties:
       created_at:
         type: string
+      entity_id:
+        description: Entity ID (CLAB_xxx, PO_xxx, etc.)
+        type: string
+      entity_type:
+        description: '"logo", "po", "grn", etc.'
+        type: string
       file_path:
+        description: S3 key/path
         type: string
       file_type:
+        description: MIME type
         type: string
       id:
-        type: string
-      return_id:
-        type: string
-      sale_id:
         type: string
       updated_at:
         type: string
       uploaded_at:
         type: string
       uploaded_by:
+        description: User ID
         type: string
     type: object
   models.BankPaymentResponse:
@@ -2065,15 +2076,15 @@ paths:
     get:
       description: Retrieve attachments with optional filters and pagination
       parameters:
-      - description: Filter by Sale ID
-        example: SALE_12345678
+      - description: Filter by entity type (logo, po, grn, etc.)
+        example: logo
         in: query
-        name: sale_id
+        name: entity_type
         type: string
-      - description: Filter by Return ID
-        example: RET_12345678
+      - description: Filter by entity ID
+        example: CLAB_12345678
         in: query
-        name: return_id
+        name: entity_id
         type: string
       - description: 'Number of records to return (default: 10, max: 100)'
         example: 10
@@ -2119,22 +2130,25 @@ paths:
     post:
       consumes:
       - multipart/form-data
-      description: Upload a file attachment for sales or returns (requires authentication)
+      description: Upload a file attachment for any entity (logo, PO, GRN, etc.) (requires
+        authentication)
       parameters:
       - description: File to upload
         in: formData
         name: file
         required: true
         type: file
-      - description: Sale ID (optional)
-        example: SALE_12345678
+      - description: 'Entity type: logo, po, grn, etc.'
+        example: logo
         in: formData
-        name: sale_id
+        name: entity_type
+        required: true
         type: string
-      - description: Return ID (optional)
-        example: RET_12345678
+      - description: Entity ID (e.g., CLAB_xxx, PO_xxx, GRN_xxx)
+        example: CLAB_12345678
         in: formData
-        name: return_id
+        name: entity_id
+        required: true
         type: string
       produces:
       - application/json
@@ -2363,21 +2377,28 @@ paths:
       summary: Generate Download URL
       tags:
       - Attachments
-  /api/v1/attachments/return/{return_id}:
+  /api/v1/attachments/entity/{entity_type}/{entity_id}:
     get:
-      description: Retrieve all attachments associated with a specific return
+      description: Retrieve all attachments associated with a specific entity (logo,
+        PO, GRN, etc.)
       parameters:
-      - description: Return ID
-        example: RET_12345678
+      - description: Entity type (logo, po, grn, etc.)
+        example: logo
         in: path
-        name: return_id
+        name: entity_type
+        required: true
+        type: string
+      - description: Entity ID (CLAB_xxx, PO_xxx, GRN_xxx, etc.)
+        example: CLAB_12345678
+        in: path
+        name: entity_id
         required: true
         type: string
       produces:
       - application/json
       responses:
         "200":
-          description: Return attachments retrieved successfully
+          description: Entity attachments retrieved successfully
           schema:
             allOf:
             - $ref: '#/definitions/utils.Response'
@@ -2401,48 +2422,7 @@ paths:
             $ref: '#/definitions/utils.ErrorResponseModel'
       security:
       - BearerAuth: []
-      summary: Get Attachments by Return
-      tags:
-      - Attachments
-  /api/v1/attachments/sale/{sale_id}:
-    get:
-      description: Retrieve all attachments associated with a specific sale
-      parameters:
-      - description: Sale ID
-        example: SALE_12345678
-        in: path
-        name: sale_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Sale attachments retrieved successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.Response'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/models.AttachmentResponse'
-                  type: array
-              type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Get Attachments by Sale
+      summary: Get Attachments by Entity
       tags:
       - Attachments
   /api/v1/bank-payments:
@@ -3093,51 +3073,6 @@ paths:
       summary: Create Collaborator
       tags:
       - Collaborators
-  /api/v1/collaborators/{collaborator_id}/products/{product_id}:
-    delete:
-      description: Remove product association from collaborator (soft delete, requires
-        authentication)
-      parameters:
-      - description: 'Collaborator ID (format: CLAB_xxxxxxxx)'
-        example: CLAB_12345678
-        in: path
-        name: collaborator_id
-        required: true
-        type: string
-      - description: 'Product ID (format: PROD_xxxxxxxx)'
-        example: PROD_12345678
-        in: path
-        name: product_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Product removed successfully
-          schema:
-            $ref: '#/definitions/utils.Response'
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "404":
-          description: Association not found
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Remove Product from Collaborator
-      tags:
-      - Collaborator Products
   /api/v1/collaborators/{id}:
     delete:
       description: Delete a collaborator (soft delete, requires authentication)
@@ -3345,6 +3280,51 @@ paths:
       security:
       - BearerAuth: []
       summary: Add Product to Collaborator
+      tags:
+      - Collaborator Products
+  /api/v1/collaborators/{id}/products/{product_id}:
+    delete:
+      description: Remove product association from collaborator (soft delete, requires
+        authentication)
+      parameters:
+      - description: 'Collaborator ID (format: CLAB_xxxxxxxx)'
+        example: CLAB_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 'Product ID (format: PROD_xxxxxxxx)'
+        example: PROD_12345678
+        in: path
+        name: product_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product removed successfully
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Association not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Remove Product from Collaborator
       tags:
       - Collaborator Products
   /api/v1/collaborators/{id}/purchase-orders:

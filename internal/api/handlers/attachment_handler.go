@@ -34,30 +34,31 @@ func (h *AttachmentHandler) RegisterRoutes(router *gin.RouterGroup) {
 		// Apply authentication middleware
 		attachments.Use(h.aaaMiddleware.Authenticate())
 
-		// Create/Delete routes - CEO=CRUD, Tech_Support=R/W (temp)
+		// Create/Delete routes
 		attachments.POST("", h.aaaMiddleware.RequirePermission("attachment", "*", "create"), h.UploadAttachment)
 		attachments.DELETE("/:id", h.aaaMiddleware.RequirePermission("attachment", "*", "delete"), h.DeleteAttachment)
 
-		// Read routes - Director=R, CEO=CRUD, Auditor=R, Accountant=R, Tech_Support=R/W (temp), Store_Manager=R, Store_Staff=R
+		// Read routes
 		attachments.GET("/:id/download", h.aaaMiddleware.RequirePermission("attachment", "*", "read"), h.DownloadAttachment)
 		attachments.GET("/:id/url", h.aaaMiddleware.RequirePermission("attachment", "*", "read"), h.GenerateDownloadURL)
 		attachments.GET("", h.aaaMiddleware.RequirePermission("attachment", "*", "read"), h.GetAttachments)
 		attachments.GET("/:id", h.aaaMiddleware.RequirePermission("attachment", "*", "read"), h.GetAttachment)
 		attachments.GET("/:id/info", h.aaaMiddleware.RequirePermission("attachment", "*", "read"), h.GetAttachmentInfo)
-		attachments.GET("/sale/:sale_id", h.aaaMiddleware.RequirePermission("attachment", "*", "read"), h.GetAttachmentsBySale)
-		attachments.GET("/return/:return_id", h.aaaMiddleware.RequirePermission("attachment", "*", "read"), h.GetAttachmentsByReturn)
+
+		// Entity-based route (for logos, POs, GRNs, etc.)
+		attachments.GET("/entity/:entity_type/:entity_id", h.aaaMiddleware.RequirePermission("attachment", "*", "read"), h.GetAttachmentsByEntity)
 	}
 }
 
 // UploadAttachment handles file upload
 // @Summary Upload Attachment
-// @Description Upload a file attachment for sales or returns (requires authentication)
+// @Description Upload a file attachment for any entity (logo, PO, GRN, etc.) (requires authentication)
 // @Tags Attachments
 // @Accept multipart/form-data
 // @Produce json
 // @Param file formData file true "File to upload"
-// @Param sale_id formData string false "Sale ID (optional)" example(SALE_12345678)
-// @Param return_id formData string false "Return ID (optional)" example(RET_12345678)
+// @Param entity_type formData string true "Entity type: logo, po, grn, etc." example(logo)
+// @Param entity_id formData string true "Entity ID (e.g., CLAB_xxx, PO_xxx, GRN_xxx)" example(CLAB_12345678)
 // @Success 201 {object} utils.Response{data=models.AttachmentResponse} "Attachment uploaded successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
@@ -72,12 +73,19 @@ func (h *AttachmentHandler) UploadAttachment(c *gin.Context) {
 		return
 	}
 
-	// No need to parse userID, just use userIDStr.(string) directly
-	// No need to check for err here since userIDStr is already obtained from context
-
 	// Get form data
-	saleID := c.PostForm("sale_id")
-	returnID := c.PostForm("return_id")
+	entityType := c.PostForm("entity_type")
+	entityID := c.PostForm("entity_id")
+
+	// Validate required fields
+	if entityType == "" {
+		utils.BadRequestResponse(c, "entity_type is required", nil)
+		return
+	}
+	if entityID == "" {
+		utils.BadRequestResponse(c, "entity_id is required", nil)
+		return
+	}
 
 	// Get uploaded file
 	file, err := c.FormFile("file")
@@ -86,17 +94,8 @@ func (h *AttachmentHandler) UploadAttachment(c *gin.Context) {
 		return
 	}
 
-	// Convert empty strings to nil
-	var saleIDPtr, returnIDPtr *string
-	if saleID != "" {
-		saleIDPtr = &saleID
-	}
-	if returnID != "" {
-		returnIDPtr = &returnID
-	}
-
 	// Upload attachment
-	attachment, err := h.attachmentService.UploadAttachment(c.Request.Context(), file, saleIDPtr, returnIDPtr, userIDStr.(string))
+	attachment, err := h.attachmentService.UploadAttachment(c.Request.Context(), file, entityType, entityID, userIDStr.(string))
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "Failed to upload attachment", err)
 		return
@@ -134,8 +133,8 @@ func (h *AttachmentHandler) GetAttachment(c *gin.Context) {
 // @Description Retrieve attachments with optional filters and pagination
 // @Tags Attachments
 // @Produce json
-// @Param sale_id query string false "Filter by Sale ID" example(SALE_12345678)
-// @Param return_id query string false "Filter by Return ID" example(RET_12345678)
+// @Param entity_type query string false "Filter by entity type (logo, po, grn, etc.)" example(logo)
+// @Param entity_id query string false "Filter by entity ID" example(CLAB_12345678)
 // @Param limit query integer false "Number of records to return (default: 10, max: 100)" example(10)
 // @Param offset query integer false "Number of records to skip (default: 0)" example(0)
 // @Success 200 {object} utils.Response{data=[]models.AttachmentResponse} "Attachments retrieved successfully"
@@ -146,8 +145,8 @@ func (h *AttachmentHandler) GetAttachment(c *gin.Context) {
 // @Router /api/v1/attachments [get]
 func (h *AttachmentHandler) GetAttachments(c *gin.Context) {
 	// Get query parameters
-	saleID := c.Query("sale_id")
-	returnID := c.Query("return_id")
+	entityType := c.Query("entity_type")
+	entityID := c.Query("entity_id")
 	limitStr := c.DefaultQuery("limit", "10")
 	offsetStr := c.DefaultQuery("offset", "0")
 
@@ -166,16 +165,16 @@ func (h *AttachmentHandler) GetAttachments(c *gin.Context) {
 	}
 
 	// Convert empty strings to nil
-	var saleIDPtr, returnIDPtr *string
-	if saleID != "" {
-		saleIDPtr = &saleID
+	var entityTypePtr, entityIDPtr *string
+	if entityType != "" {
+		entityTypePtr = &entityType
 	}
-	if returnID != "" {
-		returnIDPtr = &returnID
+	if entityID != "" {
+		entityIDPtr = &entityID
 	}
 
 	// Get attachments
-	attachments, err := h.attachmentService.GetAttachments(saleIDPtr, returnIDPtr, limit, offset)
+	attachments, err := h.attachmentService.GetAttachments(entityTypePtr, entityIDPtr, limit, offset)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "Failed to retrieve attachments", err)
 		return
@@ -289,52 +288,35 @@ func (h *AttachmentHandler) GetAttachmentInfo(c *gin.Context) {
 	utils.OKResponse(c, "Attachment info retrieved successfully", info)
 }
 
-// GetAttachmentsBySale retrieves all attachments for a sale
-// @Summary Get Attachments by Sale
-// @Description Retrieve all attachments associated with a specific sale
+// GetAttachmentsByEntity retrieves all attachments for a specific entity
+// @Summary Get Attachments by Entity
+// @Description Retrieve all attachments associated with a specific entity (logo, PO, GRN, etc.)
 // @Tags Attachments
 // @Produce json
-// @Param sale_id path string true "Sale ID" example(SALE_12345678)
-// @Success 200 {object} utils.Response{data=[]models.AttachmentResponse} "Sale attachments retrieved successfully"
+// @Param entity_type path string true "Entity type (logo, po, grn, etc.)" example(logo)
+// @Param entity_id path string true "Entity ID (CLAB_xxx, PO_xxx, GRN_xxx, etc.)" example(CLAB_12345678)
+// @Success 200 {object} utils.Response{data=[]models.AttachmentResponse} "Entity attachments retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
-// @Router /api/v1/attachments/sale/{sale_id} [get]
-func (h *AttachmentHandler) GetAttachmentsBySale(c *gin.Context) {
-	saleID := c.Param("sale_id")
+// @Router /api/v1/attachments/entity/{entity_type}/{entity_id} [get]
+func (h *AttachmentHandler) GetAttachmentsByEntity(c *gin.Context) {
+	entityType := c.Param("entity_type")
+	entityID := c.Param("entity_id")
 
-	attachments, err := h.attachmentService.GetAttachmentsBySale(saleID)
-	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve sale attachments", err)
+	if entityType == "" || entityID == "" {
+		utils.BadRequestResponse(c, "entity_type and entity_id are required", nil)
 		return
 	}
 
-	utils.OKResponse(c, "Sale attachments retrieved successfully", attachments)
-}
-
-// GetAttachmentsByReturn retrieves all attachments for a return
-// @Summary Get Attachments by Return
-// @Description Retrieve all attachments associated with a specific return
-// @Tags Attachments
-// @Produce json
-// @Param return_id path string true "Return ID" example(RET_12345678)
-// @Success 200 {object} utils.Response{data=[]models.AttachmentResponse} "Return attachments retrieved successfully"
-// @Failure 400 {object} utils.ErrorResponseModel "Bad request"
-// @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
-// @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
-// @Security BearerAuth
-// @Router /api/v1/attachments/return/{return_id} [get]
-func (h *AttachmentHandler) GetAttachmentsByReturn(c *gin.Context) {
-	returnID := c.Param("return_id")
-
-	attachments, err := h.attachmentService.GetAttachmentsByReturn(returnID)
+	attachments, err := h.attachmentService.GetAttachmentsByEntity(entityType, entityID)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve return attachments", err)
+		utils.InternalServerErrorResponse(c, "Failed to retrieve entity attachments", err)
 		return
 	}
 
-	utils.OKResponse(c, "Return attachments retrieved successfully", attachments)
+	utils.OKResponse(c, "Entity attachments retrieved successfully", attachments)
 }
 
 // DeleteAttachment deletes an attachment

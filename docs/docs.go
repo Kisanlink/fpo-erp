@@ -42,16 +42,16 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "example": "SALE_12345678",
-                        "description": "Filter by Sale ID",
-                        "name": "sale_id",
+                        "example": "logo",
+                        "description": "Filter by entity type (logo, po, grn, etc.)",
+                        "name": "entity_type",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "example": "RET_12345678",
-                        "description": "Filter by Return ID",
-                        "name": "return_id",
+                        "example": "CLAB_12345678",
+                        "description": "Filter by entity ID",
+                        "name": "entity_id",
                         "in": "query"
                     },
                     {
@@ -117,7 +117,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Upload a file attachment for sales or returns (requires authentication)",
+                "description": "Upload a file attachment for any entity (logo, PO, GRN, etc.) (requires authentication)",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -138,17 +138,19 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "example": "SALE_12345678",
-                        "description": "Sale ID (optional)",
-                        "name": "sale_id",
-                        "in": "formData"
+                        "example": "logo",
+                        "description": "Entity type: logo, po, grn, etc.",
+                        "name": "entity_type",
+                        "in": "formData",
+                        "required": true
                     },
                     {
                         "type": "string",
-                        "example": "RET_12345678",
-                        "description": "Return ID (optional)",
-                        "name": "return_id",
-                        "in": "formData"
+                        "example": "CLAB_12345678",
+                        "description": "Entity ID (e.g., CLAB_xxx, PO_xxx, GRN_xxx)",
+                        "name": "entity_id",
+                        "in": "formData",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -191,102 +193,42 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/attachments/return/{return_id}": {
+        "/api/v1/attachments/entity/{entity_type}/{entity_id}": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Retrieve all attachments associated with a specific return",
+                "description": "Retrieve all attachments associated with a specific entity (logo, PO, GRN, etc.)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Attachments"
                 ],
-                "summary": "Get Attachments by Return",
+                "summary": "Get Attachments by Entity",
                 "parameters": [
                     {
                         "type": "string",
-                        "example": "RET_12345678",
-                        "description": "Return ID",
-                        "name": "return_id",
+                        "example": "logo",
+                        "description": "Entity type (logo, po, grn, etc.)",
+                        "name": "entity_type",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "CLAB_12345678",
+                        "description": "Entity ID (CLAB_xxx, PO_xxx, GRN_xxx, etc.)",
+                        "name": "entity_id",
                         "in": "path",
                         "required": true
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Return attachments retrieved successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/utils.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/models.AttachmentResponse"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request",
-                        "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponseModel"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponseModel"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponseModel"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/attachments/sale/{sale_id}": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Retrieve all attachments associated with a specific sale",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Attachments"
-                ],
-                "summary": "Get Attachments by Sale",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "example": "SALE_12345678",
-                        "description": "Sale ID",
-                        "name": "sale_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Sale attachments retrieved successfully",
+                        "description": "Entity attachments retrieved successfully",
                         "schema": {
                             "allOf": [
                                 {
@@ -1836,73 +1778,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/collaborators/{collaborator_id}/products/{product_id}": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Remove product association from collaborator (soft delete, requires authentication)",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Collaborator Products"
-                ],
-                "summary": "Remove Product from Collaborator",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "example": "CLAB_12345678",
-                        "description": "Collaborator ID (format: CLAB_xxxxxxxx)",
-                        "name": "collaborator_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "example": "PROD_12345678",
-                        "description": "Product ID (format: PROD_xxxxxxxx)",
-                        "name": "product_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Product removed successfully",
-                        "schema": {
-                            "$ref": "#/definitions/utils.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request",
-                        "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponseModel"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponseModel"
-                        }
-                    },
-                    "404": {
-                        "description": "Association not found",
-                        "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponseModel"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponseModel"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/collaborators/{id}": {
             "get": {
                 "description": "Retrieve a specific collaborator by ID",
@@ -2226,6 +2101,73 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/collaborators/{id}/products/{product_id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Remove product association from collaborator (soft delete, requires authentication)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Collaborator Products"
+                ],
+                "summary": "Remove Product from Collaborator",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "CLAB_12345678",
+                        "description": "Collaborator ID (format: CLAB_xxxxxxxx)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "PROD_12345678",
+                        "description": "Product ID (format: PROD_xxxxxxxx)",
+                        "name": "product_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Product removed successfully",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "404": {
+                        "description": "Association not found",
                         "schema": {
                             "$ref": "#/definitions/utils.ErrorResponseModel"
                         }
@@ -9128,22 +9070,27 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
+                "entity_id": {
+                    "description": "Entity ID (CLAB_xxx, PO_xxx, etc.)",
+                    "type": "string"
+                },
+                "entity_type": {
+                    "description": "\"logo\", \"po\", \"grn\", etc.",
+                    "type": "string"
+                },
                 "file_path": {
+                    "description": "S3 key/path",
                     "type": "string"
                 },
                 "file_size": {
+                    "description": "File size in bytes",
                     "type": "integer"
                 },
                 "file_type": {
+                    "description": "MIME type",
                     "type": "string"
                 },
                 "id": {
-                    "type": "string"
-                },
-                "return_id": {
-                    "type": "string"
-                },
-                "sale_id": {
                     "type": "string"
                 },
                 "updated_at": {
@@ -9153,6 +9100,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "uploaded_by": {
+                    "description": "User ID",
                     "type": "string"
                 }
             }
@@ -9163,19 +9111,23 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
+                "entity_id": {
+                    "description": "Entity ID (CLAB_xxx, PO_xxx, etc.)",
+                    "type": "string"
+                },
+                "entity_type": {
+                    "description": "\"logo\", \"po\", \"grn\", etc.",
+                    "type": "string"
+                },
                 "file_path": {
+                    "description": "S3 key/path",
                     "type": "string"
                 },
                 "file_type": {
+                    "description": "MIME type",
                     "type": "string"
                 },
                 "id": {
-                    "type": "string"
-                },
-                "return_id": {
-                    "type": "string"
-                },
-                "sale_id": {
                     "type": "string"
                 },
                 "updated_at": {
@@ -9185,6 +9137,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "uploaded_by": {
+                    "description": "User ID",
                     "type": "string"
                 }
             }
