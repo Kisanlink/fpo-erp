@@ -24,7 +24,7 @@ func NewWarehouseService(warehouseRepo *repositories.WarehouseRepository, addres
 }
 
 // CreateWarehouse creates a new warehouse
-func (s *WarehouseService) CreateWarehouse(ctx context.Context, request *models.CreateWarehouseRequest) (*models.WarehouseResponse, error) {
+func (s *WarehouseService) CreateWarehouse(ctx context.Context, request *models.CreateWarehouseRequest, userID string) (*models.WarehouseResponse, error) {
 	var addressID *string
 
 	// Handle inline address creation if provided
@@ -32,7 +32,7 @@ func (s *WarehouseService) CreateWarehouse(ctx context.Context, request *models.
 		// Create address via AAA service with timeout
 		ctxAddr, cancel := context.WithTimeout(ctx, 3*time.Second)
 		defer cancel()
-		userID := "system" // TODO: Extract from auth context when available
+		// Use the authenticated user ID passed from handler
 		address, err := s.addressClient.CreateAddress(ctxAddr, &aaa.CreateAddressRequest{
 			UserID:       userID,
 			Type:         request.Address.Type,

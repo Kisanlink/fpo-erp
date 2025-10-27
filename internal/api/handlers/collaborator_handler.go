@@ -45,8 +45,14 @@ func (h *CollaboratorHandler) CreateCollaborator(c *gin.Context) {
 		return
 	}
 
+	// Get authenticated user ID from context
+	userID := c.GetString("user_id")
+	if userID == "" {
+		userID = "system" // Fallback for unauthenticated contexts
+	}
+
 	// Create collaborator
-	response, err := h.collaboratorService.CreateCollaborator(c.Request.Context(), &request)
+	response, err := h.collaboratorService.CreateCollaborator(c.Request.Context(), &request, userID)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "Failed to create collaborator", err)
 		return

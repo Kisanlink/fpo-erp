@@ -27,7 +27,7 @@ func NewCollaboratorService(collaboratorRepo *repositories.CollaboratorRepositor
 }
 
 // CreateCollaborator creates a new collaborator with address
-func (s *CollaboratorService) CreateCollaborator(ctx context.Context, request *models.CreateCollaboratorRequest) (*models.CollaboratorResponse, error) {
+func (s *CollaboratorService) CreateCollaborator(ctx context.Context, request *models.CreateCollaboratorRequest, userID string) (*models.CollaboratorResponse, error) {
 	var addressID *string
 
 	// Handle inline address creation if provided
@@ -35,7 +35,7 @@ func (s *CollaboratorService) CreateCollaborator(ctx context.Context, request *m
 		// Create address via AAA service with timeout
 		ctxAddr, cancel := context.WithTimeout(ctx, 3*time.Second)
 		defer cancel()
-		userID := "system" // TODO: Extract from auth context when available
+		// Use the authenticated user ID passed from handler
 		address, err := s.addressClient.CreateAddress(ctxAddr, &aaa.CreateAddressRequest{
 			UserID:       userID,
 			Type:         request.Address.Type,
