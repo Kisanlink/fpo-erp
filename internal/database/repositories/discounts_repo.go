@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"encoding/json"
+	"sort"
 	"strings"
 	"time"
 
@@ -137,6 +138,22 @@ func (r *DiscountsRepository) IncrementUsage(id string) error {
 func (r *DiscountsRepository) CreateDiscountUsage(usage *models.DiscountUsage) error {
 	if err := r.db.Create(usage).Error; err != nil {
 		return errors.NewInternalServerError("Failed to create discount usage")
+	}
+	return nil
+}
+
+// CreateDiscountUsageWithTx creates a discount usage record within a transaction
+func (r *DiscountsRepository) CreateDiscountUsageWithTx(tx *gorm.DB, usage *models.DiscountUsage) error {
+	if err := tx.Create(usage).Error; err != nil {
+		return errors.NewInternalServerError("Failed to create discount usage")
+	}
+	return nil
+}
+
+// IncrementUsageWithTx increments discount usage count within a transaction
+func (r *DiscountsRepository) IncrementUsageWithTx(tx *gorm.DB, discountID string) error {
+	if err := tx.Model(&models.Discount{}).Where("id = ?", discountID).Update("current_usage", gorm.Expr("current_usage + ?", 1)).Error; err != nil {
+		return errors.NewInternalServerError("Failed to increment discount usage")
 	}
 	return nil
 }
@@ -426,13 +443,9 @@ func (r *DiscountsRepository) GetApplicableDiscountsForOrder(orderValue float64,
 	}
 
 	// Sort by priority (higher priority first)
-	for i := 0; i < len(applicableDiscounts)-1; i++ {
-		for j := i + 1; j < len(applicableDiscounts); j++ {
-			if applicableDiscounts[i].Priority < applicableDiscounts[j].Priority {
-				applicableDiscounts[i], applicableDiscounts[j] = applicableDiscounts[j], applicableDiscounts[i]
-			}
-		}
-	}
+	sort.Slice(applicableDiscounts, func(i, j int) bool {
+		return applicableDiscounts[i].Priority > applicableDiscounts[j].Priority
+	})
 
 	return applicableDiscounts, nil
 }
@@ -565,14 +578,8 @@ func (r *DiscountsRepository) CalculateBuyXGetYDiscount(discount models.Discount
 	sortedItems := make([]SaleItem, len(eligibleItems))
 	copy(sortedItems, eligibleItems)
 
-	// Simple bubble sort by price (ascending)
-	for i := 0; i < len(sortedItems)-1; i++ {
-		for j := 0; j < len(sortedItems)-i-1; j++ {
-			if sortedItems[j].Price > sortedItems[j+1].Price {
-				sortedItems[j], sortedItems[j+1] = sortedItems[j+1], sortedItems[j]
-			}
-		}
-	}
+	// Sort by price (ascending) to discount cheapest items first
+	sort.Slice(sortedItems, func(i, j int) bool { return sortedItems[i].Price < sortedItems[j].Price })
 
 	// Apply discount to cheapest items up to totalGetQuantity
 	remainingGetQuantity := totalGetQuantity

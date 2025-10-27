@@ -312,6 +312,22 @@ func (r *TaxRepository) CreateTaxSummary(taxSummary *models.TaxSummary) error {
 	return nil
 }
 
+// CreateTaxSummaryWithTx creates a tax summary record within a transaction
+func (r *TaxRepository) CreateTaxSummaryWithTx(tx *gorm.DB, taxSummary *models.TaxSummary) error {
+	if err := tx.Create(taxSummary).Error; err != nil {
+		return errors.NewInternalServerError("Failed to create tax summary")
+	}
+	return nil
+}
+
+// CreateTaxApplicationWithTx creates a tax application record within a transaction
+func (r *TaxRepository) CreateTaxApplicationWithTx(tx *gorm.DB, taxApp *models.TaxApplication) error {
+	if err := tx.Create(taxApp).Error; err != nil {
+		return errors.NewInternalServerError("Failed to create tax application")
+	}
+	return nil
+}
+
 // GetTaxSummaryBySale retrieves tax summary for a sale
 func (r *TaxRepository) GetTaxSummaryBySale(saleID string) (*models.TaxSummary, error) {
 	var taxSummary models.TaxSummary

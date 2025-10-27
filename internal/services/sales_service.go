@@ -7,6 +7,8 @@ import (
 
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
+
+	"gorm.io/gorm"
 )
 
 // Helper function to convert string to pointer
@@ -38,9 +40,9 @@ func NewSalesService(salesRepo *repositories.SalesRepository, productRepo *repos
 	}
 }
 
-// CreateSale creates a new sale with items and summary
+// CreateSale creates a new sale with items and summary using database transaction
 func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleResponse, error) {
-	log.Printf("[DEBUG] Starting sale creation for warehouse: %s", req.WarehouseID)
+	log.Printf("[DEBUG] Starting transactional sale creation for warehouse: %s", req.WarehouseID)
 
 	// Validate sale request
 	if err := s.validateSaleRequest(req); err != nil {
@@ -49,34 +51,38 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 	}
 	log.Printf("[DEBUG] Sale validation passed")
 
-	// Parse sale date or use current time
-	var saleDate time.Time
-	if req.SaleDate != nil {
-		log.Printf("[DEBUG] Parsing sale date: %s", *req.SaleDate)
-		if parsedDate, err := time.Parse("2006-01-02T15:04:05Z", *req.SaleDate); err == nil {
-			saleDate = parsedDate
-			log.Printf("[DEBUG] Sale date parsed successfully: %v", saleDate)
+	var response *models.SaleResponse
+
+	// Execute everything within a database transaction
+	err := s.salesRepo.WithTransaction(func(tx *gorm.DB) error {
+		// Parse sale date or use current time
+		var saleDate time.Time
+		if req.SaleDate != nil {
+			log.Printf("[DEBUG] Parsing sale date: %s", *req.SaleDate)
+			if parsedDate, err := time.Parse(time.RFC3339, *req.SaleDate); err == nil {
+				saleDate = parsedDate
+				log.Printf("[DEBUG] Sale date parsed successfully: %v", saleDate)
+			} else {
+				// If parsing fails, use current time
+				log.Printf("[WARN] Date parsing failed, using current time: %v", err)
+				saleDate = time.Now()
+			}
 		} else {
-			// If parsing fails, use current time
-			log.Printf("[WARN] Date parsing failed, using current time: %v", err)
+			// If no sale date provided, use current time
+			log.Printf("[DEBUG] No sale date provided, using current time")
 			saleDate = time.Now()
 		}
-	} else {
-		// If no sale date provided, use current time
-		log.Printf("[DEBUG] No sale date provided, using current time")
-		saleDate = time.Now()
-	}
 
-	// Create sale using the proper constructor
-	log.Printf("[DEBUG] Creating sale with warehouse: %s, date: %v", req.WarehouseID, saleDate)
-	sale := models.NewSale(req.WarehouseID, saleDate, 0, "pending")
-	log.Printf("[DEBUG] Sale created with ID: %s", sale.ID)
+		// Create sale using the proper constructor
+		log.Printf("[DEBUG] Creating sale with warehouse: %s, date: %v", req.WarehouseID, saleDate)
+		sale := models.NewSale(req.WarehouseID, saleDate, 0, "pending")
+		log.Printf("[DEBUG] Sale created with ID: %s", sale.ID)
 
-	if err := s.salesRepo.CreateSale(sale); err != nil {
-		log.Printf("[ERROR] Failed to create sale in database: %v", err)
-		return nil, err
-	}
-	log.Printf("[DEBUG] Sale created successfully in database")
+		if err := s.salesRepo.CreateSaleWithTx(tx, sale); err != nil {
+			log.Printf("[ERROR] Failed to create sale in database: %v", err)
+			return err
+		}
+		log.Printf("[DEBUG] Sale created successfully in database")
 
 	// Create sale items
 	log.Printf("[DEBUG] Starting to process %d sale items", len(req.Items))
@@ -90,7 +96,7 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 		sellingPrice, err := s.getSellingPrice(itemReq.ProductID)
 		if err != nil {
 			log.Printf("[ERROR] Failed to get selling price: %v", err)
-			return nil, errors.New("selling price not found for product")
+			return errors.New("selling price not found for product")
 		}
 		log.Printf("[DEBUG] Selling price retrieved: %.2f", sellingPrice)
 
@@ -99,12 +105,12 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 		batches, err := s.inventoryRepo.GetBatchesByProductAndWarehouseOrderedByExpiry(itemReq.ProductID, req.WarehouseID)
 		if err != nil {
 			log.Printf("[ERROR] Failed to get batches for product: %v", err)
-			return nil, errors.New("failed to retrieve product batches")
+			return errors.New("failed to retrieve product batches")
 		}
 
 		if len(batches) == 0 {
 			log.Printf("[ERROR] No batches found for product: %s in warehouse: %s", itemReq.ProductID, req.WarehouseID)
-			return nil, errors.New("no inventory available for product in this warehouse")
+			return errors.New("no inventory available for product in this warehouse")
 		}
 
 		log.Printf("[DEBUG] Found %d batches for product", len(batches))
@@ -117,7 +123,7 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 
 		if totalAvailable < itemReq.Quantity {
 			log.Printf("[ERROR] Insufficient stock: available %d, requested %d", totalAvailable, itemReq.Quantity)
-			return nil, errors.New("insufficient stock for product")
+			return errors.New("insufficient stock for product")
 		}
 
 		log.Printf("[DEBUG] Stock validation passed - available: %d, requested: %d", totalAvailable, itemReq.Quantity)
@@ -147,7 +153,7 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 			taxCalculation, err := s.taxService.CalculateBatchTax(batch, quantityFromBatch, sellingPrice)
 			if err != nil {
 				log.Printf("[ERROR] Failed to calculate taxes: %v", err)
-				return nil, err
+				return err
 			}
 			log.Printf("[DEBUG] Tax calculation completed: CGST=%.2f, SGST=%.2f, Custom=%.2f, Total=%.2f",
 				taxCalculation.CGSTAmount, taxCalculation.SGSTAmount, taxCalculation.CustomTaxAmount, taxCalculation.TotalTaxAmount)
@@ -159,9 +165,9 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 				taxCalculation.CGSTAmount, taxCalculation.SGSTAmount, taxCalculation.CustomTaxAmount)
 			log.Printf("[DEBUG] Sale item created with ID: %s (includes tax amounts)", saleItem.ID)
 
-			if err := s.salesRepo.CreateSaleItem(saleItem); err != nil {
+			if err := s.salesRepo.CreateSaleItemWithTx(tx, saleItem); err != nil {
 				log.Printf("[ERROR] Failed to create sale item: %v", err)
-				return nil, err
+				return err
 			}
 			log.Printf("[DEBUG] Sale item created successfully in database")
 
@@ -173,17 +179,17 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 			transaction := models.NewInventoryTransaction(batch.ID, "sale", -quantityFromBatch, &sale.ID, nil, stringPtr("Sale transaction"), time.Now())
 			log.Printf("[DEBUG] Inventory transaction created with ID: %s", transaction.ID)
 
-			if err := s.inventoryRepo.CreateTransaction(transaction); err != nil {
+			if err := s.inventoryRepo.CreateTransactionWithTx(tx, transaction); err != nil {
 				log.Printf("[ERROR] Failed to create inventory transaction: %v", err)
-				return nil, err
+				return err
 			}
 			log.Printf("[DEBUG] Inventory transaction created successfully")
 
-			// Update batch stock level
+			// Update batch stock level with row lock to prevent race conditions
 			log.Printf("[DEBUG] Updating batch stock: %s, change: %d", batch.ID, -quantityFromBatch)
-			if err := s.inventoryRepo.UpdateBatchStock(batch.ID, -quantityFromBatch); err != nil {
+			if err := s.inventoryRepo.UpdateBatchStockWithTx(tx, batch.ID, -quantityFromBatch); err != nil {
 				log.Printf("[ERROR] Failed to update batch stock: %v", err)
-				return nil, err
+				return err
 			}
 			log.Printf("[DEBUG] Batch stock updated successfully")
 
@@ -215,23 +221,25 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 	finalDiscounts, applications, totalDiscountAmount, err := s.resolveDiscountsWithPriority(req, totalAmount, productIDs, saleItemPtrs)
 	if err != nil {
 		log.Printf("[ERROR] Failed to resolve discounts: %v", err)
-		return nil, err
+		return err
 	}
 
 	discountAmount = totalDiscountAmount
 	appliedDiscounts = applications
 
-	// Create discount usage records for applied discounts
-	for _, discount := range finalDiscounts {
-		discountUsage := s.discountsRepo.CalculateDiscount(&discount, totalAmount)
-		usage := models.NewDiscountUsage(discount.ID, sale.ID, discountUsage)
-		if err := s.discountsRepo.CreateDiscountUsage(usage); err != nil {
-			log.Printf("[WARN] Failed to create discount usage record: %v", err)
+		// Create discount usage records for applied discounts
+		for _, discount := range finalDiscounts {
+			discountUsage := s.discountsRepo.CalculateDiscount(&discount, totalAmount)
+			usage := models.NewDiscountUsage(discount.ID, sale.ID, discountUsage)
+			if err := s.discountsRepo.CreateDiscountUsageWithTx(tx, usage); err != nil {
+				log.Printf("[ERROR] Failed to create discount usage record: %v", err)
+				return err
+			}
+			if err := s.discountsRepo.IncrementUsageWithTx(tx, discount.ID); err != nil {
+				log.Printf("[ERROR] Failed to increment discount usage: %v", err)
+				return err
+			}
 		}
-		if err := s.discountsRepo.IncrementUsage(discount.ID); err != nil {
-			log.Printf("[WARN] Failed to increment discount usage: %v", err)
-		}
-	}
 
 	log.Printf("[DEBUG] Total discount applied: %.2f from %d discounts", discountAmount, len(finalDiscounts))
 
@@ -239,69 +247,68 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 	finalAmount := totalAmount - discountAmount
 	log.Printf("[DEBUG] Final amount after discount: %.2f", finalAmount)
 
-	// Apply taxes using the existing tax service (no customer data needed)
-	var taxAmount float64
-	if len(saleItems) > 0 {
-		taxSummary, err := s.applyTaxesToSale(sale.ID, saleItems, req.WarehouseID)
-		if err != nil {
-			log.Printf("[WARN] Tax calculation failed: %v", err)
-			// Continue without tax if calculation fails
-		} else if taxSummary != nil {
-			taxAmount = taxSummary.TotalTaxAmount
-			finalAmount += taxAmount
-			log.Printf("[DEBUG] Tax applied successfully: %.2f", taxAmount)
-		}
-	}
-
-	// Update sale with final amount
-	log.Printf("[DEBUG] Updating sale with final amount: %.2f", finalAmount)
-	sale.TotalAmount = finalAmount
-	if err := s.salesRepo.UpdateSale(sale); err != nil {
-		log.Printf("[ERROR] Failed to update sale with final amount: %v", err)
-		return nil, err
-	}
-	log.Printf("[DEBUG] Sale updated with final amount successfully")
-
-	// Get complete sale with items and summary
-	log.Printf("[DEBUG] Getting complete sale by ID: %s", sale.ID)
-	completeSale, err := s.salesRepo.GetSaleByID(sale.ID)
-	if err != nil {
-		log.Printf("[ERROR] Failed to get complete sale: %v", err)
-		return nil, err
-	}
-	log.Printf("[DEBUG] Complete sale retrieved successfully")
-
-	log.Printf("[DEBUG] Sale creation completed successfully")
-
-	// Create detailed response with breakdown
-	response := s.mapSaleToResponse(completeSale)
-
-	// Add breakdown information
-	var taxBreakdown *models.TaxSummaryBreakdown
-	if taxAmount > 0 {
-		taxSummary, err := s.taxRepo.GetTaxSummaryBySale(sale.ID)
-		if err == nil {
-			taxBreakdown = &models.TaxSummaryBreakdown{
-				CGSTAmount:     taxSummary.CGSTAmount,
-				SGSTAmount:     taxSummary.SGSTAmount,
-				IGSTAmount:     taxSummary.IGSTAmount,
-				VATAmount:      taxSummary.VATAmount,
-				OtherTaxAmount: taxSummary.OtherTaxAmount,
-				TotalTaxAmount: taxSummary.TotalTaxAmount,
+		// Apply taxes using the existing tax service (no customer data needed)
+		var taxAmount float64
+		if len(saleItems) > 0 {
+			taxSummary, err := s.applyTaxesToSaleWithTx(tx, sale.ID, saleItems, req.WarehouseID)
+			if err != nil {
+				log.Printf("[ERROR] Tax calculation failed: %v", err)
+				return err
+			}
+			if taxSummary != nil {
+				taxAmount = taxSummary.TotalTaxAmount
+				finalAmount += taxAmount
+				log.Printf("[DEBUG] Tax applied successfully: %.2f", taxAmount)
 			}
 		}
+
+		// Update sale with final amount
+		log.Printf("[DEBUG] Updating sale with final amount: %.2f", finalAmount)
+		sale.TotalAmount = finalAmount
+		if err := s.salesRepo.UpdateSaleWithTx(tx, sale); err != nil {
+			log.Printf("[ERROR] Failed to update sale with final amount: %v", err)
+			return err
+		}
+		log.Printf("[DEBUG] Sale updated with final amount successfully")
+
+		// Build response within transaction (before committing)
+		response = s.mapSaleToResponse(sale)
+
+		// Add breakdown information
+		var taxBreakdown *models.TaxSummaryBreakdown
+		if taxAmount > 0 {
+			taxSummary, err := s.taxRepo.GetTaxSummaryBySale(sale.ID)
+			if err == nil {
+				taxBreakdown = &models.TaxSummaryBreakdown{
+					CGSTAmount:     taxSummary.CGSTAmount,
+					SGSTAmount:     taxSummary.SGSTAmount,
+					IGSTAmount:     taxSummary.IGSTAmount,
+					VATAmount:      taxSummary.VATAmount,
+					OtherTaxAmount: taxSummary.OtherTaxAmount,
+					TotalTaxAmount: taxSummary.TotalTaxAmount,
+				}
+			}
+		}
+
+		response.Breakdown = &models.SaleBreakdown{
+			BaseAmount:       totalAmount,
+			AppliedDiscounts: appliedDiscounts,
+			DiscountAmount:   discountAmount,
+			TaxBreakdown:     taxBreakdown,
+			TaxAmount:        taxAmount,
+			TotalSavings:     discountAmount,
+			FinalAmount:      finalAmount,
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		log.Printf("[ERROR] Transaction failed: %v", err)
+		return nil, err
 	}
 
-	response.Breakdown = &models.SaleBreakdown{
-		BaseAmount:       totalAmount,
-		AppliedDiscounts: appliedDiscounts,
-		DiscountAmount:   discountAmount,
-		TaxBreakdown:     taxBreakdown,
-		TaxAmount:        taxAmount,
-		TotalSavings:     discountAmount,
-		FinalAmount:      finalAmount,
-	}
-
+	log.Printf("[DEBUG] Transactional sale creation completed successfully")
 	return response, nil
 }
 
@@ -473,13 +480,17 @@ func (s *SalesService) mapSaleToResponse(sale *models.Sale) *models.SaleResponse
 	// Map items
 	for _, item := range sale.Items {
 		response.Items = append(response.Items, models.SaleItemResponse{
-			ID:           item.ID,
-			SaleID:       item.SaleID,
-			BatchID:      item.BatchID,
-			Quantity:     item.Quantity,
-			SellingPrice: item.SellingPrice,
-			LineTotal:    item.LineTotal,
-			CreatedAt:    item.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			ID:              item.ID,
+			SaleID:          item.SaleID,
+			BatchID:         item.BatchID,
+			Quantity:        item.Quantity,
+			SellingPrice:    item.SellingPrice,
+			LineTotal:       item.LineTotal,
+			CGSTAmount:      item.CGSTAmount,
+			SGSTAmount:      item.SGSTAmount,
+			CustomTaxAmount: item.CustomTaxAmount,
+			TotalTaxAmount:  item.TotalTaxAmount,
+			CreatedAt:       item.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		})
 	}
 
@@ -668,6 +679,46 @@ func (s *SalesService) resolveDiscountsWithPriority(req *models.CreateSaleReques
 	}
 
 	return finalDiscounts, applications, totalDiscountAmount, nil
+}
+
+// applyTaxesToSaleWithTx applies taxes to a sale using warehouse-based calculation within a transaction
+func (s *SalesService) applyTaxesToSaleWithTx(tx *gorm.DB, saleID string, saleItems []models.SaleItem, warehouseID string) (*models.TaxSummary, error) {
+	// Convert sale items to tax calculation items
+	var taxItems []models.TaxCalculationItem
+	for _, item := range saleItems {
+		// Get batch to retrieve product ID
+		batch, err := s.inventoryRepo.GetBatchByID(item.BatchID)
+		if err != nil {
+			return nil, err
+		}
+
+		taxItem := models.TaxCalculationItem{
+			ProductID:  batch.ProductID,
+			CategoryID: nil, // No category management in current model
+			Quantity:   int(item.Quantity),
+			UnitPrice:  item.SellingPrice,
+			LineTotal:  item.LineTotal,
+		}
+		taxItems = append(taxItems, taxItem)
+	}
+
+	// Default state since warehouse doesn't store state directly (can be configurable)
+	defaultState := "DefaultState" // This should be configurable or fetched from address service
+
+	// Create tax calculation request without customer information
+	taxReq := &models.TaxCalculationRequest{
+		CustomerID:     nil, // No customer management
+		CustomerState:  nil, // No customer management
+		CustomerGSTIN:  nil, // No customer GSTIN
+		CustomerPAN:    nil, // No customer PAN
+		WarehouseID:    warehouseID,
+		WarehouseState: defaultState, // Use default state for warehouse
+		Items:          taxItems,
+		IsInterState:   false, // Default to intra-state for warehouse-based taxation
+	}
+
+	// Use the tax service to apply taxes and create summary within transaction
+	return s.taxService.ApplyTaxesToSaleWithTx(tx, saleID, saleItems, taxReq, "system")
 }
 
 // applyTaxesToSale applies taxes to a sale using warehouse-based calculation (no customer data needed)

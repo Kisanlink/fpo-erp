@@ -63,15 +63,12 @@ func (s *InventoryService) CreateBatch(warehouseID, productID string, costPrice 
 	// Create batch using the updated constructor
 	batch := models.NewInventoryBatch(warehouseID, productID, costPrice, expiryDate, quantity, cgstRate, sgstRate, customTaxIDs, isTaxExempt)
 
-	if err := s.inventoryRepo.CreateBatch(batch); err != nil {
-		return nil, err
-	}
-
 	// Create initial transaction using the proper constructor
 	note := "Initial import"
-	transaction := models.NewInventoryTransaction(batch.ID, "import", quantity, nil, nil, &note, time.Now())
+	transaction := models.NewInventoryTransaction("", "import", quantity, nil, nil, &note, time.Now())
 
-	if err := s.inventoryRepo.CreateTransaction(transaction); err != nil {
+	// Create batch and initial transaction atomically
+	if err := s.inventoryRepo.CreateBatchWithTransaction(batch, transaction); err != nil {
 		return nil, err
 	}
 

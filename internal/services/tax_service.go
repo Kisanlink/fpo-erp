@@ -1,11 +1,14 @@
 package services
 
 import (
+	"math"
 	"time"
 
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
 	"kisanlink-erp/internal/errors"
+
+	"gorm.io/gorm"
 )
 
 type TaxService struct {
@@ -558,6 +561,70 @@ func (s *TaxService) ApplyTaxesToSale(saleID string, items []models.SaleItem, re
 	return taxSummary, nil
 }
 
+// ApplyTaxesToSaleWithTx applies taxes to a sale within a transaction and creates tax applications
+func (s *TaxService) ApplyTaxesToSaleWithTx(tx *gorm.DB, saleID string, items []models.SaleItem, req *models.TaxCalculationRequest, userID string) (*models.TaxSummary, error) {
+	// Calculate taxes
+	taxCalculation, err := s.CalculateTax(req)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create tax summary
+	taxSummary := models.NewTaxSummary()
+	taxSummary.SaleID = &saleID
+	taxSummary.SubTotal = taxCalculation.SubTotal
+	taxSummary.TotalTaxAmount = taxCalculation.TotalTaxAmount
+	taxSummary.GrandTotal = taxCalculation.GrandTotal
+
+	// Calculate tax breakdown by type
+	for _, breakdown := range taxCalculation.TaxBreakdown {
+		switch breakdown.TaxType {
+		case models.TaxTypeCGST:
+			taxSummary.CGSTAmount = breakdown.Amount
+		case models.TaxTypeSGST:
+			taxSummary.SGSTAmount = breakdown.Amount
+		case models.TaxTypeIGST:
+			taxSummary.IGSTAmount = breakdown.Amount
+		case models.TaxTypeVAT:
+			taxSummary.VATAmount = breakdown.Amount
+		case models.TaxTypeSTT:
+			taxSummary.STTAmount = breakdown.Amount
+		case models.TaxTypeTDS:
+			taxSummary.TDSAmount = breakdown.Amount
+		case models.TaxTypeTCS:
+			taxSummary.TCSAmount = breakdown.Amount
+		case models.TaxTypeExcise:
+			taxSummary.ExciseAmount = breakdown.Amount
+		case models.TaxTypeCustoms:
+			taxSummary.CustomsAmount = breakdown.Amount
+		default:
+			taxSummary.OtherTaxAmount += breakdown.Amount
+		}
+	}
+
+	// Save tax summary within transaction
+	if err := s.taxRepo.CreateTaxSummaryWithTx(tx, taxSummary); err != nil {
+		return nil, err
+	}
+
+	// Create tax applications for each applied tax within transaction
+	for _, appliedTax := range taxCalculation.AppliedTaxes {
+		taxApp := models.NewTaxApplication()
+		taxApp.TaxID = appliedTax.TaxID
+		taxApp.SaleID = &saleID
+		taxApp.BaseAmount = appliedTax.BaseAmount
+		taxApp.TaxRate = appliedTax.Rate
+		taxApp.TaxAmount = appliedTax.Amount
+		taxApp.TaxType = appliedTax.TaxType
+
+		if err := s.taxRepo.CreateTaxApplicationWithTx(tx, taxApp); err != nil {
+			return nil, err
+		}
+	}
+
+	return taxSummary, nil
+}
+
 // ApplyTaxesToReturn applies taxes to a return and creates tax applications
 func (s *TaxService) ApplyTaxesToReturn(returnID string, items []models.ReturnItem, req *models.TaxCalculationRequest, userID string) (*models.TaxSummary, error) {
 	// Calculate taxes (same logic as sale but for returns)
@@ -722,5 +789,5 @@ func (s *TaxService) calculateCustomTaxAmount(tax models.Tax, lineTotal float64,
 
 // roundToNearestPaisa rounds amount to nearest paisa (2 decimal places) for GST compliance
 func (s *TaxService) roundToNearestPaisa(amount float64) float64 {
-	return float64(int(amount*100+0.5)) / 100
+	return math.Round(amount*100) / 100
 }

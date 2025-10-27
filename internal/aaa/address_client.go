@@ -3,6 +3,7 @@ package aaa
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"kisanlink-erp/pkg/proto"
 
@@ -16,7 +17,14 @@ type AddressClient struct {
 }
 
 func NewAddressClient(aaaServiceURL string) (*AddressClient, error) {
-	conn, err := grpc.Dial(aaaServiceURL, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	conn, err := grpc.DialContext(
+		ctx,
+		aaaServiceURL,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock(),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to AAA service: %w", err)
 	}

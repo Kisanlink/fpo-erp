@@ -20,6 +20,26 @@ func NewInventoryRepository(db *gorm.DB) *InventoryRepository {
 	return &InventoryRepository{db: db}
 }
 
+// CreateBatchWithTransaction creates a batch and initial transaction atomically
+func (r *InventoryRepository) CreateBatchWithTransaction(batch *models.InventoryBatch, transaction *models.InventoryTransaction) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		// Create the batch first
+		if err := tx.Create(batch).Error; err != nil {
+			return errors.NewInternalServerError("Failed to create inventory batch")
+		}
+
+		// Update the transaction with the created batch ID
+		transaction.BatchID = batch.ID
+
+		// Create the initial transaction
+		if err := tx.Create(transaction).Error; err != nil {
+			return errors.NewInternalServerError("Failed to create initial inventory transaction")
+		}
+
+		return nil
+	})
+}
+
 // Batch operations
 
 // CreateBatch creates a new inventory batch
@@ -174,6 +194,37 @@ func (r *InventoryRepository) UpdateBatchStock(batchID string, quantityChange in
 	if err := r.db.Model(&models.InventoryBatch{}).Where("id = ?", batchID).Update("total_quantity", gorm.Expr("total_quantity + ?", quantityChange)).Error; err != nil {
 		log.Printf("[ERROR] Database error updating batch stock: %v", err)
 		return errors.NewInternalServerError("Failed to update batch stock")
+	}
+	return nil
+}
+
+// UpdateBatchStockWithTx updates the stock level for a batch within a transaction with row lock
+func (r *InventoryRepository) UpdateBatchStockWithTx(tx *gorm.DB, batchID string, quantityChange int64) error {
+	// Use FOR UPDATE to lock the row and prevent race conditions
+	var batch models.InventoryBatch
+	if err := tx.Set("gorm:query_option", "FOR UPDATE").Where("id = ?", batchID).First(&batch).Error; err != nil {
+		log.Printf("[ERROR] Failed to lock batch for update: %v", err)
+		return errors.NewInternalServerError("Failed to lock batch for stock update")
+	}
+
+	// Check for sufficient stock before update
+	if batch.TotalQuantity+quantityChange < 0 {
+		log.Printf("[ERROR] Insufficient stock: current=%d, requested=%d", batch.TotalQuantity, -quantityChange)
+		return errors.NewBadRequestError("Insufficient stock available")
+	}
+
+	if err := tx.Model(&models.InventoryBatch{}).Where("id = ?", batchID).Update("total_quantity", gorm.Expr("total_quantity + ?", quantityChange)).Error; err != nil {
+		log.Printf("[ERROR] Database error updating batch stock: %v", err)
+		return errors.NewInternalServerError("Failed to update batch stock")
+	}
+	return nil
+}
+
+// CreateTransactionWithTx creates an inventory transaction within a transaction
+func (r *InventoryRepository) CreateTransactionWithTx(tx *gorm.DB, transaction *models.InventoryTransaction) error {
+	if err := tx.Create(transaction).Error; err != nil {
+		log.Printf("[ERROR] Database error creating inventory transaction: %v", err)
+		return errors.NewInternalServerError("Failed to create inventory transaction")
 	}
 	return nil
 }

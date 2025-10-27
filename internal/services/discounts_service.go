@@ -28,12 +28,12 @@ func NewDiscountsService(discountRepo *repositories.DiscountsRepository, product
 // CreateDiscount creates a new discount
 func (s *DiscountsService) CreateDiscount(req *models.CreateDiscountRequest) (*models.DiscountResponse, error) {
 	// Parse dates
-	validFrom, err := time.Parse("2006-01-02T15:04:05Z", req.ValidFrom)
+	validFrom, err := time.Parse(time.RFC3339, req.ValidFrom)
 	if err != nil {
 		return nil, apperrors.NewBadRequestError("invalid valid_from date format")
 	}
 
-	validUntil, err := time.Parse("2006-01-02T15:04:05Z", req.ValidUntil)
+	validUntil, err := time.Parse(time.RFC3339, req.ValidUntil)
 	if err != nil {
 		return nil, apperrors.NewBadRequestError("invalid valid_until date format")
 	}
@@ -198,14 +198,14 @@ func (s *DiscountsService) UpdateDiscount(id string, req *models.UpdateDiscountR
 		discount.UsageLimit = req.UsageLimit
 	}
 	if req.ValidFrom != nil {
-		validFrom, err := time.Parse("2006-01-02T15:04:05Z", *req.ValidFrom)
+		validFrom, err := time.Parse(time.RFC3339, *req.ValidFrom)
 		if err != nil {
 			return nil, apperrors.NewBadRequestError("invalid valid_from date format")
 		}
 		discount.ValidFrom = validFrom
 	}
 	if req.ValidUntil != nil {
-		validUntil, err := time.Parse("2006-01-02T15:04:05Z", *req.ValidUntil)
+		validUntil, err := time.Parse(time.RFC3339, *req.ValidUntil)
 		if err != nil {
 			return nil, apperrors.NewBadRequestError("invalid valid_until date format")
 		}

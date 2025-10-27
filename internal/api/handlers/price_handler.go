@@ -268,11 +268,19 @@ func (h *ProductPriceHandler) CreateProductPriceForProduct(c *gin.Context) {
 
 	var request models.CreateProductPriceRequest
 
-	// Set the product ID from URL parameter first
+	// Bind first
+	if err := c.ShouldBindJSON(&request); err != nil {
+		utils.BadRequestResponse(c, "Invalid request data", err)
+		return
+	}
+	// Reject mismatching body product_id, then force path precedence
+	if request.ProductID != "" && request.ProductID != productID {
+		utils.BadRequestResponse(c, "product_id in body does not match path", nil)
+		return
+	}
 	request.ProductID = productID
-
-	// Validate request
-	if err := utils.ValidateRequest(c, &request); err != nil {
+	// Validate after setting authoritative fields
+	if err := utils.ValidateStruct(&request); err != nil {
 		utils.BadRequestResponse(c, "Invalid request data", err)
 		return
 	}

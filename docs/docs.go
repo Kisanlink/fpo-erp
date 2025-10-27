@@ -6628,6 +6628,11 @@ const docTemplate = `{
         },
         "/api/v1/warehouses/{id}": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Retrieve a specific warehouse by ID",
                 "produces": [
                     "application/json"
@@ -7117,8 +7122,7 @@ const docTemplate = `{
                 "discount_type",
                 "name",
                 "valid_from",
-                "valid_until",
-                "value"
+                "valid_until"
             ],
             "properties": {
                 "applicable_categories": {
@@ -7192,7 +7196,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "value": {
-                    "type": "number"
+                    "type": "number",
+                    "description": "Required for flat, percentage, seasonal, and bulk discount types. Not used for buy_x_get_y discounts."
                 }
             }
         },

@@ -147,7 +147,10 @@ func Load() *Config {
 	utils.Info("Database Port:", config.Database.Port)
 	utils.Info("Database Name:", config.Database.Name)
 	utils.Info("Server Mode:", config.Server.Mode)
-	utils.Info("JWT Secret:", config.JWT.Secret)
+	// Never log secrets
+	if config.JWT.Secret == "" {
+		utils.Info("JWT secret not set")
+	}
 
 	return config
 }

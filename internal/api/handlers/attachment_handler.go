@@ -216,7 +216,12 @@ func (h *AttachmentHandler) DownloadAttachment(c *gin.Context) {
 	c.Header("Content-Disposition", "attachment; filename=attachment")
 
 	// Stream the file
-	c.DataFromReader(http.StatusOK, -1, contentType, fileReader.(io.Reader), nil)
+	r, ok := fileReader.(io.Reader)
+	if !ok {
+		utils.InternalServerErrorResponse(c, "Attachment stream is not readable", nil)
+		return
+	}
+	c.DataFromReader(http.StatusOK, -1, contentType, r, nil)
 }
 
 // GenerateDownloadURL generates a presigned URL for file download

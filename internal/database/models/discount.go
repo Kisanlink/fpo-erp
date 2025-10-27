@@ -153,7 +153,7 @@ type CreateDiscountRequest struct {
 	Name                 string       `json:"name" binding:"required"`
 	Description          *string      `json:"description"`
 	DiscountType         DiscountType `json:"discount_type" binding:"required"`
-	Value                float64      `json:"value" binding:"required,gt=0"`
+	Value                float64      `json:"value" binding:"gt=0"`
 	MaxDiscountAmount    *float64     `json:"max_discount_amount"`
 	MinOrderValue        *float64     `json:"min_order_value"`
 	MaxOrderValue        *float64     `json:"max_order_value"`

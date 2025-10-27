@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 
@@ -84,7 +85,13 @@ func ValidatePartialRequest(c *gin.Context, request interface{}) error {
 	}
 
 	// For partial updates, only validate non-zero fields
-	v := reflect.ValueOf(request).Elem()
+	v := reflect.ValueOf(request)
+	if v.Kind() == reflect.Pointer {
+		v = v.Elem()
+	}
+	if v.Kind() != reflect.Struct {
+		return fmt.Errorf("ValidatePartialRequest: expected pointer to struct")
+	}
 	t := v.Type()
 
 	for i := 0; i < v.NumField(); i++ {

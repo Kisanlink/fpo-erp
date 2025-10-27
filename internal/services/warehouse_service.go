@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"time"
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
@@ -28,9 +29,12 @@ func (s *WarehouseService) CreateWarehouse(ctx context.Context, request *models.
 
 	// Handle inline address creation if provided
 	if request.Address != nil {
-		// Create address via AAA service
-		address, err := s.addressClient.CreateAddress(ctx, &aaa.CreateAddressRequest{
-			UserID:       "system", // or get from context
+		// Create address via AAA service with timeout
+		ctxAddr, cancel := context.WithTimeout(ctx, 3*time.Second)
+		defer cancel()
+		userID := "system" // TODO: Extract from auth context when available
+		address, err := s.addressClient.CreateAddress(ctxAddr, &aaa.CreateAddressRequest{
+			UserID:       userID,
 			Type:         request.Address.Type,
 			AddressLine1: request.Address.AddressLine1,
 			AddressLine2: request.Address.AddressLine2,
@@ -53,6 +57,9 @@ func (s *WarehouseService) CreateWarehouse(ctx context.Context, request *models.
 
 	// Save to database
 	if err := s.warehouseRepo.Create(warehouse); err != nil {
+		if addressID != nil {
+			_ = s.addressClient.DeleteAddress(ctx, *addressID, true) // best-effort rollback
+		}
 		return nil, err
 	}
 
@@ -100,6 +107,10 @@ func (s *WarehouseService) UpdateWarehouse(ctx context.Context, id string, reque
 
 	// Handle inline address updates if provided
 	if request.Address != nil {
+		// Validate ownership/association before update
+		if warehouse.AddressID == nil || request.Address.ID == "" || *warehouse.AddressID != request.Address.ID {
+			return nil, fmt.Errorf("address mismatch: update not permitted")
+		}
 		// Update address via AAA service
 		address, err := s.addressClient.UpdateAddress(ctx, &aaa.UpdateAddressRequest{
 			ID:           request.Address.ID,
@@ -180,8 +191,8 @@ func (s *WarehouseService) buildWarehouseResponse(ctx context.Context, warehouse
 	response := &models.WarehouseResponse{
 		ID:        warehouse.ID,
 		Name:      warehouse.Name,
-		CreatedAt: warehouse.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt: warehouse.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		CreatedAt: warehouse.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt: warehouse.UpdatedAt.UTC().Format(time.RFC3339),
 	}
 
 	// Fetch address details if address ID exists
