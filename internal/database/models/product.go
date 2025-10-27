@@ -15,7 +15,9 @@ type Product struct {
 	Description *string `gorm:"type:text" json:"description"`
 
 	// Associations
-	Prices []ProductPrice `gorm:"foreignKey:ProductID;references:ID;tableName:product_prices" json:"prices,omitempty"`
+	Prices        []ProductPrice        `gorm:"foreignKey:ProductID;references:ID;tableName:product_prices" json:"prices,omitempty"`
+	Variants      []ProductVariant      `gorm:"foreignKey:ProductID" json:"variants,omitempty"`
+	Collaborators []CollaboratorProduct `gorm:"foreignKey:ProductID" json:"collaborators,omitempty"`
 }
 
 // NewProduct creates a new Product with initialized fields

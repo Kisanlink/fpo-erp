@@ -36,4 +36,13 @@ const (
 	// Payment and attachments
 	TableBankPayment = "BPAY" // Bank Payments
 	TableAttachment  = "ATCH" // Attachments
+
+	// Procurement Module
+	TableCollaborator        = "CLAB" // Collaborators/Vendors
+	TableCollaboratorProduct = "CPRD" // Collaborator-Product junction
+	TableProductVariant      = "PVAR" // Product Variants
+	TablePurchaseOrder       = "PORD" // Purchase Orders
+	TablePurchaseOrderItem   = "POIM" // PO Items
+	TableGRN                 = "GRNX" // Goods Receipt Notes
+	TableGRNItem             = "GRIT" // GRN Items
 )
