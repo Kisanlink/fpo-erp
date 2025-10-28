@@ -496,21 +496,21 @@ func (h *ReturnsHandler) RegisterRoutes(router *gin.RouterGroup) {
 		returns.Use(h.aaaMiddleware.Authenticate())
 
 		// Create/Update/Delete routes - CEO=CRUD, Store_Staff=CRUD, Tech_Support=R/W (temp)
-		returns.POST("", h.aaaMiddleware.RequirePermission("aaa/return", "*", "create"), h.CreateReturn)
-		returns.PUT("/:id", h.aaaMiddleware.RequirePermission("aaa/return", "*", "update"), h.UpdateReturn)
-		returns.PATCH("/:id/status", h.aaaMiddleware.RequirePermission("aaa/return", "*", "update"), h.UpdateReturnStatus)
-		returns.DELETE("/:id", h.aaaMiddleware.RequirePermission("aaa/return", "*", "delete"), h.DeleteReturn)
+		returns.POST("", h.aaaMiddleware.RequirePermission("return", "*", "create"), h.CreateReturn)
+		returns.PUT("/:id", h.aaaMiddleware.RequirePermission("return", "*", "update"), h.UpdateReturn)
+		returns.PATCH("/:id/status", h.aaaMiddleware.RequirePermission("return", "*", "update"), h.UpdateReturnStatus)
+		returns.DELETE("/:id", h.aaaMiddleware.RequirePermission("return", "*", "delete"), h.DeleteReturn)
 
 		// Read routes - Director=R, CEO=CRUD, Auditor=R, Accountant=R, Tech_Support=R/W (temp), Store_Manager=R, Store_Staff=CRUD
-		returns.GET("", h.aaaMiddleware.RequirePermission("aaa/return", "*", "read"), h.GetAllReturns)
-		returns.GET("/:id", h.aaaMiddleware.RequirePermission("aaa/return", "*", "read"), h.GetReturn)
-		returns.GET("/customer/:customerID", h.aaaMiddleware.RequirePermission("aaa/return", "*", "read"), h.GetReturnsByCustomer)
-		returns.GET("/sale/:saleID", h.aaaMiddleware.RequirePermission("aaa/return", "*", "read"), h.GetReturnsBySaleID)
-		returns.GET("/date-range", h.aaaMiddleware.RequirePermission("aaa/return", "*", "read"), h.GetReturnsByDateRange)
-		returns.GET("/status/:status", h.aaaMiddleware.RequirePermission("aaa/return", "*", "read"), h.GetReturnsByStatus)
-		returns.GET("/total-amount", h.aaaMiddleware.RequirePermission("aaa/return", "*", "read"), h.GetTotalReturnsAmount)
-		returns.GET("/return-rate/:productID", h.aaaMiddleware.RequirePermission("aaa/return", "*", "read"), h.GetReturnRateByProduct)
-		returns.GET("/most-returned", h.aaaMiddleware.RequirePermission("aaa/return", "*", "read"), h.GetMostReturnedProducts)
+		returns.GET("", h.aaaMiddleware.RequirePermission("return", "*", "read"), h.GetAllReturns)
+		returns.GET("/:id", h.aaaMiddleware.RequirePermission("return", "*", "read"), h.GetReturn)
+		returns.GET("/customer/:customerID", h.aaaMiddleware.RequirePermission("return", "*", "read"), h.GetReturnsByCustomer)
+		returns.GET("/sale/:saleID", h.aaaMiddleware.RequirePermission("return", "*", "read"), h.GetReturnsBySaleID)
+		returns.GET("/date-range", h.aaaMiddleware.RequirePermission("return", "*", "read"), h.GetReturnsByDateRange)
+		returns.GET("/status/:status", h.aaaMiddleware.RequirePermission("return", "*", "read"), h.GetReturnsByStatus)
+		returns.GET("/total-amount", h.aaaMiddleware.RequirePermission("return", "*", "read"), h.GetTotalReturnsAmount)
+		returns.GET("/return-rate/:productID", h.aaaMiddleware.RequirePermission("return", "*", "read"), h.GetReturnRateByProduct)
+		returns.GET("/most-returned", h.aaaMiddleware.RequirePermission("return", "*", "read"), h.GetMostReturnedProducts)
 	}
 }
 

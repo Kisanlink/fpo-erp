@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package pb;
 
-option go_package = "kisanlink-erp-v1/pkg/proto";
+option go_package = "kisanlink-erp/pkg/proto";
 
 import "google/protobuf/timestamp.proto";
 

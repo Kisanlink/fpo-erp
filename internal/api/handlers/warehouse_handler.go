@@ -214,11 +214,11 @@ func (h *WarehouseHandler) RegisterRoutes(router *gin.RouterGroup) {
 		// Apply authentication middleware to all routes
 		warehouses.Use(h.aaaMiddleware.Authenticate())
 
-		warehouses.POST("", h.aaaMiddleware.RequirePermission("aaa/warehouse", "*", "create"), h.CreateWarehouse)
-		warehouses.GET("", h.aaaMiddleware.RequirePermission("aaa/warehouse", "*", "read"), h.GetAllWarehouses)
-		warehouses.GET("/search", h.aaaMiddleware.RequirePermission("aaa/warehouse", "*", "read"), h.SearchWarehouses)
-		warehouses.GET("/:id", h.aaaMiddleware.RequirePermission("aaa/warehouse", "*", "read"), h.GetWarehouse)
-		warehouses.PATCH("/:id", h.aaaMiddleware.RequirePermission("aaa/warehouse", "*", "update"), h.UpdateWarehouse)
-		warehouses.DELETE("/:id", h.aaaMiddleware.RequirePermission("aaa/warehouse", "*", "delete"), h.DeleteWarehouse)
+		warehouses.POST("", h.aaaMiddleware.RequirePermission("warehouse", "*", "create"), h.CreateWarehouse)
+		warehouses.GET("", h.aaaMiddleware.RequirePermission("warehouse", "*", "read"), h.GetAllWarehouses)
+		warehouses.GET("/search", h.aaaMiddleware.RequirePermission("warehouse", "*", "read"), h.SearchWarehouses)
+		warehouses.GET("/:id", h.aaaMiddleware.RequirePermission("warehouse", "*", "read"), h.GetWarehouse)
+		warehouses.PATCH("/:id", h.aaaMiddleware.RequirePermission("warehouse", "*", "update"), h.UpdateWarehouse)
+		warehouses.DELETE("/:id", h.aaaMiddleware.RequirePermission("warehouse", "*", "delete"), h.DeleteWarehouse)
 	}
 }

@@ -21,8 +21,9 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	HTTPPort string `mapstructure:"http_port"`
-	Mode     string `mapstructure:"mode"`
+	HTTPPort  string `mapstructure:"http_port"`
+	Mode      string `mapstructure:"mode"`
+	PublicURL string `mapstructure:"public_url"`
 }
 
 type DatabaseConfig struct {
@@ -106,8 +107,9 @@ func Load() *Config {
 	// Load all environment variables using os.Getenv directly
 	config := &Config{
 		Server: ServerConfig{
-			HTTPPort: os.Getenv("SERVER_HTTP_PORT"),
-			Mode:     os.Getenv("SERVER_MODE"),
+			HTTPPort:  os.Getenv("SERVER_HTTP_PORT"),
+			Mode:      os.Getenv("SERVER_MODE"),
+			PublicURL: os.Getenv("SERVER_PUBLIC_URL"),
 		},
 		Database: DatabaseConfig{
 			Host:     os.Getenv("DB_POSTGRES_HOST"),
@@ -145,7 +147,10 @@ func Load() *Config {
 	utils.Info("Database Port:", config.Database.Port)
 	utils.Info("Database Name:", config.Database.Name)
 	utils.Info("Server Mode:", config.Server.Mode)
-	utils.Info("JWT Secret:", config.JWT.Secret)
+	// Never log secrets
+	if config.JWT.Secret == "" {
+		utils.Info("JWT secret not set")
+	}
 
 	return config
 }

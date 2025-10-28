@@ -55,3 +55,21 @@ type DeleteAddressRequest struct {
 	ID         string `json:"id"`
 	SoftDelete bool   `json:"soft_delete"`
 }
+
+// ListAddressesRequest represents a request to list addresses
+type ListAddressesRequest struct {
+	Page       int32  `json:"page"`
+	PageSize   int32  `json:"page_size"`
+	Search     string `json:"search,omitempty"`
+	UserID     string `json:"user_id,omitempty"`
+	Type       string `json:"type,omitempty"`
+	ActiveOnly bool   `json:"active_only"`
+}
+
+// ListAddressesResponse represents a response to list addresses
+type ListAddressesResponse struct {
+	Addresses  []*Address `json:"addresses"`
+	TotalCount int32      `json:"total_count"`
+	Page       int32      `json:"page"`
+	PageSize   int32      `json:"page_size"`
+}

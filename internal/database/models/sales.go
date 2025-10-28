@@ -12,7 +12,6 @@ import (
 type Sale struct {
 	base.BaseModel
 	WarehouseID string    `gorm:"type:varchar(100);not null" json:"warehouse_id"`
-	CustomerID  *string   `gorm:"type:varchar(100)" json:"customer_id"`
 	SaleDate    time.Time `gorm:"type:timestamptz;not null;default:now()" json:"sale_date"`
 	TotalAmount float64   `gorm:"type:numeric(14,4);not null" json:"total_amount"`
 	Status      string    `gorm:"type:varchar(20);not null" json:"status"`
@@ -34,6 +33,12 @@ type SaleItem struct {
 	Quantity     int64   `gorm:"type:bigint;not null;check:quantity > 0" json:"quantity"`
 	SellingPrice float64 `gorm:"type:numeric(12,4);not null" json:"selling_price"`
 	LineTotal    float64 `gorm:"type:numeric(14,4);not null" json:"line_total"`
+
+	// Tax amounts (calculated from batch tax configuration)
+	CGSTAmount      float64 `gorm:"type:numeric(12,4);default:0" json:"cgst_amount"`
+	SGSTAmount      float64 `gorm:"type:numeric(12,4);default:0" json:"sgst_amount"`
+	CustomTaxAmount float64 `gorm:"type:numeric(12,4);default:0" json:"custom_tax_amount"`
+	TotalTaxAmount  float64 `gorm:"type:numeric(12,4);default:0" json:"total_tax_amount"`
 
 	// Associations
 	Sale  Sale           `gorm:"foreignKey:SaleID" json:"sale,omitempty"`
@@ -61,12 +66,11 @@ func (SaleSummary) TableName() string {
 }
 
 // NewSale creates a new Sale with initialized fields
-func NewSale(warehouseID string, customerID *string, saleDate time.Time, totalAmount float64, status string) *Sale {
+func NewSale(warehouseID string, saleDate time.Time, totalAmount float64, status string) *Sale {
 	baseModel := base.NewBaseModel(constants.TableSale, hash.Medium)
 	return &Sale{
 		BaseModel:   *baseModel,
 		WarehouseID: warehouseID,
-		CustomerID:  customerID,
 		SaleDate:    saleDate,
 		TotalAmount: totalAmount,
 		Status:      status,
@@ -77,12 +81,34 @@ func NewSale(warehouseID string, customerID *string, saleDate time.Time, totalAm
 func NewSaleItem(saleID, batchID string, quantity int64, sellingPrice, lineTotal float64) *SaleItem {
 	baseModel := base.NewBaseModel(constants.TableSaleItem, hash.Medium)
 	return &SaleItem{
-		BaseModel:    *baseModel,
-		SaleID:       saleID,
-		BatchID:      batchID,
-		Quantity:     quantity,
-		SellingPrice: sellingPrice,
-		LineTotal:    lineTotal,
+		BaseModel:       *baseModel,
+		SaleID:          saleID,
+		BatchID:         batchID,
+		Quantity:        quantity,
+		SellingPrice:    sellingPrice,
+		LineTotal:       lineTotal,
+		CGSTAmount:      0,
+		SGSTAmount:      0,
+		CustomTaxAmount: 0,
+		TotalTaxAmount:  0,
+	}
+}
+
+// NewSaleItemWithTax creates a new SaleItem with tax amounts
+func NewSaleItemWithTax(saleID, batchID string, quantity int64, sellingPrice, lineTotal, cgstAmount, sgstAmount, customTaxAmount float64) *SaleItem {
+	baseModel := base.NewBaseModel(constants.TableSaleItem, hash.Medium)
+	totalTaxAmount := cgstAmount + sgstAmount + customTaxAmount
+	return &SaleItem{
+		BaseModel:       *baseModel,
+		SaleID:          saleID,
+		BatchID:         batchID,
+		Quantity:        quantity,
+		SellingPrice:    sellingPrice,
+		LineTotal:       lineTotal,
+		CGSTAmount:      cgstAmount,
+		SGSTAmount:      sgstAmount,
+		CustomTaxAmount: customTaxAmount,
+		TotalTaxAmount:  totalTaxAmount,
 	}
 }
 
@@ -102,38 +128,72 @@ func NewSaleSummary(summaryDate time.Time, warehouseID string, totalSales float6
 type SaleResponse struct {
 	ID          string             `json:"id"`
 	WarehouseID string             `json:"warehouse_id"`
-	CustomerID  *string            `json:"customer_id"`
 	SaleDate    string             `json:"sale_date"`
 	TotalAmount float64            `json:"total_amount"`
 	Status      string             `json:"status"`
 	Items       []SaleItemResponse `json:"items,omitempty"`
+	Breakdown   *SaleBreakdown     `json:"breakdown,omitempty"` // Detailed breakdown of amounts
 	CreatedAt   string             `json:"created_at"`
 	UpdatedAt   string             `json:"updated_at"`
 }
 
+// SaleBreakdown represents detailed breakdown of sale calculations
+type SaleBreakdown struct {
+	BaseAmount       float64                 `json:"base_amount"`        // Total before discounts and taxes
+	AppliedDiscounts []DiscountApplication   `json:"applied_discounts"`  // All discounts applied
+	DiscountAmount   float64                 `json:"discount_amount"`    // Total discount amount
+	TaxBreakdown     *TaxSummaryBreakdown    `json:"tax_breakdown"`      // Tax details
+	TaxAmount        float64                 `json:"tax_amount"`         // Total tax amount
+	TotalSavings     float64                 `json:"total_savings"`      // Total discount savings
+	FinalAmount      float64                 `json:"final_amount"`       // Final amount after discounts and taxes
+}
+
+// DiscountApplication represents an applied discount in the breakdown
+type DiscountApplication struct {
+	DiscountID   string  `json:"discount_id"`
+	DiscountCode string  `json:"discount_code"`
+	DiscountName string  `json:"discount_name"`
+	DiscountType string  `json:"discount_type"`
+	Amount       float64 `json:"amount"`
+	AppliedBy    string  `json:"applied_by"` // "manual", "coupon", "auto"
+}
+
+// TaxSummaryBreakdown represents tax breakdown details
+type TaxSummaryBreakdown struct {
+	CGSTAmount     float64 `json:"cgst_amount"`
+	SGSTAmount     float64 `json:"sgst_amount"`
+	IGSTAmount     float64 `json:"igst_amount"`
+	VATAmount      float64 `json:"vat_amount"`
+	OtherTaxAmount float64 `json:"other_tax_amount"`
+	TotalTaxAmount float64 `json:"total_tax_amount"`
+}
+
 // SaleItemResponse represents the API response for sale item
 type SaleItemResponse struct {
-	ID           string  `json:"id"`
-	SaleID       string  `json:"sale_id"`
-	BatchID      string  `json:"batch_id"`
-	Quantity     int64   `json:"quantity"`
-	SellingPrice float64 `json:"selling_price"`
-	LineTotal    float64 `json:"line_total"`
-	CreatedAt    string  `json:"created_at"`
+	ID              string  `json:"id"`
+	SaleID          string  `json:"sale_id"`
+	BatchID         string  `json:"batch_id"`
+	Quantity        int64   `json:"quantity"`
+	SellingPrice    float64 `json:"selling_price"`
+	LineTotal       float64 `json:"line_total"`
+
+	// Tax amounts
+	CGSTAmount      float64 `json:"cgst_amount"`
+	SGSTAmount      float64 `json:"sgst_amount"`
+	CustomTaxAmount float64 `json:"custom_tax_amount"`
+	TotalTaxAmount  float64 `json:"total_tax_amount"`
+
+	CreatedAt       string  `json:"created_at"`
 }
 
 // CreateSaleRequest represents the request to create a sale
 type CreateSaleRequest struct {
-	WarehouseID    string                  `json:"warehouse_id" binding:"required"`
-	CustomerID     *string                 `json:"customer_id"`
-	SaleDate       *string                 `json:"sale_date"`
-	DiscountID     *string                 `json:"discount_id"`     // Optional discount to apply
-	CustomerState  *string                 `json:"customer_state"`  // Customer's state for tax calculation
-	WarehouseState *string                 `json:"warehouse_state"` // Warehouse's state for tax calculation
-	CustomerGSTIN  *string                 `json:"customer_gstin"`  // Customer's GSTIN for tax calculation
-	CustomerPAN    *string                 `json:"customer_pan"`    // Customer's PAN for tax calculation
-	IsInterState   *bool                   `json:"is_inter_state"`  // Whether it's an inter-state transaction
-	Items          []CreateSaleItemRequest `json:"items" binding:"required"`
+	WarehouseID        string                  `json:"warehouse_id" binding:"required"`
+	SaleDate           *string                 `json:"sale_date"`
+	DiscountID         *string                 `json:"discount_id"`          // Manual discount by ID (highest priority)
+	CouponCode         *string                 `json:"coupon_code"`          // Manual discount by code (second priority)
+	AutoApplyDiscounts *bool                   `json:"auto_apply_discounts"` // Enable automatic discount discovery (default: true)
+	Items              []CreateSaleItemRequest `json:"items" binding:"required"`
 }
 
 // CreateSaleItemRequest represents the request to create a sale item

@@ -7,7 +7,7 @@ option go_package = "kisanlink-erp/pkg/proto";
 // CheckRequest represents a single permission check request
 message CheckRequest {
     string principal_id = 1;    // User ID requesting permission
-    string resource_type = 2;   // Resource type (e.g., "aaa/user")
+    string resource_type = 2;   // Resource type (e.g., "user")
     string resource_id = 3;     // Resource ID (e.g., "USER_123" or "*")
     string action = 4;          // Action (e.g., "read", "create", "delete")
 }

@@ -71,6 +71,7 @@ func (m *AAAMiddleware) Authenticate() gin.HandlerFunc {
 			c.Set("username", cached.Username)
 			c.Set("roles", cached.Roles)
 			c.Set("permissions", cached.Permissions)
+			c.Set("jwt_token", tokenString) // Store JWT token for gRPC calls
 			c.Next()
 			return
 		}
@@ -81,11 +82,14 @@ func (m *AAAMiddleware) Authenticate() gin.HandlerFunc {
 			expiresAt = claims.ExpiresAt.Time
 		}
 
+		// Extract permissions from the new role structure
+		permissions := ExtractPermissions(claims.RoleIDs)
+
 		cachedUser := &CachedUser{
 			UserID:      claims.UserID,
 			Username:    claims.Username,
-			Roles:       claims.Roles,
-			Permissions: claims.Permissions,
+			Roles:       claims.RoleIDs,
+			Permissions: permissions,
 			ExpiresAt:   expiresAt,
 		}
 
@@ -94,8 +98,9 @@ func (m *AAAMiddleware) Authenticate() gin.HandlerFunc {
 		// Set in context
 		c.Set("user_id", claims.UserID)
 		c.Set("username", claims.Username)
-		c.Set("roles", claims.Roles)
-		c.Set("permissions", claims.Permissions)
+		c.Set("roles", claims.RoleIDs)
+		c.Set("permissions", permissions)
+		c.Set("jwt_token", tokenString) // Store JWT token for gRPC calls
 
 		c.Next()
 	}
@@ -105,9 +110,10 @@ func (m *AAAMiddleware) Authenticate() gin.HandlerFunc {
 func (m *AAAMiddleware) RequirePermission(resourceType, resourceID, action string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.MustGet("user_id").(string)
+		jwtToken := c.GetString("jwt_token") // Get JWT token from context
 
-		// Check permission via gRPC
-		allowed, err := m.authzClient.CheckPermission(c.Request.Context(), userID, resourceType, resourceID, action)
+		// Check permission via gRPC with JWT token
+		allowed, err := m.authzClient.CheckPermissionWithToken(c.Request.Context(), userID, resourceType, resourceID, action, jwtToken)
 		if err != nil {
 			utils.ErrorResponse(c, 500, "Permission check failed: "+err.Error(), err)
 			c.Abort()
@@ -128,9 +134,10 @@ func (m *AAAMiddleware) RequirePermission(resourceType, resourceID, action strin
 func (m *AAAMiddleware) RequireAnyPermission(permissions []Permission) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.MustGet("user_id").(string)
+		jwtToken := c.GetString("jwt_token") // Get JWT token from context
 
-		// Check permissions via gRPC
-		results, err := m.authzClient.CheckMultiplePermissions(c.Request.Context(), userID, permissions)
+		// Check permissions via gRPC with JWT token
+		results, err := m.authzClient.CheckMultiplePermissionsWithToken(c.Request.Context(), userID, permissions, jwtToken)
 		if err != nil {
 			utils.ErrorResponse(c, 500, "Permission check failed: "+err.Error(), err)
 			c.Abort()
@@ -154,9 +161,10 @@ func (m *AAAMiddleware) RequireAnyPermission(permissions []Permission) gin.Handl
 func (m *AAAMiddleware) RequireAllPermissions(permissions []Permission) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.MustGet("user_id").(string)
+		jwtToken := c.GetString("jwt_token") // Get JWT token from context
 
-		// Check permissions via gRPC
-		results, err := m.authzClient.CheckMultiplePermissions(c.Request.Context(), userID, permissions)
+		// Check permissions via gRPC with JWT token
+		results, err := m.authzClient.CheckMultiplePermissionsWithToken(c.Request.Context(), userID, permissions, jwtToken)
 		if err != nil {
 			utils.ErrorResponse(c, 500, "Permission check failed: "+err.Error(), err)
 			c.Abort()
@@ -232,10 +240,14 @@ func (m *AAAMiddleware) parseToken(tokenString string) (*AAATokenClaims, error) 
 			return nil, errors.New("missing username in token")
 		}
 
+		// Extract permissions for debugging
+		permissions := ExtractPermissions(claims.RoleIDs)
+
 		// Log token info for debugging
 		utils.Debug("Token validated for user:", claims.Username)
-		utils.Debug("User roles count:", len(claims.Roles))
-		utils.Debug("User permissions count:", len(claims.Permissions))
+		utils.Debug("User roles count:", len(claims.RoleIDs))
+		utils.Debug("User permissions count:", len(permissions))
+		utils.Debug("Token isvalidate field:", claims.IsValidated)
 
 		return claims, nil
 	}

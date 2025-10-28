@@ -12,6 +12,16 @@ type Warehouse struct {
 	base.BaseModel
 	Name      string  `gorm:"type:varchar(100);not null" json:"name"`
 	AddressID *string `gorm:"type:varchar(50)" json:"address_id"` // Reference to AAA address
+
+	// Direct address fields (for when AAA address service is not available)
+	AddressType      *string `gorm:"type:varchar(50)" json:"address_type,omitempty"`
+	AddressLine1     *string `gorm:"type:varchar(255)" json:"address_line_1,omitempty"`
+	AddressLine2     *string `gorm:"type:varchar(255)" json:"address_line_2,omitempty"`
+	City             *string `gorm:"type:varchar(100)" json:"city,omitempty"`
+	State            *string `gorm:"type:varchar(100)" json:"state,omitempty"`
+	PostalCode       *string `gorm:"type:varchar(20)" json:"postal_code,omitempty"`
+	Country          *string `gorm:"type:varchar(100)" json:"country,omitempty"`
+	IsPrimaryAddress *bool   `gorm:"default:false" json:"is_primary_address,omitempty"`
 }
 
 // NewWarehouse creates a new Warehouse with initialized fields
@@ -22,6 +32,29 @@ func NewWarehouse(name string, addressID *string) *Warehouse {
 		Name:      name,
 		AddressID: addressID,
 	}
+}
+
+// NewWarehouseWithAddress creates a new Warehouse with direct address fields
+func NewWarehouseWithAddress(name string, address *CreateAddressRequest) *Warehouse {
+	baseModel := base.NewBaseModel(constants.TableWarehouse, hash.Medium)
+	warehouse := &Warehouse{
+		BaseModel: *baseModel,
+		Name:      name,
+		AddressID: nil, // No external address ID
+	}
+
+	if address != nil {
+		warehouse.AddressType = &address.Type
+		warehouse.AddressLine1 = &address.AddressLine1
+		warehouse.AddressLine2 = &address.AddressLine2
+		warehouse.City = &address.City
+		warehouse.State = &address.State
+		warehouse.PostalCode = &address.PostalCode
+		warehouse.Country = &address.Country
+		warehouse.IsPrimaryAddress = &address.IsPrimary
+	}
+
+	return warehouse
 }
 
 func (Warehouse) TableName() string {

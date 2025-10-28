@@ -7,25 +7,34 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// StoreManagerClaims represents the JWT claims for a Store Manager
+// StoreManagerClaims represents the JWT claims for a Store Manager (compatible with new AAA format)
 type StoreManagerClaims struct {
-	UserID      string   `json:"user_id"`
-	Username    string   `json:"username"`
-	IsValidated bool     `json:"is_validated"`
-	Roles       []Role   `json:"roles"`
-	Permissions []string `json:"permissions"`
-	TokenType   string   `json:"token_type"`
+	UserID      string `json:"user_id"`
+	Username    string `json:"username"`
+	IsValidated bool   `json:"isvalidate"` // Updated field name
+	RoleIDs     []Role `json:"roleIds"`    // Updated field name
 	jwt.RegisteredClaims
 }
 
-// Role represents a user role
+// SimpleRole represents the role definition with permissions
+type SimpleRole struct {
+	Name        string      `json:"name"`
+	Description string      `json:"description"`
+	Scope       string      `json:"scope"`
+	Permissions interface{} `json:"permissions"`
+}
+
+// Role represents a user role (matching AAA structure)
 type Role struct {
-	ID        string    `json:"id"`
-	UserID    string    `json:"user_id"`
-	RoleID    string    `json:"role_id"`
-	IsActive  bool      `json:"is_active"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID        string     `json:"id"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	CreatedBy string     `json:"created_by"`
+	UpdatedBy string     `json:"updated_by"`
+	UserID    string     `json:"UserID"`
+	RoleID    string     `json:"RoleID"`
+	IsActive  bool       `json:"is_active"`
+	Role      SimpleRole `json:"role"`
 }
 
 func main() {
@@ -66,25 +75,31 @@ func main() {
 		UserID:      "USER_store_manager_001",
 		Username:    "store.manager@kisanlink.com",
 		IsValidated: true,
-		Roles: []Role{
+		RoleIDs: []Role{
 			{
-				ID:        "ROL_store_manager_001",
+				ID:        "USERROLE_store_manager_001",
+				CreatedAt: now,
+				UpdatedAt: now,
+				CreatedBy: "",
+				UpdatedBy: "",
 				UserID:    "USER_store_manager_001",
 				RoleID:    "ROL_store_manager",
 				IsActive:  true,
-				CreatedAt: now,
-				UpdatedAt: now,
+				Role: SimpleRole{
+					Name:        "Store Manager",
+					Description: "Full access store manager role",
+					Scope:       "store",
+					Permissions: permissions, // Include the permissions array
+				},
 			},
 		},
-		Permissions: permissions,
-		TokenType:   "access",
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    "aaa-service",
-			Audience:  []string{"aaa-clients"},
+			Audience:  []string{"aaa-frontend"},
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
 			IssuedAt:  jwt.NewNumericDate(now),
 			NotBefore: jwt.NewNumericDate(now),
-			ID:        "jwt_store_manager_123456789abcdef",
+			Subject:   "USER_store_manager_001",
 		},
 	}
 
@@ -106,7 +121,8 @@ func main() {
 	fmt.Println("=== Token Details ===")
 	fmt.Printf("User ID: %s\n", claims.UserID)
 	fmt.Printf("Username: %s\n", claims.Username)
-	fmt.Printf("Role: %s\n", claims.Roles[0].RoleID)
+	fmt.Printf("Role: %s\n", claims.RoleIDs[0].RoleID)
+	fmt.Printf("IsValidated: %t\n", claims.IsValidated)
 	fmt.Printf("Issued At: %s\n", now.Format("2006-01-02 15:04:05 UTC"))
 	fmt.Printf("Expires At: %s\n", expiresAt.Format("2006-01-02 15:04:05 UTC"))
 	fmt.Printf("Total Permissions: %d\n", len(permissions))

@@ -25,7 +25,7 @@ const (
 type CheckRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	PrincipalId   string                 `protobuf:"bytes,1,opt,name=principal_id,json=principalId,proto3" json:"principal_id,omitempty"`    // User ID requesting permission
-	ResourceType  string                 `protobuf:"bytes,2,opt,name=resource_type,json=resourceType,proto3" json:"resource_type,omitempty"` // Resource type (e.g., "aaa/user")
+	ResourceType  string                 `protobuf:"bytes,2,opt,name=resource_type,json=resourceType,proto3" json:"resource_type,omitempty"` // Resource type (e.g., "user")
 	ResourceId    string                 `protobuf:"bytes,3,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`       // Resource ID (e.g., "USER_123" or "*")
 	Action        string                 `protobuf:"bytes,4,opt,name=action,proto3" json:"action,omitempty"`                                 // Action (e.g., "read", "create", "delete")
 	unknownFields protoimpl.UnknownFields

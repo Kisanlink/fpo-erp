@@ -1,6 +1,17 @@
-# Kisanlink ERP System
+# 🌾 Kisanlink ERP System
 
 A comprehensive Enterprise Resource Planning (ERP) system built with Go, designed for agricultural businesses and FPOs (Farmer Producer Organizations).
+
+[![Production Ready](https://img.shields.io/badge/Status-Production%20Ready-green)](https://github.com/kisanlink/fpo-erp)
+[![Go Version](https://img.shields.io/badge/Go-1.21+-blue)](https://golang.org/)
+[![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
+
+## 📚 API Documentation
+
+- **🌟 Official API Documentation**: [Scalar Registry](https://registry.scalar.com/@kisanlink/apis/kisanlink-erp-api/latest)
+- **Interactive Documentation**: `/docs` endpoint (Scalar Go-powered)
+- **Swagger UI**: `/swagger/index.html` endpoint
+- **OpenAPI Specification**: `/api-docs` endpoint
 
 ## 🚀 Features
 
@@ -10,6 +21,8 @@ A comprehensive Enterprise Resource Planning (ERP) system built with Go, designe
 - **Returns Management**: Process returns and refunds
 - **Warehouse Management**: Multi-warehouse support with location tracking
 - **Product Management**: SKU management with pricing and categorization
+- **Tax Management**: Comprehensive tax calculation and compliance system
+- **Discount System**: Advanced discount management with validation
 - **File Attachments**: S3 integration for document storage
 - **Bank Payments**: Track payment transactions for sales and returns
 - **Refund Policies**: Manage return and refund policies
@@ -23,7 +36,7 @@ A comprehensive Enterprise Resource Planning (ERP) system built with Go, designe
 - **Audit Logging**: Comprehensive activity tracking
 - **External User Management**: User management handled by separate AAA service
 
-## Technology Stack
+## 🛠️ Technology Stack
 
 - **Backend**: Go 1.21+
 - **Framework**: Gin (HTTP framework)
@@ -31,8 +44,11 @@ A comprehensive Enterprise Resource Planning (ERP) system built with Go, designe
 - **Authentication**: JWT with external AAA service integration
 - **File Storage**: AWS S3
 - **HTTP API**: RESTful API for all operations
+- **Documentation**: Scalar Go package + Swagger UI
+- **Tax System**: Production-ready GST compliance system
 - **Configuration**: Environment-based configuration
 - **Logging**: Structured logging with levels
+- **Validation**: Comprehensive input validation and business rules
 
 ## 🏗️ Project Structure
 
@@ -201,7 +217,7 @@ For testing purposes, you can generate JWT tokens using the provided script:
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/Kisanlink/fpo-erp.git
    cd Kisanlink-erp-v1
    ```
 
@@ -222,7 +238,10 @@ For testing purposes, you can generate JWT tokens using the provided script:
    ```
 
 The server will start on:
-- HTTP API: `http://localhost:8080`
+- HTTP API: `http://localhost:3000` (default)
+- API Documentation: `http://localhost:3000/docs` (Scalar)
+- Swagger UI: `http://localhost:3000/swagger/index.html`
+- OpenAPI Spec: `http://localhost:3000/api-docs`
 - AAA Service: `localhost:9091`
 
 ## API Endpoints
@@ -249,12 +268,20 @@ Authorization: Bearer <jwt-token>
 - `PATCH /api/v1/products/:id` - Update product
 - `DELETE /api/v1/products/:id` - Delete product
 
-#### Inventory Batches
+#### Inventory Batches (with Tax Support)
 - `GET /api/v1/batches` - List all batches
-- `POST /api/v1/batches` - Create batch
+- `POST /api/v1/batches` - Create batch **with tax configuration**
 - `GET /api/v1/batches/:id` - Get batch details
 - `GET /api/v1/batches/expiring` - Get expiring batches
 - `GET /api/v1/batches/low-stock` - Get low stock batches
+
+#### Tax Management
+- `GET /api/v1/taxes` - List all taxes
+- `POST /api/v1/taxes` - Create custom tax
+- `GET /api/v1/taxes/:id` - Get tax details
+- `PATCH /api/v1/taxes/:id` - Update tax
+- `DELETE /api/v1/taxes/:id` - Delete tax
+- `POST /api/v1/taxes/calculate` - Calculate tax for items
 
 #### Sales
 - `GET /api/v1/sales` - List all sales
@@ -306,17 +333,37 @@ curl -X POST http://localhost:8080/api/v1/warehouses \
   }'
 ```
 
-### Creating an Inventory Batch
+### Creating an Inventory Batch (with Tax Configuration)
 ```bash
-curl -X POST http://localhost:8080/api/v1/batches \
+curl -X POST http://localhost:3000/api/v1/batches \
   -H "Authorization: Bearer <your-jwt-token>" \
   -H "Content-Type: application/json" \
   -d '{
     "warehouse_id": "WH1234567890",
     "product_id": "PROD00000001",
-    "cost_price": 18.50,
-    "expiry_date": "2024-12-31",
-    "quantity": 1000
+    "cost_price": 85.50,
+    "expiry_date": "2025-12-31",
+    "quantity": 1000,
+    "cgst_rate": 2.5,
+    "sgst_rate": 2.5,
+    "custom_tax_ids": ["TAX_CESS_ENV_001", "TAX_MANDI_FEE_001"],
+    "is_tax_exempt": false
+  }'
+```
+
+### Creating a Custom Tax
+```bash
+curl -X POST http://localhost:3000/api/v1/taxes \
+  -H "Authorization: Bearer <your-jwt-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "TAX_CESS_ENV_001",
+    "name": "Environmental Cess",
+    "tax_type": "item_specific",
+    "calculation_type": "percentage",
+    "rate": 1.0,
+    "valid_from": "2024-01-01T00:00:00Z",
+    "is_active": true
   }'
 ```
 
@@ -415,21 +462,30 @@ For support and questions:
 - Contact the development team
 - Check the documentation in the `docs/` directory
 
-## Recent Updates
+## 📈 Recent Updates
 
-### ✅ Completed Features
+### ✅ Latest Completed Features (2024)
+- **🏷️ Production-Ready Tax System**: Complete inventory-based tax management with CGST, SGST, and custom taxes
+- **📚 Scalar Go Documentation**: Interactive API documentation using Scalar Go package
+- **🔧 Advanced Tax Calculation**: Automatic tax computation during sales with GST compliance
+- **📋 Comprehensive API Docs**: Updated with tax endpoints and examples
+- **🎯 Real-world Tax Scenarios**: Support for multiple tax rates and exemptions
+- **🔐 Enhanced Validation**: Complete input validation and business rule enforcement
+
+### ✅ Previously Completed Features
 - **Permission Matrix Implementation**: Complete role-based access control for all entities
 - **Model Reorganization**: Moved models from misc files to domain-specific files
 - **AAA Service Integration**: Full integration with external AAA service
 - **User Management Removal**: Removed local user management (handled by AAA service)
 - **JWT Token Support**: Support for external JWT tokens with custom payload format
 - **Enhanced Security**: Route-level permission enforcement
-- **Documentation**: Updated API documentation and usage examples
+- **Discount System**: Comprehensive discount management and validation
 
-### 🔄 In Progress
-- **Performance Optimization**: TTL caching for permissions
-- **Audit Logging**: Enhanced audit trail for all operations
-- **Error Handling**: Improved error messages and validation
+### 🎯 Current Status: Production Ready
+- **✅ Tax System**: Fully implemented and tested
+- **✅ API Documentation**: Complete with Scalar Registry integration
+- **✅ GST Compliance**: Indian tax regulations supported
+- **✅ Performance**: Optimized with TTL caching and efficient queries
 
 ## Roadmap
 

@@ -137,6 +137,9 @@ __debug_bin
 local/
 dev/
 development/
+generate_token.go
+validate_token.go
+test_docs.js
 
 # Test coverage
 coverage/
@@ -187,6 +190,7 @@ config.local.*
 .dev/
 
 # Local scripts
+scripts/
 scripts/local/
 local-scripts/
 

@@ -152,9 +152,10 @@ definitions:
         type: string
       applicable_warehouses:
         type: string
+      buy_quantity:
+        description: Buy X Get Y specific fields
+        type: integer
       code:
-        type: string
-      customer_groups:
         type: string
       description:
         type: string
@@ -164,6 +165,12 @@ definitions:
         type: string
       excluded_products:
         type: string
+      get_discount_type:
+        type: string
+      get_discount_value:
+        type: number
+      get_quantity:
+        type: integer
       is_active:
         type: boolean
       is_stackable:
@@ -182,8 +189,6 @@ definitions:
         type: string
       usage_limit:
         type: integer
-      usage_per_customer:
-        type: integer
       valid_from:
         type: string
       valid_until:
@@ -200,14 +205,29 @@ definitions:
     type: object
   models.CreateInventoryBatchRequest:
     properties:
+      cgst_rate:
+        description: Tax Configuration
+        maximum: 100
+        minimum: 0
+        type: number
       cost_price:
         type: number
+      custom_tax_ids:
+        items:
+          type: string
+        type: array
       expiry_date:
         type: string
+      is_tax_exempt:
+        type: boolean
       product_id:
         type: string
       quantity:
         type: integer
+      sgst_rate:
+        maximum: 100
+        minimum: 0
+        type: number
       warehouse_id:
         type: string
     required:
@@ -317,23 +337,15 @@ definitions:
     type: object
   models.CreateSaleRequest:
     properties:
-      customer_gstin:
-        description: Customer's GSTIN for tax calculation
-        type: string
-      customer_id:
-        type: string
-      customer_pan:
-        description: Customer's PAN for tax calculation
-        type: string
-      customer_state:
-        description: Customer's state for tax calculation
+      auto_apply_discounts:
+        description: 'Enable automatic discount discovery (default: true)'
+        type: boolean
+      coupon_code:
+        description: Manual discount by code (second priority)
         type: string
       discount_id:
-        description: Optional discount to apply
+        description: Manual discount by ID (highest priority)
         type: string
-      is_inter_state:
-        description: Whether it's an inter-state transaction
-        type: boolean
       items:
         items:
           $ref: '#/definitions/models.CreateSaleItemRequest'
@@ -341,9 +353,6 @@ definitions:
       sale_date:
         type: string
       warehouse_id:
-        type: string
-      warehouse_state:
-        description: Warehouse's state for tax calculation
         type: string
     required:
     - items
@@ -458,6 +467,22 @@ definitions:
     required:
     - name
     type: object
+  models.DiscountApplication:
+    properties:
+      amount:
+        type: number
+      applied_by:
+        description: '"manual", "coupon", "auto"'
+        type: string
+      discount_code:
+        type: string
+      discount_id:
+        type: string
+      discount_name:
+        type: string
+      discount_type:
+        type: string
+    type: object
   models.DiscountResponse:
     properties:
       applicable_categories:
@@ -466,14 +491,15 @@ definitions:
         type: string
       applicable_warehouses:
         type: string
+      buy_quantity:
+        description: Buy X Get Y specific fields
+        type: integer
       code:
         type: string
       created_at:
         type: string
       current_usage:
         type: integer
-      customer_groups:
-        type: string
       description:
         type: string
       discount_type:
@@ -482,6 +508,12 @@ definitions:
         type: string
       excluded_products:
         type: string
+      get_discount_type:
+        type: string
+      get_discount_value:
+        type: number
+      get_quantity:
+        type: integer
       id:
         type: string
       is_active:
@@ -507,8 +539,6 @@ definitions:
         type: string
       usage_limit:
         type: integer
-      usage_per_customer:
-        type: integer
       valid_from:
         type: string
       valid_until:
@@ -521,11 +551,8 @@ definitions:
     - flat
     - percentage
     - buy_x_get_y
-    - first_order
-    - loyalty
     - seasonal
     - bulk
-    - referral
     type: string
     x-enum-comments:
       DiscountTypeFlat: Fixed amount discount
@@ -536,25 +563,17 @@ definitions:
     - ""
     - ""
     - ""
-    - ""
-    - ""
-    - ""
     x-enum-varnames:
     - DiscountTypeFlat
     - DiscountTypePercentage
     - DiscountTypeBuyXGetY
-    - DiscountTypeFirstOrder
-    - DiscountTypeLoyalty
     - DiscountTypeSeasonal
     - DiscountTypeBulk
-    - DiscountTypeReferral
   models.DiscountUsageResponse:
     properties:
       amount:
         type: number
       created_at:
-        type: string
-      customer_id:
         type: string
       discount_id:
         type: string
@@ -588,16 +607,27 @@ definitions:
     type: object
   models.InventoryBatchResponse:
     properties:
+      cgst_rate:
+        description: Tax Configuration
+        type: number
       cost_price:
         type: number
       created_at:
         type: string
+      custom_tax_ids:
+        items:
+          type: string
+        type: array
       expiry_date:
         type: string
       id:
         type: string
+      is_tax_exempt:
+        type: boolean
       product_id:
         type: string
+      sgst_rate:
+        type: number
       total_quantity:
         type: integer
       updated_at:
@@ -641,14 +671,23 @@ definitions:
         allOf:
         - $ref: '#/definitions/models.AddressInfo'
         description: Embedded address info from AAA
+      cgst_rate:
+        description: Tax Configuration
+        type: number
       cost_price:
         type: number
       created_at:
         type: string
+      custom_tax_ids:
+        items:
+          type: string
+        type: array
       expiry_date:
         type: string
       id:
         type: string
+      is_tax_exempt:
+        type: boolean
       product_description:
         type: string
       product_id:
@@ -657,6 +696,8 @@ definitions:
         type: string
       product_sku:
         type: string
+      sgst_rate:
+        type: number
       total_quantity:
         type: integer
       updated_at:
@@ -776,12 +817,44 @@ definitions:
       updated_at:
         type: string
     type: object
+  models.SaleBreakdown:
+    properties:
+      applied_discounts:
+        description: All discounts applied
+        items:
+          $ref: '#/definitions/models.DiscountApplication'
+        type: array
+      base_amount:
+        description: Total before discounts and taxes
+        type: number
+      discount_amount:
+        description: Total discount amount
+        type: number
+      final_amount:
+        description: Final amount after discounts and taxes
+        type: number
+      tax_amount:
+        description: Total tax amount
+        type: number
+      tax_breakdown:
+        allOf:
+        - $ref: '#/definitions/models.TaxSummaryBreakdown'
+        description: Tax details
+      total_savings:
+        description: Total discount savings
+        type: number
+    type: object
   models.SaleItemResponse:
     properties:
       batch_id:
         type: string
+      cgst_amount:
+        description: Tax amounts
+        type: number
       created_at:
         type: string
+      custom_tax_amount:
+        type: number
       id:
         type: string
       line_total:
@@ -792,12 +865,18 @@ definitions:
         type: string
       selling_price:
         type: number
+      sgst_amount:
+        type: number
+      total_tax_amount:
+        type: number
     type: object
   models.SaleResponse:
     properties:
+      breakdown:
+        allOf:
+        - $ref: '#/definitions/models.SaleBreakdown'
+        description: Detailed breakdown of amounts
       created_at:
-        type: string
-      customer_id:
         type: string
       id:
         type: string
@@ -906,10 +985,12 @@ definitions:
       customer_gstin:
         type: string
       customer_id:
+        description: Optional - not required when no customer management
         type: string
       customer_pan:
         type: string
       customer_state:
+        description: Optional - not required when no customer management
         type: string
       is_inter_state:
         type: boolean
@@ -923,8 +1004,6 @@ definitions:
       warehouse_state:
         type: string
     required:
-    - customer_id
-    - customer_state
     - items
     - warehouse_id
     - warehouse_state
@@ -1063,6 +1142,21 @@ definitions:
       valid_until:
         type: string
     type: object
+  models.TaxSummaryBreakdown:
+    properties:
+      cgst_amount:
+        type: number
+      igst_amount:
+        type: number
+      other_tax_amount:
+        type: number
+      sgst_amount:
+        type: number
+      total_tax_amount:
+        type: number
+      vat_amount:
+        type: number
+    type: object
   models.TaxSummaryResponse:
     properties:
       created_at:
@@ -1194,8 +1288,6 @@ definitions:
         type: string
       applicable_warehouses:
         type: string
-      customer_groups:
-        type: string
       description:
         type: string
       excluded_categories:
@@ -1219,8 +1311,6 @@ definitions:
       terms:
         type: string
       usage_limit:
-        type: integer
-      usage_per_customer:
         type: integer
       valid_from:
         type: string
@@ -1378,8 +1468,10 @@ definitions:
     type: object
   models.ValidateDiscountRequest:
     properties:
-      customer_id:
-        type: string
+      category_ids:
+        items:
+          type: string
+        type: array
       discount_code:
         type: string
       order_value:
@@ -2530,6 +2622,106 @@ paths:
       summary: Get Active Discounts
       tags:
       - Discounts
+  /api/v1/discounts/applicable:
+    get:
+      description: Retrieve all discounts applicable for an order with given criteria
+      parameters:
+      - description: Order value
+        example: 1000
+        in: query
+        name: order_value
+        required: true
+        type: number
+      - description: Comma-separated product IDs
+        example: '"PROD_1,PROD_2"'
+        in: query
+        name: product_ids
+        type: string
+      - description: Comma-separated category IDs
+        example: '"CAT_1,CAT_2"'
+        in: query
+        name: category_ids
+        type: string
+      - description: Warehouse ID
+        example: '"WH_123"'
+        in: query
+        name: warehouse_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Applicable discounts retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.DiscountResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Applicable Discounts
+      tags:
+      - Discounts
+  /api/v1/discounts/calculate-optimal:
+    post:
+      consumes:
+      - application/json
+      description: Calculate the optimal combination of discounts for an order
+      parameters:
+      - description: Order details for optimization
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ValidateDiscountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Optimal discounts calculated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.DiscountResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Calculate Optimal Discounts
+      tags:
+      - Discounts
   /api/v1/discounts/status/{status}:
     get:
       description: Retrieve all discounts with a specific status
@@ -2651,6 +2843,50 @@ paths:
       security:
       - BearerAuth: []
       summary: Get Discount Usage by Sale
+      tags:
+      - Discounts
+  /api/v1/discounts/usage/stats/{discountID}:
+    get:
+      description: Retrieve usage statistics for a specific discount
+      parameters:
+      - description: Discount ID
+        example: DISC_12345678
+        in: path
+        name: discountID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Discount usage statistics retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  additionalProperties: true
+                  type: object
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Discount not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Discount Usage Statistics
       tags:
       - Discounts
   /api/v1/discounts/validate:
@@ -4455,47 +4691,6 @@ paths:
       security:
       - BearerAuth: []
       summary: Update Sale Status
-      tags:
-      - Sales
-  /api/v1/sales/customer/{customerID}:
-    get:
-      description: Retrieve all sales for a specific customer
-      parameters:
-      - description: Customer ID
-        example: CUST_12345678
-        in: path
-        name: customerID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Sales retrieved successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.Response'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/models.SaleResponse'
-                  type: array
-              type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Get Sales by Customer
       tags:
       - Sales
   /api/v1/sales/date-range:

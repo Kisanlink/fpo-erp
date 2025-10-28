@@ -17,6 +17,12 @@ type InventoryBatch struct {
 	ExpiryDate    time.Time `gorm:"type:date;not null" json:"expiry_date"`
 	TotalQuantity int64     `gorm:"type:bigint;not null;check:total_quantity >= 0" json:"total_quantity"`
 
+	// Tax Configuration
+	CGSTRate     float64  `gorm:"type:numeric(5,2);default:0" json:"cgst_rate"`
+	SGSTRate     float64  `gorm:"type:numeric(5,2);default:0" json:"sgst_rate"`
+	CustomTaxIDs []string `gorm:"type:json" json:"custom_tax_ids"`
+	IsTaxExempt  bool     `gorm:"default:false" json:"is_tax_exempt"`
+
 	// Associations
 	Warehouse Warehouse `gorm:"foreignKey:WarehouseID" json:"warehouse,omitempty"`
 	Product   Product   `gorm:"foreignKey:ProductID;references:ID;tableName:sku" json:"product,omitempty"`
@@ -47,14 +53,21 @@ func (InventoryTransaction) TableName() string {
 
 // InventoryBatchResponse represents the API response for inventory batch
 type InventoryBatchResponse struct {
-	ID            string  `json:"id"`
-	WarehouseID   string  `json:"warehouse_id"`
-	ProductID     string  `json:"product_id"`
-	CostPrice     float64 `json:"cost_price"`
-	ExpiryDate    string  `json:"expiry_date"`
-	TotalQuantity int64   `json:"total_quantity"`
-	CreatedAt     string  `json:"created_at"`
-	UpdatedAt     string  `json:"updated_at"`
+	ID            string   `json:"id"`
+	WarehouseID   string   `json:"warehouse_id"`
+	ProductID     string   `json:"product_id"`
+	CostPrice     float64  `json:"cost_price"`
+	ExpiryDate    string   `json:"expiry_date"`
+	TotalQuantity int64    `json:"total_quantity"`
+
+	// Tax Configuration
+	CGSTRate      float64  `json:"cgst_rate"`
+	SGSTRate      float64  `json:"sgst_rate"`
+	CustomTaxIDs  []string `json:"custom_tax_ids"`
+	IsTaxExempt   bool     `json:"is_tax_exempt"`
+
+	CreatedAt     string   `json:"created_at"`
+	UpdatedAt     string   `json:"updated_at"`
 }
 
 // ProductAvailabilityResponse represents the API response for product availability across warehouses
@@ -70,6 +83,13 @@ type ProductAvailabilityResponse struct {
 	CostPrice          float64      `json:"cost_price"`
 	ExpiryDate         string       `json:"expiry_date"`
 	TotalQuantity      int64        `json:"total_quantity"`
+
+	// Tax Configuration
+	CGSTRate           float64      `json:"cgst_rate"`
+	SGSTRate           float64      `json:"sgst_rate"`
+	CustomTaxIDs       []string     `json:"custom_tax_ids"`
+	IsTaxExempt        bool         `json:"is_tax_exempt"`
+
 	CreatedAt          string       `json:"created_at"`
 	UpdatedAt          string       `json:"updated_at"`
 }
@@ -88,11 +108,17 @@ type InventoryTransactionResponse struct {
 
 // CreateInventoryBatchRequest represents the request to create an inventory batch
 type CreateInventoryBatchRequest struct {
-	WarehouseID string  `json:"warehouse_id" binding:"required"`
-	ProductID   string  `json:"product_id" binding:"required"`
-	CostPrice   float64 `json:"cost_price" binding:"required,gt=0"`
-	ExpiryDate  string  `json:"expiry_date" binding:"required"`
-	Quantity    int64   `json:"quantity" binding:"required,gt=0"`
+	WarehouseID  string   `json:"warehouse_id" binding:"required"`
+	ProductID    string   `json:"product_id" binding:"required"`
+	CostPrice    float64  `json:"cost_price" binding:"required,gt=0"`
+	ExpiryDate   string   `json:"expiry_date" binding:"required"`
+	Quantity     int64    `json:"quantity" binding:"required,gt=0"`
+
+	// Tax Configuration
+	CGSTRate     float64  `json:"cgst_rate" binding:"min=0,max=100"`
+	SGSTRate     float64  `json:"sgst_rate" binding:"min=0,max=100"`
+	CustomTaxIDs []string `json:"custom_tax_ids"`
+	IsTaxExempt  bool     `json:"is_tax_exempt"`
 }
 
 // CreateInventoryTransactionRequest represents the request to create an inventory transaction
@@ -104,8 +130,11 @@ type CreateInventoryTransactionRequest struct {
 }
 
 // NewInventoryBatch creates a new InventoryBatch with initialized fields
-func NewInventoryBatch(warehouseID, productID string, costPrice float64, expiryDate time.Time, totalQuantity int64) *InventoryBatch {
+func NewInventoryBatch(warehouseID, productID string, costPrice float64, expiryDate time.Time, totalQuantity int64, cgstRate, sgstRate float64, customTaxIDs []string, isTaxExempt bool) *InventoryBatch {
 	baseModel := base.NewBaseModel(constants.TableBatch, hash.Medium)
+	if customTaxIDs == nil {
+		customTaxIDs = []string{}
+	}
 	return &InventoryBatch{
 		BaseModel:     *baseModel,
 		WarehouseID:   warehouseID,
@@ -113,6 +142,10 @@ func NewInventoryBatch(warehouseID, productID string, costPrice float64, expiryD
 		CostPrice:     costPrice,
 		ExpiryDate:    expiryDate,
 		TotalQuantity: totalQuantity,
+		CGSTRate:      cgstRate,
+		SGSTRate:      sgstRate,
+		CustomTaxIDs:  customTaxIDs,
+		IsTaxExempt:   isTaxExempt,
 	}
 }
 

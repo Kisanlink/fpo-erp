@@ -28,8 +28,8 @@ func NewInventoryService(inventoryRepo *repositories.InventoryRepository, wareho
 	}
 }
 
-// CreateBatch creates a new inventory batch
-func (s *InventoryService) CreateBatch(warehouseID, productID string, costPrice float64, expiryDate time.Time, quantity int64) (*models.InventoryBatchResponse, error) {
+// CreateBatch creates a new inventory batch with tax configuration
+func (s *InventoryService) CreateBatch(warehouseID, productID string, costPrice float64, expiryDate time.Time, quantity int64, cgstRate, sgstRate float64, customTaxIDs []string, isTaxExempt bool) (*models.InventoryBatchResponse, error) {
 	// Validate warehouse exists
 	_, err := s.warehouseRepo.GetByID(warehouseID)
 	if err != nil {
@@ -52,18 +52,23 @@ func (s *InventoryService) CreateBatch(warehouseID, productID string, costPrice 
 		return nil, errors.NewBadRequestError("Quantity must be positive")
 	}
 
-	// Create batch using the proper constructor
-	batch := models.NewInventoryBatch(warehouseID, productID, costPrice, expiryDate, quantity)
-
-	if err := s.inventoryRepo.CreateBatch(batch); err != nil {
-		return nil, err
+	// Validate tax rates
+	if cgstRate < 0 || cgstRate > 100 {
+		return nil, errors.NewBadRequestError("CGST rate must be between 0 and 100")
 	}
+	if sgstRate < 0 || sgstRate > 100 {
+		return nil, errors.NewBadRequestError("SGST rate must be between 0 and 100")
+	}
+
+	// Create batch using the updated constructor
+	batch := models.NewInventoryBatch(warehouseID, productID, costPrice, expiryDate, quantity, cgstRate, sgstRate, customTaxIDs, isTaxExempt)
 
 	// Create initial transaction using the proper constructor
 	note := "Initial import"
-	transaction := models.NewInventoryTransaction(batch.ID, "import", quantity, nil, nil, &note, time.Now())
+	transaction := models.NewInventoryTransaction("", "import", quantity, nil, nil, &note, time.Now())
 
-	if err := s.inventoryRepo.CreateTransaction(transaction); err != nil {
+	// Create batch and initial transaction atomically
+	if err := s.inventoryRepo.CreateBatchWithTransaction(batch, transaction); err != nil {
 		return nil, err
 	}
 
@@ -74,6 +79,10 @@ func (s *InventoryService) CreateBatch(warehouseID, productID string, costPrice 
 		CostPrice:     batch.CostPrice,
 		ExpiryDate:    batch.ExpiryDate.Format("2006-01-02"),
 		TotalQuantity: batch.TotalQuantity,
+		CGSTRate:      batch.CGSTRate,
+		SGSTRate:      batch.SGSTRate,
+		CustomTaxIDs:  batch.CustomTaxIDs,
+		IsTaxExempt:   batch.IsTaxExempt,
 		CreatedAt:     batch.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		UpdatedAt:     batch.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 	}
@@ -95,6 +104,10 @@ func (s *InventoryService) GetBatch(id string) (*models.InventoryBatchResponse, 
 		CostPrice:     batch.CostPrice,
 		ExpiryDate:    batch.ExpiryDate.Format("2006-01-02"),
 		TotalQuantity: batch.TotalQuantity,
+		CGSTRate:      batch.CGSTRate,
+		SGSTRate:      batch.SGSTRate,
+		CustomTaxIDs:  batch.CustomTaxIDs,
+		IsTaxExempt:   batch.IsTaxExempt,
 		CreatedAt:     batch.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		UpdatedAt:     batch.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 	}
@@ -117,16 +130,7 @@ func (s *InventoryService) GetBatchesByWarehouse(warehouseID string) ([]models.I
 
 	var responses []models.InventoryBatchResponse
 	for _, batch := range batches {
-		response := models.InventoryBatchResponse{
-			ID:            batch.ID,
-			WarehouseID:   batch.WarehouseID,
-			ProductID:     batch.ProductID,
-			CostPrice:     batch.CostPrice,
-			ExpiryDate:    batch.ExpiryDate.Format("2006-01-02"),
-			TotalQuantity: batch.TotalQuantity,
-			CreatedAt:     batch.CreatedAt.Format("2006-01-02T15:04:05Z"),
-			UpdatedAt:     batch.UpdatedAt.Format("2006-01-02T15:04:05Z"),
-		}
+		response := s.batchToResponse(batch)
 		responses = append(responses, response)
 	}
 
@@ -148,16 +152,7 @@ func (s *InventoryService) GetBatchesByProduct(productID string) ([]models.Inven
 
 	var responses []models.InventoryBatchResponse
 	for _, batch := range batches {
-		response := models.InventoryBatchResponse{
-			ID:            batch.ID,
-			WarehouseID:   batch.WarehouseID,
-			ProductID:     batch.ProductID,
-			CostPrice:     batch.CostPrice,
-			ExpiryDate:    batch.ExpiryDate.Format("2006-01-02"),
-			TotalQuantity: batch.TotalQuantity,
-			CreatedAt:     batch.CreatedAt.Format("2006-01-02T15:04:05Z"),
-			UpdatedAt:     batch.UpdatedAt.Format("2006-01-02T15:04:05Z"),
-		}
+		response := s.batchToResponse(batch)
 		responses = append(responses, response)
 	}
 
@@ -247,16 +242,7 @@ func (s *InventoryService) GetExpiringBatches(days int) ([]models.InventoryBatch
 
 	var responses []models.InventoryBatchResponse
 	for _, batch := range batches {
-		response := models.InventoryBatchResponse{
-			ID:            batch.ID,
-			WarehouseID:   batch.WarehouseID,
-			ProductID:     batch.ProductID,
-			CostPrice:     batch.CostPrice,
-			ExpiryDate:    batch.ExpiryDate.Format("2006-01-02"),
-			TotalQuantity: batch.TotalQuantity,
-			CreatedAt:     batch.CreatedAt.Format("2006-01-02T15:04:05Z"),
-			UpdatedAt:     batch.UpdatedAt.Format("2006-01-02T15:04:05Z"),
-		}
+		response := s.batchToResponse(batch)
 		responses = append(responses, response)
 	}
 
@@ -272,16 +258,7 @@ func (s *InventoryService) GetLowStockBatches(threshold int64) ([]models.Invento
 
 	var responses []models.InventoryBatchResponse
 	for _, batch := range batches {
-		response := models.InventoryBatchResponse{
-			ID:            batch.ID,
-			WarehouseID:   batch.WarehouseID,
-			ProductID:     batch.ProductID,
-			CostPrice:     batch.CostPrice,
-			ExpiryDate:    batch.ExpiryDate.Format("2006-01-02"),
-			TotalQuantity: batch.TotalQuantity,
-			CreatedAt:     batch.CreatedAt.Format("2006-01-02T15:04:05Z"),
-			UpdatedAt:     batch.UpdatedAt.Format("2006-01-02T15:04:05Z"),
-		}
+		response := s.batchToResponse(batch)
 		responses = append(responses, response)
 	}
 
@@ -308,6 +285,10 @@ func (s *InventoryService) GetAllProductsAvailability(ctx context.Context) ([]mo
 			CostPrice:          batch.CostPrice,
 			ExpiryDate:         batch.ExpiryDate.Format("2006-01-02"),
 			TotalQuantity:      batch.TotalQuantity,
+			CGSTRate:           batch.CGSTRate,
+			SGSTRate:           batch.SGSTRate,
+			CustomTaxIDs:       batch.CustomTaxIDs,
+			IsTaxExempt:        batch.IsTaxExempt,
 			CreatedAt:          batch.CreatedAt.Format("2006-01-02T15:04:05Z"),
 			UpdatedAt:          batch.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 		}
@@ -334,6 +315,24 @@ func (s *InventoryService) GetAllProductsAvailability(ctx context.Context) ([]mo
 	}
 
 	return responses, nil
+}
+
+// batchToResponse converts a batch model to response model
+func (s *InventoryService) batchToResponse(batch models.InventoryBatch) models.InventoryBatchResponse {
+	return models.InventoryBatchResponse{
+		ID:            batch.ID,
+		WarehouseID:   batch.WarehouseID,
+		ProductID:     batch.ProductID,
+		CostPrice:     batch.CostPrice,
+		ExpiryDate:    batch.ExpiryDate.Format("2006-01-02"),
+		TotalQuantity: batch.TotalQuantity,
+		CGSTRate:      batch.CGSTRate,
+		SGSTRate:      batch.SGSTRate,
+		CustomTaxIDs:  batch.CustomTaxIDs,
+		IsTaxExempt:   batch.IsTaxExempt,
+		CreatedAt:     batch.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt:     batch.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+	}
 }
 
 // buildFullAddress builds a full address string from address components

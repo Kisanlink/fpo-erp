@@ -33,7 +33,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	}
 
 	// Initialize AAA address client
-	addressClient, err := aaa.NewAddressClient(cfg.AAA.ServiceURL)
+	addressClient, err := aaa.NewAddressClient(cfg.AAA.GRPCAddress)
 	if err != nil {
 		panic("Failed to initialize AAA address client: " + err.Error())
 	}
@@ -43,9 +43,9 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	productService := services.NewProductService(productRepo, priceRepo)
 	priceService := services.NewProductPriceService(priceRepo, productRepo)
 	inventoryService := services.NewInventoryService(inventoryRepo, warehouseRepo, productRepo, addressClient)
-	discountsService := services.NewDiscountsService(discountRepo)
+	discountsService := services.NewDiscountsService(discountRepo, productRepo, warehouseRepo)
 	taxService := services.NewTaxService(taxRepo)
-	salesService := services.NewSalesService(salesRepo, productRepo, inventoryRepo, priceRepo, discountRepo, taxRepo)
+	salesService := services.NewSalesService(salesRepo, productRepo, inventoryRepo, priceRepo, discountRepo, taxRepo, warehouseRepo)
 	returnsService := services.NewReturnsService(returnsRepo, salesRepo, inventoryRepo)
 	attachmentService := services.NewAttachmentService(attachmentRepo, s3Service)
 	refundPoliciesService := services.NewRefundPoliciesService(refundPoliciesRepo)

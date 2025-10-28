@@ -184,12 +184,12 @@ func (h *BankPaymentsHandler) RegisterRoutes(router *gin.RouterGroup) {
 		payments.Use(h.aaaMiddleware.Authenticate())
 
 		// Read routes - Director=R, CEO=CRUD, Auditor=R, Accountant=CRUD, Tech_Support=R/W (temp), Store_Manager=–, Store_Staff=–
-		payments.GET("", h.aaaMiddleware.RequirePermission("aaa/bank_payment", "*", "read"), h.GetAllBankPayments)
-		payments.GET("/:id", h.aaaMiddleware.RequirePermission("aaa/bank_payment", "*", "read"), h.GetBankPayment)
-		payments.GET("/sale/:saleID", h.aaaMiddleware.RequirePermission("aaa/bank_payment", "*", "read"), h.GetBankPaymentsBySale)
-		payments.GET("/return/:returnID", h.aaaMiddleware.RequirePermission("aaa/bank_payment", "*", "read"), h.GetBankPaymentsByReturn)
+		payments.GET("", h.aaaMiddleware.RequirePermission("bank_payment", "*", "read"), h.GetAllBankPayments)
+		payments.GET("/:id", h.aaaMiddleware.RequirePermission("bank_payment", "*", "read"), h.GetBankPayment)
+		payments.GET("/sale/:saleID", h.aaaMiddleware.RequirePermission("bank_payment", "*", "read"), h.GetBankPaymentsBySale)
+		payments.GET("/return/:returnID", h.aaaMiddleware.RequirePermission("bank_payment", "*", "read"), h.GetBankPaymentsByReturn)
 
 		// Protected routes - CEO=CRUD, Accountant=CRUD, Tech_Support=R/W (temp)
-		payments.POST("", h.aaaMiddleware.RequirePermission("aaa/bank_payment", "*", "create"), h.CreateBankPayment)
+		payments.POST("", h.aaaMiddleware.RequirePermission("bank_payment", "*", "create"), h.CreateBankPayment)
 	}
 }
