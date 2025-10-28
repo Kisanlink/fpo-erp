@@ -107,12 +107,14 @@ type JWTGroup struct {
 
 // JWTUserContext represents the user_context field in JWT token
 type JWTUserContext struct {
-	ID          string    `json:"id"`
-	Username    string    `json:"username"`
-	PhoneNumber string    `json:"phone_number"`
-	CountryCode string    `json:"country_code"`
-	IsValidated bool      `json:"is_validated"`
-	Roles       []JWTRole `json:"roles"`
+	ID             string            `json:"id"`
+	Username       string            `json:"username"`
+	PhoneNumber    string            `json:"phone_number"`
+	CountryCode    string            `json:"country_code"`
+	IsValidated    bool              `json:"is_validated"`
+	Roles          []JWTRole         `json:"roles"`
+	Organizations  []JWTOrganization `json:"organizations"`  // Support nested organizations in user_context
+	Groups         []JWTGroup        `json:"groups"`         // Support nested groups in user_context
 }
 
 // AAATokenClaims represents JWT claims from AAA service (updated to match actual JWT structure)
@@ -218,17 +220,27 @@ func ExtractPermissions(roles []AAARole) []string {
 
 // GetOrganizationIDs extracts all organization IDs from token claims
 // Returns organization IDs from both direct memberships and role-based access
+// Supports BOTH top-level organizations and user_context.organizations for backward compatibility
 func (c *AAATokenClaims) GetOrganizationIDs() []string {
 	orgMap := make(map[string]bool)
 
-	// Get from direct organizations
+	// Get from top-level direct organizations (new format)
 	for _, org := range c.Organizations {
 		if org.ID != "" {
 			orgMap[org.ID] = true
 		}
 	}
 
-	// Get from roles with organization scope
+	// ✅ ALSO check user_context.organizations (AAA service nested format)
+	if c.UserContext != nil {
+		for _, org := range c.UserContext.Organizations {
+			if org.ID != "" {
+				orgMap[org.ID] = true
+			}
+		}
+	}
+
+	// Get from top-level roles with organization scope
 	for _, role := range c.Roles {
 		if role.OrganizationID != nil && *role.OrganizationID != "" {
 			orgMap[*role.OrganizationID] = true
@@ -269,11 +281,19 @@ func (c *AAATokenClaims) GetPrimaryOrganizationID() string {
 }
 
 // GetOrganizationName returns the name of the primary organization
+// Checks both top-level organizations and user_context.organizations
 func (c *AAATokenClaims) GetOrganizationName() string {
-	if len(c.Organizations) == 0 {
-		return ""
+	// Check top-level organizations first (new format)
+	if len(c.Organizations) > 0 {
+		return c.Organizations[0].Name
 	}
-	return c.Organizations[0].Name
+
+	// ✅ Fallback to user_context.organizations (AAA service nested format)
+	if c.UserContext != nil && len(c.UserContext.Organizations) > 0 {
+		return c.UserContext.Organizations[0].Name
+	}
+
+	return ""
 }
 
 // HasOrganizationAccess checks if user has access to a specific organization

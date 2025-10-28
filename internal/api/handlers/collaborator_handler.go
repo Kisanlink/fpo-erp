@@ -291,12 +291,12 @@ func (h *CollaboratorHandler) RegisterRoutes(router *gin.RouterGroup) {
 		// Apply authentication middleware to all routes
 		collaborators.Use(h.aaaMiddleware.Authenticate())
 
-		collaborators.POST("", h.aaaMiddleware.RequirePermission("collaborator", "*", "create"), h.CreateCollaborator)
-		collaborators.GET("", h.aaaMiddleware.RequirePermission("collaborator", "*", "read"), h.GetAllCollaborators)
-		collaborators.GET("/active", h.aaaMiddleware.RequirePermission("collaborator", "*", "read"), h.GetActiveCollaborators)
-		collaborators.GET("/search", h.aaaMiddleware.RequirePermission("collaborator", "*", "read"), h.SearchCollaborators)
-		collaborators.GET("/:id", h.aaaMiddleware.RequirePermission("collaborator", "*", "read"), h.GetCollaborator)
-		collaborators.PUT("/:id", h.aaaMiddleware.RequirePermission("collaborator", "*", "update"), h.UpdateCollaborator)
-		collaborators.DELETE("/:id", h.aaaMiddleware.RequirePermission("collaborator", "*", "delete"), h.DeleteCollaborator)
+		collaborators.POST("", h.aaaMiddleware.RequireOrgPermission("collaborator", "create"), h.CreateCollaborator)
+		collaborators.GET("", h.aaaMiddleware.RequireOrgPermission("collaborator", "read"), h.GetAllCollaborators)
+		collaborators.GET("/active", h.aaaMiddleware.RequireOrgPermission("collaborator", "read"), h.GetActiveCollaborators)
+		collaborators.GET("/search", h.aaaMiddleware.RequireOrgPermission("collaborator", "read"), h.SearchCollaborators)
+		collaborators.GET("/:id", h.aaaMiddleware.RequireOrgPermission("collaborator", "read"), h.GetCollaborator)
+		collaborators.PUT("/:id", h.aaaMiddleware.RequireOrgPermission("collaborator", "update"), h.UpdateCollaborator)
+		collaborators.DELETE("/:id", h.aaaMiddleware.RequireOrgPermission("collaborator", "delete"), h.DeleteCollaborator)
 	}
 }

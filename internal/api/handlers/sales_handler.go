@@ -429,19 +429,19 @@ func (h *SalesHandler) RegisterRoutes(router *gin.RouterGroup) {
 		sales.Use(h.aaaMiddleware.Authenticate())
 
 		// Create/Update/Delete routes - CEO=CRUD, Store_Staff=CRUD, Tech_Support=R/W (temp)
-		sales.POST("", h.aaaMiddleware.RequirePermission("sale", "*", "create"), h.CreateSale)
-		sales.PUT("/:id", h.aaaMiddleware.RequirePermission("sale", "*", "update"), h.UpdateSale)
-		sales.PATCH("/:id/status", h.aaaMiddleware.RequirePermission("sale", "*", "update"), h.UpdateSaleStatus)
-		sales.DELETE("/:id", h.aaaMiddleware.RequirePermission("sale", "*", "delete"), h.DeleteSale)
+		sales.POST("", h.aaaMiddleware.RequireOrgPermission("sale", "create"), h.CreateSale)
+		sales.PUT("/:id", h.aaaMiddleware.RequireOrgPermission("sale", "update"), h.UpdateSale)
+		sales.PATCH("/:id/status", h.aaaMiddleware.RequireOrgPermission("sale", "update"), h.UpdateSaleStatus)
+		sales.DELETE("/:id", h.aaaMiddleware.RequireOrgPermission("sale", "delete"), h.DeleteSale)
 
 		// Read routes - Director=R, CEO=CRUD, Auditor=R, Accountant=R, Tech_Support=R/W (temp), Store_Manager=R, Store_Staff=CRUD
-		sales.GET("", h.aaaMiddleware.RequirePermission("sale", "*", "read"), h.GetAllSales)
-		sales.GET("/summary", h.aaaMiddleware.RequirePermission("sale_summary", "*", "read"), h.GetSalesSummary)
-		sales.GET("/:id", h.aaaMiddleware.RequirePermission("sale", "*", "read"), h.GetSale)
-		sales.GET("/:id/returns", h.aaaMiddleware.RequirePermission("sale", "*", "read"), h.GetReturnsForSale)
-		sales.GET("/date-range", h.aaaMiddleware.RequirePermission("sale", "*", "read"), h.GetSalesByDateRange)
-		sales.GET("/status/:status", h.aaaMiddleware.RequirePermission("sale", "*", "read"), h.GetSalesByStatus)
-		sales.GET("/total-amount", h.aaaMiddleware.RequirePermission("sale", "*", "read"), h.GetTotalSalesAmount)
-		sales.GET("/top-selling", h.aaaMiddleware.RequirePermission("sale", "*", "read"), h.GetTopSellingProducts)
+		sales.GET("", h.aaaMiddleware.RequireOrgPermission("sale", "read"), h.GetAllSales)
+		sales.GET("/summary", h.aaaMiddleware.RequireOrgPermission("sale_summary", "read"), h.GetSalesSummary)
+		sales.GET("/:id", h.aaaMiddleware.RequireOrgPermission("sale", "read"), h.GetSale)
+		sales.GET("/:id/returns", h.aaaMiddleware.RequireOrgPermission("sale", "read"), h.GetReturnsForSale)
+		sales.GET("/date-range", h.aaaMiddleware.RequireOrgPermission("sale", "read"), h.GetSalesByDateRange)
+		sales.GET("/status/:status", h.aaaMiddleware.RequireOrgPermission("sale", "read"), h.GetSalesByStatus)
+		sales.GET("/total-amount", h.aaaMiddleware.RequireOrgPermission("sale", "read"), h.GetTotalSalesAmount)
+		sales.GET("/top-selling", h.aaaMiddleware.RequireOrgPermission("sale", "read"), h.GetTopSellingProducts)
 	}
 }

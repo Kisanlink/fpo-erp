@@ -78,8 +78,20 @@ func (m *AAAMiddleware) Authenticate() gin.HandlerFunc {
 			c.Set("organization_id", claims.GetPrimaryOrganizationID())
 			c.Set("organization_name", claims.GetOrganizationName())
 			c.Set("organization_ids", claims.GetOrganizationIDs())
-			c.Set("organizations", claims.Organizations)
-			c.Set("groups", claims.Groups)
+
+			// Combine organizations from BOTH top-level and user_context
+			allOrgs := claims.Organizations
+			if claims.UserContext != nil && len(claims.UserContext.Organizations) > 0 {
+				allOrgs = append(allOrgs, claims.UserContext.Organizations...)
+			}
+			c.Set("organizations", allOrgs)
+
+			// Combine groups from BOTH top-level and user_context
+			allGroups := claims.Groups
+			if claims.UserContext != nil && len(claims.UserContext.Groups) > 0 {
+				allGroups = append(allGroups, claims.UserContext.Groups...)
+			}
+			c.Set("groups", allGroups)
 
 			c.Next()
 			return
@@ -129,8 +141,20 @@ func (m *AAAMiddleware) Authenticate() gin.HandlerFunc {
 		c.Set("organization_id", organizationID)     // Primary organization ID
 		c.Set("organization_name", organizationName) // Organization name
 		c.Set("organization_ids", organizationIDs)   // All organizations
-		c.Set("organizations", claims.Organizations) // Full organization objects
-		c.Set("groups", claims.Groups)               // User's groups
+
+		// Combine organizations from BOTH top-level and user_context
+		allOrgs := claims.Organizations
+		if claims.UserContext != nil && len(claims.UserContext.Organizations) > 0 {
+			allOrgs = append(allOrgs, claims.UserContext.Organizations...)
+		}
+		c.Set("organizations", allOrgs)
+
+		// Combine groups from BOTH top-level and user_context
+		allGroups := claims.Groups
+		if claims.UserContext != nil && len(claims.UserContext.Groups) > 0 {
+			allGroups = append(allGroups, claims.UserContext.Groups...)
+		}
+		c.Set("groups", allGroups)
 
 		c.Next()
 	}
@@ -152,6 +176,48 @@ func (m *AAAMiddleware) RequirePermission(resourceType, resourceID, action strin
 
 		if !allowed {
 			utils.ForbiddenResponse(c, "Insufficient permissions")
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}
+
+// RequireOrgPermission checks if user has permission scoped to their organization
+// This is the recommended method for multi-tenant resources (collaborators, products, sales, etc.)
+// It automatically uses the organization_id from the JWT token context
+func (m *AAAMiddleware) RequireOrgPermission(resourceType, action string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID := c.MustGet("user_id").(string)
+		jwtToken := c.GetString("jwt_token")
+
+		// Extract organization ID from context (set by Authenticate middleware)
+		organizationID := c.GetString("organization_id")
+		if organizationID == "" {
+			utils.ErrorResponse(c, 403, "Organization context required. Ensure you're authenticated with a valid organization.", nil)
+			c.Abort()
+			return
+		}
+
+		// Check permission with organization scope
+		// This ensures users can only access resources within their organization
+		allowed, err := m.authzClient.CheckPermissionWithToken(
+			c.Request.Context(),
+			userID,
+			resourceType,
+			organizationID, // ✅ Organization-scoped resource ID
+			action,
+			jwtToken,
+		)
+		if err != nil {
+			utils.ErrorResponse(c, 500, "Permission check failed: "+err.Error(), err)
+			c.Abort()
+			return
+		}
+
+		if !allowed {
+			utils.ForbiddenResponse(c, "Insufficient permissions for this organization")
 			c.Abort()
 			return
 		}

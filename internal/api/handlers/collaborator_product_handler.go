@@ -256,24 +256,24 @@ func (h *CollaboratorProductHandler) DeleteCollaboratorProduct(c *gin.Context) {
 
 // RegisterRoutes registers all collaborator-product routes
 func (h *CollaboratorProductHandler) RegisterRoutes(router *gin.RouterGroup) {
-	// Collaborator product association routes
-	router.GET("/collaborator-products/:id", h.aaaMiddleware.Authenticate(), h.aaaMiddleware.RequirePermission("collaborator_product", "*", "read"), h.GetCollaboratorProduct)
-	router.PUT("/collaborator-products/:id", h.aaaMiddleware.Authenticate(), h.aaaMiddleware.RequirePermission("collaborator_product", "*", "update"), h.UpdateCollaboratorProduct)
-	router.DELETE("/collaborator-products/:id", h.aaaMiddleware.Authenticate(), h.aaaMiddleware.RequirePermission("collaborator_product", "*", "delete"), h.DeleteCollaboratorProduct)
+	// Collaborator product association routes (organization-scoped)
+	router.GET("/collaborator-products/:id", h.aaaMiddleware.Authenticate(), h.aaaMiddleware.RequireOrgPermission("collaborator_product", "read"), h.GetCollaboratorProduct)
+	router.PUT("/collaborator-products/:id", h.aaaMiddleware.Authenticate(), h.aaaMiddleware.RequireOrgPermission("collaborator_product", "update"), h.UpdateCollaboratorProduct)
+	router.DELETE("/collaborator-products/:id", h.aaaMiddleware.Authenticate(), h.aaaMiddleware.RequireOrgPermission("collaborator_product", "delete"), h.DeleteCollaboratorProduct)
 
-	// Nested routes under collaborators
+	// Nested routes under collaborators (organization-scoped)
 	collaborators := router.Group("/collaborators")
 	collaborators.Use(h.aaaMiddleware.Authenticate())
 	{
-		collaborators.POST("/:id/products", h.aaaMiddleware.RequirePermission("collaborator_product", "*", "create"), h.AddProductToCollaborator)
-		collaborators.GET("/:id/products", h.aaaMiddleware.RequirePermission("collaborator_product", "*", "read"), h.GetProductsByCollaborator)
-		collaborators.DELETE("/:id/products/:product_id", h.aaaMiddleware.RequirePermission("collaborator_product", "*", "delete"), h.RemoveProductFromCollaborator)
+		collaborators.POST("/:id/products", h.aaaMiddleware.RequireOrgPermission("collaborator_product", "create"), h.AddProductToCollaborator)
+		collaborators.GET("/:id/products", h.aaaMiddleware.RequireOrgPermission("collaborator_product", "read"), h.GetProductsByCollaborator)
+		collaborators.DELETE("/:id/products/:product_id", h.aaaMiddleware.RequireOrgPermission("collaborator_product", "delete"), h.RemoveProductFromCollaborator)
 	}
 
-	// Nested routes under products
+	// Nested routes under products (organization-scoped)
 	products := router.Group("/products")
 	products.Use(h.aaaMiddleware.Authenticate())
 	{
-		products.GET("/:id/collaborators", h.aaaMiddleware.RequirePermission("collaborator_product", "*", "read"), h.GetCollaboratorsByProduct)
+		products.GET("/:id/collaborators", h.aaaMiddleware.RequireOrgPermission("collaborator_product", "read"), h.GetCollaboratorsByProduct)
 	}
 }

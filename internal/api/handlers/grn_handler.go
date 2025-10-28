@@ -169,22 +169,22 @@ func (h *GRNHandler) RegisterRoutes(router *gin.RouterGroup) {
 	grns := router.Group("/grns")
 	grns.Use(h.aaaMiddleware.Authenticate())
 	{
-		grns.POST("", h.aaaMiddleware.RequirePermission("grn", "*", "create"), h.CreateGRN)
-		grns.GET("", h.aaaMiddleware.RequirePermission("grn", "*", "read"), h.GetAllGRNs)
-		grns.GET("/:id", h.aaaMiddleware.RequirePermission("grn", "*", "read"), h.GetGRN)
+		grns.POST("", h.aaaMiddleware.RequireOrgPermission("grn", "create"), h.CreateGRN)
+		grns.GET("", h.aaaMiddleware.RequireOrgPermission("grn", "read"), h.GetAllGRNs)
+		grns.GET("/:id", h.aaaMiddleware.RequireOrgPermission("grn", "read"), h.GetGRN)
 	}
 
 	// Nested routes under warehouses
 	warehouses := router.Group("/warehouses")
 	warehouses.Use(h.aaaMiddleware.Authenticate())
 	{
-		warehouses.GET("/:id/grns", h.aaaMiddleware.RequirePermission("grn", "*", "read"), h.GetGRNsByWarehouse)
+		warehouses.GET("/:id/grns", h.aaaMiddleware.RequireOrgPermission("grn", "read"), h.GetGRNsByWarehouse)
 	}
 
 	// Nested routes under purchase orders
 	purchaseOrders := router.Group("/purchase-orders")
 	purchaseOrders.Use(h.aaaMiddleware.Authenticate())
 	{
-		purchaseOrders.GET("/:id/grn", h.aaaMiddleware.RequirePermission("grn", "*", "read"), h.GetGRNByPurchaseOrder)
+		purchaseOrders.GET("/:id/grn", h.aaaMiddleware.RequireOrgPermission("grn", "read"), h.GetGRNByPurchaseOrder)
 	}
 }

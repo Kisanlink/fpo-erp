@@ -256,18 +256,18 @@ func (h *ProductVariantHandler) RegisterRoutes(router *gin.RouterGroup) {
 	variants := router.Group("/variants")
 	variants.Use(h.aaaMiddleware.Authenticate())
 	{
-		variants.GET("/:id", h.aaaMiddleware.RequirePermission("variant", "*", "read"), h.GetProductVariant)
-		variants.PUT("/:id", h.aaaMiddleware.RequirePermission("variant", "*", "update"), h.UpdateProductVariant)
-		variants.DELETE("/:id", h.aaaMiddleware.RequirePermission("variant", "*", "delete"), h.DeleteProductVariant)
-		variants.GET("/sku/:sku", h.aaaMiddleware.RequirePermission("variant", "*", "read"), h.GetVariantBySKU)
-		variants.GET("/barcode/:barcode", h.aaaMiddleware.RequirePermission("variant", "*", "read"), h.GetVariantByBarcode)
+		variants.GET("/:id", h.aaaMiddleware.RequireOrgPermission("variant", "read"), h.GetProductVariant)
+		variants.PUT("/:id", h.aaaMiddleware.RequireOrgPermission("variant", "update"), h.UpdateProductVariant)
+		variants.DELETE("/:id", h.aaaMiddleware.RequireOrgPermission("variant", "delete"), h.DeleteProductVariant)
+		variants.GET("/sku/:sku", h.aaaMiddleware.RequireOrgPermission("variant", "read"), h.GetVariantBySKU)
+		variants.GET("/barcode/:barcode", h.aaaMiddleware.RequireOrgPermission("variant", "read"), h.GetVariantByBarcode)
 	}
 
 	// Nested routes under products
 	products := router.Group("/products")
 	products.Use(h.aaaMiddleware.Authenticate())
 	{
-		products.POST("/:id/variants", h.aaaMiddleware.RequirePermission("variant", "*", "create"), h.CreateProductVariant)
-		products.GET("/:id/variants", h.aaaMiddleware.RequirePermission("variant", "*", "read"), h.GetVariantsByProduct)
+		products.POST("/:id/variants", h.aaaMiddleware.RequireOrgPermission("variant", "create"), h.CreateProductVariant)
+		products.GET("/:id/variants", h.aaaMiddleware.RequireOrgPermission("variant", "read"), h.GetVariantsByProduct)
 	}
 }

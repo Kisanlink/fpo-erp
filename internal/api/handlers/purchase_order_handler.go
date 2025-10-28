@@ -275,19 +275,19 @@ func (h *PurchaseOrderHandler) RegisterRoutes(router *gin.RouterGroup) {
 	purchaseOrders := router.Group("/purchase-orders")
 	purchaseOrders.Use(h.aaaMiddleware.Authenticate())
 	{
-		purchaseOrders.POST("", h.aaaMiddleware.RequirePermission("purchase_order", "*", "create"), h.CreatePurchaseOrder)
-		purchaseOrders.GET("", h.aaaMiddleware.RequirePermission("purchase_order", "*", "read"), h.GetAllPurchaseOrders)
-		purchaseOrders.GET("/pending-deliveries", h.aaaMiddleware.RequirePermission("purchase_order", "*", "read"), h.GetPendingDeliveries)
-		purchaseOrders.GET("/status/:status", h.aaaMiddleware.RequirePermission("purchase_order", "*", "read"), h.GetPurchaseOrdersByStatus)
-		purchaseOrders.GET("/:id", h.aaaMiddleware.RequirePermission("purchase_order", "*", "read"), h.GetPurchaseOrder)
-		purchaseOrders.PATCH("/:id/status", h.aaaMiddleware.RequirePermission("purchase_order", "*", "update"), h.UpdatePurchaseOrderStatus)
-		purchaseOrders.PATCH("/:id/payment", h.aaaMiddleware.RequirePermission("purchase_order", "*", "update"), h.UpdatePaymentStatus)
+		purchaseOrders.POST("", h.aaaMiddleware.RequireOrgPermission("purchase_order", "create"), h.CreatePurchaseOrder)
+		purchaseOrders.GET("", h.aaaMiddleware.RequireOrgPermission("purchase_order", "read"), h.GetAllPurchaseOrders)
+		purchaseOrders.GET("/pending-deliveries", h.aaaMiddleware.RequireOrgPermission("purchase_order", "read"), h.GetPendingDeliveries)
+		purchaseOrders.GET("/status/:status", h.aaaMiddleware.RequireOrgPermission("purchase_order", "read"), h.GetPurchaseOrdersByStatus)
+		purchaseOrders.GET("/:id", h.aaaMiddleware.RequireOrgPermission("purchase_order", "read"), h.GetPurchaseOrder)
+		purchaseOrders.PATCH("/:id/status", h.aaaMiddleware.RequireOrgPermission("purchase_order", "update"), h.UpdatePurchaseOrderStatus)
+		purchaseOrders.PATCH("/:id/payment", h.aaaMiddleware.RequireOrgPermission("purchase_order", "update"), h.UpdatePaymentStatus)
 	}
 
 	// Nested routes under collaborators
 	collaborators := router.Group("/collaborators")
 	collaborators.Use(h.aaaMiddleware.Authenticate())
 	{
-		collaborators.GET("/:id/purchase-orders", h.aaaMiddleware.RequirePermission("purchase_order", "*", "read"), h.GetPurchaseOrdersByCollaborator)
+		collaborators.GET("/:id/purchase-orders", h.aaaMiddleware.RequireOrgPermission("purchase_order", "read"), h.GetPurchaseOrdersByCollaborator)
 	}
 }

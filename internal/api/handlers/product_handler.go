@@ -275,15 +275,15 @@ func (h *ProductHandler) RegisterRoutes(router *gin.RouterGroup) {
 		products.Use(h.aaaMiddleware.Authenticate())
 
 		// Create/Update/Delete routes - CEO=CRUD, Store_Manager=CRUD, Tech_Support=R/W (temp)
-		products.POST("", h.aaaMiddleware.RequirePermission("product", "*", "create"), h.CreateProduct)
-		products.PATCH("/:id", h.aaaMiddleware.RequirePermission("product", "*", "update"), h.UpdateProduct)
-		products.DELETE("/:id", h.aaaMiddleware.RequirePermission("product", "*", "delete"), h.DeleteProduct)
+		products.POST("", h.aaaMiddleware.RequireOrgPermission("product", "create"), h.CreateProduct)
+		products.PATCH("/:id", h.aaaMiddleware.RequireOrgPermission("product", "update"), h.UpdateProduct)
+		products.DELETE("/:id", h.aaaMiddleware.RequireOrgPermission("product", "delete"), h.DeleteProduct)
 
 		// Read routes - Director=R, CEO=CRUD, Auditor=R, Accountant=–, Tech_Support=R/W (temp), Store_Manager=CRUD, Store_Staff=R
-		products.GET("", h.aaaMiddleware.RequirePermission("product", "*", "read"), h.GetAllProducts)
-		products.GET("/search", h.aaaMiddleware.RequirePermission("product", "*", "read"), h.SearchProducts)
-		products.GET("/sku/:sku", h.aaaMiddleware.RequirePermission("product", "*", "read"), h.GetProductBySKU)
-		products.GET("/:id", h.aaaMiddleware.RequirePermission("product", "*", "read"), h.GetProduct)
-		products.GET("/:id/with-prices", h.aaaMiddleware.RequirePermission("product", "*", "read"), h.GetProductWithPrices)
+		products.GET("", h.aaaMiddleware.RequireOrgPermission("product", "read"), h.GetAllProducts)
+		products.GET("/search", h.aaaMiddleware.RequireOrgPermission("product", "read"), h.SearchProducts)
+		products.GET("/sku/:sku", h.aaaMiddleware.RequireOrgPermission("product", "read"), h.GetProductBySKU)
+		products.GET("/:id", h.aaaMiddleware.RequireOrgPermission("product", "read"), h.GetProduct)
+		products.GET("/:id/with-prices", h.aaaMiddleware.RequireOrgPermission("product", "read"), h.GetProductWithPrices)
 	}
 }

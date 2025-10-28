@@ -34,19 +34,19 @@ func (h *AttachmentHandler) RegisterRoutes(router *gin.RouterGroup) {
 		// Apply authentication middleware
 		attachments.Use(h.aaaMiddleware.Authenticate())
 
-		// Create/Delete routes
-		attachments.POST("", h.aaaMiddleware.RequirePermission("attachment", "*", "create"), h.UploadAttachment)
-		attachments.DELETE("/:id", h.aaaMiddleware.RequirePermission("attachment", "*", "delete"), h.DeleteAttachment)
+		// Create/Delete routes (organization-scoped)
+		attachments.POST("", h.aaaMiddleware.RequireOrgPermission("attachment", "create"), h.UploadAttachment)
+		attachments.DELETE("/:id", h.aaaMiddleware.RequireOrgPermission("attachment", "delete"), h.DeleteAttachment)
 
-		// Read routes
-		attachments.GET("/:id/download", h.aaaMiddleware.RequirePermission("attachment", "*", "read"), h.DownloadAttachment)
-		attachments.GET("/:id/url", h.aaaMiddleware.RequirePermission("attachment", "*", "read"), h.GenerateDownloadURL)
-		attachments.GET("", h.aaaMiddleware.RequirePermission("attachment", "*", "read"), h.GetAttachments)
-		attachments.GET("/:id", h.aaaMiddleware.RequirePermission("attachment", "*", "read"), h.GetAttachment)
-		attachments.GET("/:id/info", h.aaaMiddleware.RequirePermission("attachment", "*", "read"), h.GetAttachmentInfo)
+		// Read routes (organization-scoped)
+		attachments.GET("/:id/download", h.aaaMiddleware.RequireOrgPermission("attachment", "read"), h.DownloadAttachment)
+		attachments.GET("/:id/url", h.aaaMiddleware.RequireOrgPermission("attachment", "read"), h.GenerateDownloadURL)
+		attachments.GET("", h.aaaMiddleware.RequireOrgPermission("attachment", "read"), h.GetAttachments)
+		attachments.GET("/:id", h.aaaMiddleware.RequireOrgPermission("attachment", "read"), h.GetAttachment)
+		attachments.GET("/:id/info", h.aaaMiddleware.RequireOrgPermission("attachment", "read"), h.GetAttachmentInfo)
 
-		// Entity-based route (for logos, POs, GRNs, etc.)
-		attachments.GET("/entity/:entity_type/:entity_id", h.aaaMiddleware.RequirePermission("attachment", "*", "read"), h.GetAttachmentsByEntity)
+		// Entity-based route (for logos, POs, GRNs, etc.) - organization-scoped
+		attachments.GET("/entity/:entity_type/:entity_id", h.aaaMiddleware.RequireOrgPermission("attachment", "read"), h.GetAttachmentsByEntity)
 	}
 }
 

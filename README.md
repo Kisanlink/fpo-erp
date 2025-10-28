@@ -38,11 +38,13 @@ A comprehensive Enterprise Resource Planning (ERP) system built with Go, designe
 
 ### Security & Access Control
 - **AAA Service Integration**: Authentication, Authorization, and Accounting
+- **Organization-Scoped Permissions**: Multi-tenant isolation with automatic organization-level access control
 - **Role-Based Access Control (RBAC)**: Granular permissions for different user roles
-- **JWT Token Validation**: Secure token-based authentication from external AAA service
+- **JWT Token Validation**: Secure token-based authentication from external AAA service with organization context
 - **TTL Caching**: High-performance permission caching
 - **Audit Logging**: Comprehensive activity tracking
 - **External User Management**: User management handled by separate AAA service
+- **Multi-Tenant Support**: Complete isolation between organizations with organization-scoped permission checks
 
 ## 🛠️ Technology Stack
 
@@ -114,6 +116,37 @@ The ERP system integrates with an external AAA (Authentication, Authorization, a
 - **TTL Caching**: Caches user permissions for performance
 - **Audit Logging**: Optional audit event logging
 
+### Organization-Scoped Permissions (January 2025)
+
+The system implements **organization-scoped permissions** for multi-tenant isolation:
+
+#### How It Works
+1. **JWT Token Contains Organization Context**: AAA LoginV2 includes `organizations` array in JWT
+2. **Automatic Extraction**: Middleware extracts `organization_id` from JWT token
+3. **Scoped Permission Checks**: All routes check permissions against user's organization
+4. **Multi-Tenant Isolation**: Users can only access resources within their organization
+
+#### Permission Hierarchy
+```
+Global Permissions (Super Admin):
+  ResourceType: "collaborator"
+  ResourceId:   "*"              // Access all organizations
+  Action:       "read"
+
+Organization-Scoped Permissions (FPO Users):
+  ResourceType: "collaborator"
+  ResourceId:   "ORG_12345"      // Access only ORG_12345
+  Action:       "read"
+```
+
+#### Implementation
+- **16 Handler Files Updated**: ~115 routes now use organization-scoped permissions
+- **Automatic Scoping**: Middleware handles organization context extraction
+- **Backward Compatible**: Super admin roles can still use wildcard (`*`) permissions
+- **Security Enhancement**: Critical for multi-tenant security and data isolation
+
+**Documentation**: See `files/ORG_SCOPED_PERMISSIONS_IMPLEMENTATION.md` for complete details
+
 ### Permission Matrix
 
 The system supports the following permissions based on user roles:
@@ -157,6 +190,55 @@ The system uses the following permission naming convention:
 - `refund_policy:create` - Create refund policies
 - `bank_payments:read` - Read bank payment records
 - `attachments:read` - Read attachments
+
+## 🏢 Multi-Tenant Architecture
+
+The ERP system is **fully multi-tenant** with organization-level isolation:
+
+### Organization Context
+- **JWT Token**: Contains user's organization ID(s) from AAA LoginV2
+- **Automatic Extraction**: Middleware extracts `organization_id` from JWT
+- **Scoped Access**: All API calls are automatically scoped to user's organization
+- **Data Isolation**: Users cannot access resources from other organizations
+
+### Permission Model
+
+#### For FPO Users
+```bash
+# User from Organization ORG_A creates a collaborator
+POST /api/v1/collaborators
+Authorization: Bearer <token-with-org-A>
+
+# Permission Check:
+# - ResourceType: "collaborator"
+# - ResourceId:   "ORG_A"          ← Organization-scoped
+# - Action:       "create"
+# Result: Collaborator created in ORG_A only
+```
+
+#### For Super Admins
+```bash
+# Super admin with global permissions
+POST /api/v1/collaborators
+Authorization: Bearer <super-admin-token>
+
+# Permission Check:
+# - ResourceType: "collaborator"
+# - ResourceId:   "*"              ← Global access
+# - Action:       "create"
+# Result: Can create collaborators in any organization
+```
+
+### Security Benefits
+✅ **Organization Isolation**: Users cannot access data from other organizations
+✅ **Automatic Scoping**: No manual filtering needed in handlers
+✅ **Audit Trail**: All operations logged with organization context
+✅ **Flexible Access**: Supports single-org users and multi-org admins
+
+### Implementation Details
+- **Middleware**: `RequireOrgPermission(resourceType, action)` in all handlers
+- **Coverage**: 16 handler files, ~115 routes
+- **Documentation**: Complete guide in `files/ORG_SCOPED_PERMISSIONS_IMPLEMENTATION.md`
 
 ## 🚦 Getting Started
 
@@ -601,6 +683,16 @@ For support and questions:
 
 ### ✅ Latest Completed Features (January 2025)
 
+#### 🔐 Organization-Scoped Permissions (January 2025)
+- **Multi-Tenant Security**: Complete organization-level isolation for all resources
+- **Automatic Organization Scoping**: Middleware extracts `organization_id` from JWT and validates permissions
+- **16 Handlers Updated**: All major handlers (~115 routes) now use organization-scoped permission checks
+- **Defense in Depth**: 4-layer security (JWT → Context → Org Permissions → Business Logic)
+- **AAA Integration**: Leverages AAA service's hierarchical permission model (global/organization/instance)
+- **Zero Performance Impact**: Organization ID already in JWT token, no additional queries needed
+- **Super Admin Support**: Global wildcard permissions still work for cross-organization access
+- **Production Implementation**: `RequireOrgPermission(resourceType, action)` replaces `RequirePermission(resourceType, "*", action)`
+
 #### 🏭 Complete Procurement Module
 - **Vendor/Supplier Management**: Full collaborator (vendor) profiles with AAA address integration
 - **Vendor-Product Associations**: Many-to-many relationships with brand info and compliance data
@@ -652,7 +744,7 @@ For support and questions:
 
 - [ ] Advanced reporting and analytics
 - [ ] Mobile application
-- [ ] Multi-tenant support
+- [x] Multi-tenant support (✅ Completed - Organization-scoped permissions implemented)
 - [ ] Advanced inventory forecasting
 - [ ] Integration with external systems
 - [ ] Real-time notifications

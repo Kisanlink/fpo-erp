@@ -303,21 +303,21 @@ func (h *ProductPriceHandler) RegisterRoutes(router *gin.RouterGroup) {
 		prices.Use(h.aaaMiddleware.Authenticate())
 
 		// Create/Update/Delete routes - CEO=CRUD, Store_Manager=CRUD, Tech_Support=R/W (temp)
-		prices.POST("", h.aaaMiddleware.RequirePermission("product_price", "*", "create"), h.CreateProductPrice)
-		prices.PATCH("/:id", h.aaaMiddleware.RequirePermission("product_price", "*", "update"), h.UpdateProductPrice)
-		prices.DELETE("/:id", h.aaaMiddleware.RequirePermission("product_price", "*", "delete"), h.DeleteProductPrice)
+		prices.POST("", h.aaaMiddleware.RequireOrgPermission("product_price", "create"), h.CreateProductPrice)
+		prices.PATCH("/:id", h.aaaMiddleware.RequireOrgPermission("product_price", "update"), h.UpdateProductPrice)
+		prices.DELETE("/:id", h.aaaMiddleware.RequireOrgPermission("product_price", "delete"), h.DeleteProductPrice)
 
 		// Read routes - Director=R, CEO=CRUD, Auditor=R, Accountant=–, Tech_Support=R/W (temp), Store_Manager=CRUD, Store_Staff=R
-		prices.GET("/:id", h.aaaMiddleware.RequirePermission("product_price", "*", "read"), h.GetProductPrice)
-		prices.GET("/expired", h.aaaMiddleware.RequirePermission("product_price", "*", "read"), h.GetExpiredPrices)
+		prices.GET("/:id", h.aaaMiddleware.RequireOrgPermission("product_price", "read"), h.GetProductPrice)
+		prices.GET("/expired", h.aaaMiddleware.RequireOrgPermission("product_price", "read"), h.GetExpiredPrices)
 	}
 
 	// Product-specific price routes
 	products := router.Group("/products")
 	{
 		products.Use(h.aaaMiddleware.Authenticate())
-		products.GET("/:id/prices", h.aaaMiddleware.RequirePermission("product_price", "*", "read"), h.GetProductPrices)
-		products.GET("/:id/prices/current", h.aaaMiddleware.RequirePermission("product_price", "*", "read"), h.GetCurrentPrice)
-		products.POST("/:id/prices", h.aaaMiddleware.RequirePermission("product_price", "*", "create"), h.CreateProductPriceForProduct)
+		products.GET("/:id/prices", h.aaaMiddleware.RequireOrgPermission("product_price", "read"), h.GetProductPrices)
+		products.GET("/:id/prices/current", h.aaaMiddleware.RequireOrgPermission("product_price", "read"), h.GetCurrentPrice)
+		products.POST("/:id/prices", h.aaaMiddleware.RequireOrgPermission("product_price", "create"), h.CreateProductPriceForProduct)
 	}
 }
