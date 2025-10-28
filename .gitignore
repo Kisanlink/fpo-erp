@@ -140,7 +140,7 @@ development/
 generate_token.go
 validate_token.go
 test_docs.js
-
+implementation guides/
 # Test coverage
 coverage/
 *.cover

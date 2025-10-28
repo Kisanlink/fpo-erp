@@ -72,6 +72,15 @@ func (m *AAAMiddleware) Authenticate() gin.HandlerFunc {
 			c.Set("roles", cached.Roles)
 			c.Set("permissions", cached.Permissions)
 			c.Set("jwt_token", tokenString) // Store JWT token for gRPC calls
+
+			// ✅ Extract organization context from claims (not cached)
+			// We don't cache organization context because organization memberships can change
+			c.Set("organization_id", claims.GetPrimaryOrganizationID())
+			c.Set("organization_name", claims.GetOrganizationName())
+			c.Set("organization_ids", claims.GetOrganizationIDs())
+			c.Set("organizations", claims.Organizations)
+			c.Set("groups", claims.Groups)
+
 			c.Next()
 			return
 		}
@@ -94,6 +103,11 @@ func (m *AAAMiddleware) Authenticate() gin.HandlerFunc {
 		// Note: JWT roles don't contain permissions - actual checking is done via gRPC
 		permissions := ExtractPermissions(roles)
 
+		// ✅ Extract organization context from token claims
+		organizationID := claims.GetPrimaryOrganizationID()
+		organizationName := claims.GetOrganizationName()
+		organizationIDs := claims.GetOrganizationIDs()
+
 		cachedUser := &CachedUser{
 			UserID:      claims.UserID,
 			Username:    claims.Username,
@@ -110,6 +124,13 @@ func (m *AAAMiddleware) Authenticate() gin.HandlerFunc {
 		c.Set("roles", roles)
 		c.Set("permissions", permissions)
 		c.Set("jwt_token", tokenString) // Store JWT token for gRPC calls
+
+		// ✅ Set organization context in request context
+		c.Set("organization_id", organizationID)     // Primary organization ID
+		c.Set("organization_name", organizationName) // Organization name
+		c.Set("organization_ids", organizationIDs)   // All organizations
+		c.Set("organizations", claims.Organizations) // Full organization objects
+		c.Set("groups", claims.Groups)               // User's groups
 
 		c.Next()
 	}
@@ -265,6 +286,12 @@ func (m *AAAMiddleware) parseToken(tokenString string) (*AAATokenClaims, error) 
 		utils.Debug("User permissions count:", len(permissions))
 		utils.Debug("Token isvalidate field:", claims.IsValidated)
 		utils.Debug("UserContext present:", claims.UserContext != nil)
+		// ✅ Log organization context
+		utils.Debug("Organizations count:", len(claims.Organizations))
+		utils.Debug("Groups count:", len(claims.Groups))
+		utils.Debug("Primary Organization ID:", claims.GetPrimaryOrganizationID())
+		utils.Debug("Organization Name:", claims.GetOrganizationName())
+		utils.Debug("Token version:", claims.TokenVersion)
 
 		return claims, nil
 	}

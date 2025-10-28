@@ -84,25 +84,52 @@ type AAARole struct {
 
 // JWTRole represents simplified role structure in JWT token
 type JWTRole struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Scope    string `json:"scope"`
-	IsActive bool   `json:"is_active"`
+	ID             string  `json:"id"`
+	Name           string  `json:"name"`
+	Scope          string  `json:"scope"`
+	OrganizationID *string `json:"organization_id,omitempty"`
+	GroupID        *string `json:"group_id,omitempty"`
+	IsActive       bool    `json:"is_active"`
+}
+
+// JWTOrganization represents organization data in JWT token
+type JWTOrganization struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// JWTGroup represents group data in JWT token
+type JWTGroup struct {
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	OrganizationID string `json:"organization_id"`
 }
 
 // JWTUserContext represents the user_context field in JWT token
 type JWTUserContext struct {
-	Roles []JWTRole `json:"roles"`
+	ID          string    `json:"id"`
+	Username    string    `json:"username"`
+	PhoneNumber string    `json:"phone_number"`
+	CountryCode string    `json:"country_code"`
+	IsValidated bool      `json:"is_validated"`
+	Roles       []JWTRole `json:"roles"`
 }
 
 // AAATokenClaims represents JWT claims from AAA service (updated to match actual JWT structure)
 type AAATokenClaims struct {
-	UserID      string          `json:"user_id"`
-	Username    string          `json:"username"`
-	IsValidated bool            `json:"isvalidate"`
-	RoleIDs     []string        `json:"roleIds"`        // Array of role ID strings
-	Permissions interface{}     `json:"permissions"`    // Permissions (may be null)
-	UserContext *JWTUserContext `json:"user_context"`   // Contains actual role objects
+	UserID        string            `json:"user_id"`
+	Username      string            `json:"username"`
+	IsValidated   bool              `json:"isvalidate"`
+	RoleIDs       []string          `json:"roleIds"`        // Array of role ID strings (legacy)
+	Permissions   interface{}       `json:"permissions"`    // Permissions (may be null)
+	UserContext   *JWTUserContext   `json:"user_context"`   // Contains actual role objects and user info
+	Organizations []JWTOrganization `json:"organizations"`  // ✅ Organizations (FPO ID is here)
+	Groups        []JWTGroup        `json:"groups"`         // ✅ Groups
+	Roles         []JWTRole         `json:"roles"`          // ✅ Roles with org/group context
+	Scopes        []string          `json:"scopes"`         // ✅ Scopes (org:xxx, group:xxx)
+	TokenType     string            `json:"token_type"`
+	TokenVersion  string            `json:"token_version"`
+	SessionID     string            `json:"session_id"`
 	jwt.RegisteredClaims
 }
 
@@ -187,4 +214,92 @@ func ExtractPermissions(roles []AAARole) []string {
 		}
 	}
 	return permissions
+}
+
+// GetOrganizationIDs extracts all organization IDs from token claims
+// Returns organization IDs from both direct memberships and role-based access
+func (c *AAATokenClaims) GetOrganizationIDs() []string {
+	orgMap := make(map[string]bool)
+
+	// Get from direct organizations
+	for _, org := range c.Organizations {
+		if org.ID != "" {
+			orgMap[org.ID] = true
+		}
+	}
+
+	// Get from roles with organization scope
+	for _, role := range c.Roles {
+		if role.OrganizationID != nil && *role.OrganizationID != "" {
+			orgMap[*role.OrganizationID] = true
+		}
+	}
+
+	// Also check UserContext roles (for backward compatibility)
+	if c.UserContext != nil {
+		for _, role := range c.UserContext.Roles {
+			if role.OrganizationID != nil && *role.OrganizationID != "" {
+				orgMap[*role.OrganizationID] = true
+			}
+		}
+	}
+
+	// Convert map to slice
+	orgs := make([]string, 0, len(orgMap))
+	for orgID := range orgMap {
+		orgs = append(orgs, orgID)
+	}
+
+	return orgs
+}
+
+// GetPrimaryOrganizationID returns the primary organization ID
+// For single-organization users, they should have exactly ONE organization
+// Returns empty string if no organizations found
+func (c *AAATokenClaims) GetPrimaryOrganizationID() string {
+	orgs := c.GetOrganizationIDs()
+
+	if len(orgs) == 0 {
+		return ""
+	}
+
+	// Return first organization as primary
+	// For single-organization users, there should only be one
+	return orgs[0]
+}
+
+// GetOrganizationName returns the name of the primary organization
+func (c *AAATokenClaims) GetOrganizationName() string {
+	if len(c.Organizations) == 0 {
+		return ""
+	}
+	return c.Organizations[0].Name
+}
+
+// HasOrganizationAccess checks if user has access to a specific organization
+func (c *AAATokenClaims) HasOrganizationAccess(organizationID string) bool {
+	// Check direct memberships
+	for _, org := range c.Organizations {
+		if org.ID == organizationID {
+			return true
+		}
+	}
+
+	// Check role-based access
+	for _, role := range c.Roles {
+		if role.IsActive && role.OrganizationID != nil && *role.OrganizationID == organizationID {
+			return true
+		}
+	}
+
+	// Check UserContext roles
+	if c.UserContext != nil {
+		for _, role := range c.UserContext.Roles {
+			if role.IsActive && role.OrganizationID != nil && *role.OrganizationID == organizationID {
+				return true
+			}
+		}
+	}
+
+	return false
 }

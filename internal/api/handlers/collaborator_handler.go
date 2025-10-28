@@ -51,12 +51,38 @@ func (h *CollaboratorHandler) CreateCollaborator(c *gin.Context) {
 		userID = "system" // Fallback for unauthenticated contexts
 	}
 
+	// ✅ Extract organization ID from context (set by auth middleware)
+	organizationID := c.GetString("organization_id")
+	if organizationID == "" {
+		utils.BadRequestResponse(c, "Organization context not found. Ensure you're authenticated.", nil)
+		return
+	}
+
+	// Log organization context for debugging
+	utils.Debug("Creating collaborator for organization:", organizationID)
+	utils.Debug("Organization Name:", c.GetString("organization_name"))
+
 	// Create collaborator
 	response, err := h.collaboratorService.CreateCollaborator(c.Request.Context(), &request, userID)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "Failed to create collaborator", err)
 		return
 	}
+
+	// TODO: Sync collaborator to master table service via gRPC
+	// This should be done asynchronously to avoid blocking the response
+	// Example implementation:
+	//
+	// go func() {
+	//     err := h.syncCollaboratorToMasterTable(c.Request.Context(), response, organizationID)
+	//     if err != nil {
+	//         utils.Error("Failed to sync collaborator to master table:",
+	//             "collaborator_id", response.ID,
+	//             "organization_id", organizationID,
+	//             "error", err)
+	//         // Add to retry queue for later processing
+	//     }
+	// }()
 
 	utils.CreatedResponse(c, "Collaborator created successfully", response)
 }
@@ -163,12 +189,37 @@ func (h *CollaboratorHandler) UpdateCollaborator(c *gin.Context) {
 		return
 	}
 
+	// ✅ Extract organization ID from context (set by auth middleware)
+	organizationID := c.GetString("organization_id")
+	if organizationID == "" {
+		utils.BadRequestResponse(c, "Organization context not found. Ensure you're authenticated.", nil)
+		return
+	}
+
+	// Log organization context for debugging
+	utils.Debug("Updating collaborator for organization:", organizationID)
+
 	// Update collaborator
 	response, err := h.collaboratorService.UpdateCollaborator(c.Request.Context(), id, &request)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "Failed to update collaborator", err)
 		return
 	}
+
+	// TODO: Sync updated collaborator to master table service via gRPC
+	// This should be done asynchronously to avoid blocking the response
+	// Example implementation:
+	//
+	// go func() {
+	//     err := h.syncCollaboratorToMasterTable(c.Request.Context(), response, organizationID)
+	//     if err != nil {
+	//         utils.Error("Failed to sync collaborator update to master table:",
+	//             "collaborator_id", response.ID,
+	//             "organization_id", organizationID,
+	//             "error", err)
+	//         // Add to retry queue for later processing
+	//     }
+	// }()
 
 	utils.OKResponse(c, "Collaborator updated successfully", response)
 }
