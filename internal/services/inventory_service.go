@@ -15,11 +15,11 @@ type InventoryService struct {
 	inventoryRepo *repositories.InventoryRepository
 	warehouseRepo *repositories.WarehouseRepository
 	productRepo   *repositories.ProductRepository
-	addressClient *aaa.AddressClient
+	addressClient *aaa.AddressHTTPClient
 }
 
 // NewInventoryService creates a new inventory service
-func NewInventoryService(inventoryRepo *repositories.InventoryRepository, warehouseRepo *repositories.WarehouseRepository, productRepo *repositories.ProductRepository, addressClient *aaa.AddressClient) *InventoryService {
+func NewInventoryService(inventoryRepo *repositories.InventoryRepository, warehouseRepo *repositories.WarehouseRepository, productRepo *repositories.ProductRepository, addressClient *aaa.AddressHTTPClient) *InventoryService {
 	return &InventoryService{
 		inventoryRepo: inventoryRepo,
 		warehouseRepo: warehouseRepo,
@@ -266,7 +266,7 @@ func (s *InventoryService) GetLowStockBatches(threshold int64) ([]models.Invento
 }
 
 // GetAllProductsAvailability retrieves all products available across all warehouses
-func (s *InventoryService) GetAllProductsAvailability(ctx context.Context) ([]models.ProductAvailabilityResponse, error) {
+func (s *InventoryService) GetAllProductsAvailability(ctx context.Context, jwtToken string) ([]models.ProductAvailabilityResponse, error) {
 	batches, err := s.inventoryRepo.GetAllBatches()
 	if err != nil {
 		return nil, err
@@ -295,18 +295,22 @@ func (s *InventoryService) GetAllProductsAvailability(ctx context.Context) ([]mo
 
 		// Fetch address details if warehouse has an address ID
 		if batch.Warehouse.AddressID != nil {
-			address, err := s.addressClient.GetAddress(ctx, *batch.Warehouse.AddressID)
+			address, err := s.addressClient.GetAddress(ctx, *batch.Warehouse.AddressID, jwtToken)
 			if err == nil {
 				response.Address = &models.AddressInfo{
-					ID:           address.ID,
-					Type:         address.Type,
-					AddressLine1: address.AddressLine1,
-					AddressLine2: address.AddressLine2,
-					City:         address.City,
-					State:        address.State,
-					PostalCode:   address.PostalCode,
-					Country:      address.Country,
-					FullAddress:  s.buildFullAddress(address),
+					ID:          address.ID,
+					Type:        address.Type,
+					House:       address.House,
+					Street:      address.Street,
+					Landmark:    address.Landmark,
+					PostOffice:  address.PostOffice,
+					Subdistrict: address.Subdistrict,
+					District:    address.District,
+					VTC:         address.VTC,
+					State:       address.State,
+					Country:     address.Country,
+					Pincode:     address.Pincode,
+					FullAddress: address.BuildFullAddress(),
 				}
 			}
 		}
@@ -333,36 +337,4 @@ func (s *InventoryService) batchToResponse(batch models.InventoryBatch) models.I
 		CreatedAt:     batch.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		UpdatedAt:     batch.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 	}
-}
-
-// buildFullAddress builds a full address string from address components
-func (s *InventoryService) buildFullAddress(address *aaa.Address) string {
-	parts := []string{}
-	if address.AddressLine1 != "" {
-		parts = append(parts, address.AddressLine1)
-	}
-	if address.AddressLine2 != "" {
-		parts = append(parts, address.AddressLine2)
-	}
-	if address.City != "" {
-		parts = append(parts, address.City)
-	}
-	if address.State != "" {
-		parts = append(parts, address.State)
-	}
-	if address.PostalCode != "" {
-		parts = append(parts, address.PostalCode)
-	}
-	if address.Country != "" {
-		parts = append(parts, address.Country)
-	}
-
-	fullAddress := ""
-	for i, part := range parts {
-		if i > 0 {
-			fullAddress += ", "
-		}
-		fullAddress += part
-	}
-	return fullAddress
 }

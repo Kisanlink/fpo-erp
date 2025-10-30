@@ -55,8 +55,9 @@ type CORSConfig struct {
 type AAAConfig struct {
 	JWTSecret   string `mapstructure:"jwt_secret"`
 	CacheTTL    int    `mapstructure:"cache_ttl"`
-	ServiceURL  string `mapstructure:"service_url"`
-	GRPCAddress string `mapstructure:"grpc_address"`
+	ServiceURL  string `mapstructure:"service_url"`     // Legacy: kept for backward compatibility
+	BaseURL     string `mapstructure:"base_url"`        // HTTP REST API base URL (e.g., http://localhost:8080)
+	GRPCAddress string `mapstructure:"grpc_address"`    // gRPC address for authorization (e.g., localhost:50051)
 	Timeout     int    `mapstructure:"timeout_seconds"`
 }
 
@@ -74,6 +75,16 @@ func (c *CORSConfig) GetAllowedHeaders() []string {
 		return []string{}
 	}
 	return strings.Split(c.AllowedHeaders, ",")
+}
+
+// getAAABaseURL returns the AAA HTTP base URL with fallback to ServiceURL for backward compatibility
+func getAAABaseURL() string {
+	baseURL := os.Getenv("AAA_BASE_URL")
+	if baseURL != "" {
+		return baseURL
+	}
+	// Fallback to AAA_SERVICE_URL for backward compatibility
+	return os.Getenv("AAA_SERVICE_URL")
 }
 
 func Load() *Config {
@@ -137,6 +148,7 @@ func Load() *Config {
 			JWTSecret:   os.Getenv("AAA_JWT_SECRET"),
 			CacheTTL:    aaaCacheTTL,
 			ServiceURL:  os.Getenv("AAA_SERVICE_URL"),
+			BaseURL:     getAAABaseURL(), // HTTP REST API base URL
 			GRPCAddress: os.Getenv("AAA_GRPC_ADDRESS"),
 			Timeout:     aaaTimeout,
 		},

@@ -1,6 +1,7 @@
 package aaa
 
 import (
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -322,4 +323,117 @@ func (c *AAATokenClaims) HasOrganizationAccess(organizationID string) bool {
 	}
 
 	return false
+}
+
+// Address represents an address from AAA service (for HTTP API)
+type Address struct {
+	ID     string `json:"id"`
+	UserID string `json:"user_id"`
+
+	// Hierarchical Indian Address Fields
+	House       *string `json:"house,omitempty"`
+	Street      *string `json:"street,omitempty"`
+	Landmark    *string `json:"landmark,omitempty"`
+	PostOffice  *string `json:"post_office,omitempty"`
+	Subdistrict *string `json:"subdistrict,omitempty"`
+	District    *string `json:"district,omitempty"`
+	VTC         *string `json:"vtc,omitempty"` // Village/Town/City
+	State       *string `json:"state,omitempty"`
+	Country     *string `json:"country,omitempty"`
+	Pincode     *string `json:"pincode,omitempty"`
+	FullAddress *string `json:"full_address,omitempty"`
+
+	// Metadata
+	Type      string                 `json:"type"`       // HOME, WORK, OTHER
+	IsPrimary bool                   `json:"is_primary"`
+	IsActive  bool                   `json:"is_active"`
+	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// CreateAddressRequest represents a request to create an address
+type CreateAddressRequest struct {
+	UserID      string                 `json:"user_id"`
+	Type        string                 `json:"type"`
+	House       *string                `json:"house,omitempty"`
+	Street      *string                `json:"street,omitempty"`
+	Landmark    *string                `json:"landmark,omitempty"`
+	PostOffice  *string                `json:"post_office,omitempty"`
+	Subdistrict *string                `json:"subdistrict,omitempty"`
+	District    *string                `json:"district,omitempty"`
+	VTC         *string                `json:"vtc,omitempty"`
+	State       *string                `json:"state,omitempty"`
+	Country     *string                `json:"country,omitempty"`
+	Pincode     *string                `json:"pincode,omitempty"`
+	IsPrimary   bool                   `json:"is_primary"`
+	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+}
+
+// UpdateAddressRequest represents a request to update an address
+type UpdateAddressRequest struct {
+	ID          string                 `json:"id"`
+	Type        string                 `json:"type"`
+	House       *string                `json:"house,omitempty"`
+	Street      *string                `json:"street,omitempty"`
+	Landmark    *string                `json:"landmark,omitempty"`
+	PostOffice  *string                `json:"post_office,omitempty"`
+	Subdistrict *string                `json:"subdistrict,omitempty"`
+	District    *string                `json:"district,omitempty"`
+	VTC         *string                `json:"vtc,omitempty"`
+	State       *string                `json:"state,omitempty"`
+	Country     *string                `json:"country,omitempty"`
+	Pincode     *string                `json:"pincode,omitempty"`
+	IsPrimary   bool                   `json:"is_primary"`
+	IsActive    bool                   `json:"is_active"`
+	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+}
+
+// BuildFullAddress builds a full address string from components
+func (a *Address) BuildFullAddress() string {
+	parts := []string{}
+
+	if a.House != nil && *a.House != "" {
+		parts = append(parts, *a.House)
+	}
+	if a.Street != nil && *a.Street != "" {
+		parts = append(parts, *a.Street)
+	}
+	if a.Landmark != nil && *a.Landmark != "" {
+		parts = append(parts, *a.Landmark)
+	}
+	if a.PostOffice != nil && *a.PostOffice != "" {
+		parts = append(parts, *a.PostOffice)
+	}
+	if a.Subdistrict != nil && *a.Subdistrict != "" {
+		parts = append(parts, *a.Subdistrict)
+	}
+	if a.District != nil && *a.District != "" {
+		parts = append(parts, *a.District)
+	}
+	if a.VTC != nil && *a.VTC != "" {
+		parts = append(parts, *a.VTC)
+	}
+	if a.State != nil && *a.State != "" {
+		parts = append(parts, *a.State)
+	}
+	if a.Country != nil && *a.Country != "" {
+		parts = append(parts, *a.Country)
+	}
+	if a.Pincode != nil && *a.Pincode != "" {
+		parts = append(parts, *a.Pincode)
+	}
+
+	return strings.Join(parts, ", ")
+}
+
+// IsComplete checks if address has all required fields
+func (a *Address) IsComplete() bool {
+	return a.House != nil && *a.House != "" &&
+		a.Street != nil && *a.Street != "" &&
+		a.District != nil && *a.District != "" &&
+		a.State != nil && *a.State != "" &&
+		a.Country != nil && *a.Country != "" &&
+		a.Pincode != nil && *a.Pincode != ""
 }

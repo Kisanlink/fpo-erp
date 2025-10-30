@@ -39,11 +39,8 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 		panic("Failed to initialize S3 service: " + err.Error())
 	}
 
-	// Initialize AAA address client
-	addressClient, err := aaa.NewAddressClient(cfg.AAA.GRPCAddress)
-	if err != nil {
-		panic("Failed to initialize AAA address client: " + err.Error())
-	}
+	// Initialize AAA address HTTP client
+	addressClient := aaa.NewAddressHTTPClient(cfg.AAA.BaseURL)
 
 	// Initialize services
 	warehouseService := services.NewWarehouseService(warehouseRepo, addressClient)

@@ -308,8 +308,15 @@ func (h *InventoryHandler) GetLowStockBatches(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/products/availability [get]
 func (h *InventoryHandler) GetAllProductsAvailability(c *gin.Context) {
+	// Extract JWT token for AAA service calls
+	jwtToken := c.GetString("jwt_token")
+	if jwtToken == "" {
+		utils.UnauthorizedResponse(c, "Missing authentication token")
+		return
+	}
+
 	// Get all products availability across warehouses
-	response, err := h.inventoryService.GetAllProductsAvailability(c.Request.Context())
+	response, err := h.inventoryService.GetAllProductsAvailability(c.Request.Context(), jwtToken)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "Failed to retrieve products availability", err)
 		return
@@ -351,6 +358,7 @@ func (h *InventoryHandler) RegisterRoutes(router *gin.RouterGroup) {
 		products.GET("/:id/batches", h.aaaMiddleware.RequireOrgPermission("inventory_batch", "read"), h.GetBatchesByProduct)
 	}
 	// Protected product availability route
+	// AAA HTTP service will validate addresses permissions internally
 	protected := products.Group("")
 	{
 		protected.GET("/availability", h.aaaMiddleware.RequireOrgPermission("inventory_batch", "read"), h.GetAllProductsAvailability)

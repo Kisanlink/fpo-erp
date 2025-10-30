@@ -226,6 +226,72 @@ func (m *AAAMiddleware) RequireOrgPermission(resourceType, action string) gin.Ha
 	}
 }
 
+// RequireMultipleOrgPermissions checks if user has multiple permissions scoped to their organization
+// This is useful when an operation requires permissions on multiple resource types
+// For example, creating a collaborator with address requires both "collaborator:create" and "address:create"
+func (m *AAAMiddleware) RequireMultipleOrgPermissions(resourceActions []ResourceAction) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID := c.MustGet("user_id").(string)
+		jwtToken := c.GetString("jwt_token")
+
+		// Extract organization ID from context (set by Authenticate middleware)
+		organizationID := c.GetString("organization_id")
+		if organizationID == "" {
+			utils.ErrorResponse(c, 403, "Organization context required. Ensure you're authenticated with a valid organization.", nil)
+			c.Abort()
+			return
+		}
+
+		// Build permissions with organization scope
+		var permissions []Permission
+		for _, ra := range resourceActions {
+			// Special case: addresses resource uses empty resourceID for global scope
+			resourceID := organizationID
+			if ra.ResourceType == "addresses" {
+				resourceID = ""
+			}
+
+			permissions = append(permissions, Permission{
+				ResourceType: ra.ResourceType,
+				ResourceID:   resourceID,
+				Action:       ra.Action,
+			})
+		}
+
+		// Check all permissions via batch gRPC call
+		results, err := m.authzClient.CheckMultiplePermissionsWithToken(
+			c.Request.Context(),
+			userID,
+			permissions,
+			jwtToken,
+		)
+		if err != nil {
+			utils.ErrorResponse(c, 500, "Permission check failed: "+err.Error(), err)
+			c.Abort()
+			return
+		}
+
+		// Check if all permissions are granted
+		// results is a map[string]bool with keys like "resourceType:resourceID:action"
+		for _, ra := range resourceActions {
+			// Special case: addresses resource uses empty resourceID
+			resourceID := organizationID
+			if ra.ResourceType == "addresses" {
+				resourceID = ""
+			}
+
+			key := fmt.Sprintf("%s:%s:%s", ra.ResourceType, resourceID, ra.Action)
+			if allowed, exists := results[key]; !exists || !allowed {
+				utils.ForbiddenResponse(c, fmt.Sprintf("Insufficient permissions: missing %s:%s", ra.ResourceType, ra.Action))
+				c.Abort()
+				return
+			}
+		}
+
+		c.Next()
+	}
+}
+
 // RequireAnyPermission checks if user has any of the specified permissions using gRPC
 func (m *AAAMiddleware) RequireAnyPermission(permissions []Permission) gin.HandlerFunc {
 	return func(c *gin.Context) {

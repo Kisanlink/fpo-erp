@@ -13,14 +13,18 @@ type Warehouse struct {
 	Name      string  `gorm:"type:varchar(100);not null" json:"name"`
 	AddressID *string `gorm:"type:varchar(50)" json:"address_id"` // Reference to AAA address
 
-	// Direct address fields (for when AAA address service is not available)
+	// Direct address fields (for when AAA address service is not available) - Indian hierarchical format
 	AddressType      *string `gorm:"type:varchar(50)" json:"address_type,omitempty"`
-	AddressLine1     *string `gorm:"type:varchar(255)" json:"address_line_1,omitempty"`
-	AddressLine2     *string `gorm:"type:varchar(255)" json:"address_line_2,omitempty"`
-	City             *string `gorm:"type:varchar(100)" json:"city,omitempty"`
+	House            *string `gorm:"type:varchar(255)" json:"house,omitempty"`
+	Street           *string `gorm:"type:varchar(255)" json:"street,omitempty"`
+	Landmark         *string `gorm:"type:varchar(255)" json:"landmark,omitempty"`
+	PostOffice       *string `gorm:"type:varchar(100)" json:"post_office,omitempty"`
+	Subdistrict      *string `gorm:"type:varchar(100)" json:"subdistrict,omitempty"`
+	District         *string `gorm:"type:varchar(100)" json:"district,omitempty"`
+	VTC              *string `gorm:"type:varchar(100)" json:"vtc,omitempty"` // Village/Town/City
 	State            *string `gorm:"type:varchar(100)" json:"state,omitempty"`
-	PostalCode       *string `gorm:"type:varchar(20)" json:"postal_code,omitempty"`
 	Country          *string `gorm:"type:varchar(100)" json:"country,omitempty"`
+	Pincode          *string `gorm:"type:varchar(20)" json:"pincode,omitempty"`
 	IsPrimaryAddress *bool   `gorm:"default:false" json:"is_primary_address,omitempty"`
 }
 
@@ -45,12 +49,16 @@ func NewWarehouseWithAddress(name string, address *CreateAddressRequest) *Wareho
 
 	if address != nil {
 		warehouse.AddressType = &address.Type
-		warehouse.AddressLine1 = &address.AddressLine1
-		warehouse.AddressLine2 = &address.AddressLine2
-		warehouse.City = &address.City
-		warehouse.State = &address.State
-		warehouse.PostalCode = &address.PostalCode
-		warehouse.Country = &address.Country
+		warehouse.House = address.House
+		warehouse.Street = address.Street
+		warehouse.Landmark = address.Landmark
+		warehouse.PostOffice = address.PostOffice
+		warehouse.Subdistrict = address.Subdistrict
+		warehouse.District = address.District
+		warehouse.VTC = address.VTC
+		warehouse.State = address.State
+		warehouse.Country = address.Country
+		warehouse.Pincode = address.Pincode
 		warehouse.IsPrimaryAddress = &address.IsPrimary
 	}
 
@@ -61,17 +69,21 @@ func (Warehouse) TableName() string {
 	return "warehouses"
 }
 
-// AddressInfo represents address information from AAA service
+// AddressInfo represents address information from AAA service - Indian hierarchical format
 type AddressInfo struct {
-	ID           string `json:"id"`
-	Type         string `json:"type"`
-	AddressLine1 string `json:"address_line_1"`
-	AddressLine2 string `json:"address_line_2"`
-	City         string `json:"city"`
-	State        string `json:"state"`
-	PostalCode   string `json:"postal_code"`
-	Country      string `json:"country"`
-	FullAddress  string `json:"full_address"`
+	ID          string  `json:"id"`
+	Type        string  `json:"type"`
+	House       *string `json:"house,omitempty"`
+	Street      *string `json:"street,omitempty"`
+	Landmark    *string `json:"landmark,omitempty"`
+	PostOffice  *string `json:"post_office,omitempty"`
+	Subdistrict *string `json:"subdistrict,omitempty"`
+	District    *string `json:"district,omitempty"`
+	VTC         *string `json:"vtc,omitempty"` // Village/Town/City
+	State       *string `json:"state,omitempty"`
+	Country     *string `json:"country,omitempty"`
+	Pincode     *string `json:"pincode,omitempty"`
+	FullAddress string  `json:"full_address"`
 }
 
 // WarehouseResponse represents the API response for warehouse
@@ -90,16 +102,20 @@ type CreateWarehouseRequest struct {
 	Address   *CreateAddressRequest `json:"address,omitempty"`    // Inline address creation
 }
 
-// CreateAddressRequest for inline address creation
+// CreateAddressRequest for inline address creation - Indian hierarchical format
 type CreateAddressRequest struct {
-	Type         string `json:"type" binding:"required"` // HOME, WORK, OTHER
-	AddressLine1 string `json:"address_line_1" binding:"required"`
-	AddressLine2 string `json:"address_line_2,omitempty"`
-	City         string `json:"city" binding:"required"`
-	State        string `json:"state" binding:"required"`
-	PostalCode   string `json:"postal_code" binding:"required"`
-	Country      string `json:"country" binding:"required"`
-	IsPrimary    bool   `json:"is_primary"`
+	Type        string  `json:"type" binding:"required"` // HOME, WORK, OTHER
+	House       *string `json:"house,omitempty"`
+	Street      *string `json:"street,omitempty"`
+	Landmark    *string `json:"landmark,omitempty"`
+	PostOffice  *string `json:"post_office,omitempty"`
+	Subdistrict *string `json:"subdistrict,omitempty"`
+	District    *string `json:"district,omitempty"`
+	VTC         *string `json:"vtc,omitempty"` // Village/Town/City
+	State       *string `json:"state,omitempty"`
+	Country     *string `json:"country,omitempty"`
+	Pincode     *string `json:"pincode,omitempty"`
+	IsPrimary   bool    `json:"is_primary"`
 }
 
 // UpdateWarehouseRequest represents the request to update a warehouse
@@ -109,15 +125,19 @@ type UpdateWarehouseRequest struct {
 	Address   *UpdateAddressRequest `json:"address,omitempty"`
 }
 
-// UpdateAddressRequest for inline address updates
+// UpdateAddressRequest for inline address updates - Indian hierarchical format
 type UpdateAddressRequest struct {
-	ID           string `json:"id" binding:"required"`
-	Type         string `json:"type,omitempty"`
-	AddressLine1 string `json:"address_line_1,omitempty"`
-	AddressLine2 string `json:"address_line_2,omitempty"`
-	City         string `json:"city,omitempty"`
-	State        string `json:"state,omitempty"`
-	PostalCode   string `json:"postal_code,omitempty"`
-	Country      string `json:"country,omitempty"`
-	IsPrimary    *bool  `json:"is_primary,omitempty"`
+	ID          string  `json:"id" binding:"required"`
+	Type        string  `json:"type,omitempty"`
+	House       *string `json:"house,omitempty"`
+	Street      *string `json:"street,omitempty"`
+	Landmark    *string `json:"landmark,omitempty"`
+	PostOffice  *string `json:"post_office,omitempty"`
+	Subdistrict *string `json:"subdistrict,omitempty"`
+	District    *string `json:"district,omitempty"`
+	VTC         *string `json:"vtc,omitempty"` // Village/Town/City
+	State       *string `json:"state,omitempty"`
+	Country     *string `json:"country,omitempty"`
+	Pincode     *string `json:"pincode,omitempty"`
+	IsPrimary   *bool   `json:"is_primary,omitempty"`
 }

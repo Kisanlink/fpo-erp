@@ -9009,31 +9009,44 @@ const docTemplate = `{
         "models.AddressInfo": {
             "type": "object",
             "properties": {
-                "address_line_1": {
-                    "type": "string"
-                },
-                "address_line_2": {
-                    "type": "string"
-                },
-                "city": {
-                    "type": "string"
-                },
                 "country": {
+                    "type": "string"
+                },
+                "district": {
                     "type": "string"
                 },
                 "full_address": {
                     "type": "string"
                 },
+                "house": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
-                "postal_code": {
+                "landmark": {
+                    "type": "string"
+                },
+                "pincode": {
+                    "type": "string"
+                },
+                "post_office": {
                     "type": "string"
                 },
                 "state": {
                     "type": "string"
                 },
+                "street": {
+                    "type": "string"
+                },
+                "subdistrict": {
+                    "type": "string"
+                },
                 "type": {
+                    "type": "string"
+                },
+                "vtc": {
+                    "description": "Village/Town/City",
                     "type": "string"
                 }
             }
@@ -9297,37 +9310,45 @@ const docTemplate = `{
         "models.CreateAddressRequest": {
             "type": "object",
             "required": [
-                "address_line_1",
-                "city",
-                "country",
-                "postal_code",
-                "state",
                 "type"
             ],
             "properties": {
-                "address_line_1": {
-                    "type": "string"
-                },
-                "address_line_2": {
-                    "type": "string"
-                },
-                "city": {
-                    "type": "string"
-                },
                 "country": {
+                    "type": "string"
+                },
+                "district": {
+                    "type": "string"
+                },
+                "house": {
                     "type": "string"
                 },
                 "is_primary": {
                     "type": "boolean"
                 },
-                "postal_code": {
+                "landmark": {
+                    "type": "string"
+                },
+                "pincode": {
+                    "type": "string"
+                },
+                "post_office": {
                     "type": "string"
                 },
                 "state": {
                     "type": "string"
                 },
+                "street": {
+                    "type": "string"
+                },
+                "subdistrict": {
+                    "type": "string"
+                },
                 "type": {
                     "description": "HOME, WORK, OTHER",
+                    "type": "string"
+                },
+                "vtc": {
+                    "description": "Village/Town/City",
                     "type": "string"
                 }
             }
@@ -11500,16 +11521,13 @@ const docTemplate = `{
                 "id"
             ],
             "properties": {
-                "address_line_1": {
-                    "type": "string"
-                },
-                "address_line_2": {
-                    "type": "string"
-                },
-                "city": {
-                    "type": "string"
-                },
                 "country": {
+                    "type": "string"
+                },
+                "district": {
+                    "type": "string"
+                },
+                "house": {
                     "type": "string"
                 },
                 "id": {
@@ -11518,13 +11536,29 @@ const docTemplate = `{
                 "is_primary": {
                     "type": "boolean"
                 },
-                "postal_code": {
+                "landmark": {
+                    "type": "string"
+                },
+                "pincode": {
+                    "type": "string"
+                },
+                "post_office": {
                     "type": "string"
                 },
                 "state": {
                     "type": "string"
                 },
+                "street": {
+                    "type": "string"
+                },
+                "subdistrict": {
+                    "type": "string"
+                },
                 "type": {
+                    "type": "string"
+                },
+                "vtc": {
+                    "description": "Village/Town/City",
                     "type": "string"
                 }
             }

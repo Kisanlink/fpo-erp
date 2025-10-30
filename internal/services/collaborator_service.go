@@ -13,12 +13,12 @@ import (
 // CollaboratorService handles collaborator business logic
 type CollaboratorService struct {
 	collaboratorRepo *repositories.CollaboratorRepository
-	addressClient    *aaa.AddressClient
+	addressClient    *aaa.AddressHTTPClient
 	s3Service        *S3Service
 }
 
 // NewCollaboratorService creates a new collaborator service
-func NewCollaboratorService(collaboratorRepo *repositories.CollaboratorRepository, addressClient *aaa.AddressClient, s3Service *S3Service) *CollaboratorService {
+func NewCollaboratorService(collaboratorRepo *repositories.CollaboratorRepository, addressClient *aaa.AddressHTTPClient, s3Service *S3Service) *CollaboratorService {
 	return &CollaboratorService{
 		collaboratorRepo: collaboratorRepo,
 		addressClient:    addressClient,
@@ -27,7 +27,7 @@ func NewCollaboratorService(collaboratorRepo *repositories.CollaboratorRepositor
 }
 
 // CreateCollaborator creates a new collaborator with address
-func (s *CollaboratorService) CreateCollaborator(ctx context.Context, request *models.CreateCollaboratorRequest, userID string) (*models.CollaboratorResponse, error) {
+func (s *CollaboratorService) CreateCollaborator(ctx context.Context, request *models.CreateCollaboratorRequest, userID string, jwtToken string) (*models.CollaboratorResponse, error) {
 	var addressID *string
 
 	// Handle inline address creation if provided
@@ -37,16 +37,20 @@ func (s *CollaboratorService) CreateCollaborator(ctx context.Context, request *m
 		defer cancel()
 		// Use the authenticated user ID passed from handler
 		address, err := s.addressClient.CreateAddress(ctxAddr, &aaa.CreateAddressRequest{
-			UserID:       userID,
-			Type:         request.Address.Type,
-			AddressLine1: request.Address.AddressLine1,
-			AddressLine2: request.Address.AddressLine2,
-			City:         request.Address.City,
-			State:        request.Address.State,
-			PostalCode:   request.Address.PostalCode,
-			Country:      request.Address.Country,
-			IsPrimary:    request.Address.IsPrimary,
-		})
+			UserID:      userID,
+			Type:        request.Address.Type,
+			House:       request.Address.House,
+			Street:      request.Address.Street,
+			Landmark:    request.Address.Landmark,
+			PostOffice:  request.Address.PostOffice,
+			Subdistrict: request.Address.Subdistrict,
+			District:    request.Address.District,
+			VTC:         request.Address.VTC,
+			State:       request.Address.State,
+			Country:     request.Address.Country,
+			Pincode:     request.Address.Pincode,
+			IsPrimary:   request.Address.IsPrimary,
+		}, jwtToken)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create address: %w", err)
 		}
@@ -62,7 +66,7 @@ func (s *CollaboratorService) CreateCollaborator(ctx context.Context, request *m
 		if exists {
 			// Rollback address creation if GST exists
 			if addressID != nil {
-				_ = s.addressClient.DeleteAddress(ctx, *addressID, true)
+				_ = s.addressClient.DeleteAddress(ctx, *addressID, true, jwtToken)
 			}
 			return nil, fmt.Errorf("collaborator with GST number %s already exists", request.GSTNumber)
 		}
@@ -89,27 +93,27 @@ func (s *CollaboratorService) CreateCollaborator(ctx context.Context, request *m
 	// Save to database
 	if err := s.collaboratorRepo.Create(collaborator); err != nil {
 		if addressID != nil {
-			_ = s.addressClient.DeleteAddress(ctx, *addressID, true) // best-effort rollback
+			_ = s.addressClient.DeleteAddress(ctx, *addressID, true, jwtToken) // best-effort rollback
 		}
 		return nil, err
 	}
 
 	// Build response with address details
-	return s.buildCollaboratorResponse(ctx, collaborator)
+	return s.buildCollaboratorResponse(ctx, collaborator, jwtToken)
 }
 
 // GetCollaborator retrieves a collaborator by ID
-func (s *CollaboratorService) GetCollaborator(ctx context.Context, id string) (*models.CollaboratorResponse, error) {
+func (s *CollaboratorService) GetCollaborator(ctx context.Context, id string, jwtToken string) (*models.CollaboratorResponse, error) {
 	collaborator, err := s.collaboratorRepo.GetByID(id)
 	if err != nil {
 		return nil, err
 	}
 
-	return s.buildCollaboratorResponse(ctx, collaborator)
+	return s.buildCollaboratorResponse(ctx, collaborator, jwtToken)
 }
 
 // GetAllCollaborators retrieves all collaborators
-func (s *CollaboratorService) GetAllCollaborators(ctx context.Context) ([]models.CollaboratorResponse, error) {
+func (s *CollaboratorService) GetAllCollaborators(ctx context.Context, jwtToken string) ([]models.CollaboratorResponse, error) {
 	collaborators, err := s.collaboratorRepo.GetAll()
 	if err != nil {
 		return nil, err
@@ -117,7 +121,7 @@ func (s *CollaboratorService) GetAllCollaborators(ctx context.Context) ([]models
 
 	var responses []models.CollaboratorResponse
 	for _, collaborator := range collaborators {
-		response, err := s.buildCollaboratorResponse(ctx, &collaborator)
+		response, err := s.buildCollaboratorResponse(ctx, &collaborator, jwtToken)
 		if err != nil {
 			// Log error but continue with other collaborators
 			continue
@@ -129,7 +133,7 @@ func (s *CollaboratorService) GetAllCollaborators(ctx context.Context) ([]models
 }
 
 // GetActiveCollaborators retrieves all active collaborators
-func (s *CollaboratorService) GetActiveCollaborators(ctx context.Context) ([]models.CollaboratorResponse, error) {
+func (s *CollaboratorService) GetActiveCollaborators(ctx context.Context, jwtToken string) ([]models.CollaboratorResponse, error) {
 	collaborators, err := s.collaboratorRepo.GetActiveCollaborators()
 	if err != nil {
 		return nil, err
@@ -137,7 +141,7 @@ func (s *CollaboratorService) GetActiveCollaborators(ctx context.Context) ([]mod
 
 	var responses []models.CollaboratorResponse
 	for _, collaborator := range collaborators {
-		response, err := s.buildCollaboratorResponse(ctx, &collaborator)
+		response, err := s.buildCollaboratorResponse(ctx, &collaborator, jwtToken)
 		if err != nil {
 			continue
 		}
@@ -148,7 +152,7 @@ func (s *CollaboratorService) GetActiveCollaborators(ctx context.Context) ([]mod
 }
 
 // UpdateCollaborator updates a collaborator
-func (s *CollaboratorService) UpdateCollaborator(ctx context.Context, id string, request *models.UpdateCollaboratorRequest) (*models.CollaboratorResponse, error) {
+func (s *CollaboratorService) UpdateCollaborator(ctx context.Context, id string, request *models.UpdateCollaboratorRequest, jwtToken string) (*models.CollaboratorResponse, error) {
 	// Get existing collaborator
 	collaborator, err := s.collaboratorRepo.GetByID(id)
 	if err != nil {
@@ -163,17 +167,21 @@ func (s *CollaboratorService) UpdateCollaborator(ctx context.Context, id string,
 		}
 		// Update address via AAA service
 		address, err := s.addressClient.UpdateAddress(ctx, &aaa.UpdateAddressRequest{
-			ID:           request.Address.ID,
-			Type:         request.Address.Type,
-			AddressLine1: request.Address.AddressLine1,
-			AddressLine2: request.Address.AddressLine2,
-			City:         request.Address.City,
-			State:        request.Address.State,
-			PostalCode:   request.Address.PostalCode,
-			Country:      request.Address.Country,
-			IsPrimary:    request.Address.IsPrimary != nil && *request.Address.IsPrimary,
-			IsActive:     true,
-		})
+			ID:          request.Address.ID,
+			Type:        request.Address.Type,
+			House:       request.Address.House,
+			Street:      request.Address.Street,
+			Landmark:    request.Address.Landmark,
+			PostOffice:  request.Address.PostOffice,
+			Subdistrict: request.Address.Subdistrict,
+			District:    request.Address.District,
+			VTC:         request.Address.VTC,
+			State:       request.Address.State,
+			Country:     request.Address.Country,
+			Pincode:     request.Address.Pincode,
+			IsPrimary:   request.Address.IsPrimary != nil && *request.Address.IsPrimary,
+			IsActive:    true,
+		}, jwtToken)
 		if err != nil {
 			return nil, fmt.Errorf("failed to update address: %w", err)
 		}
@@ -223,11 +231,11 @@ func (s *CollaboratorService) UpdateCollaborator(ctx context.Context, id string,
 		return nil, err
 	}
 
-	return s.buildCollaboratorResponse(ctx, collaborator)
+	return s.buildCollaboratorResponse(ctx, collaborator, jwtToken)
 }
 
 // DeleteCollaborator deletes a collaborator (soft delete)
-func (s *CollaboratorService) DeleteCollaborator(ctx context.Context, id string) error {
+func (s *CollaboratorService) DeleteCollaborator(ctx context.Context, id string, jwtToken string) error {
 	// Get collaborator to check if it has an address
 	collaborator, err := s.collaboratorRepo.GetByID(id)
 	if err != nil {
@@ -236,7 +244,7 @@ func (s *CollaboratorService) DeleteCollaborator(ctx context.Context, id string)
 
 	// Delete associated address if exists (soft delete)
 	if collaborator.AddressID != nil {
-		if err := s.addressClient.DeleteAddress(ctx, *collaborator.AddressID, true); err != nil {
+		if err := s.addressClient.DeleteAddress(ctx, *collaborator.AddressID, true, jwtToken); err != nil {
 			// Log error but don't fail the collaborator deletion
 		}
 	}
@@ -246,7 +254,7 @@ func (s *CollaboratorService) DeleteCollaborator(ctx context.Context, id string)
 }
 
 // SearchCollaborators searches collaborators by name
-func (s *CollaboratorService) SearchCollaborators(ctx context.Context, query string) ([]models.CollaboratorResponse, error) {
+func (s *CollaboratorService) SearchCollaborators(ctx context.Context, query string, jwtToken string) ([]models.CollaboratorResponse, error) {
 	collaborators, err := s.collaboratorRepo.SearchByName(query)
 	if err != nil {
 		return nil, err
@@ -254,7 +262,7 @@ func (s *CollaboratorService) SearchCollaborators(ctx context.Context, query str
 
 	var responses []models.CollaboratorResponse
 	for _, collaborator := range collaborators {
-		response, err := s.buildCollaboratorResponse(ctx, &collaborator)
+		response, err := s.buildCollaboratorResponse(ctx, &collaborator, jwtToken)
 		if err != nil {
 			continue
 		}
@@ -265,7 +273,7 @@ func (s *CollaboratorService) SearchCollaborators(ctx context.Context, query str
 }
 
 // buildCollaboratorResponse builds a collaborator response with address details
-func (s *CollaboratorService) buildCollaboratorResponse(ctx context.Context, collaborator *models.Collaborator) (*models.CollaboratorResponse, error) {
+func (s *CollaboratorService) buildCollaboratorResponse(ctx context.Context, collaborator *models.Collaborator, jwtToken string) (*models.CollaboratorResponse, error) {
 	response := &models.CollaboratorResponse{
 		ID:            collaborator.ID,
 		CompanyName:   collaborator.CompanyName,
@@ -286,56 +294,28 @@ func (s *CollaboratorService) buildCollaboratorResponse(ctx context.Context, col
 
 	// Fetch address details if address ID exists
 	if collaborator.AddressID != nil {
-		address, err := s.addressClient.GetAddress(ctx, *collaborator.AddressID)
+		address, err := s.addressClient.GetAddress(ctx, *collaborator.AddressID, jwtToken)
 		if err != nil {
 			// Log error but don't fail the request
 			return response, nil
 		}
 
 		response.Address = &models.AddressInfo{
-			ID:           address.ID,
-			Type:         address.Type,
-			AddressLine1: address.AddressLine1,
-			AddressLine2: address.AddressLine2,
-			City:         address.City,
-			State:        address.State,
-			PostalCode:   address.PostalCode,
-			Country:      address.Country,
-			FullAddress:  s.buildFullAddress(address),
+			ID:          address.ID,
+			Type:        address.Type,
+			House:       address.House,
+			Street:      address.Street,
+			Landmark:    address.Landmark,
+			PostOffice:  address.PostOffice,
+			Subdistrict: address.Subdistrict,
+			District:    address.District,
+			VTC:         address.VTC,
+			State:       address.State,
+			Country:     address.Country,
+			Pincode:     address.Pincode,
+			FullAddress: address.BuildFullAddress(),
 		}
 	}
 
 	return response, nil
-}
-
-// buildFullAddress builds a full address string from address components
-func (s *CollaboratorService) buildFullAddress(address *aaa.Address) string {
-	parts := []string{}
-	if address.AddressLine1 != "" {
-		parts = append(parts, address.AddressLine1)
-	}
-	if address.AddressLine2 != "" {
-		parts = append(parts, address.AddressLine2)
-	}
-	if address.City != "" {
-		parts = append(parts, address.City)
-	}
-	if address.State != "" {
-		parts = append(parts, address.State)
-	}
-	if address.PostalCode != "" {
-		parts = append(parts, address.PostalCode)
-	}
-	if address.Country != "" {
-		parts = append(parts, address.Country)
-	}
-
-	fullAddress := ""
-	for i, part := range parts {
-		if i > 0 {
-			fullAddress += ", "
-		}
-		fullAddress += part
-	}
-	return fullAddress
 }

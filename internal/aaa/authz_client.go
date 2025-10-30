@@ -119,34 +119,6 @@ func (c *AuthzClient) CheckMultiplePermissionsWithToken(ctx context.Context, use
 	return results, nil
 }
 
-// GetUserPermissions gets all permissions for a user
-func (c *AuthzClient) GetUserPermissions(ctx context.Context, userID string) ([]string, error) {
-	req := &proto.GetUserPermissionsRequest{
-		UserId: userID,
-	}
-
-	resp, err := c.client.GetUserPermissions(ctx, req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get user permissions: %w", err)
-	}
-
-	return resp.Permissions, nil
-}
-
-// GetUserRoles gets all roles for a user
-func (c *AuthzClient) GetUserRoles(ctx context.Context, userID string) ([]string, error) {
-	req := &proto.GetUserRolesRequest{
-		UserId: userID,
-	}
-
-	resp, err := c.client.GetUserRoles(ctx, req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get user roles: %w", err)
-	}
-
-	return resp.Roles, nil
-}
-
 // addAuthTokenToContext adds the JWT token to gRPC metadata
 func (c *AuthzClient) addAuthTokenToContext(ctx context.Context, jwtToken string) context.Context {
 	// Create metadata with authorization header
@@ -163,4 +135,11 @@ type Permission struct {
 	ResourceType string // e.g., "user"
 	ResourceID   string // e.g., "USER_123" or "*"
 	Action       string // e.g., "read", "create", "delete"
+}
+
+// ResourceAction represents a resource type and action pair for permission checking
+// Used for building organization-scoped permissions dynamically
+type ResourceAction struct {
+	ResourceType string // e.g., "collaborator", "address"
+	Action       string // e.g., "create", "read", "update", "delete"
 }

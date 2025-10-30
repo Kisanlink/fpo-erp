@@ -62,8 +62,15 @@ func (h *CollaboratorHandler) CreateCollaborator(c *gin.Context) {
 	utils.Debug("Creating collaborator for organization:", organizationID)
 	utils.Debug("Organization Name:", c.GetString("organization_name"))
 
+	// Extract JWT token for AAA service calls
+	jwtToken := c.GetString("jwt_token")
+	if jwtToken == "" {
+		utils.UnauthorizedResponse(c, "Missing authentication token")
+		return
+	}
+
 	// Create collaborator
-	response, err := h.collaboratorService.CreateCollaborator(c.Request.Context(), &request, userID)
+	response, err := h.collaboratorService.CreateCollaborator(c.Request.Context(), &request, userID, jwtToken)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "Failed to create collaborator", err)
 		return
@@ -106,8 +113,15 @@ func (h *CollaboratorHandler) GetCollaborator(c *gin.Context) {
 		return
 	}
 
+	// Extract JWT token for AAA service calls
+	jwtToken := c.GetString("jwt_token")
+	if jwtToken == "" {
+		utils.UnauthorizedResponse(c, "Missing authentication token")
+		return
+	}
+
 	// Get collaborator
-	response, err := h.collaboratorService.GetCollaborator(c.Request.Context(), id)
+	response, err := h.collaboratorService.GetCollaborator(c.Request.Context(), id, jwtToken)
 	if err != nil {
 		utils.NotFoundResponse(c, "Collaborator not found")
 		return
@@ -127,8 +141,15 @@ func (h *CollaboratorHandler) GetCollaborator(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/collaborators [get]
 func (h *CollaboratorHandler) GetAllCollaborators(c *gin.Context) {
+	// Extract JWT token for AAA service calls
+	jwtToken := c.GetString("jwt_token")
+	if jwtToken == "" {
+		utils.UnauthorizedResponse(c, "Missing authentication token")
+		return
+	}
+
 	// Get all collaborators
-	response, err := h.collaboratorService.GetAllCollaborators(c.Request.Context())
+	response, err := h.collaboratorService.GetAllCollaborators(c.Request.Context(), jwtToken)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "Failed to retrieve collaborators", err)
 		return
@@ -148,8 +169,15 @@ func (h *CollaboratorHandler) GetAllCollaborators(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/collaborators/active [get]
 func (h *CollaboratorHandler) GetActiveCollaborators(c *gin.Context) {
+	// Extract JWT token for AAA service calls
+	jwtToken := c.GetString("jwt_token")
+	if jwtToken == "" {
+		utils.UnauthorizedResponse(c, "Missing authentication token")
+		return
+	}
+
 	// Get active collaborators
-	response, err := h.collaboratorService.GetActiveCollaborators(c.Request.Context())
+	response, err := h.collaboratorService.GetActiveCollaborators(c.Request.Context(), jwtToken)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "Failed to retrieve active collaborators", err)
 		return
@@ -199,8 +227,15 @@ func (h *CollaboratorHandler) UpdateCollaborator(c *gin.Context) {
 	// Log organization context for debugging
 	utils.Debug("Updating collaborator for organization:", organizationID)
 
+	// Extract JWT token for AAA service calls
+	jwtToken := c.GetString("jwt_token")
+	if jwtToken == "" {
+		utils.UnauthorizedResponse(c, "Missing authentication token")
+		return
+	}
+
 	// Update collaborator
-	response, err := h.collaboratorService.UpdateCollaborator(c.Request.Context(), id, &request)
+	response, err := h.collaboratorService.UpdateCollaborator(c.Request.Context(), id, &request, jwtToken)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "Failed to update collaborator", err)
 		return
@@ -245,8 +280,15 @@ func (h *CollaboratorHandler) DeleteCollaborator(c *gin.Context) {
 		return
 	}
 
+	// Extract JWT token for AAA service calls
+	jwtToken := c.GetString("jwt_token")
+	if jwtToken == "" {
+		utils.UnauthorizedResponse(c, "Missing authentication token")
+		return
+	}
+
 	// Delete collaborator
-	if err := h.collaboratorService.DeleteCollaborator(c.Request.Context(), id); err != nil {
+	if err := h.collaboratorService.DeleteCollaborator(c.Request.Context(), id, jwtToken); err != nil {
 		utils.InternalServerErrorResponse(c, "Failed to delete collaborator", err)
 		return
 	}
@@ -274,8 +316,15 @@ func (h *CollaboratorHandler) SearchCollaborators(c *gin.Context) {
 		return
 	}
 
+	// Extract JWT token for AAA service calls
+	jwtToken := c.GetString("jwt_token")
+	if jwtToken == "" {
+		utils.UnauthorizedResponse(c, "Missing authentication token")
+		return
+	}
+
 	// Search collaborators
-	response, err := h.collaboratorService.SearchCollaborators(c.Request.Context(), query)
+	response, err := h.collaboratorService.SearchCollaborators(c.Request.Context(), query, jwtToken)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "Failed to search collaborators", err)
 		return
@@ -291,12 +340,19 @@ func (h *CollaboratorHandler) RegisterRoutes(router *gin.RouterGroup) {
 		// Apply authentication middleware to all routes
 		collaborators.Use(h.aaaMiddleware.Authenticate())
 
+		// Create: AAA HTTP service will validate addresses permissions internally
 		collaborators.POST("", h.aaaMiddleware.RequireOrgPermission("collaborator", "create"), h.CreateCollaborator)
+
+		// Read operations: AAA HTTP service will validate addresses permissions internally
 		collaborators.GET("", h.aaaMiddleware.RequireOrgPermission("collaborator", "read"), h.GetAllCollaborators)
 		collaborators.GET("/active", h.aaaMiddleware.RequireOrgPermission("collaborator", "read"), h.GetActiveCollaborators)
 		collaborators.GET("/search", h.aaaMiddleware.RequireOrgPermission("collaborator", "read"), h.SearchCollaborators)
 		collaborators.GET("/:id", h.aaaMiddleware.RequireOrgPermission("collaborator", "read"), h.GetCollaborator)
+
+		// Update: AAA HTTP service will validate addresses permissions internally
 		collaborators.PUT("/:id", h.aaaMiddleware.RequireOrgPermission("collaborator", "update"), h.UpdateCollaborator)
+
+		// Delete: AAA HTTP service will validate addresses permissions internally
 		collaborators.DELETE("/:id", h.aaaMiddleware.RequireOrgPermission("collaborator", "delete"), h.DeleteCollaborator)
 	}
 }

@@ -41,42 +41,11 @@ message BatchCheckResponse {
     string message = 3;
 }
 
-// GetUserPermissionsRequest requests all permissions for a user
-message GetUserPermissionsRequest {
-    string user_id = 1;
-    string resource_type = 2;   // Optional filter by resource type
-}
-
-// GetUserPermissionsResponse returns all permissions for a user
-message GetUserPermissionsResponse {
-    repeated string permissions = 1;
-    int32 status_code = 2;
-    string message = 3;
-}
-
-// GetUserRolesRequest requests all roles for a user
-message GetUserRolesRequest {
-    string user_id = 1;
-}
-
-// GetUserRolesResponse returns all roles for a user
-message GetUserRolesResponse {
-    repeated string roles = 1;
-    int32 status_code = 2;
-    string message = 3;
-}
-
 // AuthorizationService provides permission checking functionality
 service AuthorizationService {
     // Check verifies if a user has permission to perform an action on a resource
     rpc Check(CheckRequest) returns (CheckResponse);
-    
+
     // BatchCheck verifies multiple permissions in a single request
     rpc BatchCheck(BatchCheckRequest) returns (BatchCheckResponse);
-    
-    // GetUserPermissions returns all permissions for a user
-    rpc GetUserPermissions(GetUserPermissionsRequest) returns (GetUserPermissionsResponse);
-    
-    // GetUserRoles returns all roles for a user
-    rpc GetUserRoles(GetUserRolesRequest) returns (GetUserRolesResponse);
 }
