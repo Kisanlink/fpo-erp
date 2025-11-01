@@ -3324,6 +3324,81 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update GRN details (attach PDF, update remarks, quality status) (requires authentication)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "GRNs"
+                ],
+                "summary": "Update Goods Receipt Note",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "GRNX_12345678",
+                        "description": "GRN ID (format: GRNX_xxxxxxxx)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateGRNRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "GRN updated successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.GRNResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "404": {
+                        "description": "GRN not found",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    }
+                }
             }
         },
         "/api/v1/prices": {
@@ -9586,12 +9661,17 @@ const docTemplate = `{
         "models.CreateGRNRequest": {
             "type": "object",
             "required": [
+                "grn_number",
                 "items",
                 "po_id",
                 "quality_status",
                 "received_by"
             ],
             "properties": {
+                "grn_number": {
+                    "description": "User-provided from vendor PDF",
+                    "type": "string"
+                },
                 "items": {
                     "type": "array",
                     "minItems": 1,
@@ -9890,6 +9970,8 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "items",
+                "payment_mode",
+                "sale_type",
                 "warehouse_id"
             ],
             "properties": {
@@ -9905,13 +9987,25 @@ const docTemplate = `{
                     "description": "Manual discount by ID (highest priority)",
                     "type": "string"
                 },
+                "farmer_id": {
+                    "description": "BRD Requirements",
+                    "type": "string"
+                },
                 "items": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.CreateSaleItemRequest"
                     }
                 },
+                "payment_mode": {
+                    "description": "cash, upi, online",
+                    "type": "string"
+                },
                 "sale_date": {
+                    "type": "string"
+                },
+                "sale_type": {
+                    "description": "in_store, delivery",
                     "type": "string"
                 },
                 "warehouse_id": {
@@ -10370,6 +10464,10 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "created_at": {
+                    "type": "string"
+                },
+                "grn_document": {
+                    "description": "Attachment ID for vendor's GRN PDF",
                     "type": "string"
                 },
                 "grn_number": {
@@ -10930,6 +11028,10 @@ const docTemplate = `{
                     "description": "Tax amounts",
                     "type": "number"
                 },
+                "cost_price": {
+                    "description": "BRD Requirements - Cost and Margin",
+                    "type": "number"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -10940,6 +11042,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "line_total": {
+                    "type": "number"
+                },
+                "margin": {
+                    "description": "Profit margin",
                     "type": "number"
                 },
                 "quantity": {
@@ -10973,6 +11079,10 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
+                "farmer_id": {
+                    "description": "BRD Requirements",
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -10982,7 +11092,13 @@ const docTemplate = `{
                         "$ref": "#/definitions/models.SaleItemResponse"
                     }
                 },
+                "payment_mode": {
+                    "type": "string"
+                },
                 "sale_date": {
+                    "type": "string"
+                },
+                "sale_type": {
                     "type": "string"
                 },
                 "status": {
@@ -11692,6 +11808,22 @@ const docTemplate = `{
                 },
                 "value": {
                     "type": "number"
+                }
+            }
+        },
+        "models.UpdateGRNRequest": {
+            "type": "object",
+            "properties": {
+                "grn_document": {
+                    "description": "Attachment ID for vendor's GRN PDF",
+                    "type": "string"
+                },
+                "quality_status": {
+                    "description": "accepted, rejected, partial",
+                    "type": "string"
+                },
+                "remarks": {
+                    "type": "string"
                 }
             }
         },

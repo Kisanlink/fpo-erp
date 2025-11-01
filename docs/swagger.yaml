@@ -391,6 +391,9 @@ definitions:
     type: object
   models.CreateGRNRequest:
     properties:
+      grn_number:
+        description: User-provided from vendor PDF
+        type: string
       items:
         items:
           $ref: '#/definitions/models.CreateGRNItemRequest'
@@ -409,6 +412,7 @@ definitions:
       remarks:
         type: string
     required:
+    - grn_number
     - items
     - po_id
     - quality_status
@@ -609,16 +613,27 @@ definitions:
       discount_id:
         description: Manual discount by ID (highest priority)
         type: string
+      farmer_id:
+        description: BRD Requirements
+        type: string
       items:
         items:
           $ref: '#/definitions/models.CreateSaleItemRequest'
         type: array
+      payment_mode:
+        description: cash, upi, online
+        type: string
       sale_date:
+        type: string
+      sale_type:
+        description: in_store, delivery
         type: string
       warehouse_id:
         type: string
     required:
     - items
+    - payment_mode
+    - sale_type
     - warehouse_id
     type: object
   models.CreateTaxRequest:
@@ -928,6 +943,9 @@ definitions:
   models.GRNResponse:
     properties:
       created_at:
+        type: string
+      grn_document:
+        description: Attachment ID for vendor's GRN PDF
         type: string
       grn_number:
         type: string
@@ -1296,6 +1314,9 @@ definitions:
       cgst_amount:
         description: Tax amounts
         type: number
+      cost_price:
+        description: BRD Requirements - Cost and Margin
+        type: number
       created_at:
         type: string
       custom_tax_amount:
@@ -1303,6 +1324,9 @@ definitions:
       id:
         type: string
       line_total:
+        type: number
+      margin:
+        description: Profit margin
         type: number
       quantity:
         type: integer
@@ -1323,13 +1347,20 @@ definitions:
         description: Detailed breakdown of amounts
       created_at:
         type: string
+      farmer_id:
+        description: BRD Requirements
+        type: string
       id:
         type: string
       items:
         items:
           $ref: '#/definitions/models.SaleItemResponse'
         type: array
+      payment_mode:
+        type: string
       sale_date:
+        type: string
+      sale_type:
         type: string
       status:
         type: string
@@ -1820,6 +1851,17 @@ definitions:
         type: string
       value:
         type: number
+    type: object
+  models.UpdateGRNRequest:
+    properties:
+      grn_document:
+        description: Attachment ID for vendor's GRN PDF
+        type: string
+      quality_status:
+        description: accepted, rejected, partial
+        type: string
+      remarks:
+        type: string
     type: object
   models.UpdatePOPaymentRequest:
     properties:
@@ -4113,6 +4155,53 @@ paths:
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
       summary: Get Goods Receipt Note
+      tags:
+      - GRNs
+    put:
+      consumes:
+      - application/json
+      description: Update GRN details (attach PDF, update remarks, quality status)
+        (requires authentication)
+      parameters:
+      - description: 'GRN ID (format: GRNX_xxxxxxxx)'
+        example: GRNX_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateGRNRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: GRN updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.GRNResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: GRN not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Update Goods Receipt Note
       tags:
       - GRNs
   /api/v1/prices:
