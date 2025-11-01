@@ -163,6 +163,45 @@ func (h *GRNHandler) GetGRNByPurchaseOrder(c *gin.Context) {
 	utils.OKResponse(c, "GRN retrieved successfully", response)
 }
 
+// UpdateGRN handles PUT /api/v1/grns/:id
+// @Summary Update Goods Receipt Note
+// @Description Update GRN details (attach PDF, update remarks, quality status) (requires authentication)
+// @Tags GRNs
+// @Accept json
+// @Produce json
+// @Param id path string true "GRN ID (format: GRNX_xxxxxxxx)" example(GRNX_12345678)
+// @Param request body models.UpdateGRNRequest true "Update data"
+// @Success 200 {object} utils.Response{data=models.GRNResponse} "GRN updated successfully"
+// @Failure 400 {object} utils.ErrorResponseModel "Bad request"
+// @Failure 404 {object} utils.ErrorResponseModel "GRN not found"
+// @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
+// @Security BearerAuth
+// @Router /api/v1/grns/{id} [put]
+func (h *GRNHandler) UpdateGRN(c *gin.Context) {
+	// Get ID from URL
+	id := c.Param("id")
+	if id == "" {
+		utils.BadRequestResponse(c, "GRN ID is required", nil)
+		return
+	}
+
+	// Validate request
+	var request models.UpdateGRNRequest
+	if err := utils.ValidateRequest(c, &request); err != nil {
+		utils.BadRequestResponse(c, "Invalid request data", err)
+		return
+	}
+
+	// Update GRN
+	response, err := h.grnService.UpdateGRN(c.Request.Context(), id, &request)
+	if err != nil {
+		utils.InternalServerErrorResponse(c, "Failed to update GRN", err)
+		return
+	}
+
+	utils.OKResponse(c, "GRN updated successfully", response)
+}
+
 // RegisterRoutes registers all GRN routes
 func (h *GRNHandler) RegisterRoutes(router *gin.RouterGroup) {
 	// GRN routes
@@ -172,6 +211,7 @@ func (h *GRNHandler) RegisterRoutes(router *gin.RouterGroup) {
 		grns.POST("", h.aaaMiddleware.RequireOrgPermission("grn", "create"), h.CreateGRN)
 		grns.GET("", h.aaaMiddleware.RequireOrgPermission("grn", "read"), h.GetAllGRNs)
 		grns.GET("/:id", h.aaaMiddleware.RequireOrgPermission("grn", "read"), h.GetGRN)
+		grns.PUT("/:id", h.aaaMiddleware.RequireOrgPermission("grn", "update"), h.UpdateGRN)
 	}
 
 	// Nested routes under warehouses

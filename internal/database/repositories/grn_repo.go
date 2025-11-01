@@ -54,6 +54,14 @@ func (r *GRNRepository) UpdateItemBatchIDWithTx(tx *gorm.DB, itemID, batchID str
 	return nil
 }
 
+// Update updates a GRN
+func (r *GRNRepository) Update(id string, updates map[string]interface{}) error {
+	if err := r.db.Model(&models.GRN{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+		return errors.NewInternalServerError("Failed to update GRN")
+	}
+	return nil
+}
+
 // GetByID retrieves a GRN by ID
 func (r *GRNRepository) GetByID(id string) (*models.GRN, error) {
 	var grn models.GRN

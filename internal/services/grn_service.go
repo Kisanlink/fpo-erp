@@ -109,10 +109,16 @@ func (s *GRNService) CreateGRN(ctx context.Context, request *models.CreateGRNReq
 		}
 	}
 
-	// Generate GRN number
-	grnNumber, err := s.generateGRNNumber()
+	// Use user-provided GRN number (instead of auto-generation)
+	grnNumber := request.GRNNumber
+
+	// Validate GRN number is unique
+	exists, err = s.grnRepo.GRNNumberExists(grnNumber)
 	if err != nil {
 		return nil, err
+	}
+	if exists {
+		return nil, fmt.Errorf("GRN number '%s' already exists", grnNumber)
 	}
 
 	// Create GRN, items, and inventory batches in a transaction
@@ -303,23 +309,36 @@ func (s *GRNService) GetGRNByPurchaseOrder(ctx context.Context, poID string) (*m
 	return s.buildGRNResponse(grnWithItems)
 }
 
-// generateGRNNumber generates a unique GRN number in format: GRN-YYYY-NNNN
-func (s *GRNService) generateGRNNumber() (string, error) {
-	year := time.Now().UTC().Year()
-
-	// Try to find the next available number
-	for i := 1; i <= 9999; i++ {
-		grnNumber := fmt.Sprintf("GRN-%d-%04d", year, i)
-		exists, err := s.grnRepo.GRNNumberExists(grnNumber)
-		if err != nil {
-			return "", err
-		}
-		if !exists {
-			return grnNumber, nil
-		}
+// UpdateGRN updates a GRN
+func (s *GRNService) UpdateGRN(ctx context.Context, id string, request *models.UpdateGRNRequest) (*models.GRNResponse, error) {
+	// Validate GRN exists
+	_, err := s.grnRepo.GetByID(id)
+	if err != nil {
+		return nil, err
 	}
 
-	return "", fmt.Errorf("failed to generate unique GRN number")
+	// Build updates map
+	updates := make(map[string]interface{})
+	if request.GRNDocument != nil {
+		updates["grn_document"] = *request.GRNDocument
+	}
+	if request.Remarks != nil {
+		updates["remarks"] = *request.Remarks
+	}
+	if request.QualityStatus != nil {
+		if !isValidQualityStatus(*request.QualityStatus) {
+			return nil, fmt.Errorf("invalid quality status: %s", *request.QualityStatus)
+		}
+		updates["quality_status"] = *request.QualityStatus
+	}
+
+	// Update GRN
+	if err := s.grnRepo.Update(id, updates); err != nil {
+		return nil, err
+	}
+
+	// Return updated GRN
+	return s.GetGRN(ctx, id)
 }
 
 // buildGRNResponse builds a response with related entity details
@@ -327,6 +346,7 @@ func (s *GRNService) buildGRNResponse(grn *models.GRN) (*models.GRNResponse, err
 	response := &models.GRNResponse{
 		ID:            grn.ID,
 		GRNNumber:     grn.GRNNumber,
+		GRNDocument:   grn.GRNDocument, // Attachment ID for vendor's GRN PDF
 		POID:          grn.POID,
 		PONumber:      grn.PurchaseOrder.PONumber,
 		WarehouseID:   grn.WarehouseID,

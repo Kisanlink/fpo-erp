@@ -13,7 +13,10 @@ type GRN struct {
 	base.BaseModel
 
 	// GRN Identification
-	GRNNumber string `gorm:"type:varchar(50);unique;not null" json:"grn_number"` // Auto-generated: GRN-2025-0001
+	GRNNumber string `gorm:"type:varchar(50);unique;not null" json:"grn_number"` // User-provided from vendor PDF
+
+	// Document Attachment
+	GRNDocument *string `gorm:"type:varchar(100)" json:"grn_document"` // Attachment ID (ATT_xxxxxxxx) for vendor's GRN PDF
 
 	// Relationships
 	POID        string `gorm:"type:varchar(100);not null;index" json:"po_id"`
@@ -108,6 +111,7 @@ func (GRNItem) TableName() string {
 type GRNResponse struct {
 	ID            string            `json:"id"`
 	GRNNumber     string            `json:"grn_number"`
+	GRNDocument   *string           `json:"grn_document"`  // Attachment ID for vendor's GRN PDF
 	POID          string            `json:"po_id"`
 	PONumber      string            `json:"po_number"`
 	WarehouseID   string            `json:"warehouse_id"`
@@ -141,11 +145,12 @@ type GRNItemResponse struct {
 
 // CreateGRNRequest represents the request to create a goods receipt note
 type CreateGRNRequest struct {
-	POID          string              `json:"po_id" binding:"required"`
-	ReceivedDate  *string             `json:"received_date"` // Optional, defaults to now
-	ReceivedBy    string              `json:"received_by" binding:"required"`
-	QualityStatus string              `json:"quality_status" binding:"required"` // accepted, rejected, partial
-	Remarks       *string             `json:"remarks"`
+	GRNNumber     string                 `json:"grn_number" binding:"required"`      // User-provided from vendor PDF
+	POID          string                 `json:"po_id" binding:"required"`
+	ReceivedDate  *string                `json:"received_date"` // Optional, defaults to now
+	ReceivedBy    string                 `json:"received_by" binding:"required"`
+	QualityStatus string                 `json:"quality_status" binding:"required"` // accepted, rejected, partial
+	Remarks       *string                `json:"remarks"`
 	Items         []CreateGRNItemRequest `json:"items" binding:"required,min=1"`
 }
 
@@ -157,4 +162,11 @@ type CreateGRNItemRequest struct {
 	RejectedQuantity int64   `json:"rejected_quantity" binding:"gte=0"`
 	ExpiryDate       string  `json:"expiry_date" binding:"required"` // Format: YYYY-MM-DD
 	BatchNumber      *string `json:"batch_number"`
+}
+
+// UpdateGRNRequest represents the request to update a GRN
+type UpdateGRNRequest struct {
+	GRNDocument   *string `json:"grn_document,omitempty"`   // Attachment ID for vendor's GRN PDF
+	Remarks       *string `json:"remarks,omitempty"`
+	QualityStatus *string `json:"quality_status,omitempty"` // accepted, rejected, partial
 }
