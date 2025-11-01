@@ -73,9 +73,10 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 			saleDate = time.Now()
 		}
 
-		// Create sale using the proper constructor
-		log.Printf("[DEBUG] Creating sale with warehouse: %s, date: %v", req.WarehouseID, saleDate)
-		sale := models.NewSale(req.WarehouseID, saleDate, 0, "pending")
+		// Create sale using the proper constructor with BRD requirements
+		log.Printf("[DEBUG] Creating sale with warehouse: %s, date: %v, payment_mode: %s, sale_type: %s",
+			req.WarehouseID, saleDate, req.PaymentMode, req.SaleType)
+		sale := models.NewSale(req.WarehouseID, saleDate, 0, "pending", req.FarmerID, req.PaymentMode, req.SaleType)
 		log.Printf("[DEBUG] Sale created with ID: %s", sale.ID)
 
 		if err := s.salesRepo.CreateSaleWithTx(tx, sale); err != nil {
@@ -145,6 +146,11 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 
 			log.Printf("[DEBUG] Allocating %d units from batch %s (expires: %s)", quantityFromBatch, batch.ID, batch.ExpiryDate.Format("2006-01-02"))
 
+			// BRD Requirement: Capture cost price from batch for margin calculation
+			costPrice := batch.CostPrice
+			log.Printf("[DEBUG] Batch cost price: %.2f, selling price: %.2f, margin: %.2f",
+				costPrice, sellingPrice, sellingPrice-costPrice)
+
 			// Calculate line total for this batch allocation
 			batchLineTotal := sellingPrice * float64(quantityFromBatch)
 
@@ -160,10 +166,11 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 
 			itemTotal += batchLineTotal
 
-			// Create sale item with tax amounts
-			saleItem := models.NewSaleItemWithTax(sale.ID, batch.ID, quantityFromBatch, sellingPrice, batchLineTotal,
+			// Create sale item with tax amounts and cost price (BRD requirement)
+			saleItem := models.NewSaleItemWithTax(sale.ID, batch.ID, quantityFromBatch, sellingPrice, costPrice, batchLineTotal,
 				taxCalculation.CGSTAmount, taxCalculation.SGSTAmount, taxCalculation.CustomTaxAmount)
-			log.Printf("[DEBUG] Sale item created with ID: %s (includes tax amounts)", saleItem.ID)
+			log.Printf("[DEBUG] Sale item created with ID: %s (includes cost price: %.2f, margin: %.2f, tax amounts)",
+				saleItem.ID, costPrice, saleItem.Margin)
 
 			if err := s.salesRepo.CreateSaleItemWithTx(tx, saleItem); err != nil {
 				log.Printf("[ERROR] Failed to create sale item: %v", err)
@@ -435,6 +442,28 @@ func (s *SalesService) getSellingPrice(productID string) (float64, error) {
 	return price.Price, nil
 }
 
+// isValidPaymentMode validates payment mode (BRD requirement)
+func isValidPaymentMode(mode string) bool {
+	validModes := []string{"cash", "upi", "online"}
+	for _, validMode := range validModes {
+		if mode == validMode {
+			return true
+		}
+	}
+	return false
+}
+
+// isValidSaleType validates sale type (BRD requirement)
+func isValidSaleType(saleType string) bool {
+	validTypes := []string{"in_store", "delivery"}
+	for _, validType := range validTypes {
+		if saleType == validType {
+			return true
+		}
+	}
+	return false
+}
+
 // Helper methods
 func (s *SalesService) validateSaleRequest(req *models.CreateSaleRequest) error {
 	log.Printf("[DEBUG] Validating sale request: warehouse=%s, items=%d", req.WarehouseID, len(req.Items))
@@ -446,6 +475,16 @@ func (s *SalesService) validateSaleRequest(req *models.CreateSaleRequest) error 
 	if len(req.Items) == 0 {
 		log.Printf("[ERROR] Validation failed: no items provided")
 		return errors.New("at least one item is required")
+	}
+
+	// BRD Requirements: Validate payment_mode and sale_type
+	if !isValidPaymentMode(req.PaymentMode) {
+		log.Printf("[ERROR] Validation failed: invalid payment mode: %s", req.PaymentMode)
+		return errors.New("payment_mode must be one of: cash, upi, online")
+	}
+	if !isValidSaleType(req.SaleType) {
+		log.Printf("[ERROR] Validation failed: invalid sale type: %s", req.SaleType)
+		return errors.New("sale_type must be one of: in_store, delivery")
 	}
 
 	for i, item := range req.Items {
@@ -473,6 +512,10 @@ func (s *SalesService) mapSaleToResponse(sale *models.Sale) *models.SaleResponse
 		SaleDate:    sale.SaleDate.Format("2006-01-02T15:04:05Z07:00"),
 		TotalAmount: sale.TotalAmount,
 		Status:      sale.Status,
+		// BRD Requirements
+		FarmerID:    sale.FarmerID,
+		PaymentMode: sale.PaymentMode,
+		SaleType:    sale.SaleType,
 		CreatedAt:   sale.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		UpdatedAt:   sale.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
@@ -486,6 +529,9 @@ func (s *SalesService) mapSaleToResponse(sale *models.Sale) *models.SaleResponse
 			Quantity:        item.Quantity,
 			SellingPrice:    item.SellingPrice,
 			LineTotal:       item.LineTotal,
+			// BRD Requirements - Cost and Margin
+			CostPrice:       item.CostPrice,
+			Margin:          item.Margin,
 			CGSTAmount:      item.CGSTAmount,
 			SGSTAmount:      item.SGSTAmount,
 			CustomTaxAmount: item.CustomTaxAmount,

@@ -16,6 +16,11 @@ type Sale struct {
 	TotalAmount float64   `gorm:"type:numeric(14,4);not null" json:"total_amount"`
 	Status      string    `gorm:"type:varchar(20);not null" json:"status"`
 
+	// BRD Requirements
+	FarmerID    *string `gorm:"type:varchar(100)" json:"farmer_id"`            // Optional farmer identifier
+	PaymentMode string  `gorm:"type:varchar(20);not null" json:"payment_mode"` // cash, upi, online
+	SaleType    string  `gorm:"type:varchar(20);not null" json:"sale_type"`    // in_store, delivery
+
 	// Associations
 	Warehouse Warehouse  `gorm:"foreignKey:WarehouseID" json:"warehouse,omitempty"`
 	Items     []SaleItem `gorm:"foreignKey:SaleID" json:"items,omitempty"`
@@ -33,6 +38,10 @@ type SaleItem struct {
 	Quantity     int64   `gorm:"type:bigint;not null;check:quantity > 0" json:"quantity"`
 	SellingPrice float64 `gorm:"type:numeric(12,4);not null" json:"selling_price"`
 	LineTotal    float64 `gorm:"type:numeric(14,4);not null" json:"line_total"`
+
+	// BRD Requirements - Cost and Margin tracking
+	CostPrice float64 `gorm:"type:numeric(12,4);not null" json:"cost_price"` // Purchase price from batch
+	Margin    float64 `gorm:"type:numeric(12,4);not null" json:"margin"`     // SellingPrice - CostPrice
 
 	// Tax amounts (calculated from batch tax configuration)
 	CGSTAmount      float64 `gorm:"type:numeric(12,4);default:0" json:"cgst_amount"`
@@ -66,7 +75,7 @@ func (SaleSummary) TableName() string {
 }
 
 // NewSale creates a new Sale with initialized fields
-func NewSale(warehouseID string, saleDate time.Time, totalAmount float64, status string) *Sale {
+func NewSale(warehouseID string, saleDate time.Time, totalAmount float64, status string, farmerID *string, paymentMode, saleType string) *Sale {
 	baseModel := base.NewBaseModel(constants.TableSale, hash.Medium)
 	return &Sale{
 		BaseModel:   *baseModel,
@@ -74,18 +83,24 @@ func NewSale(warehouseID string, saleDate time.Time, totalAmount float64, status
 		SaleDate:    saleDate,
 		TotalAmount: totalAmount,
 		Status:      status,
+		FarmerID:    farmerID,
+		PaymentMode: paymentMode,
+		SaleType:    saleType,
 	}
 }
 
 // NewSaleItem creates a new SaleItem with initialized fields
-func NewSaleItem(saleID, batchID string, quantity int64, sellingPrice, lineTotal float64) *SaleItem {
+func NewSaleItem(saleID, batchID string, quantity int64, sellingPrice, costPrice, lineTotal float64) *SaleItem {
 	baseModel := base.NewBaseModel(constants.TableSaleItem, hash.Medium)
+	margin := sellingPrice - costPrice
 	return &SaleItem{
 		BaseModel:       *baseModel,
 		SaleID:          saleID,
 		BatchID:         batchID,
 		Quantity:        quantity,
 		SellingPrice:    sellingPrice,
+		CostPrice:       costPrice,
+		Margin:          margin,
 		LineTotal:       lineTotal,
 		CGSTAmount:      0,
 		SGSTAmount:      0,
@@ -95,8 +110,9 @@ func NewSaleItem(saleID, batchID string, quantity int64, sellingPrice, lineTotal
 }
 
 // NewSaleItemWithTax creates a new SaleItem with tax amounts
-func NewSaleItemWithTax(saleID, batchID string, quantity int64, sellingPrice, lineTotal, cgstAmount, sgstAmount, customTaxAmount float64) *SaleItem {
+func NewSaleItemWithTax(saleID, batchID string, quantity int64, sellingPrice, costPrice, lineTotal, cgstAmount, sgstAmount, customTaxAmount float64) *SaleItem {
 	baseModel := base.NewBaseModel(constants.TableSaleItem, hash.Medium)
+	margin := sellingPrice - costPrice
 	totalTaxAmount := cgstAmount + sgstAmount + customTaxAmount
 	return &SaleItem{
 		BaseModel:       *baseModel,
@@ -104,6 +120,8 @@ func NewSaleItemWithTax(saleID, batchID string, quantity int64, sellingPrice, li
 		BatchID:         batchID,
 		Quantity:        quantity,
 		SellingPrice:    sellingPrice,
+		CostPrice:       costPrice,
+		Margin:          margin,
 		LineTotal:       lineTotal,
 		CGSTAmount:      cgstAmount,
 		SGSTAmount:      sgstAmount,
@@ -131,6 +149,12 @@ type SaleResponse struct {
 	SaleDate    string             `json:"sale_date"`
 	TotalAmount float64            `json:"total_amount"`
 	Status      string             `json:"status"`
+
+	// BRD Requirements
+	FarmerID    *string `json:"farmer_id,omitempty"`
+	PaymentMode string  `json:"payment_mode"`
+	SaleType    string  `json:"sale_type"`
+
 	Items       []SaleItemResponse `json:"items,omitempty"`
 	Breakdown   *SaleBreakdown     `json:"breakdown,omitempty"` // Detailed breakdown of amounts
 	CreatedAt   string             `json:"created_at"`
@@ -177,6 +201,10 @@ type SaleItemResponse struct {
 	SellingPrice    float64 `json:"selling_price"`
 	LineTotal       float64 `json:"line_total"`
 
+	// BRD Requirements - Cost and Margin
+	CostPrice       float64 `json:"cost_price"` // Purchase price
+	Margin          float64 `json:"margin"`     // Profit margin
+
 	// Tax amounts
 	CGSTAmount      float64 `json:"cgst_amount"`
 	SGSTAmount      float64 `json:"sgst_amount"`
@@ -190,6 +218,12 @@ type SaleItemResponse struct {
 type CreateSaleRequest struct {
 	WarehouseID        string                  `json:"warehouse_id" binding:"required"`
 	SaleDate           *string                 `json:"sale_date"`
+
+	// BRD Requirements
+	FarmerID           *string                 `json:"farmer_id"`                             // Optional farmer identifier
+	PaymentMode        string                  `json:"payment_mode" binding:"required"`       // cash, upi, online
+	SaleType           string                  `json:"sale_type" binding:"required"`          // in_store, delivery
+
 	DiscountID         *string                 `json:"discount_id"`          // Manual discount by ID (highest priority)
 	CouponCode         *string                 `json:"coupon_code"`          // Manual discount by code (second priority)
 	AutoApplyDiscounts *bool                   `json:"auto_apply_discounts"` // Enable automatic discount discovery (default: true)
