@@ -20,6 +20,7 @@ type Sale struct {
 	FarmerID    *string `gorm:"type:varchar(100)" json:"farmer_id"`            // Optional farmer identifier
 	PaymentMode string  `gorm:"type:varchar(20);not null" json:"payment_mode"` // cash, upi, online
 	SaleType    string  `gorm:"type:varchar(20);not null" json:"sale_type"`    // in_store, delivery
+	ApplyTaxes  bool    `gorm:"type:boolean;not null;default:false" json:"apply_taxes"` // Controls tax calculation for this sale
 
 	// Associations
 	Warehouse Warehouse  `gorm:"foreignKey:WarehouseID" json:"warehouse,omitempty"`
@@ -75,7 +76,7 @@ func (SaleSummary) TableName() string {
 }
 
 // NewSale creates a new Sale with initialized fields
-func NewSale(warehouseID string, saleDate time.Time, totalAmount float64, status string, farmerID *string, paymentMode, saleType string) *Sale {
+func NewSale(warehouseID string, saleDate time.Time, totalAmount float64, status string, farmerID *string, paymentMode, saleType string, applyTaxes bool) *Sale {
 	baseModel := base.NewBaseModel(constants.TableSale, hash.Medium)
 	return &Sale{
 		BaseModel:   *baseModel,
@@ -86,6 +87,7 @@ func NewSale(warehouseID string, saleDate time.Time, totalAmount float64, status
 		FarmerID:    farmerID,
 		PaymentMode: paymentMode,
 		SaleType:    saleType,
+		ApplyTaxes:  applyTaxes,
 	}
 }
 
@@ -154,6 +156,7 @@ type SaleResponse struct {
 	FarmerID    *string `json:"farmer_id,omitempty"`
 	PaymentMode string  `json:"payment_mode"`
 	SaleType    string  `json:"sale_type"`
+	ApplyTaxes  bool    `json:"apply_taxes"`
 
 	Items       []SaleItemResponse `json:"items,omitempty"`
 	Breakdown   *SaleBreakdown     `json:"breakdown,omitempty"` // Detailed breakdown of amounts
@@ -223,6 +226,7 @@ type CreateSaleRequest struct {
 	FarmerID           *string                 `json:"farmer_id"`                             // Optional farmer identifier
 	PaymentMode        string                  `json:"payment_mode" binding:"required"`       // cash, upi, online
 	SaleType           string                  `json:"sale_type" binding:"required"`          // in_store, delivery
+	ApplyTaxes         bool                    `json:"apply_taxes" binding:"required"`        // Controls tax calculation (default: false)
 
 	DiscountID         *string                 `json:"discount_id"`          // Manual discount by ID (highest priority)
 	CouponCode         *string                 `json:"coupon_code"`          // Manual discount by code (second priority)

@@ -74,10 +74,10 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 		}
 
 		// Create sale using the proper constructor with BRD requirements
-		log.Printf("[DEBUG] Creating sale with warehouse: %s, date: %v, payment_mode: %s, sale_type: %s",
-			req.WarehouseID, saleDate, req.PaymentMode, req.SaleType)
-		sale := models.NewSale(req.WarehouseID, saleDate, 0, "pending", req.FarmerID, req.PaymentMode, req.SaleType)
-		log.Printf("[DEBUG] Sale created with ID: %s", sale.ID)
+		log.Printf("[DEBUG] Creating sale with warehouse: %s, date: %v, payment_mode: %s, sale_type: %s, apply_taxes: %v",
+			req.WarehouseID, saleDate, req.PaymentMode, req.SaleType, req.ApplyTaxes)
+		sale := models.NewSale(req.WarehouseID, saleDate, 0, "pending", req.FarmerID, req.PaymentMode, req.SaleType, req.ApplyTaxes)
+		log.Printf("[DEBUG] Sale created with ID: %s, apply_taxes: %v", sale.ID, sale.ApplyTaxes)
 
 		if err := s.salesRepo.CreateSaleWithTx(tx, sale); err != nil {
 			log.Printf("[ERROR] Failed to create sale in database: %v", err)
@@ -255,8 +255,10 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 	log.Printf("[DEBUG] Final amount after discount: %.2f", finalAmount)
 
 		// Apply taxes using the existing tax service (no customer data needed)
+		// Only apply taxes if ApplyTaxes field is true
 		var taxAmount float64
-		if len(saleItems) > 0 {
+		if sale.ApplyTaxes && len(saleItems) > 0 {
+			log.Printf("[DEBUG] ApplyTaxes is true, calculating taxes")
 			taxSummary, err := s.applyTaxesToSaleWithTx(tx, sale.ID, saleItems, req.WarehouseID)
 			if err != nil {
 				log.Printf("[ERROR] Tax calculation failed: %v", err)
@@ -267,6 +269,8 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 				finalAmount += taxAmount
 				log.Printf("[DEBUG] Tax applied successfully: %.2f", taxAmount)
 			}
+		} else {
+			log.Printf("[DEBUG] ApplyTaxes is false, skipping tax calculation")
 		}
 
 		// Update sale with final amount
@@ -516,6 +520,7 @@ func (s *SalesService) mapSaleToResponse(sale *models.Sale) *models.SaleResponse
 		FarmerID:    sale.FarmerID,
 		PaymentMode: sale.PaymentMode,
 		SaleType:    sale.SaleType,
+		ApplyTaxes:  sale.ApplyTaxes,
 		CreatedAt:   sale.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		UpdatedAt:   sale.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}

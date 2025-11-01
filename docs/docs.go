@@ -9969,12 +9969,17 @@ const docTemplate = `{
         "models.CreateSaleRequest": {
             "type": "object",
             "required": [
+                "apply_taxes",
                 "items",
                 "payment_mode",
                 "sale_type",
                 "warehouse_id"
             ],
             "properties": {
+                "apply_taxes": {
+                    "description": "Controls tax calculation (default: false)",
+                    "type": "boolean"
+                },
                 "auto_apply_discounts": {
                     "description": "Enable automatic discount discovery (default: true)",
                     "type": "boolean"
@@ -11068,6 +11073,9 @@ const docTemplate = `{
         "models.SaleResponse": {
             "type": "object",
             "properties": {
+                "apply_taxes": {
+                    "type": "boolean"
+                },
                 "breakdown": {
                     "description": "Detailed breakdown of amounts",
                     "allOf": [
