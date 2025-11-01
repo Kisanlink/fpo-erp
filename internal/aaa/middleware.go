@@ -6,7 +6,9 @@ import (
 	"strings"
 	"time"
 
+	"kisanlink-erp/internal/auth"
 	"kisanlink-erp/internal/config"
+	extMiddleware "kisanlink-erp/internal/middleware"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
@@ -18,13 +20,24 @@ type AAAMiddleware struct {
 	config      *config.Config
 	cache       *PermissionCache
 	authzClient *AuthzClient
+	aaaClient   auth.Client // ✅ NEW: AAA client for proper token validation with AAA service
 }
 
 // NewAAAMiddleware creates a new AAA middleware
 func NewAAAMiddleware(config *config.Config) (*AAAMiddleware, error) {
-	// Initialize gRPC authorization client
+	// ✅ NEW: Initialize new AAA client for proper token validation
+	aaaClient, err := auth.NewClient(config)
+	if err != nil {
+		utils.Error("Failed to create new AAA client, using fallback:", err)
+		// Continue with fallback - will use local parsing
+	}
+
+	// Initialize gRPC authorization client (legacy, still needed for permission checks)
 	authzClient, err := NewAuthzClient(config.AAA.GRPCAddress)
 	if err != nil {
+		if aaaClient != nil {
+			aaaClient.Close()
+		}
 		return nil, fmt.Errorf("failed to create authorization client: %w", err)
 	}
 
@@ -32,11 +45,27 @@ func NewAAAMiddleware(config *config.Config) (*AAAMiddleware, error) {
 		config:      config,
 		cache:       NewPermissionCache(config.AAA.CacheTTL),
 		authzClient: authzClient,
+		aaaClient:   aaaClient, // ✅ NEW: Store new AAA client
 	}, nil
 }
 
 // Authenticate validates JWT tokens from AAA service
+// ✅ CRITICAL FIX: Now uses AAA service for token validation instead of local parsing
 func (m *AAAMiddleware) Authenticate() gin.HandlerFunc {
+	// ✅ NEW: If AAA client is available, use proper AAA service validation
+	if m.aaaClient != nil {
+		utils.Debug("Using new AAA client for token validation (validates with AAA service)")
+		return extMiddleware.AuthNMiddleware(m.aaaClient)
+	}
+
+	// Fallback to legacy local JWT parsing (not recommended)
+	utils.Warn("Using legacy local JWT parsing - tokens are NOT validated with AAA service!")
+	return m.authenticateLegacy()
+}
+
+// authenticateLegacy is the old implementation that only does local JWT parsing
+// ❌ WARNING: This does NOT validate tokens with AAA service - it's the ROOT CAUSE of authentication errors
+func (m *AAAMiddleware) authenticateLegacy() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get Authorization header
 		authHeader := c.GetHeader("Authorization")
@@ -56,7 +85,7 @@ func (m *AAAMiddleware) Authenticate() gin.HandlerFunc {
 		// Extract token
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 
-		// Parse and validate JWT token
+		// Parse and validate JWT token (LOCAL ONLY - NOT VALIDATED WITH AAA SERVICE!)
 		claims, err := m.parseToken(tokenString)
 		if err != nil {
 			utils.UnauthorizedResponse(c, "Invalid token")
@@ -187,7 +216,19 @@ func (m *AAAMiddleware) RequirePermission(resourceType, resourceID, action strin
 // RequireOrgPermission checks if user has permission scoped to their organization
 // This is the recommended method for multi-tenant resources (collaborators, products, sales, etc.)
 // It automatically uses the organization_id from the JWT token context
+// ✅ UPDATED: Now uses new middleware if AAA client is available
 func (m *AAAMiddleware) RequireOrgPermission(resourceType, action string) gin.HandlerFunc {
+	// ✅ NEW: If AAA client is available, use new authorization middleware
+	if m.aaaClient != nil {
+		return extMiddleware.RequireOrgPermission(resourceType, action)
+	}
+
+	// Fallback to legacy implementation
+	return m.requireOrgPermissionLegacy(resourceType, action)
+}
+
+// requireOrgPermissionLegacy is the old implementation using authzClient
+func (m *AAAMiddleware) requireOrgPermissionLegacy(resourceType, action string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.MustGet("user_id").(string)
 		jwtToken := c.GetString("jwt_token")
@@ -379,6 +420,7 @@ func (m *AAAMiddleware) RequireAnyRole(roles ...string) gin.HandlerFunc {
 }
 
 // parseToken parses and validates JWT token from AAA service
+// ❌ WARNING: This only does LOCAL parsing - does NOT validate with AAA service
 func (m *AAAMiddleware) parseToken(tokenString string) (*AAATokenClaims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &AAATokenClaims{}, func(token *jwt.Token) (interface{}, error) {
 		// Validate signing method
@@ -446,10 +488,19 @@ func (m *AAAMiddleware) GetCacheStats() map[string]interface{} {
 	return m.cache.GetStats()
 }
 
-// Close closes the gRPC connection
+// Close closes the gRPC connections
 func (m *AAAMiddleware) Close() error {
+	// Close new AAA client if present
+	if m.aaaClient != nil {
+		if err := m.aaaClient.Close(); err != nil {
+			utils.Error("Failed to close AAA client:", err)
+		}
+	}
+
+	// Close legacy authz client
 	if m.authzClient != nil {
 		return m.authzClient.Close()
 	}
+
 	return nil
 }

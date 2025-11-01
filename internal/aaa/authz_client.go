@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"kisanlink-erp/pkg/proto"
+	aaaPb "github.com/Kisanlink/aaa-service/v2/pkg/proto"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -15,7 +15,7 @@ import (
 // AuthzClient wraps the gRPC authorization client
 type AuthzClient struct {
 	conn   *grpc.ClientConn
-	client proto.AuthorizationServiceClient
+	client aaaPb.AuthorizationServiceClient
 }
 
 // NewAuthzClient creates a new authorization client
@@ -31,7 +31,7 @@ func NewAuthzClient(aaaServiceAddr string) (*AuthzClient, error) {
 		return nil, fmt.Errorf("failed to connect to AAA service: %w", err)
 	}
 
-	client := proto.NewAuthorizationServiceClient(conn)
+	client := aaaPb.NewAuthorizationServiceClient(conn)
 
 	return &AuthzClient{
 		conn:   conn,
@@ -52,7 +52,7 @@ func (c *AuthzClient) CheckPermission(ctx context.Context, userID, resourceType,
 // CheckPermissionWithToken checks if a user has permission to perform an action on a resource with JWT token
 func (c *AuthzClient) CheckPermissionWithToken(ctx context.Context, userID, resourceType, resourceID, action, jwtToken string) (bool, error) {
 	// Create the permission check request
-	req := &proto.CheckRequest{
+	req := &aaaPb.CheckRequest{
 		PrincipalId:  userID,       // The user asking for permission
 		ResourceType: resourceType, // What type of resource (e.g., "user")
 		ResourceId:   resourceID,   // Which specific resource (e.g., "USER_123" or "*")
@@ -81,11 +81,11 @@ func (c *AuthzClient) CheckMultiplePermissions(ctx context.Context, userID strin
 
 // CheckMultiplePermissionsWithToken checks multiple permissions in a single request with JWT token
 func (c *AuthzClient) CheckMultiplePermissionsWithToken(ctx context.Context, userID string, permissions []Permission, jwtToken string) (map[string]bool, error) {
-	var items []*proto.CheckItem
+	var items []*aaaPb.CheckItem
 
 	// Convert our permissions to gRPC format
 	for i, perm := range permissions {
-		item := &proto.CheckItem{
+		item := &aaaPb.CheckItem{
 			RequestId:    fmt.Sprintf("req_%d", i),
 			PrincipalId:  userID,
 			ResourceType: perm.ResourceType,
@@ -95,7 +95,7 @@ func (c *AuthzClient) CheckMultiplePermissionsWithToken(ctx context.Context, use
 		items = append(items, item)
 	}
 
-	req := &proto.BatchCheckRequest{
+	req := &aaaPb.BatchCheckRequest{
 		Items: items,
 	}
 
