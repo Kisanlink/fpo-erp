@@ -22,22 +22,57 @@ type AAAMiddleware struct {
 
 // NewAAAMiddleware creates a new AAA middleware
 func NewAAAMiddleware(config *config.Config) (*AAAMiddleware, error) {
-	// Initialize gRPC authorization client
-	authzClient, err := NewAuthzClient(config.AAA.GRPCAddress)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create authorization client: %w", err)
+	var authzClient *AuthzClient
+	var err error
+
+	// Only initialize gRPC client if AAA is enabled
+	if config.AAA.Enabled {
+		authzClient, err = NewAuthzClient(config.AAA.GRPCAddress)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create authorization client: %w", err)
+		}
+		utils.Info("AAA middleware initialized with gRPC client")
+	} else {
+		utils.Info("⚠️  AAA middleware initialized in BYPASS mode (disabled)")
 	}
 
 	return &AAAMiddleware{
 		config:      config,
 		cache:       NewPermissionCache(config.AAA.CacheTTL),
-		authzClient: authzClient,
+		authzClient: authzClient, // Will be nil when AAA disabled
 	}, nil
 }
 
 // Authenticate validates JWT tokens from AAA service
 func (m *AAAMiddleware) Authenticate() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Early return if AAA disabled - set mock user context for testing
+		if !m.config.AAA.Enabled {
+			mockRole := AAARole{
+				ID:       "test-role",
+				RoleID:   "test-role-id",
+				IsActive: true,
+				Role: AAAUserRole{
+					Name:        "Admin",
+					Description: "Mock admin role for testing",
+					Scope:       "global",
+					IsActive:    true,
+				},
+			}
+			c.Set("user_id", "test-user-123")
+			c.Set("username", "test-user")
+			c.Set("roles", []AAARole{mockRole})
+			c.Set("permissions", []string{"*:*"})
+			c.Set("jwt_token", "mock-jwt-token")
+			c.Set("organization_id", "test-org-123")
+			c.Set("organization_name", "Test Organization")
+			c.Set("organization_ids", []string{"test-org-123"})
+			c.Set("organizations", []interface{}{})
+			c.Set("groups", []string{})
+			c.Next()
+			return
+		}
+
 		// Get Authorization header
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -163,6 +198,12 @@ func (m *AAAMiddleware) Authenticate() gin.HandlerFunc {
 // RequirePermission checks if user has a specific permission using gRPC
 func (m *AAAMiddleware) RequirePermission(resourceType, resourceID, action string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Early return if AAA disabled - allow all permissions
+		if !m.config.AAA.Enabled {
+			c.Next()
+			return
+		}
+
 		userID := c.MustGet("user_id").(string)
 		jwtToken := c.GetString("jwt_token") // Get JWT token from context
 
@@ -189,6 +230,12 @@ func (m *AAAMiddleware) RequirePermission(resourceType, resourceID, action strin
 // It automatically uses the organization_id from the JWT token context
 func (m *AAAMiddleware) RequireOrgPermission(resourceType, action string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Early return if AAA disabled - allow all permissions
+		if !m.config.AAA.Enabled {
+			c.Next()
+			return
+		}
+
 		userID := c.MustGet("user_id").(string)
 		jwtToken := c.GetString("jwt_token")
 
@@ -231,6 +278,12 @@ func (m *AAAMiddleware) RequireOrgPermission(resourceType, action string) gin.Ha
 // For example, creating a collaborator with address requires both "collaborator:create" and "address:create"
 func (m *AAAMiddleware) RequireMultipleOrgPermissions(resourceActions []ResourceAction) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Early return if AAA disabled - allow all permissions
+		if !m.config.AAA.Enabled {
+			c.Next()
+			return
+		}
+
 		userID := c.MustGet("user_id").(string)
 		jwtToken := c.GetString("jwt_token")
 
@@ -295,6 +348,12 @@ func (m *AAAMiddleware) RequireMultipleOrgPermissions(resourceActions []Resource
 // RequireAnyPermission checks if user has any of the specified permissions using gRPC
 func (m *AAAMiddleware) RequireAnyPermission(permissions []Permission) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Early return if AAA disabled - allow all permissions
+		if !m.config.AAA.Enabled {
+			c.Next()
+			return
+		}
+
 		userID := c.MustGet("user_id").(string)
 		jwtToken := c.GetString("jwt_token") // Get JWT token from context
 
@@ -322,6 +381,12 @@ func (m *AAAMiddleware) RequireAnyPermission(permissions []Permission) gin.Handl
 // RequireAllPermissions checks if user has all specified permissions using gRPC
 func (m *AAAMiddleware) RequireAllPermissions(permissions []Permission) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Early return if AAA disabled - allow all permissions
+		if !m.config.AAA.Enabled {
+			c.Next()
+			return
+		}
+
 		userID := c.MustGet("user_id").(string)
 		jwtToken := c.GetString("jwt_token") // Get JWT token from context
 
@@ -349,6 +414,12 @@ func (m *AAAMiddleware) RequireAllPermissions(permissions []Permission) gin.Hand
 // RequireRole checks if user has a specific role
 func (m *AAAMiddleware) RequireRole(role string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Early return if AAA disabled - allow all roles
+		if !m.config.AAA.Enabled {
+			c.Next()
+			return
+		}
+
 		userRoles := c.MustGet("roles").([]AAARole)
 
 		if !containsRole(userRoles, role) {
@@ -364,6 +435,12 @@ func (m *AAAMiddleware) RequireRole(role string) gin.HandlerFunc {
 // RequireAnyRole checks if user has any of the specified roles
 func (m *AAAMiddleware) RequireAnyRole(roles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Early return if AAA disabled - allow all roles
+		if !m.config.AAA.Enabled {
+			c.Next()
+			return
+		}
+
 		userRoles := c.MustGet("roles").([]AAARole)
 
 		for _, role := range roles {

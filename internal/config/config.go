@@ -53,6 +53,7 @@ type CORSConfig struct {
 }
 
 type AAAConfig struct {
+	Enabled     bool   `mapstructure:"enabled"`         // Enable/disable AAA authentication (default: true)
 	JWTSecret   string `mapstructure:"jwt_secret"`
 	CacheTTL    int    `mapstructure:"cache_ttl"`
 	ServiceURL  string `mapstructure:"service_url"`     // Legacy: kept for backward compatibility
@@ -115,6 +116,17 @@ func Load() *Config {
 		aaaTimeout = 30
 	}
 
+	// Parse AAA_ENABLED (default: true)
+	aaaEnabled := true // Default to enabled for production safety
+	aaaEnabledStr := os.Getenv("AAA_ENABLED")
+	if aaaEnabledStr != "" {
+		aaaEnabled, err = strconv.ParseBool(aaaEnabledStr)
+		if err != nil {
+			utils.Info("Invalid AAA_ENABLED value, defaulting to true:", aaaEnabledStr)
+			aaaEnabled = true
+		}
+	}
+
 	// Load all environment variables using os.Getenv directly
 	config := &Config{
 		Server: ServerConfig{
@@ -145,6 +157,7 @@ func Load() *Config {
 			AllowedHeaders: os.Getenv("CORS_ALLOWED_HEADERS"),
 		},
 		AAA: AAAConfig{
+			Enabled:     aaaEnabled,
 			JWTSecret:   os.Getenv("AAA_JWT_SECRET"),
 			CacheTTL:    aaaCacheTTL,
 			ServiceURL:  os.Getenv("AAA_SERVICE_URL"),
@@ -152,6 +165,11 @@ func Load() *Config {
 			GRPCAddress: os.Getenv("AAA_GRPC_ADDRESS"),
 			Timeout:     aaaTimeout,
 		},
+	}
+
+	// Log warning if AAA is disabled
+	if !aaaEnabled {
+		utils.Info("⚠️  WARNING: AAA authentication is DISABLED - For development/testing only!")
 	}
 
 	utils.Info("Configuration loaded successfully")

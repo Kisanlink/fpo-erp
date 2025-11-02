@@ -8,12 +8,15 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // AddressHTTPClient is an HTTP client for AAA address service
 type AddressHTTPClient struct {
 	baseURL    string
 	httpClient *http.Client
+	disabled   bool // If true, returns mock responses without making HTTP calls
 }
 
 // NewAddressHTTPClient creates a new HTTP address client
@@ -23,12 +26,47 @@ func NewAddressHTTPClient(baseURL string) *AddressHTTPClient {
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
+		disabled: false,
+	}
+}
+
+// NewMockAddressHTTPClient creates a mock address client for testing (no HTTP calls)
+func NewMockAddressHTTPClient() *AddressHTTPClient {
+	return &AddressHTTPClient{
+		baseURL:    "mock://localhost",
+		httpClient: nil,
+		disabled:   true,
 	}
 }
 
 // CreateAddress creates a new address via AAA REST API
 // POST /api/v2/addresses
 func (c *AddressHTTPClient) CreateAddress(ctx context.Context, req *CreateAddressRequest, jwtToken string) (*Address, error) {
+	// Early return if disabled - return mock address
+	if c.disabled {
+		mockAddr := &Address{
+			ID:          "mock-addr-" + uuid.New().String()[:8],
+			UserID:      req.UserID,
+			Type:        req.Type,
+			House:       req.House,
+			Street:      req.Street,
+			Landmark:    req.Landmark,
+			PostOffice:  req.PostOffice,
+			Subdistrict: req.Subdistrict,
+			District:    req.District,
+			VTC:         req.VTC,
+			State:       req.State,
+			Country:     req.Country,
+			Pincode:     req.Pincode,
+			FullAddress: stringPtr(fmt.Sprintf("%s, %s, %s",
+				stringValue(req.Street), stringValue(req.District), stringValue(req.State))),
+			IsPrimary:   req.IsPrimary,
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+		}
+		return mockAddr, nil
+	}
+
 	url := fmt.Sprintf("%s/api/v2/addresses", c.baseURL)
 
 	// Marshal request
@@ -83,6 +121,24 @@ func (c *AddressHTTPClient) CreateAddress(ctx context.Context, req *CreateAddres
 // GetAddress retrieves an address by ID
 // GET /api/v2/addresses/{id}
 func (c *AddressHTTPClient) GetAddress(ctx context.Context, addressID string, jwtToken string) (*Address, error) {
+	// Early return if disabled - return mock address
+	if c.disabled {
+		return &Address{
+			ID:          addressID,
+			UserID:      "test-user-123",
+			Type:        "business",
+			Street:      stringPtr("Mock Street"),
+			District:    stringPtr("Mock District"),
+			State:       stringPtr("Mock State"),
+			Country:     stringPtr("India"),
+			Pincode:     stringPtr("000000"),
+			FullAddress: stringPtr("Mock Street, Mock District, Mock State, India - 000000"),
+			IsPrimary:   true,
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+		}, nil
+	}
+
 	url := fmt.Sprintf("%s/api/v2/addresses/%s", c.baseURL, addressID)
 
 	httpReq, err := http.NewRequestWithContext(ctx, "GET", url, nil)
@@ -125,6 +181,30 @@ func (c *AddressHTTPClient) GetAddress(ctx context.Context, addressID string, jw
 // UpdateAddress updates an existing address
 // PUT /api/v2/addresses/{id}
 func (c *AddressHTTPClient) UpdateAddress(ctx context.Context, req *UpdateAddressRequest, jwtToken string) (*Address, error) {
+	// Early return if disabled - return mock updated address
+	if c.disabled {
+		return &Address{
+			ID:          req.ID,
+			UserID:      "test-user-123",
+			Type:        req.Type,
+			House:       req.House,
+			Street:      req.Street,
+			Landmark:    req.Landmark,
+			PostOffice:  req.PostOffice,
+			Subdistrict: req.Subdistrict,
+			District:    req.District,
+			VTC:         req.VTC,
+			State:       req.State,
+			Country:     req.Country,
+			Pincode:     req.Pincode,
+			FullAddress: stringPtr(fmt.Sprintf("%s, %s, %s",
+				stringValue(req.Street), stringValue(req.District), stringValue(req.State))),
+			IsPrimary:   req.IsPrimary,
+			CreatedAt:   time.Now().Add(-24 * time.Hour), // Mock created time
+			UpdatedAt:   time.Now(),
+		}, nil
+	}
+
 	url := fmt.Sprintf("%s/api/v2/addresses/%s", c.baseURL, req.ID)
 
 	body, err := json.Marshal(req)
@@ -173,6 +253,11 @@ func (c *AddressHTTPClient) UpdateAddress(ctx context.Context, req *UpdateAddres
 // DeleteAddress deletes an address
 // DELETE /api/v2/addresses/{id}
 func (c *AddressHTTPClient) DeleteAddress(ctx context.Context, addressID string, softDelete bool, jwtToken string) error {
+	// Early return if disabled - mock success
+	if c.disabled {
+		return nil
+	}
+
 	url := fmt.Sprintf("%s/api/v2/addresses/%s?soft_delete=%t", c.baseURL, addressID, softDelete)
 
 	httpReq, err := http.NewRequestWithContext(ctx, "DELETE", url, nil)
@@ -214,6 +299,11 @@ func (c *AddressHTTPClient) DeleteAddress(ctx context.Context, addressID string,
 // SearchAddresses searches addresses
 // GET /api/v2/addresses/search?q={query}&limit={limit}&offset={offset}
 func (c *AddressHTTPClient) SearchAddresses(ctx context.Context, query string, limit, offset int, jwtToken string) ([]*Address, error) {
+	// Early return if disabled - return empty list
+	if c.disabled {
+		return []*Address{}, nil
+	}
+
 	url := fmt.Sprintf("%s/api/v2/addresses/search?q=%s&limit=%d&offset=%d",
 		c.baseURL, query, limit, offset)
 
@@ -256,6 +346,20 @@ func (c *AddressHTTPClient) SearchAddresses(ctx context.Context, query string, l
 
 // Close is a no-op for HTTP client (implements same interface as gRPC client)
 func (c *AddressHTTPClient) Close() error {
-	c.httpClient.CloseIdleConnections()
+	if c.httpClient != nil {
+		c.httpClient.CloseIdleConnections()
+	}
 	return nil
+}
+
+// Helper functions for mock address creation
+func stringPtr(s string) *string {
+	return &s
+}
+
+func stringValue(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }

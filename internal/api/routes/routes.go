@@ -39,8 +39,14 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 		panic("Failed to initialize S3 service: " + err.Error())
 	}
 
-	// Initialize AAA address HTTP client
-	addressClient := aaa.NewAddressHTTPClient(cfg.AAA.BaseURL)
+	// Initialize AAA address HTTP client (mock if AAA disabled)
+	var addressClient *aaa.AddressHTTPClient
+	if cfg.AAA.Enabled {
+		addressClient = aaa.NewAddressHTTPClient(cfg.AAA.BaseURL)
+	} else {
+		addressClient = aaa.NewMockAddressHTTPClient()
+		// Note: Mock client returns mock addresses without making HTTP calls
+	}
 
 	// Initialize services
 	warehouseService := services.NewWarehouseService(warehouseRepo, addressClient)
