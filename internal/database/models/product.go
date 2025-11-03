@@ -7,23 +7,22 @@ import (
 	"github.com/Kisanlink/kisanlink-db/pkg/core/hash"
 )
 
-// Product represents a product in the system
+// Product represents a generic product category in the system
+// SKU is now at the variant level for actual inventory tracking
 type Product struct {
 	base.BaseModel
-	SKU         string  `gorm:"type:varchar(50);unique;not null" json:"sku"`
 	Name        string  `gorm:"type:varchar(150);not null" json:"name"`
 	Description *string `gorm:"type:text" json:"description"`
 
 	// Associations
-	Prices []ProductPrice `gorm:"foreignKey:ProductID;references:ID;tableName:product_prices" json:"prices,omitempty"`
+	Variants []ProductVariant `gorm:"foreignKey:ProductID" json:"variants,omitempty"`
 }
 
 // NewProduct creates a new Product with initialized fields
-func NewProduct(sku, name string, description *string) *Product {
+func NewProduct(name string, description *string) *Product {
 	baseModel := base.NewBaseModel(constants.TableProduct, hash.Medium)
 	return &Product{
 		BaseModel:   *baseModel,
-		SKU:         sku,
 		Name:        name,
 		Description: description,
 	}
@@ -36,7 +35,6 @@ func (Product) TableName() string {
 // ProductResponse represents the API response for product
 type ProductResponse struct {
 	ID          string  `json:"id"`
-	SKU         string  `json:"sku"`
 	Name        string  `json:"name"`
 	Description *string `json:"description"`
 	CreatedAt   string  `json:"created_at"`
@@ -45,7 +43,6 @@ type ProductResponse struct {
 
 // CreateProductRequest represents the request to create a product
 type CreateProductRequest struct {
-	SKU         string  `json:"sku" binding:"required"`
 	Name        string  `json:"name" binding:"required"`
 	Description *string `json:"description"`
 }

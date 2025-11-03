@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"time"
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
@@ -11,11 +12,11 @@ import (
 // WarehouseService handles warehouse business logic
 type WarehouseService struct {
 	warehouseRepo *repositories.WarehouseRepository
-	addressClient *aaa.AddressClient
+	addressClient *aaa.AddressHTTPClient
 }
 
 // NewWarehouseService creates a new warehouse service
-func NewWarehouseService(warehouseRepo *repositories.WarehouseRepository, addressClient *aaa.AddressClient) *WarehouseService {
+func NewWarehouseService(warehouseRepo *repositories.WarehouseRepository, addressClient *aaa.AddressHTTPClient) *WarehouseService {
 	return &WarehouseService{
 		warehouseRepo: warehouseRepo,
 		addressClient: addressClient,
@@ -23,22 +24,30 @@ func NewWarehouseService(warehouseRepo *repositories.WarehouseRepository, addres
 }
 
 // CreateWarehouse creates a new warehouse
-func (s *WarehouseService) CreateWarehouse(ctx context.Context, request *models.CreateWarehouseRequest) (*models.WarehouseResponse, error) {
+func (s *WarehouseService) CreateWarehouse(ctx context.Context, request *models.CreateWarehouseRequest, userID string, jwtToken string) (*models.WarehouseResponse, error) {
 	var addressID *string
 
 	// Handle inline address creation if provided
 	if request.Address != nil {
-		address, err := s.addressClient.CreateAddress(ctx, &aaa.CreateAddressRequest{
-			UserID:       "system", // or get from context
-			Type:         request.Address.Type,
-			AddressLine1: request.Address.AddressLine1,
-			AddressLine2: request.Address.AddressLine2,
-			City:         request.Address.City,
-			State:        request.Address.State,
-			PostalCode:   request.Address.PostalCode,
-			Country:      request.Address.Country,
-			IsPrimary:    request.Address.IsPrimary,
-		})
+		// Create address via AAA service with timeout
+		ctxAddr, cancel := context.WithTimeout(ctx, 3*time.Second)
+		defer cancel()
+		// Use the authenticated user ID passed from handler
+		address, err := s.addressClient.CreateAddress(ctxAddr, &aaa.CreateAddressRequest{
+			UserID:      userID,
+			Type:        request.Address.Type,
+			House:       request.Address.House,
+			Street:      request.Address.Street,
+			Landmark:    request.Address.Landmark,
+			PostOffice:  request.Address.PostOffice,
+			Subdistrict: request.Address.Subdistrict,
+			District:    request.Address.District,
+			VTC:         request.Address.VTC,
+			State:       request.Address.State,
+			Country:     request.Address.Country,
+			Pincode:     request.Address.Pincode,
+			IsPrimary:   request.Address.IsPrimary,
+		}, jwtToken)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create address: %w", err)
 		}
@@ -52,25 +61,28 @@ func (s *WarehouseService) CreateWarehouse(ctx context.Context, request *models.
 
 	// Save to database
 	if err := s.warehouseRepo.Create(warehouse); err != nil {
+		if addressID != nil {
+			_ = s.addressClient.DeleteAddress(ctx, *addressID, true, jwtToken) // best-effort rollback
+		}
 		return nil, err
 	}
 
 	// Build response with address details
-	return s.buildWarehouseResponse(ctx, warehouse)
+	return s.buildWarehouseResponse(ctx, warehouse, jwtToken)
 }
 
 // GetWarehouse retrieves a warehouse by ID
-func (s *WarehouseService) GetWarehouse(ctx context.Context, id string) (*models.WarehouseResponse, error) {
+func (s *WarehouseService) GetWarehouse(ctx context.Context, id string, jwtToken string) (*models.WarehouseResponse, error) {
 	warehouse, err := s.warehouseRepo.GetByID(id)
 	if err != nil {
 		return nil, err
 	}
 
-	return s.buildWarehouseResponse(ctx, warehouse)
+	return s.buildWarehouseResponse(ctx, warehouse, jwtToken)
 }
 
 // GetAllWarehouses retrieves all warehouses
-func (s *WarehouseService) GetAllWarehouses(ctx context.Context) ([]models.WarehouseResponse, error) {
+func (s *WarehouseService) GetAllWarehouses(ctx context.Context, jwtToken string) ([]models.WarehouseResponse, error) {
 	warehouses, err := s.warehouseRepo.GetAll()
 	if err != nil {
 		return nil, err
@@ -78,7 +90,7 @@ func (s *WarehouseService) GetAllWarehouses(ctx context.Context) ([]models.Wareh
 
 	var responses []models.WarehouseResponse
 	for _, warehouse := range warehouses {
-		response, err := s.buildWarehouseResponse(ctx, &warehouse)
+		response, err := s.buildWarehouseResponse(ctx, &warehouse, jwtToken)
 		if err != nil {
 			// Log error but continue with other warehouses
 			continue
@@ -90,7 +102,7 @@ func (s *WarehouseService) GetAllWarehouses(ctx context.Context) ([]models.Wareh
 }
 
 // UpdateWarehouse updates a warehouse
-func (s *WarehouseService) UpdateWarehouse(ctx context.Context, id string, request *models.UpdateWarehouseRequest) (*models.WarehouseResponse, error) {
+func (s *WarehouseService) UpdateWarehouse(ctx context.Context, id string, request *models.UpdateWarehouseRequest, jwtToken string) (*models.WarehouseResponse, error) {
 	// Get existing warehouse
 	warehouse, err := s.warehouseRepo.GetByID(id)
 	if err != nil {
@@ -99,18 +111,27 @@ func (s *WarehouseService) UpdateWarehouse(ctx context.Context, id string, reque
 
 	// Handle inline address updates if provided
 	if request.Address != nil {
+		// Validate ownership/association before update
+		if warehouse.AddressID == nil || request.Address.ID == "" || *warehouse.AddressID != request.Address.ID {
+			return nil, fmt.Errorf("address mismatch: update not permitted")
+		}
+		// Update address via AAA service
 		address, err := s.addressClient.UpdateAddress(ctx, &aaa.UpdateAddressRequest{
-			ID:           request.Address.ID,
-			Type:         request.Address.Type,
-			AddressLine1: request.Address.AddressLine1,
-			AddressLine2: request.Address.AddressLine2,
-			City:         request.Address.City,
-			State:        request.Address.State,
-			PostalCode:   request.Address.PostalCode,
-			Country:      request.Address.Country,
-			IsPrimary:    request.Address.IsPrimary != nil && *request.Address.IsPrimary,
-			IsActive:     true,
-		})
+			ID:          request.Address.ID,
+			Type:        request.Address.Type,
+			House:       request.Address.House,
+			Street:      request.Address.Street,
+			Landmark:    request.Address.Landmark,
+			PostOffice:  request.Address.PostOffice,
+			Subdistrict: request.Address.Subdistrict,
+			District:    request.Address.District,
+			VTC:         request.Address.VTC,
+			State:       request.Address.State,
+			Country:     request.Address.Country,
+			Pincode:     request.Address.Pincode,
+			IsPrimary:   request.Address.IsPrimary != nil && *request.Address.IsPrimary,
+			IsActive:    true,
+		}, jwtToken)
 		if err != nil {
 			return nil, fmt.Errorf("failed to update address: %w", err)
 		}
@@ -130,11 +151,11 @@ func (s *WarehouseService) UpdateWarehouse(ctx context.Context, id string, reque
 		return nil, err
 	}
 
-	return s.buildWarehouseResponse(ctx, warehouse)
+	return s.buildWarehouseResponse(ctx, warehouse, jwtToken)
 }
 
 // DeleteWarehouse deletes a warehouse
-func (s *WarehouseService) DeleteWarehouse(ctx context.Context, id string) error {
+func (s *WarehouseService) DeleteWarehouse(ctx context.Context, id string, jwtToken string) error {
 	// Get warehouse to check if it has an address
 	warehouse, err := s.warehouseRepo.GetByID(id)
 	if err != nil {
@@ -143,7 +164,7 @@ func (s *WarehouseService) DeleteWarehouse(ctx context.Context, id string) error
 
 	// Delete associated address if exists
 	if warehouse.AddressID != nil {
-		if err := s.addressClient.DeleteAddress(ctx, *warehouse.AddressID, true); err != nil {
+		if err := s.addressClient.DeleteAddress(ctx, *warehouse.AddressID, true, jwtToken); err != nil {
 			// Log error but don't fail the warehouse deletion
 			// You might want to handle this differently based on requirements
 		}
@@ -154,7 +175,7 @@ func (s *WarehouseService) DeleteWarehouse(ctx context.Context, id string) error
 }
 
 // SearchWarehouses searches warehouses by name
-func (s *WarehouseService) SearchWarehouses(ctx context.Context, query string) ([]models.WarehouseResponse, error) {
+func (s *WarehouseService) SearchWarehouses(ctx context.Context, query string, jwtToken string) ([]models.WarehouseResponse, error) {
 	warehouses, err := s.warehouseRepo.GetByName(query)
 	if err != nil {
 		return nil, err
@@ -162,7 +183,7 @@ func (s *WarehouseService) SearchWarehouses(ctx context.Context, query string) (
 
 	var responses []models.WarehouseResponse
 	for _, warehouse := range warehouses {
-		response, err := s.buildWarehouseResponse(ctx, &warehouse)
+		response, err := s.buildWarehouseResponse(ctx, &warehouse, jwtToken)
 		if err != nil {
 			// Log error but continue with other warehouses
 			continue
@@ -174,17 +195,17 @@ func (s *WarehouseService) SearchWarehouses(ctx context.Context, query string) (
 }
 
 // buildWarehouseResponse builds a warehouse response with address details
-func (s *WarehouseService) buildWarehouseResponse(ctx context.Context, warehouse *models.Warehouse) (*models.WarehouseResponse, error) {
+func (s *WarehouseService) buildWarehouseResponse(ctx context.Context, warehouse *models.Warehouse, jwtToken string) (*models.WarehouseResponse, error) {
 	response := &models.WarehouseResponse{
 		ID:        warehouse.ID,
 		Name:      warehouse.Name,
-		CreatedAt: warehouse.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt: warehouse.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		CreatedAt: warehouse.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt: warehouse.UpdatedAt.UTC().Format(time.RFC3339),
 	}
 
 	// Fetch address details if address ID exists
 	if warehouse.AddressID != nil {
-		address, err := s.addressClient.GetAddress(ctx, *warehouse.AddressID)
+		address, err := s.addressClient.GetAddress(ctx, *warehouse.AddressID, jwtToken)
 		if err != nil {
 			// Log error but don't fail the request
 			// You might want to handle this differently based on requirements
@@ -192,49 +213,21 @@ func (s *WarehouseService) buildWarehouseResponse(ctx context.Context, warehouse
 		}
 
 		response.Address = &models.AddressInfo{
-			ID:           address.ID,
-			Type:         address.Type,
-			AddressLine1: address.AddressLine1,
-			AddressLine2: address.AddressLine2,
-			City:         address.City,
-			State:        address.State,
-			PostalCode:   address.PostalCode,
-			Country:      address.Country,
-			FullAddress:  s.buildFullAddress(address),
+			ID:          address.ID,
+			Type:        address.Type,
+			House:       address.House,
+			Street:      address.Street,
+			Landmark:    address.Landmark,
+			PostOffice:  address.PostOffice,
+			Subdistrict: address.Subdistrict,
+			District:    address.District,
+			VTC:         address.VTC,
+			State:       address.State,
+			Country:     address.Country,
+			Pincode:     address.Pincode,
+			FullAddress: address.BuildFullAddress(),
 		}
 	}
 
 	return response, nil
-}
-
-// buildFullAddress builds a full address string from address components
-func (s *WarehouseService) buildFullAddress(address *aaa.Address) string {
-	parts := []string{}
-	if address.AddressLine1 != "" {
-		parts = append(parts, address.AddressLine1)
-	}
-	if address.AddressLine2 != "" {
-		parts = append(parts, address.AddressLine2)
-	}
-	if address.City != "" {
-		parts = append(parts, address.City)
-	}
-	if address.State != "" {
-		parts = append(parts, address.State)
-	}
-	if address.PostalCode != "" {
-		parts = append(parts, address.PostalCode)
-	}
-	if address.Country != "" {
-		parts = append(parts, address.Country)
-	}
-
-	fullAddress := ""
-	for i, part := range parts {
-		if i > 0 {
-			fullAddress += ", "
-		}
-		fullAddress += part
-	}
-	return fullAddress
 }

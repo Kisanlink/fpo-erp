@@ -45,8 +45,21 @@ func (h *WarehouseHandler) CreateWarehouse(c *gin.Context) {
 		return
 	}
 
+	// Get authenticated user ID from context
+	userID := c.GetString("user_id")
+	if userID == "" {
+		userID = "system" // Fallback for unauthenticated contexts
+	}
+
+	// Extract JWT token for AAA service calls
+	jwtToken := c.GetString("jwt_token")
+	if jwtToken == "" {
+		utils.UnauthorizedResponse(c, "Missing authentication token")
+		return
+	}
+
 	// Create warehouse
-	response, err := h.warehouseService.CreateWarehouse(c.Request.Context(), &request)
+	response, err := h.warehouseService.CreateWarehouse(c.Request.Context(), &request, userID, jwtToken)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "Failed to create warehouse", err)
 		return
@@ -74,8 +87,15 @@ func (h *WarehouseHandler) GetWarehouse(c *gin.Context) {
 		return
 	}
 
+	// Extract JWT token for AAA service calls
+	jwtToken := c.GetString("jwt_token")
+	if jwtToken == "" {
+		utils.UnauthorizedResponse(c, "Missing authentication token")
+		return
+	}
+
 	// Get warehouse
-	response, err := h.warehouseService.GetWarehouse(c.Request.Context(), id)
+	response, err := h.warehouseService.GetWarehouse(c.Request.Context(), id, jwtToken)
 	if err != nil {
 		utils.NotFoundResponse(c, "Warehouse not found")
 		return
@@ -95,8 +115,15 @@ func (h *WarehouseHandler) GetWarehouse(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/warehouses [get]
 func (h *WarehouseHandler) GetAllWarehouses(c *gin.Context) {
+	// Extract JWT token for AAA service calls
+	jwtToken := c.GetString("jwt_token")
+	if jwtToken == "" {
+		utils.UnauthorizedResponse(c, "Missing authentication token")
+		return
+	}
+
 	// Get all warehouses
-	response, err := h.warehouseService.GetAllWarehouses(c.Request.Context())
+	response, err := h.warehouseService.GetAllWarehouses(c.Request.Context(), jwtToken)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "Failed to retrieve warehouses", err)
 		return
@@ -136,8 +163,15 @@ func (h *WarehouseHandler) UpdateWarehouse(c *gin.Context) {
 		return
 	}
 
+	// Extract JWT token for AAA service calls
+	jwtToken := c.GetString("jwt_token")
+	if jwtToken == "" {
+		utils.UnauthorizedResponse(c, "Missing authentication token")
+		return
+	}
+
 	// Update warehouse
-	response, err := h.warehouseService.UpdateWarehouse(c.Request.Context(), id, &request)
+	response, err := h.warehouseService.UpdateWarehouse(c.Request.Context(), id, &request, jwtToken)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "Failed to update warehouse", err)
 		return
@@ -167,8 +201,15 @@ func (h *WarehouseHandler) DeleteWarehouse(c *gin.Context) {
 		return
 	}
 
+	// Extract JWT token for AAA service calls
+	jwtToken := c.GetString("jwt_token")
+	if jwtToken == "" {
+		utils.UnauthorizedResponse(c, "Missing authentication token")
+		return
+	}
+
 	// Delete warehouse
-	err := h.warehouseService.DeleteWarehouse(c.Request.Context(), id)
+	err := h.warehouseService.DeleteWarehouse(c.Request.Context(), id, jwtToken)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "Failed to delete warehouse", err)
 		return
@@ -197,8 +238,15 @@ func (h *WarehouseHandler) SearchWarehouses(c *gin.Context) {
 		return
 	}
 
+	// Extract JWT token for AAA service calls
+	jwtToken := c.GetString("jwt_token")
+	if jwtToken == "" {
+		utils.UnauthorizedResponse(c, "Missing authentication token")
+		return
+	}
+
 	// Search warehouses
-	response, err := h.warehouseService.SearchWarehouses(c.Request.Context(), query)
+	response, err := h.warehouseService.SearchWarehouses(c.Request.Context(), query, jwtToken)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "Failed to search warehouses", err)
 		return
@@ -214,11 +262,18 @@ func (h *WarehouseHandler) RegisterRoutes(router *gin.RouterGroup) {
 		// Apply authentication middleware to all routes
 		warehouses.Use(h.aaaMiddleware.Authenticate())
 
-		warehouses.POST("", h.aaaMiddleware.RequirePermission("aaa/warehouse", "*", "create"), h.CreateWarehouse)
-		warehouses.GET("", h.aaaMiddleware.RequirePermission("aaa/warehouse", "*", "read"), h.GetAllWarehouses)
-		warehouses.GET("/search", h.aaaMiddleware.RequirePermission("aaa/warehouse", "*", "read"), h.SearchWarehouses)
-		warehouses.GET("/:id", h.aaaMiddleware.RequirePermission("aaa/warehouse", "*", "read"), h.GetWarehouse)
-		warehouses.PATCH("/:id", h.aaaMiddleware.RequirePermission("aaa/warehouse", "*", "update"), h.UpdateWarehouse)
-		warehouses.DELETE("/:id", h.aaaMiddleware.RequirePermission("aaa/warehouse", "*", "delete"), h.DeleteWarehouse)
+		// Create: AAA HTTP service will validate addresses permissions internally
+		warehouses.POST("", h.aaaMiddleware.RequireOrgPermission("warehouse", "create"), h.CreateWarehouse)
+
+		// Read operations: AAA HTTP service will validate addresses permissions internally
+		warehouses.GET("", h.aaaMiddleware.RequireOrgPermission("warehouse", "read"), h.GetAllWarehouses)
+		warehouses.GET("/search", h.aaaMiddleware.RequireOrgPermission("warehouse", "read"), h.SearchWarehouses)
+		warehouses.GET("/:id", h.aaaMiddleware.RequireOrgPermission("warehouse", "read"), h.GetWarehouse)
+
+		// Update: AAA HTTP service will validate addresses permissions internally
+		warehouses.PATCH("/:id", h.aaaMiddleware.RequireOrgPermission("warehouse", "update"), h.UpdateWarehouse)
+
+		// Delete: AAA HTTP service will validate addresses permissions internally
+		warehouses.DELETE("/:id", h.aaaMiddleware.RequireOrgPermission("warehouse", "delete"), h.DeleteWarehouse)
 	}
 }

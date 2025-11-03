@@ -28,25 +28,25 @@ func (h *TaxHandler) RegisterRoutes(router *gin.RouterGroup) {
 	taxes := router.Group("/taxes")
 	{
 		// CRUD operations
-		taxes.POST("", h.aaaMiddleware.RequirePermission("aaa/tax", "*", "create"), h.CreateTax)
-		taxes.GET("", h.aaaMiddleware.RequirePermission("aaa/tax", "*", "read"), h.GetAllTaxes)
-		taxes.GET("/:id", h.aaaMiddleware.RequirePermission("aaa/tax", "*", "read"), h.GetTax)
-		taxes.PUT("/:id", h.aaaMiddleware.RequirePermission("aaa/tax", "*", "update"), h.UpdateTax)
-		taxes.DELETE("/:id", h.aaaMiddleware.RequirePermission("aaa/tax", "*", "delete"), h.DeleteTax)
+		taxes.POST("", h.aaaMiddleware.RequireOrgPermission("tax", "create"), h.CreateTax)
+		taxes.GET("", h.aaaMiddleware.RequireOrgPermission("tax", "read"), h.GetAllTaxes)
+		taxes.GET("/:id", h.aaaMiddleware.RequireOrgPermission("tax", "read"), h.GetTax)
+		taxes.PUT("/:id", h.aaaMiddleware.RequireOrgPermission("tax", "update"), h.UpdateTax)
+		taxes.DELETE("/:id", h.aaaMiddleware.RequireOrgPermission("tax", "delete"), h.DeleteTax)
 
 		// Specialized endpoints
-		taxes.GET("/active", h.aaaMiddleware.RequirePermission("aaa/tax", "*", "read"), h.GetActiveTaxes)
-		taxes.GET("/type/:type", h.aaaMiddleware.RequirePermission("aaa/tax", "*", "read"), h.GetTaxesByType)
-		taxes.GET("/status/:status", h.aaaMiddleware.RequirePermission("aaa/tax", "*", "read"), h.GetTaxesByStatus)
+		taxes.GET("/active", h.aaaMiddleware.RequireOrgPermission("tax", "read"), h.GetActiveTaxes)
+		taxes.GET("/type/:type", h.aaaMiddleware.RequireOrgPermission("tax", "read"), h.GetTaxesByType)
+		taxes.GET("/status/:status", h.aaaMiddleware.RequireOrgPermission("tax", "read"), h.GetTaxesByStatus)
 
 		// Tax calculation
-		taxes.POST("/calculate", h.aaaMiddleware.RequirePermission("aaa/tax", "*", "calculate"), h.CalculateTax)
+		taxes.POST("/calculate", h.aaaMiddleware.RequireOrgPermission("tax", "calculate"), h.CalculateTax)
 
 		// Tax applications and summaries
-		taxes.GET("/applications/sale/:saleID", h.aaaMiddleware.RequirePermission("aaa/tax", "*", "read"), h.GetTaxApplicationsBySale)
-		taxes.GET("/applications/return/:returnID", h.aaaMiddleware.RequirePermission("aaa/tax", "*", "read"), h.GetTaxApplicationsByReturn)
-		taxes.GET("/summary/sale/:saleID", h.aaaMiddleware.RequirePermission("aaa/tax", "*", "read"), h.GetTaxSummaryBySale)
-		taxes.GET("/summary/return/:returnID", h.aaaMiddleware.RequirePermission("aaa/tax", "*", "read"), h.GetTaxSummaryByReturn)
+		taxes.GET("/applications/sale/:saleID", h.aaaMiddleware.RequireOrgPermission("tax", "read"), h.GetTaxApplicationsBySale)
+		taxes.GET("/applications/return/:returnID", h.aaaMiddleware.RequireOrgPermission("tax", "read"), h.GetTaxApplicationsByReturn)
+		taxes.GET("/summary/sale/:saleID", h.aaaMiddleware.RequireOrgPermission("tax", "read"), h.GetTaxSummaryBySale)
+		taxes.GET("/summary/return/:returnID", h.aaaMiddleware.RequireOrgPermission("tax", "read"), h.GetTaxSummaryByReturn)
 	}
 }
 

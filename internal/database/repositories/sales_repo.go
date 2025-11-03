@@ -17,6 +17,26 @@ func NewSalesRepository(db *gorm.DB) *SalesRepository {
 	return &SalesRepository{db: db}
 }
 
+// WithTransaction executes a function within a database transaction
+func (r *SalesRepository) WithTransaction(fn func(*gorm.DB) error) error {
+	return r.db.Transaction(fn)
+}
+
+// CreateSaleWithTx creates a sale within a transaction
+func (r *SalesRepository) CreateSaleWithTx(tx *gorm.DB, sale *models.Sale) error {
+	return tx.Create(sale).Error
+}
+
+// CreateSaleItemWithTx creates a sale item within a transaction
+func (r *SalesRepository) CreateSaleItemWithTx(tx *gorm.DB, item *models.SaleItem) error {
+	return tx.Create(item).Error
+}
+
+// UpdateSaleWithTx updates a sale within a transaction
+func (r *SalesRepository) UpdateSaleWithTx(tx *gorm.DB, sale *models.Sale) error {
+	return tx.Save(sale).Error
+}
+
 // Sale operations
 func (r *SalesRepository) CreateSale(sale *models.Sale) error {
 	return r.db.Create(sale).Error
@@ -42,11 +62,6 @@ func (r *SalesRepository) DeleteSale(id string) error {
 	return r.db.Delete(&models.Sale{}, "id = ?", id).Error
 }
 
-func (r *SalesRepository) GetSalesByCustomer(customerID string) ([]models.Sale, error) {
-	var sales []models.Sale
-	err := r.db.Preload("Items").Where("customer_id = ?", customerID).Find(&sales).Error
-	return sales, err
-}
 
 func (r *SalesRepository) GetSalesByDateRange(startDate, endDate time.Time) ([]models.Sale, error) {
 	var sales []models.Sale

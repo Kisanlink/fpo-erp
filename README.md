@@ -1,29 +1,52 @@
-# Kisanlink ERP System
+# 🌾 Kisanlink ERP System
 
 A comprehensive Enterprise Resource Planning (ERP) system built with Go, designed for agricultural businesses and FPOs (Farmer Producer Organizations).
+
+[![Production Ready](https://img.shields.io/badge/Status-Production%20Ready-green)](https://github.com/kisanlink/fpo-erp)
+[![Go Version](https://img.shields.io/badge/Go-1.21+-blue)](https://golang.org/)
+[![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
+
+## 📚 API Documentation
+
+- **🌟 Official API Documentation**: [Scalar Registry](https://registry.scalar.com/@kisanlink/apis/kisanlink-erp-api/latest)
+- **Interactive Documentation**: `/docs` endpoint (Scalar Go-powered)
+- **Swagger UI**: `/swagger/index.html` endpoint
+- **OpenAPI Specification**: `/api-docs` endpoint
 
 ## 🚀 Features
 
 ### Core ERP Modules
-- **Inventory Management**: Track products, batches, and stock levels
+- **Procurement Management**: Complete vendor-to-inventory workflow
+  - Vendor/Supplier (Collaborator) Management
+  - Vendor-Product Associations (many-to-many)
+  - Product Variants (separate table)
+  - Purchase Order workflow with ALL-IN pricing
+  - GRN (Goods Receipt Notes) with 3 input patterns
+  - Auto-GRN creation with quality inspection
+  - Automatic inventory batch creation from GRN
+- **Inventory Management**: Track products, batches, and stock levels with automatic batch creation from GRN and FEFO integration
 - **Sales Management**: Handle sales orders, invoices, and customer data
 - **Returns Management**: Process returns and refunds
 - **Warehouse Management**: Multi-warehouse support with location tracking
 - **Product Management**: SKU management with pricing and categorization
-- **File Attachments**: S3 integration for document storage
+- **Tax Management**: Comprehensive tax calculation and compliance system
+- **Discount System**: Advanced discount management with validation
+- **File Attachments**: Generic entity-based system (S3) for logos, POs, GRNs, and documents
 - **Bank Payments**: Track payment transactions for sales and returns
 - **Refund Policies**: Manage return and refund policies
 - **Reporting**: Sales analytics and inventory reports
 
 ### Security & Access Control
 - **AAA Service Integration**: Authentication, Authorization, and Accounting
+- **Organization-Scoped Permissions**: Multi-tenant isolation with automatic organization-level access control
 - **Role-Based Access Control (RBAC)**: Granular permissions for different user roles
-- **JWT Token Validation**: Secure token-based authentication from external AAA service
+- **JWT Token Validation**: Secure token-based authentication from external AAA service with organization context
 - **TTL Caching**: High-performance permission caching
 - **Audit Logging**: Comprehensive activity tracking
 - **External User Management**: User management handled by separate AAA service
+- **Multi-Tenant Support**: Complete isolation between organizations with organization-scoped permission checks
 
-## Technology Stack
+## 🛠️ Technology Stack
 
 - **Backend**: Go 1.21+
 - **Framework**: Gin (HTTP framework)
@@ -31,8 +54,11 @@ A comprehensive Enterprise Resource Planning (ERP) system built with Go, designe
 - **Authentication**: JWT with external AAA service integration
 - **File Storage**: AWS S3
 - **HTTP API**: RESTful API for all operations
+- **Documentation**: Scalar Go package + Swagger UI
+- **Tax System**: Production-ready GST compliance system
 - **Configuration**: Environment-based configuration
 - **Logging**: Structured logging with levels
+- **Validation**: Comprehensive input validation and business rules
 
 ## 🏗️ Project Structure
 
@@ -56,9 +82,14 @@ Kisanlink-erp-v1/
 │   ├── config/                    # Configuration management
 │   ├── database/
 │   │   ├── models/                # Database models (organized by domain)
-│   │   │   ├── attachments.go     # File attachment models
+│   │   │   ├── attachments.go     # Generic entity-based attachment models
 │   │   │   ├── bank_payments.go   # Bank payment models
-│   │   │   ├── inventory.go       # Inventory models
+│   │   │   ├── collaborator.go    # Vendor/supplier models
+│   │   │   ├── collaborator_product.go  # Vendor-product associations
+│   │   │   ├── product_variant.go # Product size/quantity variants
+│   │   │   ├── purchase_order.go  # Purchase order models
+│   │   │   ├── grn.go            # Goods receipt note models
+│   │   │   ├── inventory.go       # Inventory batch and transaction models
 │   │   │   ├── price.go          # Product pricing models
 │   │   │   ├── product.go        # Product/SKU models
 │   │   │   ├── returns.go        # Return and refund policy models
@@ -84,6 +115,37 @@ The ERP system integrates with an external AAA (Authentication, Authorization, a
 - **Role-Based Access Control**: Role-based route protection
 - **TTL Caching**: Caches user permissions for performance
 - **Audit Logging**: Optional audit event logging
+
+### Organization-Scoped Permissions (January 2025)
+
+The system implements **organization-scoped permissions** for multi-tenant isolation:
+
+#### How It Works
+1. **JWT Token Contains Organization Context**: AAA LoginV2 includes `organizations` array in JWT
+2. **Automatic Extraction**: Middleware extracts `organization_id` from JWT token
+3. **Scoped Permission Checks**: All routes check permissions against user's organization
+4. **Multi-Tenant Isolation**: Users can only access resources within their organization
+
+#### Permission Hierarchy
+```
+Global Permissions (Super Admin):
+  ResourceType: "collaborator"
+  ResourceId:   "*"              // Access all organizations
+  Action:       "read"
+
+Organization-Scoped Permissions (FPO Users):
+  ResourceType: "collaborator"
+  ResourceId:   "ORG_12345"      // Access only ORG_12345
+  Action:       "read"
+```
+
+#### Implementation
+- **16 Handler Files Updated**: ~115 routes now use organization-scoped permissions
+- **Automatic Scoping**: Middleware handles organization context extraction
+- **Backward Compatible**: Super admin roles can still use wildcard (`*`) permissions
+- **Security Enhancement**: Critical for multi-tenant security and data isolation
+
+**Documentation**: See `files/ORG_SCOPED_PERMISSIONS_IMPLEMENTATION.md` for complete details
 
 ### Permission Matrix
 
@@ -128,6 +190,55 @@ The system uses the following permission naming convention:
 - `refund_policy:create` - Create refund policies
 - `bank_payments:read` - Read bank payment records
 - `attachments:read` - Read attachments
+
+## 🏢 Multi-Tenant Architecture
+
+The ERP system is **fully multi-tenant** with organization-level isolation:
+
+### Organization Context
+- **JWT Token**: Contains user's organization ID(s) from AAA LoginV2
+- **Automatic Extraction**: Middleware extracts `organization_id` from JWT
+- **Scoped Access**: All API calls are automatically scoped to user's organization
+- **Data Isolation**: Users cannot access resources from other organizations
+
+### Permission Model
+
+#### For FPO Users
+```bash
+# User from Organization ORG_A creates a collaborator
+POST /api/v1/collaborators
+Authorization: Bearer <token-with-org-A>
+
+# Permission Check:
+# - ResourceType: "collaborator"
+# - ResourceId:   "ORG_A"          ← Organization-scoped
+# - Action:       "create"
+# Result: Collaborator created in ORG_A only
+```
+
+#### For Super Admins
+```bash
+# Super admin with global permissions
+POST /api/v1/collaborators
+Authorization: Bearer <super-admin-token>
+
+# Permission Check:
+# - ResourceType: "collaborator"
+# - ResourceId:   "*"              ← Global access
+# - Action:       "create"
+# Result: Can create collaborators in any organization
+```
+
+### Security Benefits
+✅ **Organization Isolation**: Users cannot access data from other organizations
+✅ **Automatic Scoping**: No manual filtering needed in handlers
+✅ **Audit Trail**: All operations logged with organization context
+✅ **Flexible Access**: Supports single-org users and multi-org admins
+
+### Implementation Details
+- **Middleware**: `RequireOrgPermission(resourceType, action)` in all handlers
+- **Coverage**: 16 handler files, ~115 routes
+- **Documentation**: Complete guide in `files/ORG_SCOPED_PERMISSIONS_IMPLEMENTATION.md`
 
 ## 🚦 Getting Started
 
@@ -201,7 +312,7 @@ For testing purposes, you can generate JWT tokens using the provided script:
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/Kisanlink/fpo-erp.git
    cd Kisanlink-erp-v1
    ```
 
@@ -222,7 +333,10 @@ For testing purposes, you can generate JWT tokens using the provided script:
    ```
 
 The server will start on:
-- HTTP API: `http://localhost:8080`
+- HTTP API: `http://localhost:3000` (default)
+- API Documentation: `http://localhost:3000/docs` (Scalar)
+- Swagger UI: `http://localhost:3000/swagger/index.html`
+- OpenAPI Spec: `http://localhost:3000/api-docs`
 - AAA Service: `localhost:9091`
 
 ## API Endpoints
@@ -249,12 +363,20 @@ Authorization: Bearer <jwt-token>
 - `PATCH /api/v1/products/:id` - Update product
 - `DELETE /api/v1/products/:id` - Delete product
 
-#### Inventory Batches
+#### Inventory Batches (with Tax Support)
 - `GET /api/v1/batches` - List all batches
-- `POST /api/v1/batches` - Create batch
+- `POST /api/v1/batches` - Create batch **with tax configuration**
 - `GET /api/v1/batches/:id` - Get batch details
 - `GET /api/v1/batches/expiring` - Get expiring batches
 - `GET /api/v1/batches/low-stock` - Get low stock batches
+
+#### Tax Management
+- `GET /api/v1/taxes` - List all taxes
+- `POST /api/v1/taxes` - Create custom tax
+- `GET /api/v1/taxes/:id` - Get tax details
+- `PATCH /api/v1/taxes/:id` - Update tax
+- `DELETE /api/v1/taxes/:id` - Delete tax
+- `POST /api/v1/taxes/calculate` - Calculate tax for items
 
 #### Sales
 - `GET /api/v1/sales` - List all sales
@@ -277,17 +399,65 @@ Authorization: Bearer <jwt-token>
 - `PUT /api/v1/refund-policies/:id` - Update refund policy
 - `DELETE /api/v1/refund-policies/:id` - Delete refund policy
 
+#### Collaborators (Vendors/Suppliers)
+- `GET /api/v1/collaborators` - List all vendors
+- `POST /api/v1/collaborators` - Create vendor
+- `GET /api/v1/collaborators/:id` - Get vendor details
+- `GET /api/v1/collaborators/active` - Get active vendors
+- `PATCH /api/v1/collaborators/:id` - Update vendor
+- `PATCH /api/v1/collaborators/:id/status` - Activate/deactivate vendor
+- `DELETE /api/v1/collaborators/:id` - Delete vendor
+
+#### Collaborator Products (Vendor-Product Associations)
+- `GET /api/v1/collaborator-products` - List vendor-product associations
+- `POST /api/v1/collaborator-products` - Create association
+- `GET /api/v1/collaborator-products/:id` - Get association details
+- `GET /api/v1/collaborator-products/collaborator/:id` - Get products by vendor
+- `GET /api/v1/collaborator-products/product/:id` - Get vendors by product
+- `PATCH /api/v1/collaborator-products/:id` - Update association
+- `PATCH /api/v1/collaborator-products/:id/status` - Activate/deactivate
+- `DELETE /api/v1/collaborator-products/:id` - Delete association
+
+#### Product Variants
+- `GET /api/v1/product-variants` - List all variants
+- `POST /api/v1/product-variants` - Create variant
+- `GET /api/v1/product-variants/:id` - Get variant details
+- `GET /api/v1/product-variants/product/:id` - Get variants by product
+- `PATCH /api/v1/product-variants/:id` - Update variant
+- `PATCH /api/v1/product-variants/:id/status` - Activate/deactivate
+- `DELETE /api/v1/product-variants/:id` - Delete variant
+
+#### Purchase Orders
+- `GET /api/v1/purchase-orders` - List all purchase orders
+- `POST /api/v1/purchase-orders` - Create purchase order
+- `GET /api/v1/purchase-orders/:id` - Get PO details
+- `GET /api/v1/purchase-orders/pending-deliveries` - Get pending deliveries
+- `GET /api/v1/purchase-orders/status/:status` - Get POs by status
+- `PATCH /api/v1/purchase-orders/:id/status` - Update status (with auto-GRN support)
+- `PATCH /api/v1/purchase-orders/:id/payment` - Update payment status
+- `GET /api/v1/collaborators/:id/purchase-orders` - Get POs by vendor
+
+#### Goods Receipt Notes (GRN)
+- `GET /api/v1/grns` - List all GRNs
+- `POST /api/v1/grns` - Create GRN manually
+- `GET /api/v1/grns/:id` - Get GRN details
+- `GET /api/v1/grns/warehouse/:id` - Get GRNs by warehouse
+- `GET /api/v1/grns/purchase-order/:id` - Get GRN by purchase order
+
 #### Bank Payments
 - `GET /api/v1/bank-payments` - List all bank payments
 - `POST /api/v1/bank-payments` - Create bank payment
 - `GET /api/v1/bank-payments/:id` - Get bank payment details
 - `PUT /api/v1/bank-payments/:id` - Update bank payment
 
-#### Attachments
-- `GET /api/v1/attachments` - List attachments
-- `POST /api/v1/attachments` - Upload attachment
-- `GET /api/v1/attachments/:id` - Get attachment details
-- `GET /api/v1/attachments/:id/download` - Download attachment
+#### Attachments (Entity-Based)
+- `GET /api/v1/attachments` - List attachments (with entity filters)
+- `POST /api/v1/attachments` - Upload attachment (requires entity_type & entity_id)
+- `GET /api/v1/attachments/:id` - Get attachment metadata
+- `GET /api/v1/attachments/:id/download` - Download attachment file
+- `GET /api/v1/attachments/:id/url` - Get presigned URL for display
+- `GET /api/v1/attachments/:id/info` - Get detailed file information
+- `GET /api/v1/attachments/entity/:entity_type/:entity_id` - Get all attachments for entity
 - `DELETE /api/v1/attachments/:id` - Delete attachment
 
 ## Usage Examples
@@ -306,17 +476,37 @@ curl -X POST http://localhost:8080/api/v1/warehouses \
   }'
 ```
 
-### Creating an Inventory Batch
+### Creating an Inventory Batch (with Tax Configuration)
 ```bash
-curl -X POST http://localhost:8080/api/v1/batches \
+curl -X POST http://localhost:3000/api/v1/batches \
   -H "Authorization: Bearer <your-jwt-token>" \
   -H "Content-Type: application/json" \
   -d '{
     "warehouse_id": "WH1234567890",
     "product_id": "PROD00000001",
-    "cost_price": 18.50,
-    "expiry_date": "2024-12-31",
-    "quantity": 1000
+    "cost_price": 85.50,
+    "expiry_date": "2025-12-31",
+    "quantity": 1000,
+    "cgst_rate": 2.5,
+    "sgst_rate": 2.5,
+    "custom_tax_ids": ["TAX_CESS_ENV_001", "TAX_MANDI_FEE_001"],
+    "is_tax_exempt": false
+  }'
+```
+
+### Creating a Custom Tax
+```bash
+curl -X POST http://localhost:3000/api/v1/taxes \
+  -H "Authorization: Bearer <your-jwt-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "TAX_CESS_ENV_001",
+    "name": "Environmental Cess",
+    "tax_type": "item_specific",
+    "calculation_type": "percentage",
+    "rate": 1.0,
+    "valid_from": "2024-01-01T00:00:00Z",
+    "is_active": true
   }'
 ```
 
@@ -344,6 +534,80 @@ curl -X POST http://localhost:8080/api/v1/refund-policies \
     "max_days": 30,
     "restocking_fee": 10.00
   }'
+```
+
+### Creating a Collaborator (Vendor)
+```bash
+curl -X POST http://localhost:8080/api/v1/collaborators \
+  -H "Authorization: Bearer <your-jwt-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "company_name": "ABC Traders",
+    "contact_person": "Rajesh Kumar",
+    "contact_number": "+91-9876543210",
+    "email": "rajesh@abctraders.com",
+    "gst_number": "27AABCU9603R1ZM",
+    "bank_account_no": "123456789012",
+    "bank_ifsc": "SBIN0001234",
+    "address": {
+      "line1": "123 Market Street",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "pincode": "400001",
+      "country": "India"
+    }
+  }'
+```
+
+### Creating a Purchase Order
+```bash
+curl -X POST http://localhost:8080/api/v1/purchase-orders \
+  -H "Authorization: Bearer <your-jwt-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "collaborator_id": "CLAB_abc12345",
+    "warehouse_id": "WH_xyz67890",
+    "expected_delivery_date": "2025-02-15",
+    "items": [
+      {
+        "product_id": "SKU_rice001",
+        "quantity": 1000,
+        "unit_price": 45.50
+      },
+      {
+        "product_id": "SKU_wheat002",
+        "quantity": 500,
+        "unit_price": 38.00
+      }
+    ]
+  }'
+```
+
+### Creating GRN with Auto-Acceptance (Pattern 1)
+```bash
+curl -X PATCH http://localhost:8080/api/v1/purchase-orders/PO_123/status \
+  -H "Authorization: Bearer <your-jwt-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "delivered",
+    "accept_all": true,
+    "default_expiry_date": "2025-12-31"
+  }'
+```
+
+### Uploading an Attachment (Logo)
+```bash
+curl -X POST http://localhost:8080/api/v1/attachments \
+  -H "Authorization: Bearer <your-jwt-token>" \
+  -F "file=@company_logo.png" \
+  -F "entity_type=logo" \
+  -F "entity_id=CLAB_abc12345"
+```
+
+### Getting Presigned URL for Logo Display
+```bash
+curl -X GET http://localhost:8080/api/v1/attachments/ATT_xyz789/url \
+  -H "Authorization: Bearer <your-jwt-token>"
 ```
 
 ## Testing
@@ -415,27 +679,72 @@ For support and questions:
 - Contact the development team
 - Check the documentation in the `docs/` directory
 
-## Recent Updates
+## 📈 Recent Updates
 
-### ✅ Completed Features
+### ✅ Latest Completed Features (January 2025)
+
+#### 🔐 Organization-Scoped Permissions (January 2025)
+- **Multi-Tenant Security**: Complete organization-level isolation for all resources
+- **Automatic Organization Scoping**: Middleware extracts `organization_id` from JWT and validates permissions
+- **16 Handlers Updated**: All major handlers (~115 routes) now use organization-scoped permission checks
+- **Defense in Depth**: 4-layer security (JWT → Context → Org Permissions → Business Logic)
+- **AAA Integration**: Leverages AAA service's hierarchical permission model (global/organization/instance)
+- **Zero Performance Impact**: Organization ID already in JWT token, no additional queries needed
+- **Super Admin Support**: Global wildcard permissions still work for cross-organization access
+- **Production Implementation**: `RequireOrgPermission(resourceType, action)` replaces `RequirePermission(resourceType, "*", action)`
+
+#### 🏭 Complete Procurement Module
+- **Vendor/Supplier Management**: Full collaborator (vendor) profiles with AAA address integration
+- **Vendor-Product Associations**: Many-to-many relationships with brand info and compliance data
+- **Product Variants**: Separate table for size/quantity variants (500g, 1kg, 5kg, etc.)
+- **Purchase Order Workflow**: ALL-IN pricing with status tracking (placed → confirmed → delivered → paid)
+- **GRN (Goods Receipt Notes)**: 3 flexible input patterns (Accept All, Simple Accept/Reject, Detailed Quantities)
+- **Auto-GRN Creation**: Automatic GRN generation with quality inspection and batch tracking
+- **Automatic Inventory Updates**: GRN accepted quantities automatically create inventory batches
+
+#### 📎 Generic Attachment System
+- **Entity-Based Architecture**: Refactored from sale/return-specific to generic `entity_type` + `entity_id` pattern
+- **Multi-Entity Support**: Works for logos, purchase orders, GRNs, and any future entity types
+- **Frontend-Friendly**: Two-step workflow (upload → get attachment ID → create entity) with presigned URLs
+- **S3 Folder Structure**: Organized by entity type (logos/, purchase-orders/{ID}/, grns/{ID}/, misc/)
+- **Database Migration**: Complete migration script for existing data (`migrations/20250128_refactor_attachments_to_entity.sql`)
+
+#### 📦 GRN → Inventory Integration
+- **Automatic Batch Creation**: Accepted quantities from GRN automatically create inventory batches
+- **FEFO Integration**: New batches immediately participate in First-Expired-First-Out allocation
+- **Transaction Audit Trail**: Complete history of inventory movements from GRN to sales
+- **Batch Number Tracking**: Vendor batch numbers stored separately from system batch IDs
+- **ALL-IN Cost Pricing**: PO unit price becomes inventory batch cost price
+
+#### 🔐 JWT Structure Updates
+- **Nested Role Support**: Enhanced parsing for AAA tokens with `user_context.roles` structure
+- **Backward Compatibility**: Conversion layer maintains compatibility with existing code
+- **Improved Permission Extraction**: Better handling of roleIds and permissions fields
+
+### ✅ Previously Completed Features (2024)
+- **🏷️ Production-Ready Tax System**: Complete inventory-based tax management with CGST, SGST, and custom taxes
+- **📚 Scalar Go Documentation**: Interactive API documentation using Scalar Go package
+- **🔧 Advanced Tax Calculation**: Automatic tax computation during sales with GST compliance
+- **🎯 Real-world Tax Scenarios**: Support for multiple tax rates and exemptions
+- **🔐 Enhanced Validation**: Complete input validation and business rule enforcement
 - **Permission Matrix Implementation**: Complete role-based access control for all entities
-- **Model Reorganization**: Moved models from misc files to domain-specific files
 - **AAA Service Integration**: Full integration with external AAA service
-- **User Management Removal**: Removed local user management (handled by AAA service)
 - **JWT Token Support**: Support for external JWT tokens with custom payload format
-- **Enhanced Security**: Route-level permission enforcement
-- **Documentation**: Updated API documentation and usage examples
+- **Discount System**: Comprehensive discount management and validation
 
-### 🔄 In Progress
-- **Performance Optimization**: TTL caching for permissions
-- **Audit Logging**: Enhanced audit trail for all operations
-- **Error Handling**: Improved error messages and validation
+### 🎯 Current Status: Production Ready
+- **✅ Procurement Module**: Complete vendor-to-inventory workflow (40+ endpoints)
+- **✅ Tax System**: Fully implemented and tested
+- **✅ Inventory Management**: Automatic updates from GRN with FEFO integration
+- **✅ API Documentation**: Complete with Scalar Registry integration
+- **✅ GST Compliance**: Indian tax regulations supported
+- **✅ Performance**: Optimized with TTL caching and efficient queries
 
 ## Roadmap
 
 - [ ] Advanced reporting and analytics
 - [ ] Mobile application
-- [ ] Multi-tenant support
+- [x] Multi-tenant support (✅ Completed - Organization-scoped permissions implemented)
 - [ ] Advanced inventory forecasting
 - [ ] Integration with external systems
 - [ ] Real-time notifications

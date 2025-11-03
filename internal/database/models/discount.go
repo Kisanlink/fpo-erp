@@ -15,11 +15,8 @@ const (
 	DiscountTypeFlat       DiscountType = "flat"       // Fixed amount discount
 	DiscountTypePercentage DiscountType = "percentage" // Percentage discount
 	DiscountTypeBuyXGetY   DiscountType = "buy_x_get_y"
-	DiscountTypeFirstOrder DiscountType = "first_order"
-	DiscountTypeLoyalty    DiscountType = "loyalty"
 	DiscountTypeSeasonal   DiscountType = "seasonal"
 	DiscountTypeBulk       DiscountType = "bulk"
-	DiscountTypeReferral   DiscountType = "referral"
 )
 
 // Discount represents a discount offer
@@ -38,9 +35,7 @@ type Discount struct {
 	ApplicableCategories *string      `gorm:"type:text" json:"applicable_categories"`        // JSON array of category IDs
 	ExcludedCategories   *string      `gorm:"type:text" json:"excluded_categories"`          // JSON array of excluded category IDs
 	ApplicableWarehouses *string      `gorm:"type:text" json:"applicable_warehouses"`        // JSON array of warehouse IDs
-	CustomerGroups       *string      `gorm:"type:text" json:"customer_groups"`              // JSON array of customer group IDs
 	UsageLimit           *int         `gorm:"type:int" json:"usage_limit"`                   // Total usage limit
-	UsagePerCustomer     *int         `gorm:"type:int;default:1" json:"usage_per_customer"`  // Usage limit per customer
 	CurrentUsage         int          `gorm:"type:int;default:0" json:"current_usage"`       // Current usage count
 	ValidFrom            time.Time    `gorm:"type:timestamptz;not null" json:"valid_from"`
 	ValidUntil           time.Time    `gorm:"type:timestamptz;not null" json:"valid_until"`
@@ -48,17 +43,22 @@ type Discount struct {
 	IsStackable          bool         `gorm:"type:boolean;default:false" json:"is_stackable"` // Can be combined with other discounts
 	Priority             int          `gorm:"type:int;default:0" json:"priority"`             // Higher priority discounts applied first
 	Terms                *string      `gorm:"type:text" json:"terms"`                         // Terms and conditions
+
+	// Buy X Get Y specific fields
+	BuyQuantity          *int         `gorm:"type:int" json:"buy_quantity"`                   // X in Buy X Get Y
+	GetQuantity          *int         `gorm:"type:int" json:"get_quantity"`                   // Y in Buy X Get Y
+	GetDiscountType      *string      `gorm:"type:varchar(20)" json:"get_discount_type"`     // "free", "percentage", "flat"
+	GetDiscountValue     *float64     `gorm:"type:numeric(10,4)" json:"get_discount_value"`  // Discount value for Y items
 }
 
 func (Discount) TableName() string {
 	return "discounts"
 }
 
-// DiscountUsage tracks discount usage by customers
+// DiscountUsage tracks discount usage for sales
 type DiscountUsage struct {
 	base.BaseModel
 	DiscountID string    `gorm:"type:varchar(100);not null" json:"discount_id"`
-	CustomerID string    `gorm:"type:varchar(100);not null" json:"customer_id"`
 	SaleID     string    `gorm:"type:varchar(100);not null" json:"sale_id"`
 	UsedAt     time.Time `gorm:"type:timestamptz;not null;default:now()" json:"used_at"`
 	Amount     float64   `gorm:"type:numeric(10,4);not null" json:"amount"` // Actual discount amount applied
@@ -91,12 +91,11 @@ func NewDiscount(code, name string, description *string, discountType DiscountTy
 }
 
 // NewDiscountUsage creates a new DiscountUsage with initialized fields
-func NewDiscountUsage(discountID, customerID, saleID string, amount float64) *DiscountUsage {
+func NewDiscountUsage(discountID, saleID string, amount float64) *DiscountUsage {
 	baseModel := base.NewBaseModel(constants.TableDiscountUse, hash.Medium)
 	return &DiscountUsage{
 		BaseModel:  *baseModel,
 		DiscountID: discountID,
-		CustomerID: customerID,
 		SaleID:     saleID,
 		UsedAt:     time.Now(),
 		Amount:     amount,
@@ -119,9 +118,7 @@ type DiscountResponse struct {
 	ApplicableCategories *string      `json:"applicable_categories"`
 	ExcludedCategories   *string      `json:"excluded_categories"`
 	ApplicableWarehouses *string      `json:"applicable_warehouses"`
-	CustomerGroups       *string      `json:"customer_groups"`
 	UsageLimit           *int         `json:"usage_limit"`
-	UsagePerCustomer     *int         `json:"usage_per_customer"`
 	CurrentUsage         int          `json:"current_usage"`
 	ValidFrom            string       `json:"valid_from"`
 	ValidUntil           string       `json:"valid_until"`
@@ -130,6 +127,12 @@ type DiscountResponse struct {
 	Priority             int          `json:"priority"`
 	Terms                *string      `json:"terms"`
 	Status               string       `json:"status"` // "active", "expired", "inactive", "usage_limit_reached", "scheduled"
+
+	// Buy X Get Y specific fields
+	BuyQuantity          *int         `json:"buy_quantity"`
+	GetQuantity          *int         `json:"get_quantity"`
+	GetDiscountType      *string      `json:"get_discount_type"`
+	GetDiscountValue     *float64     `json:"get_discount_value"`
 	CreatedAt            string       `json:"created_at"`
 	UpdatedAt            string       `json:"updated_at"`
 }
@@ -138,7 +141,6 @@ type DiscountResponse struct {
 type DiscountUsageResponse struct {
 	ID         string  `json:"id"`
 	DiscountID string  `json:"discount_id"`
-	CustomerID string  `json:"customer_id"`
 	SaleID     string  `json:"sale_id"`
 	UsedAt     string  `json:"used_at"`
 	Amount     float64 `json:"amount"`
@@ -151,7 +153,7 @@ type CreateDiscountRequest struct {
 	Name                 string       `json:"name" binding:"required"`
 	Description          *string      `json:"description"`
 	DiscountType         DiscountType `json:"discount_type" binding:"required"`
-	Value                float64      `json:"value" binding:"required,gt=0"`
+	Value                float64      `json:"value" binding:"gt=0"`
 	MaxDiscountAmount    *float64     `json:"max_discount_amount"`
 	MinOrderValue        *float64     `json:"min_order_value"`
 	MaxOrderValue        *float64     `json:"max_order_value"`
@@ -160,15 +162,19 @@ type CreateDiscountRequest struct {
 	ApplicableCategories *string      `json:"applicable_categories"`
 	ExcludedCategories   *string      `json:"excluded_categories"`
 	ApplicableWarehouses *string      `json:"applicable_warehouses"`
-	CustomerGroups       *string      `json:"customer_groups"`
 	UsageLimit           *int         `json:"usage_limit"`
-	UsagePerCustomer     *int         `json:"usage_per_customer"`
 	ValidFrom            string       `json:"valid_from" binding:"required"`
 	ValidUntil           string       `json:"valid_until" binding:"required"`
 	IsActive             *bool        `json:"is_active"`
 	IsStackable          *bool        `json:"is_stackable"`
 	Priority             *int         `json:"priority"`
 	Terms                *string      `json:"terms"`
+
+	// Buy X Get Y specific fields
+	BuyQuantity          *int         `json:"buy_quantity"`
+	GetQuantity          *int         `json:"get_quantity"`
+	GetDiscountType      *string      `json:"get_discount_type"`
+	GetDiscountValue     *float64     `json:"get_discount_value"`
 }
 
 // UpdateDiscountRequest represents the request to update a discount
@@ -184,9 +190,7 @@ type UpdateDiscountRequest struct {
 	ApplicableCategories *string  `json:"applicable_categories,omitempty"`
 	ExcludedCategories   *string  `json:"excluded_categories,omitempty"`
 	ApplicableWarehouses *string  `json:"applicable_warehouses,omitempty"`
-	CustomerGroups       *string  `json:"customer_groups,omitempty"`
 	UsageLimit           *int     `json:"usage_limit,omitempty"`
-	UsagePerCustomer     *int     `json:"usage_per_customer,omitempty"`
 	ValidFrom            *string  `json:"valid_from,omitempty"`
 	ValidUntil           *string  `json:"valid_until,omitempty"`
 	IsActive             *bool    `json:"is_active,omitempty"`
@@ -198,9 +202,9 @@ type UpdateDiscountRequest struct {
 // ValidateDiscountRequest represents the request to validate a discount
 type ValidateDiscountRequest struct {
 	DiscountCode string   `json:"discount_code" binding:"required"`
-	CustomerID   *string  `json:"customer_id"`
 	OrderValue   float64  `json:"order_value" binding:"required,gt=0"`
 	ProductIDs   []string `json:"product_ids"`
+	CategoryIDs  []string `json:"category_ids"`
 	WarehouseID  string   `json:"warehouse_id" binding:"required"`
 }
 
@@ -252,9 +256,7 @@ func (d *Discount) ToResponse() *DiscountResponse {
 		ApplicableCategories: d.ApplicableCategories,
 		ExcludedCategories:   d.ExcludedCategories,
 		ApplicableWarehouses: d.ApplicableWarehouses,
-		CustomerGroups:       d.CustomerGroups,
 		UsageLimit:           d.UsageLimit,
-		UsagePerCustomer:     d.UsagePerCustomer,
 		CurrentUsage:         d.CurrentUsage,
 		ValidFrom:            d.ValidFrom.Format(tf),
 		ValidUntil:           d.ValidUntil.Format(tf),
@@ -263,6 +265,10 @@ func (d *Discount) ToResponse() *DiscountResponse {
 		Priority:             d.Priority,
 		Terms:                d.Terms,
 		Status:               d.statusAt(time.Now()),
+		BuyQuantity:          d.BuyQuantity,
+		GetQuantity:          d.GetQuantity,
+		GetDiscountType:      d.GetDiscountType,
+		GetDiscountValue:     d.GetDiscountValue,
 		CreatedAt:            d.CreatedAt.Format(tf),
 		UpdatedAt:            d.UpdatedAt.Format(tf),
 	}
@@ -273,7 +279,6 @@ func (du *DiscountUsage) ToResponse() *DiscountUsageResponse {
 	return &DiscountUsageResponse{
 		ID:         du.ID,
 		DiscountID: du.DiscountID,
-		CustomerID: du.CustomerID,
 		SaleID:     du.SaleID,
 		UsedAt:     du.UsedAt.Format(tf),
 		Amount:     du.Amount,

@@ -69,9 +69,9 @@ The Kisanlink ERP API is a comprehensive enterprise resource planning system des
 ### Permission Format
 - **Resource-based**: `{resource_type}:{action}`
 - **Examples**: 
-  - `aaa/warehouse:create`
-  - `aaa/product:read`
-  - `aaa/sale:update`
+  - `warehouse:create`
+  - `product:read`
+  - `sale:update`
 
 ### Required Headers
 ```http
@@ -206,6 +206,56 @@ GET    /api/v1/taxes/applications/sale/{sale_id} # Get tax applications by sale
 GET    /api/v1/taxes/applications/return/{return_id} # Get tax applications by return
 GET    /api/v1/taxes/summary/sale/{sale_id}      # Get tax summary by sale
 GET    /api/v1/taxes/summary/return/{return_id}  # Get tax summary by return
+```
+
+## 🏷️ NEW: Inventory-Based Tax System
+
+**✅ Production Ready Tax Implementation**
+
+The system now supports **automatic tax calculation** during inventory creation and sales:
+
+### Tax Configuration per Inventory Batch
+```json
+{
+  "warehouse_id": "WH_BANGALORE_001",
+  "product_id": "PROD_RICE_BASMATI",
+  "cost_price": 85.50,
+  "expiry_date": "2025-12-31",
+  "quantity": 1000,
+
+  // 🆕 NEW: Tax Configuration
+  "cgst_rate": 2.5,           // 2.5% CGST
+  "sgst_rate": 2.5,           // 2.5% SGST (Total GST = 5%)
+  "custom_tax_ids": [         // Optional: Additional custom taxes
+    "TAX_CESS_ENV_001",
+    "TAX_MANDI_FEE_001"
+  ],
+  "is_tax_exempt": false      // Whether this batch is tax-exempt
+}
+```
+
+### Automatic Tax Calculation
+- **During Sales**: Tax amounts automatically calculated and stored in sale items
+- **GST Compliant**: Proper CGST + SGST calculation with nearest paisa rounding
+- **Custom Tax Support**: Unlimited custom taxes via tax IDs
+- **Tax Exemption**: Support for tax-free products
+
+### Sale Item Response (with Tax Amounts)
+```json
+{
+  "id": "SITM_12345678",
+  "sale_id": "SALE_12345678",
+  "batch_id": "BTCH_12345678",
+  "quantity": 10,
+  "selling_price": 100.00,
+  "line_total": 1000.00,
+
+  // 🆕 NEW: Calculated tax amounts
+  "cgst_amount": 25.00,       // 2.5% of 1000
+  "sgst_amount": 25.00,       // 2.5% of 1000
+  "custom_tax_amount": 10.00, // Custom taxes
+  "total_tax_amount": 60.00   // Total tax
+}
 ```
 
 ### File Attachments
