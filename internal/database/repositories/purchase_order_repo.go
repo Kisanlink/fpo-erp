@@ -59,7 +59,7 @@ func (r *PurchaseOrderRepository) GetByID(id string) (*models.PurchaseOrder, err
 // GetByIDWithItems retrieves a purchase order by ID with items preloaded
 func (r *PurchaseOrderRepository) GetByIDWithItems(id string) (*models.PurchaseOrder, error) {
 	var po models.PurchaseOrder
-	if err := r.db.Preload("Items.Product").
+	if err := r.db.Preload("Items.Variant").
 		Preload("Collaborator").
 		Preload("Warehouse").
 		Where("id = ?", id).First(&po).Error; err != nil {
@@ -158,7 +158,7 @@ func (r *PurchaseOrderRepository) UpdateStatus(poID, status string) error {
 // GetItemByID retrieves a purchase order item by ID
 func (r *PurchaseOrderRepository) GetItemByID(itemID string) (*models.PurchaseOrderItem, error) {
 	var item models.PurchaseOrderItem
-	if err := r.db.Preload("Product").Where("id = ?", itemID).First(&item).Error; err != nil {
+	if err := r.db.Preload("Variant").Where("id = ?", itemID).First(&item).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, errors.NewNotFoundError("PurchaseOrderItem")
 		}

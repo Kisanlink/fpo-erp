@@ -15,15 +15,17 @@ type InventoryService struct {
 	inventoryRepo *repositories.InventoryRepository
 	warehouseRepo *repositories.WarehouseRepository
 	productRepo   *repositories.ProductRepository
+	variantRepo   *repositories.ProductVariantRepository
 	addressClient *aaa.AddressHTTPClient
 }
 
 // NewInventoryService creates a new inventory service
-func NewInventoryService(inventoryRepo *repositories.InventoryRepository, warehouseRepo *repositories.WarehouseRepository, productRepo *repositories.ProductRepository, addressClient *aaa.AddressHTTPClient) *InventoryService {
+func NewInventoryService(inventoryRepo *repositories.InventoryRepository, warehouseRepo *repositories.WarehouseRepository, productRepo *repositories.ProductRepository, variantRepo *repositories.ProductVariantRepository, addressClient *aaa.AddressHTTPClient) *InventoryService {
 	return &InventoryService{
 		inventoryRepo: inventoryRepo,
 		warehouseRepo: warehouseRepo,
 		productRepo:   productRepo,
+		variantRepo:   variantRepo,
 		addressClient: addressClient,
 	}
 }
@@ -75,7 +77,7 @@ func (s *InventoryService) CreateBatch(warehouseID, productID string, costPrice 
 	response := &models.InventoryBatchResponse{
 		ID:            batch.ID,
 		WarehouseID:   batch.WarehouseID,
-		ProductID:     batch.ProductID,
+		VariantID:     batch.VariantID,
 		CostPrice:     batch.CostPrice,
 		ExpiryDate:    batch.ExpiryDate.Format("2006-01-02"),
 		TotalQuantity: batch.TotalQuantity,
@@ -100,7 +102,7 @@ func (s *InventoryService) GetBatch(id string) (*models.InventoryBatchResponse, 
 	response := &models.InventoryBatchResponse{
 		ID:            batch.ID,
 		WarehouseID:   batch.WarehouseID,
-		ProductID:     batch.ProductID,
+		VariantID:     batch.VariantID,
 		CostPrice:     batch.CostPrice,
 		ExpiryDate:    batch.ExpiryDate.Format("2006-01-02"),
 		TotalQuantity: batch.TotalQuantity,
@@ -137,15 +139,15 @@ func (s *InventoryService) GetBatchesByWarehouse(warehouseID string) ([]models.I
 	return responses, nil
 }
 
-// GetBatchesByProduct retrieves all batches for a product
-func (s *InventoryService) GetBatchesByProduct(productID string) ([]models.InventoryBatchResponse, error) {
-	// Validate product exists
-	_, err := s.productRepo.GetByID(productID)
+// GetBatchesByVariant retrieves all batches for a product variant
+func (s *InventoryService) GetBatchesByVariant(variantID string) ([]models.InventoryBatchResponse, error) {
+	// Validate variant exists
+	_, err := s.variantRepo.GetByID(variantID)
 	if err != nil {
-		return nil, errors.NewNotFoundError("Product")
+		return nil, errors.NewNotFoundError("Variant")
 	}
 
-	batches, err := s.inventoryRepo.GetBatchesByProduct(productID)
+	batches, err := s.inventoryRepo.GetBatchesByVariant(variantID)
 	if err != nil {
 		return nil, err
 	}
@@ -278,10 +280,15 @@ func (s *InventoryService) GetAllProductsAvailability(ctx context.Context, jwtTo
 			ID:                 batch.ID,
 			WarehouseID:        batch.WarehouseID,
 			WarehouseName:      batch.Warehouse.Name,
-			ProductID:          batch.ProductID,
-			ProductSKU:         batch.Product.SKU,
-			ProductName:        batch.Product.Name,
-			ProductDescription: batch.Product.Description,
+			VariantID:          batch.VariantID,
+			ProductSKU:         func() string {
+				if batch.Variant.SKU != nil {
+					return *batch.Variant.SKU
+				}
+				return ""
+			}(),
+			ProductName:        batch.Variant.VariantName,
+			ProductDescription: batch.Variant.Description,
 			CostPrice:          batch.CostPrice,
 			ExpiryDate:         batch.ExpiryDate.Format("2006-01-02"),
 			TotalQuantity:      batch.TotalQuantity,
@@ -326,7 +333,7 @@ func (s *InventoryService) batchToResponse(batch models.InventoryBatch) models.I
 	return models.InventoryBatchResponse{
 		ID:            batch.ID,
 		WarehouseID:   batch.WarehouseID,
-		ProductID:     batch.ProductID,
+		VariantID:     batch.VariantID,
 		CostPrice:     batch.CostPrice,
 		ExpiryDate:    batch.ExpiryDate.Format("2006-01-02"),
 		TotalQuantity: batch.TotalQuantity,

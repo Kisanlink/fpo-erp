@@ -69,7 +69,7 @@ type PurchaseOrderItem struct {
 	base.BaseModel
 
 	POID      string `gorm:"type:varchar(100);not null;index" json:"po_id"`
-	ProductID string `gorm:"type:varchar(100);not null;index" json:"product_id"`
+	VariantID string `gorm:"type:varchar(100);not null;index" json:"variant_id"`
 
 	// Quantity & Pricing (ALL-IN price)
 	Quantity  int64   `gorm:"type:bigint;not null;check:quantity > 0" json:"quantity"`
@@ -84,18 +84,18 @@ type PurchaseOrderItem struct {
 	ReceivedQuantity *int64 `gorm:"type:bigint" json:"received_quantity"` // Actual received (set during GRN)
 
 	// Associations
-	PurchaseOrder PurchaseOrder `gorm:"foreignKey:POID" json:"purchase_order,omitempty"`
-	Product       Product       `gorm:"foreignKey:ProductID;references:ID;tableName:sku" json:"product,omitempty"`
+	PurchaseOrder PurchaseOrder  `gorm:"foreignKey:POID" json:"purchase_order,omitempty"`
+	Variant       ProductVariant `gorm:"foreignKey:VariantID" json:"variant,omitempty"`
 }
 
 // NewPurchaseOrderItem creates a new PurchaseOrderItem with initialized fields
-func NewPurchaseOrderItem(poID, productID string, quantity int64, unitPrice float64) *PurchaseOrderItem {
+func NewPurchaseOrderItem(poID, variantID string, quantity int64, unitPrice float64) *PurchaseOrderItem {
 	baseModel := base.NewBaseModel(constants.TablePurchaseOrderItem, hash.Medium)
 	lineTotal := float64(quantity) * unitPrice
 	return &PurchaseOrderItem{
 		BaseModel: *baseModel,
 		POID:      poID,
-		ProductID: productID,
+		VariantID: variantID,
 		Quantity:  quantity,
 		UnitPrice: unitPrice,
 		LineTotal: lineTotal,
@@ -128,16 +128,16 @@ type PurchaseOrderResponse struct {
 
 // PurchaseOrderItemResponse represents the API response for purchase order item
 type PurchaseOrderItemResponse struct {
-	ID               string   `json:"id"`
-	POID             string   `json:"po_id"`
-	ProductID        string   `json:"product_id"`
-	ProductName      *string  `json:"product_name"`
-	ProductSKU       *string  `json:"product_sku"`
-	Quantity         int64    `json:"quantity"`
-	UnitPrice        float64  `json:"unit_price"`
-	LineTotal        float64  `json:"line_total"`
-	ReceivedQuantity *int64   `json:"received_quantity"`
-	CreatedAt        string   `json:"created_at"`
+	ID               string  `json:"id"`
+	POID             string  `json:"po_id"`
+	VariantID        string  `json:"variant_id"`
+	ProductName      *string `json:"product_name"`
+	ProductSKU       *string `json:"product_sku"`
+	Quantity         int64   `json:"quantity"`
+	UnitPrice        float64 `json:"unit_price"`
+	LineTotal        float64 `json:"line_total"`
+	ReceivedQuantity *int64  `json:"received_quantity"`
+	CreatedAt        string  `json:"created_at"`
 }
 
 // CreatePurchaseOrderRequest represents the request to create a purchase order
@@ -151,7 +151,7 @@ type CreatePurchaseOrderRequest struct {
 
 // CreatePurchaseOrderItemRequest represents the request to create a purchase order item
 type CreatePurchaseOrderItemRequest struct {
-	ProductID string  `json:"product_id" binding:"required"`
+	VariantID string  `json:"variant_id" binding:"required"`
 	Quantity  int64   `json:"quantity" binding:"required,gt=0"`
 	UnitPrice float64 `json:"unit_price" binding:"required,gt=0"` // ALL-IN price
 }

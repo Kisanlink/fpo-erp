@@ -19,7 +19,7 @@ func AutoMigrate(db *gorm.DB) error {
 
 		// Procurement entities
 		&models.Collaborator{},
-		&models.CollaboratorProduct{},
+		// Note: CollaboratorProduct removed - deprecated in favor of ProductVariant with collaborator_id
 		&models.ProductVariant{},
 		&models.PurchaseOrder{},
 		&models.PurchaseOrderItem{},

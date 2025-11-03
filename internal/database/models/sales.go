@@ -226,7 +226,7 @@ type CreateSaleRequest struct {
 	FarmerID           *string                 `json:"farmer_id"`                             // Optional farmer identifier
 	PaymentMode        string                  `json:"payment_mode" binding:"required"`       // cash, upi, online
 	SaleType           string                  `json:"sale_type" binding:"required"`          // in_store, delivery
-	ApplyTaxes         bool                    `json:"apply_taxes" binding:"required"`        // Controls tax calculation (default: false)
+	ApplyTaxes         *bool                   `json:"apply_taxes"`                           // Controls tax calculation (default: false)
 
 	DiscountID         *string                 `json:"discount_id"`          // Manual discount by ID (highest priority)
 	CouponCode         *string                 `json:"coupon_code"`          // Manual discount by code (second priority)
@@ -236,10 +236,10 @@ type CreateSaleRequest struct {
 
 // CreateSaleItemRequest represents the request to create a sale item
 type CreateSaleItemRequest struct {
-	ProductID string `json:"product_id" binding:"required"`
+	VariantID string `json:"variant_id" binding:"required"` // Changed from product_id to variant_id
 	Quantity  int64  `json:"quantity" binding:"required,gt=0"`
 	// Batch will be automatically selected based on FEFO (First Expired, First Out)
-	// SellingPrice is calculated automatically from product_prices table
+	// SellingPrice is calculated automatically from product_prices table (by variant_id)
 }
 
 // UpdateSaleRequest represents the request to update a sale

@@ -15,6 +15,7 @@ type CollaboratorProductService struct {
 	collabProductRepo *repositories.CollaboratorProductRepository
 	collaboratorRepo  *repositories.CollaboratorRepository
 	productRepo       *repositories.ProductRepository
+	variantRepo       *repositories.ProductVariantRepository // Added for unified architecture
 }
 
 // NewCollaboratorProductService creates a new collaborator product service
@@ -22,15 +23,18 @@ func NewCollaboratorProductService(
 	collabProductRepo *repositories.CollaboratorProductRepository,
 	collaboratorRepo *repositories.CollaboratorRepository,
 	productRepo *repositories.ProductRepository,
+	variantRepo *repositories.ProductVariantRepository,
 ) *CollaboratorProductService {
 	return &CollaboratorProductService{
 		collabProductRepo: collabProductRepo,
 		collaboratorRepo:  collaboratorRepo,
 		productRepo:       productRepo,
+		variantRepo:       variantRepo,
 	}
 }
 
 // AddProductToCollaborator adds a product to a collaborator with metadata
+// This now creates a ProductVariant with collaborator_id set (unified architecture)
 func (s *CollaboratorProductService) AddProductToCollaborator(ctx context.Context, collaboratorID string, request *models.CreateCollaboratorProductRequest) (*models.CollaboratorProductResponse, error) {
 	// Validate collaborator exists
 	collaborator, err := s.collaboratorRepo.GetByID(collaboratorID)
@@ -47,14 +51,22 @@ func (s *CollaboratorProductService) AddProductToCollaborator(ctx context.Contex
 		return nil, err
 	}
 
-	// Check if association already exists
-	exists, err := s.collabProductRepo.Exists(collaboratorID, request.ProductID)
+	// Check if variant already exists for this collaborator+product combination
+	// Query variants where product_id = X and collaborator_id = Y
+	existingVariants, err := s.variantRepo.GetByProductID(request.ProductID)
 	if err != nil {
 		return nil, err
 	}
-	if exists {
-		return nil, fmt.Errorf("product already associated with this collaborator")
+	for _, variant := range existingVariants {
+		if variant.CollaboratorID != nil && *variant.CollaboratorID == collaboratorID {
+			return nil, fmt.Errorf("product already associated with this collaborator")
+		}
 	}
+
+	// Auto-generate variant details
+	variantName := fmt.Sprintf("%s - %s", product.Name, request.BrandName)
+	quantity := "1"      // Default quantity
+	packSize := "Standard" // Default pack size
 
 	// Serialize images to JSON if provided
 	var imagesJSON *string
@@ -67,25 +79,28 @@ func (s *CollaboratorProductService) AddProductToCollaborator(ctx context.Contex
 		imagesJSON = &imagesStr
 	}
 
-	// Create collaborator product
-	collabProduct := models.NewCollaboratorProduct(
-		collaboratorID,
+	// Create product variant with collaborator fields (unified architecture)
+	variant := models.NewCollaboratorVariant(
 		request.ProductID,
+		collaboratorID,
+		variantName,
+		quantity,
+		packSize,
 		request.BrandName,
 		request.HSNCode,
 		request.GSTRate,
 	)
-	collabProduct.Images = imagesJSON
-	collabProduct.DosageInstructions = request.DosageInstructions
-	collabProduct.UsageDetails = request.UsageDetails
+	variant.Images = imagesJSON
+	variant.DosageInstructions = request.DosageInstructions
+	variant.UsageDetails = request.UsageDetails
 
 	// Save to database
-	if err := s.collabProductRepo.Create(collabProduct); err != nil {
+	if err := s.variantRepo.Create(variant); err != nil {
 		return nil, err
 	}
 
 	// Build response with related entities
-	return s.buildCollaboratorProductResponse(collabProduct, collaborator, product)
+	return s.buildCollaboratorProductResponseFromVariant(variant, collaborator, product)
 }
 
 // GetProductsByCollaborator retrieves all products for a collaborator
@@ -266,7 +281,7 @@ func (s *CollaboratorProductService) buildCollaboratorProductResponse(
 		CollaboratorName:   collaborator.CompanyName,
 		ProductID:          collabProduct.ProductID,
 		ProductName:        product.Name,
-		ProductSKU:         product.SKU,
+		ProductSKU:         "", // Products no longer have SKU - SKU is at variant level
 		BrandName:          collabProduct.BrandName,
 		HSNCode:            collabProduct.HSNCode,
 		GSTRate:            collabProduct.GSTRate,
@@ -288,7 +303,61 @@ func (s *CollaboratorProductService) buildCollaboratorProductResponse(
 	// Add product summary
 	response.Product = &models.ProductSummary{
 		ID:          product.ID,
-		SKU:         product.SKU,
+		Name:        product.Name,
+		Description: product.Description,
+	}
+
+	return response, nil
+}
+
+// buildCollaboratorProductResponseFromVariant builds a CollaboratorProductResponse from a ProductVariant
+// This is used for the unified architecture where collaborator products are stored as variants
+func (s *CollaboratorProductService) buildCollaboratorProductResponseFromVariant(
+	variant *models.ProductVariant,
+	collaborator *models.Collaborator,
+	product *models.Product,
+) (*models.CollaboratorProductResponse, error) {
+	response := &models.CollaboratorProductResponse{
+		ID:               variant.ID,
+		CollaboratorID:   *variant.CollaboratorID,
+		CollaboratorName: collaborator.CompanyName,
+		ProductID:        variant.ProductID,
+		ProductName:      product.Name,
+		ProductSKU:       func() string {
+			if variant.SKU != nil {
+				return *variant.SKU
+			}
+			return ""
+		}(),
+		IsActive:  variant.IsActive,
+		CreatedAt: variant.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt: variant.UpdatedAt.UTC().Format(time.RFC3339),
+	}
+
+	// Map collaborator-specific fields
+	if variant.BrandName != nil {
+		response.BrandName = *variant.BrandName
+	}
+	if variant.HSNCode != nil {
+		response.HSNCode = *variant.HSNCode
+	}
+	if variant.GSTRate != nil {
+		response.GSTRate = *variant.GSTRate
+	}
+	response.DosageInstructions = variant.DosageInstructions
+	response.UsageDetails = variant.UsageDetails
+
+	// Parse images from JSON
+	if variant.Images != nil {
+		var images []string
+		if err := json.Unmarshal([]byte(*variant.Images), &images); err == nil {
+			response.Images = images
+		}
+	}
+
+	// Add product summary
+	response.Product = &models.ProductSummary{
+		ID:          product.ID,
 		Name:        product.Name,
 		Description: product.Description,
 	}

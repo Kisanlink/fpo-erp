@@ -85,36 +85,6 @@ func (h *ProductHandler) GetProduct(c *gin.Context) {
 	utils.OKResponse(c, "Product retrieved successfully", response)
 }
 
-// GetProductBySKU handles GET /api/v1/products/sku/:sku
-// @Summary Get Product by SKU
-// @Description Retrieve a specific product by SKU
-// @Tags Products
-// @Produce json
-// @Param sku path string true "Product SKU" example(SKU123)
-// @Success 200 {object} utils.Response{data=models.ProductResponse} "Product retrieved successfully"
-// @Failure 400 {object} utils.ErrorResponseModel "Bad request"
-// @Failure 404 {object} utils.ErrorResponseModel "Product not found"
-// @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
-// @Security BearerAuth
-// @Router /api/v1/products/sku/{sku} [get]
-func (h *ProductHandler) GetProductBySKU(c *gin.Context) {
-	// Get SKU from URL
-	sku := c.Param("sku")
-	if sku == "" {
-		utils.BadRequestResponse(c, "SKU is required", nil)
-		return
-	}
-
-	// Get product by SKU
-	response, err := h.productService.GetProductBySKU(sku)
-	if err != nil {
-		utils.NotFoundResponse(c, "Product not found")
-		return
-	}
-
-	utils.OKResponse(c, "Product retrieved successfully", response)
-}
-
 // GetAllProducts handles GET /api/v1/products
 // @Summary Get All Products
 // @Description Retrieve all products (requires authentication)
@@ -282,7 +252,6 @@ func (h *ProductHandler) RegisterRoutes(router *gin.RouterGroup) {
 		// Read routes - Director=R, CEO=CRUD, Auditor=R, Accountant=–, Tech_Support=R/W (temp), Store_Manager=CRUD, Store_Staff=R
 		products.GET("", h.aaaMiddleware.RequireOrgPermission("product", "read"), h.GetAllProducts)
 		products.GET("/search", h.aaaMiddleware.RequireOrgPermission("product", "read"), h.SearchProducts)
-		products.GET("/sku/:sku", h.aaaMiddleware.RequireOrgPermission("product", "read"), h.GetProductBySKU)
 		products.GET("/:id", h.aaaMiddleware.RequireOrgPermission("product", "read"), h.GetProduct)
 		products.GET("/:id/with-prices", h.aaaMiddleware.RequireOrgPermission("product", "read"), h.GetProductWithPrices)
 	}

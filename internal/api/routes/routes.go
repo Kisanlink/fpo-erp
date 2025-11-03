@@ -50,9 +50,9 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 
 	// Initialize services
 	warehouseService := services.NewWarehouseService(warehouseRepo, addressClient)
-	productService := services.NewProductService(productRepo, priceRepo)
+	productService := services.NewProductService(productRepo, priceRepo, productVariantRepo)
 	priceService := services.NewProductPriceService(priceRepo, productRepo)
-	inventoryService := services.NewInventoryService(inventoryRepo, warehouseRepo, productRepo, addressClient)
+	inventoryService := services.NewInventoryService(inventoryRepo, warehouseRepo, productRepo, productVariantRepo, addressClient)
 	discountsService := services.NewDiscountsService(discountRepo, productRepo, warehouseRepo)
 	taxService := services.NewTaxService(taxRepo)
 	salesService := services.NewSalesService(salesRepo, productRepo, inventoryRepo, priceRepo, discountRepo, taxRepo, warehouseRepo)
@@ -63,9 +63,9 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 
 	// Procurement services
 	collaboratorService := services.NewCollaboratorService(collaboratorRepo, addressClient, s3Service)
-	collaboratorProductService := services.NewCollaboratorProductService(collaboratorProductRepo, collaboratorRepo, productRepo)
+	collaboratorProductService := services.NewCollaboratorProductService(collaboratorProductRepo, collaboratorRepo, productRepo, productVariantRepo)
 	productVariantService := services.NewProductVariantService(productVariantRepo, productRepo)
-	purchaseOrderService := services.NewPurchaseOrderService(purchaseOrderRepo, collaboratorRepo, warehouseRepo, productRepo, grnRepo, inventoryRepo)
+	purchaseOrderService := services.NewPurchaseOrderService(purchaseOrderRepo, collaboratorRepo, warehouseRepo, productRepo, productVariantRepo, grnRepo, inventoryRepo)
 	grnService := services.NewGRNService(grnRepo, purchaseOrderRepo, warehouseRepo, productRepo, inventoryRepo)
 
 	// AAA middleware is now passed as parameter

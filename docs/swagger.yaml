@@ -435,21 +435,21 @@ definitions:
         type: string
       is_tax_exempt:
         type: boolean
-      product_id:
-        type: string
       quantity:
         type: integer
       sgst_rate:
         maximum: 100
         minimum: 0
         type: number
+      variant_id:
+        type: string
       warehouse_id:
         type: string
     required:
     - cost_price
     - expiry_date
-    - product_id
     - quantity
+    - variant_id
     - warehouse_id
     type: object
   models.CreateInventoryTransactionRequest:
@@ -480,12 +480,12 @@ definitions:
         type: number
       price_type:
         type: string
-      product_id:
+      variant_id:
         type: string
     required:
     - price
     - price_type
-    - product_id
+    - variant_id
     type: object
   models.CreateProductRequest:
     properties:
@@ -493,41 +493,63 @@ definitions:
         type: string
       name:
         type: string
-      sku:
-        type: string
     required:
     - name
-    - sku
     type: object
   models.CreateProductVariantRequest:
     properties:
       barcode:
         type: string
+      brand_name:
+        description: Required if collaborator_id provided
+        type: string
+      collaborator_id:
+        description: 'Optional: for collaborator-specific variants'
+        type: string
+      description:
+        type: string
+      dosage_instructions:
+        type: string
+      gst_rate:
+        description: Required if collaborator_id provided
+        maximum: 100
+        minimum: 0
+        type: number
+      hsn_code:
+        description: Required if collaborator_id provided
+        type: string
+      images:
+        items:
+          type: string
+        type: array
       pack_size:
         type: string
-      price:
-        type: number
       quantity:
         type: string
       sku:
         type: string
+      usage_details:
+        type: string
+      variant_name:
+        type: string
     required:
     - pack_size
     - quantity
+    - variant_name
     type: object
   models.CreatePurchaseOrderItemRequest:
     properties:
-      product_id:
-        type: string
       quantity:
         type: integer
       unit_price:
         description: ALL-IN price
         type: number
+      variant_id:
+        type: string
     required:
-    - product_id
     - quantity
     - unit_price
+    - variant_id
     type: object
   models.CreatePurchaseOrderRequest:
     properties:
@@ -594,13 +616,14 @@ definitions:
     type: object
   models.CreateSaleItemRequest:
     properties:
-      product_id:
-        type: string
       quantity:
         type: integer
+      variant_id:
+        description: Changed from product_id to variant_id
+        type: string
     required:
-    - product_id
     - quantity
+    - variant_id
     type: object
   models.CreateSaleRequest:
     properties:
@@ -933,8 +956,6 @@ definitions:
         type: integer
       po_item_id:
         type: string
-      product_id:
-        type: string
       product_name:
         type: string
       product_sku:
@@ -943,6 +964,8 @@ definitions:
         type: integer
       rejected_quantity:
         type: integer
+      variant_id:
+        type: string
     type: object
   models.GRNResponse:
     properties:
@@ -997,13 +1020,13 @@ definitions:
         type: string
       is_tax_exempt:
         type: boolean
-      product_id:
-        type: string
       sgst_rate:
         type: number
       total_quantity:
         type: integer
       updated_at:
+        type: string
+      variant_id:
         type: string
       warehouse_id:
         type: string
@@ -1063,8 +1086,6 @@ definitions:
         type: boolean
       product_description:
         type: string
-      product_id:
-        type: string
       product_name:
         type: string
       product_sku:
@@ -1074,6 +1095,8 @@ definitions:
       total_quantity:
         type: integer
       updated_at:
+        type: string
+      variant_id:
         type: string
       warehouse_id:
         type: string
@@ -1098,9 +1121,9 @@ definitions:
         type: number
       price_type:
         type: string
-      product_id:
-        type: string
       updated_at:
+        type: string
+      variant_id:
         type: string
     type: object
   models.ProductResponse:
@@ -1113,8 +1136,6 @@ definitions:
         type: string
       name:
         type: string
-      sku:
-        type: string
       updated_at:
         type: string
     type: object
@@ -1126,23 +1147,36 @@ definitions:
         type: string
       name:
         type: string
-      sku:
-        type: string
     type: object
   models.ProductVariantResponse:
     properties:
       barcode:
         type: string
+      brand_name:
+        type: string
+      collaborator_id:
+        type: string
       created_at:
+        type: string
+      description:
+        type: string
+      dosage_instructions:
+        type: string
+      gst_rate:
+        type: number
+      hsn_code:
         type: string
       id:
         type: string
+      images:
+        description: Parsed from JSON
+        items:
+          type: string
+        type: array
       is_active:
         type: boolean
       pack_size:
         type: string
-      price:
-        type: number
       product_id:
         type: string
       quantity:
@@ -1150,6 +1184,10 @@ definitions:
       sku:
         type: string
       updated_at:
+        type: string
+      usage_details:
+        type: string
+      variant_name:
         type: string
     type: object
   models.ProductWithPricesResponse:
@@ -1166,8 +1204,6 @@ definitions:
         items:
           $ref: '#/definitions/models.ProductPriceResponse'
         type: array
-      sku:
-        type: string
       updated_at:
         type: string
     type: object
@@ -1181,8 +1217,6 @@ definitions:
         type: number
       po_id:
         type: string
-      product_id:
-        type: string
       product_name:
         type: string
       product_sku:
@@ -1193,6 +1227,8 @@ definitions:
         type: integer
       unit_price:
         type: number
+      variant_id:
+        type: string
     type: object
   models.PurchaseOrderResponse:
     properties:
@@ -1928,15 +1964,31 @@ definitions:
     properties:
       barcode:
         type: string
+      brand_name:
+        type: string
+      description:
+        type: string
+      dosage_instructions:
+        type: string
+      gst_rate:
+        type: number
+      hsn_code:
+        type: string
+      images:
+        items:
+          type: string
+        type: array
       is_active:
         type: boolean
       pack_size:
         type: string
-      price:
-        type: number
       quantity:
         type: string
       sku:
+        type: string
+      usage_details:
+        type: string
+      variant_name:
         type: string
     type: object
   models.UpdateRefundPolicyRequest:
@@ -4603,47 +4655,6 @@ paths:
       summary: Update Product
       tags:
       - Products
-  /api/v1/products/{id}/batches:
-    get:
-      description: Retrieve all inventory batches for a specific product
-      parameters:
-      - description: Product ID
-        example: PROD_12345678
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Batches retrieved successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.Response'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/models.InventoryBatchResponse'
-                  type: array
-              type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Get Batches by Product
-      tags:
-      - Inventory
   /api/v1/products/{id}/collaborators:
     get:
       description: Retrieve all collaborators for a specific product
@@ -4683,93 +4694,6 @@ paths:
       summary: Get Collaborators by Product
       tags:
       - Collaborator Products
-  /api/v1/products/{id}/prices:
-    get:
-      description: Retrieve all prices for a specific product
-      parameters:
-      - description: Product ID
-        example: PROD_12345678
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Product prices retrieved successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.Response'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/models.ProductPriceResponse'
-                  type: array
-              type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Get Product Prices
-      tags:
-      - Product Prices
-    post:
-      consumes:
-      - application/json
-      description: Create a new price for a specific product
-      parameters:
-      - description: Product ID
-        example: PROD_12345678
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Product price data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/models.CreateProductPriceRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Product price created successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/models.ProductPriceResponse'
-              type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Create Product Price for Product
-      tags:
-      - Product Prices
   /api/v1/products/{id}/prices/current:
     get:
       description: Retrieve the current active price for a specific product
@@ -5006,45 +4930,6 @@ paths:
       security:
       - BearerAuth: []
       summary: Search Products
-      tags:
-      - Products
-  /api/v1/products/sku/{sku}:
-    get:
-      description: Retrieve a specific product by SKU
-      parameters:
-      - description: Product SKU
-        example: SKU123
-        in: path
-        name: sku
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Product retrieved successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/models.ProductResponse'
-              type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "404":
-          description: Product not found
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Get Product by SKU
       tags:
       - Products
   /api/v1/purchase-orders:
@@ -7286,6 +7171,134 @@ paths:
       summary: Update Product Variant
       tags:
       - Product Variants
+  /api/v1/variants/{id}/batches:
+    get:
+      description: Retrieve all inventory batches for a specific product variant
+      parameters:
+      - description: Variant ID
+        example: PVAR_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Batches retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.InventoryBatchResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Batches by Variant
+      tags:
+      - Inventory
+  /api/v1/variants/{id}/prices:
+    get:
+      description: Retrieve all prices for a specific product variant
+      parameters:
+      - description: Variant ID
+        example: PVAR_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Variant prices retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.ProductPriceResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Variant Prices
+      tags:
+      - Product Prices
+    post:
+      consumes:
+      - application/json
+      description: Create a new price for a specific product
+      parameters:
+      - description: Variant ID
+        example: PVAR_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Product price data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateProductPriceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Product price created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ProductPriceResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Create Product Price for Product
+      tags:
+      - Product Prices
   /api/v1/variants/barcode/{barcode}:
     get:
       description: Retrieve a product variant by barcode

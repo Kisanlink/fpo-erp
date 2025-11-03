@@ -53,7 +53,7 @@ func (r *InventoryRepository) CreateBatch(batch *models.InventoryBatch) error {
 // GetBatchByID retrieves an inventory batch by ID
 func (r *InventoryRepository) GetBatchByID(id string) (*models.InventoryBatch, error) {
 	var batch models.InventoryBatch
-	if err := r.db.Preload("Warehouse").Preload("Product").Where("id = ?", id).First(&batch).Error; err != nil {
+	if err := r.db.Preload("Warehouse").Preload("Variant").Where("id = ?", id).First(&batch).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, errors.NewNotFoundError("Inventory batch")
 		}
@@ -65,43 +65,43 @@ func (r *InventoryRepository) GetBatchByID(id string) (*models.InventoryBatch, e
 // GetBatchesByWarehouse retrieves all batches for a warehouse
 func (r *InventoryRepository) GetBatchesByWarehouse(warehouseID string) ([]models.InventoryBatch, error) {
 	var batches []models.InventoryBatch
-	if err := r.db.Preload("Product").Where("warehouse_id = ?", warehouseID).Find(&batches).Error; err != nil {
+	if err := r.db.Preload("Variant").Where("warehouse_id = ?", warehouseID).Find(&batches).Error; err != nil {
 		return nil, errors.NewInternalServerError("Failed to retrieve warehouse batches")
 	}
 	return batches, nil
 }
 
-// GetBatchesByProduct retrieves all batches for a product
-func (r *InventoryRepository) GetBatchesByProduct(productID string) ([]models.InventoryBatch, error) {
+// GetBatchesByVariant retrieves all batches for a product variant
+func (r *InventoryRepository) GetBatchesByVariant(variantID string) ([]models.InventoryBatch, error) {
 	var batches []models.InventoryBatch
-	if err := r.db.Preload("Warehouse").Where("product_id = ?", productID).Find(&batches).Error; err != nil {
-		return nil, errors.NewInternalServerError("Failed to retrieve product batches")
+	if err := r.db.Preload("Warehouse").Where("variant_id = ?", variantID).Find(&batches).Error; err != nil {
+		return nil, errors.NewInternalServerError("Failed to retrieve variant batches")
 	}
 	return batches, nil
 }
 
-// GetBatchesByProductOrderedByExpiry retrieves batches for a product ordered by expiry date (FEFO)
-func (r *InventoryRepository) GetBatchesByProductOrderedByExpiry(productID string) ([]models.InventoryBatch, error) {
+// GetBatchesByVariantOrderedByExpiry retrieves batches for a variant ordered by expiry date (FEFO)
+func (r *InventoryRepository) GetBatchesByVariantOrderedByExpiry(variantID string) ([]models.InventoryBatch, error) {
 	var batches []models.InventoryBatch
-	if err := r.db.Preload("Warehouse").Where("product_id = ? AND total_quantity > 0", productID).Order("expiry_date ASC").Find(&batches).Error; err != nil {
-		return nil, errors.NewInternalServerError("Failed to retrieve product batches ordered by expiry")
+	if err := r.db.Preload("Warehouse").Where("variant_id = ? AND total_quantity > 0", variantID).Order("expiry_date ASC").Find(&batches).Error; err != nil {
+		return nil, errors.NewInternalServerError("Failed to retrieve variant batches ordered by expiry")
 	}
 	return batches, nil
 }
 
-// GetBatchesByProductAndWarehouseOrderedByExpiry retrieves batches for a product in a specific warehouse ordered by expiry date (FEFO)
-func (r *InventoryRepository) GetBatchesByProductAndWarehouseOrderedByExpiry(productID, warehouseID string) ([]models.InventoryBatch, error) {
+// GetBatchesByVariantAndWarehouseOrderedByExpiry retrieves batches for a variant in a specific warehouse ordered by expiry date (FEFO)
+func (r *InventoryRepository) GetBatchesByVariantAndWarehouseOrderedByExpiry(variantID, warehouseID string) ([]models.InventoryBatch, error) {
 	var batches []models.InventoryBatch
-	if err := r.db.Preload("Warehouse").Where("product_id = ? AND warehouse_id = ? AND total_quantity > 0", productID, warehouseID).Order("expiry_date ASC").Find(&batches).Error; err != nil {
-		return nil, errors.NewInternalServerError("Failed to retrieve product batches in warehouse ordered by expiry")
+	if err := r.db.Preload("Warehouse").Where("variant_id = ? AND warehouse_id = ? AND total_quantity > 0", variantID, warehouseID).Order("expiry_date ASC").Find(&batches).Error; err != nil {
+		return nil, errors.NewInternalServerError("Failed to retrieve variant batches in warehouse ordered by expiry")
 	}
 	return batches, nil
 }
 
-// GetAllBatches retrieves all inventory batches with warehouse and product details
+// GetAllBatches retrieves all inventory batches with warehouse and variant details
 func (r *InventoryRepository) GetAllBatches() ([]models.InventoryBatch, error) {
 	var batches []models.InventoryBatch
-	if err := r.db.Preload("Warehouse").Preload("Product").Find(&batches).Error; err != nil {
+	if err := r.db.Preload("Warehouse").Preload("Variant").Find(&batches).Error; err != nil {
 		return nil, errors.NewInternalServerError("Failed to retrieve all batches")
 	}
 	return batches, nil
@@ -127,7 +127,7 @@ func (r *InventoryRepository) DeleteBatch(id string) error {
 func (r *InventoryRepository) GetExpiringBatches(days int) ([]models.InventoryBatch, error) {
 	var batches []models.InventoryBatch
 	expiryDate := time.Now().AddDate(0, 0, days)
-	if err := r.db.Preload("Warehouse").Preload("Product").Where("expiry_date <= ?", expiryDate).Find(&batches).Error; err != nil {
+	if err := r.db.Preload("Warehouse").Preload("Variant").Where("expiry_date <= ?", expiryDate).Find(&batches).Error; err != nil {
 		return nil, errors.NewInternalServerError("Failed to retrieve expiring batches")
 	}
 	return batches, nil
@@ -136,7 +136,7 @@ func (r *InventoryRepository) GetExpiringBatches(days int) ([]models.InventoryBa
 // GetLowStockBatches retrieves batches with low stock (below threshold)
 func (r *InventoryRepository) GetLowStockBatches(threshold int64) ([]models.InventoryBatch, error) {
 	var batches []models.InventoryBatch
-	if err := r.db.Preload("Warehouse").Preload("Product").Where("total_quantity <= ?", threshold).Find(&batches).Error; err != nil {
+	if err := r.db.Preload("Warehouse").Preload("Variant").Where("total_quantity <= ?", threshold).Find(&batches).Error; err != nil {
 		return nil, errors.NewInternalServerError("Failed to retrieve low stock batches")
 	}
 	return batches, nil

@@ -73,10 +73,16 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 			saleDate = time.Now()
 		}
 
+		// Handle ApplyTaxes - default to false if not provided
+		applyTaxes := false
+		if req.ApplyTaxes != nil {
+			applyTaxes = *req.ApplyTaxes
+		}
+
 		// Create sale using the proper constructor with BRD requirements
 		log.Printf("[DEBUG] Creating sale with warehouse: %s, date: %v, payment_mode: %s, sale_type: %s, apply_taxes: %v",
-			req.WarehouseID, saleDate, req.PaymentMode, req.SaleType, req.ApplyTaxes)
-		sale := models.NewSale(req.WarehouseID, saleDate, 0, "pending", req.FarmerID, req.PaymentMode, req.SaleType, req.ApplyTaxes)
+			req.WarehouseID, saleDate, req.PaymentMode, req.SaleType, applyTaxes)
+		sale := models.NewSale(req.WarehouseID, saleDate, 0, "pending", req.FarmerID, req.PaymentMode, req.SaleType, applyTaxes)
 		log.Printf("[DEBUG] Sale created with ID: %s, apply_taxes: %v", sale.ID, sale.ApplyTaxes)
 
 		if err := s.salesRepo.CreateSaleWithTx(tx, sale); err != nil {
@@ -90,28 +96,28 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 	var totalAmount float64
 	var saleItems []models.SaleItem // Collect sale items for tax calculation
 	for i, itemReq := range req.Items {
-		log.Printf("[DEBUG] Processing item %d: product=%s, qty=%d", i+1, itemReq.ProductID, itemReq.Quantity)
+		log.Printf("[DEBUG] Processing item %d: variant=%s, qty=%d", i+1, itemReq.VariantID, itemReq.Quantity)
 
-		// Get selling price from product_prices table
-		log.Printf("[DEBUG] Getting selling price for product: %s", itemReq.ProductID)
-		sellingPrice, err := s.getSellingPrice(itemReq.ProductID)
+		// Get selling price from product_prices table (by variant_id)
+		log.Printf("[DEBUG] Getting selling price for variant: %s", itemReq.VariantID)
+		sellingPrice, err := s.getSellingPrice(itemReq.VariantID)
 		if err != nil {
 			log.Printf("[ERROR] Failed to get selling price: %v", err)
 			return errors.New("selling price not found for product")
 		}
 		log.Printf("[DEBUG] Selling price retrieved: %.2f", sellingPrice)
 
-		// Get batches for this product in the warehouse ordered by expiry date (FEFO)
-		log.Printf("[DEBUG] Getting batches for product: %s in warehouse: %s", itemReq.ProductID, req.WarehouseID)
-		batches, err := s.inventoryRepo.GetBatchesByProductAndWarehouseOrderedByExpiry(itemReq.ProductID, req.WarehouseID)
+		// Get batches for this variant in the warehouse ordered by expiry date (FEFO)
+		log.Printf("[DEBUG] Getting batches for variant: %s in warehouse: %s", itemReq.VariantID, req.WarehouseID)
+		batches, err := s.inventoryRepo.GetBatchesByVariantAndWarehouseOrderedByExpiry(itemReq.VariantID, req.WarehouseID)
 		if err != nil {
-			log.Printf("[ERROR] Failed to get batches for product: %v", err)
-			return errors.New("failed to retrieve product batches")
+			log.Printf("[ERROR] Failed to get batches for variant: %v", err)
+			return errors.New("failed to retrieve variant batches")
 		}
 
 		if len(batches) == 0 {
-			log.Printf("[ERROR] No batches found for product: %s in warehouse: %s", itemReq.ProductID, req.WarehouseID)
-			return errors.New("no inventory available for product in this warehouse")
+			log.Printf("[ERROR] No batches found for variant: %s in warehouse: %s", itemReq.VariantID, req.WarehouseID)
+			return errors.New("no inventory available for variant in this warehouse")
 		}
 
 		log.Printf("[DEBUG] Found %d batches for product", len(batches))
@@ -212,7 +218,7 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 	for _, item := range saleItems {
 		batch, err := s.inventoryRepo.GetBatchByID(item.BatchID)
 		if err == nil {
-			productIDs = append(productIDs, batch.ProductID)
+			productIDs = append(productIDs, batch.VariantID)
 		}
 	}
 
@@ -427,18 +433,18 @@ func (s *SalesService) GetTopSellingProducts(limit int) ([]models.TopSellingProd
 	return responses, nil
 }
 
-// getSellingPrice retrieves the current retail price for a product
-func (s *SalesService) getSellingPrice(productID string) (float64, error) {
-	// Get the active retail price for the product
-	price, err := s.priceRepo.GetCurrentPrice(productID, "retail")
+// getSellingPrice retrieves the current retail price for a variant
+func (s *SalesService) getSellingPrice(variantID string) (float64, error) {
+	// Get the active retail price for the variant
+	price, err := s.priceRepo.GetCurrentPrice(variantID, "retail")
 	if err != nil {
 		// Try to get any active price if retail price is not found
-		prices, err2 := s.priceRepo.GetActiveByProductID(productID)
+		prices, err2 := s.priceRepo.GetActiveByVariantID(variantID)
 		if err2 != nil {
-			return 0, errors.New("no pricing information found for product")
+			return 0, errors.New("no pricing information found for variant")
 		}
 		if len(prices) == 0 {
-			return 0, errors.New("no active prices found for product")
+			return 0, errors.New("no active prices found for variant")
 		}
 		// Use the first active price as fallback
 		return prices[0].Price, nil
@@ -492,11 +498,11 @@ func (s *SalesService) validateSaleRequest(req *models.CreateSaleRequest) error 
 	}
 
 	for i, item := range req.Items {
-		log.Printf("[DEBUG] Validating item %d: product=%s, qty=%d", i+1, item.ProductID, item.Quantity)
+		log.Printf("[DEBUG] Validating item %d: variant=%s, qty=%d", i+1, item.VariantID, item.Quantity)
 
-		if item.ProductID == "" {
-			log.Printf("[ERROR] Validation failed: product ID is empty for item %d", i+1)
-			return errors.New("product ID is required for all items")
+		if item.VariantID == "" {
+			log.Printf("[ERROR] Validation failed: variant ID is empty for item %d", i+1)
+			return errors.New("variant ID is required for all items")
 		}
 		if item.Quantity <= 0 {
 			log.Printf("[ERROR] Validation failed: quantity <= 0 for item %d", i+1)
@@ -744,7 +750,7 @@ func (s *SalesService) applyTaxesToSaleWithTx(tx *gorm.DB, saleID string, saleIt
 		}
 
 		taxItem := models.TaxCalculationItem{
-			ProductID:  batch.ProductID,
+			ProductID:  batch.VariantID,
 			CategoryID: nil, // No category management in current model
 			Quantity:   int(item.Quantity),
 			UnitPrice:  item.SellingPrice,
@@ -785,7 +791,7 @@ func (s *SalesService) applyTaxesToSale(saleID string, saleItems []models.SaleIt
 
 
 		taxItem := models.TaxCalculationItem{
-			ProductID:  batch.ProductID,
+			ProductID:  batch.VariantID,
 			CategoryID: nil, // No category management in current model
 			Quantity:   int(item.Quantity),
 			UnitPrice:  item.SellingPrice,
@@ -823,7 +829,7 @@ func (s *SalesService) calculateDiscountAmount(discount *models.Discount, orderV
 			batch, err := s.inventoryRepo.GetBatchByID(item.BatchID)
 			productID := item.BatchID // fallback to batch ID if product ID can't be retrieved
 			if err == nil && batch != nil {
-				productID = batch.ProductID
+				productID = batch.VariantID
 			}
 
 			repoItems = append(repoItems, repositories.SaleItem{

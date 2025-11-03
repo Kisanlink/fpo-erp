@@ -77,7 +77,7 @@ func (r *GRNRepository) GetByID(id string) (*models.GRN, error) {
 // GetByIDWithItems retrieves a GRN by ID with items preloaded
 func (r *GRNRepository) GetByIDWithItems(id string) (*models.GRN, error) {
 	var grn models.GRN
-	if err := r.db.Preload("Items.Product").
+	if err := r.db.Preload("Items.Variant").
 		Preload("Items.PurchaseOrderItem").
 		Preload("PurchaseOrder").
 		Preload("Warehouse").

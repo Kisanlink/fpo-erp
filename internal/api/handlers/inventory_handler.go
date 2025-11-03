@@ -58,7 +58,7 @@ func (h *InventoryHandler) CreateBatch(c *gin.Context) {
 	// Create batch with tax configuration
 	response, err := h.inventoryService.CreateBatch(
 		request.WarehouseID,
-		request.ProductID,
+		request.VariantID,
 		request.CostPrice,
 		expiryDate,
 		request.Quantity,
@@ -135,28 +135,28 @@ func (h *InventoryHandler) GetBatchesByWarehouse(c *gin.Context) {
 	utils.OKResponse(c, "Batches retrieved successfully", response)
 }
 
-// GetBatchesByProduct handles GET /api/v1/products/:id/batches
-// @Summary Get Batches by Product
-// @Description Retrieve all inventory batches for a specific product
+// GetBatchesByVariant handles GET /api/v1/variants/:id/batches
+// @Summary Get Batches by Variant
+// @Description Retrieve all inventory batches for a specific product variant
 // @Tags Inventory
 // @Produce json
-// @Param id path string true "Product ID" example(PROD_12345678)
+// @Param id path string true "Variant ID" example(PVAR_12345678)
 // @Success 200 {object} utils.Response{data=[]models.InventoryBatchResponse} "Batches retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
-// @Router /api/v1/products/{id}/batches [get]
-func (h *InventoryHandler) GetBatchesByProduct(c *gin.Context) {
-	// Get product ID from URL
-	productID := c.Param("id")
-	if productID == "" {
-		utils.BadRequestResponse(c, "Product ID is required", nil)
+// @Router /api/v1/variants/{id}/batches [get]
+func (h *InventoryHandler) GetBatchesByVariant(c *gin.Context) {
+	// Get variant ID from URL
+	variantID := c.Param("id")
+	if variantID == "" {
+		utils.BadRequestResponse(c, "Variant ID is required", nil)
 		return
 	}
 
-	// Get batches by product
-	response, err := h.inventoryService.GetBatchesByProduct(productID)
+	// Get batches by variant
+	response, err := h.inventoryService.GetBatchesByVariant(variantID)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "Failed to retrieve batches", err)
 		return
@@ -352,15 +352,18 @@ func (h *InventoryHandler) RegisterRoutes(router *gin.RouterGroup) {
 	}
 
 	// Product batch routes
-	products := router.Group("/products")
+	// Variant-specific batch routes
+	variants := router.Group("/variants")
 	{
-		products.Use(h.aaaMiddleware.Authenticate())
-		products.GET("/:id/batches", h.aaaMiddleware.RequireOrgPermission("inventory_batch", "read"), h.GetBatchesByProduct)
+		variants.Use(h.aaaMiddleware.Authenticate())
+		variants.GET("/:id/batches", h.aaaMiddleware.RequireOrgPermission("inventory_batch", "read"), h.GetBatchesByVariant)
 	}
+
 	// Protected product availability route
 	// AAA HTTP service will validate addresses permissions internally
-	protected := products.Group("")
+	products := router.Group("/products")
+	products.Use(h.aaaMiddleware.Authenticate())
 	{
-		protected.GET("/availability", h.aaaMiddleware.RequireOrgPermission("inventory_batch", "read"), h.GetAllProductsAvailability)
+		products.GET("/availability", h.aaaMiddleware.RequireOrgPermission("inventory_batch", "read"), h.GetAllProductsAvailability)
 	}
 }

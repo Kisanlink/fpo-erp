@@ -153,7 +153,7 @@ func (s *GRNService) CreateGRN(ctx context.Context, request *models.CreateGRNReq
 			grnItem := models.NewGRNItem(
 				grn.ID,
 				itemReq.POItemID,
-				poItem.ProductID,
+				poItem.VariantID,
 				poItem.Quantity,
 				itemReq.ReceivedQuantity,
 				itemReq.AcceptedQuantity,
@@ -168,7 +168,7 @@ func (s *GRNService) CreateGRN(ctx context.Context, request *models.CreateGRNReq
 				// Tax rates are 0 because PO price already includes all taxes
 				batch := models.NewInventoryBatch(
 					po.WarehouseID,
-					poItem.ProductID,
+					poItem.VariantID,
 					poItem.UnitPrice, // ALL-IN cost price from PO
 					expiryDate,
 					itemReq.AcceptedQuantity,
@@ -366,9 +366,14 @@ func (s *GRNService) buildGRNResponse(grn *models.GRN) (*models.GRNResponse, err
 			ID:               item.ID,
 			GRNID:            item.GRNID,
 			POItemID:         item.POItemID,
-			ProductID:        item.ProductID,
-			ProductName:      item.Product.Name,
-			ProductSKU:       item.Product.SKU,
+			VariantID:        item.VariantID,
+			ProductName:      item.Variant.VariantName, // Using variant name instead of product name
+			ProductSKU:       func() string {
+				if item.Variant.SKU != nil {
+					return *item.Variant.SKU
+				}
+				return ""
+			}(),
 			OrderedQuantity:  item.OrderedQuantity,
 			ReceivedQuantity: item.ReceivedQuantity,
 			AcceptedQuantity: item.AcceptedQuantity,

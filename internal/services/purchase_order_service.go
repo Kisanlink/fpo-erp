@@ -17,6 +17,7 @@ type PurchaseOrderService struct {
 	collaboratorRepo *repositories.CollaboratorRepository
 	warehouseRepo    *repositories.WarehouseRepository
 	productRepo      *repositories.ProductRepository
+	variantRepo      *repositories.ProductVariantRepository
 	grnRepo          *repositories.GRNRepository
 	inventoryRepo    *repositories.InventoryRepository
 }
@@ -27,6 +28,7 @@ func NewPurchaseOrderService(
 	collaboratorRepo *repositories.CollaboratorRepository,
 	warehouseRepo *repositories.WarehouseRepository,
 	productRepo *repositories.ProductRepository,
+	variantRepo *repositories.ProductVariantRepository,
 	grnRepo *repositories.GRNRepository,
 	inventoryRepo *repositories.InventoryRepository,
 ) *PurchaseOrderService {
@@ -35,6 +37,7 @@ func NewPurchaseOrderService(
 		collaboratorRepo: collaboratorRepo,
 		warehouseRepo:    warehouseRepo,
 		productRepo:      productRepo,
+		variantRepo:      variantRepo,
 		grnRepo:          grnRepo,
 		inventoryRepo:    inventoryRepo,
 	}
@@ -84,15 +87,15 @@ func (s *PurchaseOrderService) CreatePurchaseOrder(ctx context.Context, request 
 	}
 
 	var totalAmount float64
-	productDetails := make(map[string]*models.Product)
+	variantDetails := make(map[string]*models.ProductVariant)
 
 	for _, item := range request.Items {
-		// Validate product exists
-		product, err := s.productRepo.GetByID(item.ProductID)
+		// Validate variant exists
+		variant, err := s.variantRepo.GetByID(item.VariantID)
 		if err != nil {
-			return nil, fmt.Errorf("invalid product %s: %w", item.ProductID, err)
+			return nil, fmt.Errorf("invalid variant %s: %w", item.VariantID, err)
 		}
-		productDetails[item.ProductID] = product
+		variantDetails[item.VariantID] = variant
 
 		// Calculate line total
 		lineTotal := float64(item.Quantity) * item.UnitPrice
@@ -124,16 +127,16 @@ func (s *PurchaseOrderService) CreatePurchaseOrder(ctx context.Context, request 
 
 		// Create purchase order items
 		for _, itemReq := range request.Items {
-			product := productDetails[itemReq.ProductID]
+			variant := variantDetails[itemReq.VariantID]
 			item := models.NewPurchaseOrderItem(
 				po.ID,
-				itemReq.ProductID,
+				itemReq.VariantID,
 				itemReq.Quantity,
 				itemReq.UnitPrice,
 			)
-			// Snapshot product details
-			item.ProductName = &product.Name
-			item.ProductSKU = &product.SKU
+			// Snapshot variant details
+			item.ProductName = &variant.VariantName
+			item.ProductSKU = variant.SKU
 
 			if err := s.poRepo.CreateItemWithTx(tx, item); err != nil {
 				return err
@@ -477,7 +480,7 @@ func (s *PurchaseOrderService) processDeliveryItems(ctx context.Context, po *mod
 			grnItem := models.NewGRNItem(
 				grn.ID,
 				itemReq.POItemID,
-				poItem.ProductID,
+				poItem.VariantID,
 				poItem.Quantity,
 				receivedQty,
 				acceptedQty,
@@ -489,7 +492,7 @@ func (s *PurchaseOrderService) processDeliveryItems(ctx context.Context, po *mod
 			if acceptedQty > 0 {
 				batch := models.NewInventoryBatch(
 					po.WarehouseID,
-					poItem.ProductID,
+					poItem.VariantID,
 					poItem.UnitPrice, // ALL-IN cost price from PO
 					expiryDate,
 					acceptedQty,
@@ -715,7 +718,7 @@ func (s *PurchaseOrderService) buildPurchaseOrderResponse(po *models.PurchaseOrd
 		items = append(items, models.PurchaseOrderItemResponse{
 			ID:               item.ID,
 			POID:             item.POID,
-			ProductID:        item.ProductID,
+			VariantID:        item.VariantID,
 			ProductName:      item.ProductName,
 			ProductSKU:       item.ProductSKU,
 			Quantity:         item.Quantity,

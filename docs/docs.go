@@ -3963,71 +3963,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/products/sku/{sku}": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Retrieve a specific product by SKU",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Products"
-                ],
-                "summary": "Get Product by SKU",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "example": "SKU123",
-                        "description": "Product SKU",
-                        "name": "sku",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Product retrieved successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/utils.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.ProductResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request",
-                        "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponseModel"
-                        }
-                    },
-                    "404": {
-                        "description": "Product not found",
-                        "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponseModel"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponseModel"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/products/{id}": {
             "get": {
                 "security": [
@@ -4231,74 +4166,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/products/{id}/batches": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Retrieve all inventory batches for a specific product",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Inventory"
-                ],
-                "summary": "Get Batches by Product",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "example": "PROD_12345678",
-                        "description": "Product ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Batches retrieved successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/utils.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/models.InventoryBatchResponse"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request",
-                        "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponseModel"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponseModel"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponseModel"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/products/{id}/collaborators": {
             "get": {
                 "description": "Retrieve all collaborators for a specific product",
@@ -4349,149 +4216,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Product not found",
-                        "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponseModel"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponseModel"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/products/{id}/prices": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Retrieve all prices for a specific product",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Product Prices"
-                ],
-                "summary": "Get Product Prices",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "example": "PROD_12345678",
-                        "description": "Product ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Product prices retrieved successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/utils.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/models.ProductPriceResponse"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request",
-                        "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponseModel"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponseModel"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponseModel"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Create a new price for a specific product",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Product Prices"
-                ],
-                "summary": "Create Product Price for Product",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "example": "PROD_12345678",
-                        "description": "Product ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Product price data",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.CreateProductPriceRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Product price created successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/utils.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.ProductPriceResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request",
-                        "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponseModel"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/utils.ErrorResponseModel"
                         }
@@ -8564,6 +8288,217 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/variants/{id}/batches": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve all inventory batches for a specific product variant",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Inventory"
+                ],
+                "summary": "Get Batches by Variant",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "PVAR_12345678",
+                        "description": "Variant ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Batches retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.InventoryBatchResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/variants/{id}/prices": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve all prices for a specific product variant",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Product Prices"
+                ],
+                "summary": "Get Variant Prices",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "PVAR_12345678",
+                        "description": "Variant ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Variant prices retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.ProductPriceResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new price for a specific product",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Product Prices"
+                ],
+                "summary": "Create Product Price for Product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "PVAR_12345678",
+                        "description": "Variant ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Product price data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateProductPriceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Product price created successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.ProductPriceResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/warehouses": {
             "get": {
                 "security": [
@@ -9703,8 +9638,8 @@ const docTemplate = `{
             "required": [
                 "cost_price",
                 "expiry_date",
-                "product_id",
                 "quantity",
+                "variant_id",
                 "warehouse_id"
             ],
             "properties": {
@@ -9729,9 +9664,6 @@ const docTemplate = `{
                 "is_tax_exempt": {
                     "type": "boolean"
                 },
-                "product_id": {
-                    "type": "string"
-                },
                 "quantity": {
                     "type": "integer"
                 },
@@ -9739,6 +9671,9 @@ const docTemplate = `{
                     "type": "number",
                     "maximum": 100,
                     "minimum": 0
+                },
+                "variant_id": {
+                    "type": "string"
                 },
                 "warehouse_id": {
                     "type": "string"
@@ -9771,7 +9706,7 @@ const docTemplate = `{
             "required": [
                 "price",
                 "price_type",
-                "product_id"
+                "variant_id"
             ],
             "properties": {
                 "currency": {
@@ -9792,7 +9727,7 @@ const docTemplate = `{
                 "price_type": {
                     "type": "string"
                 },
-                "product_id": {
+                "variant_id": {
                     "type": "string"
                 }
             }
@@ -9800,17 +9735,13 @@ const docTemplate = `{
         "models.CreateProductRequest": {
             "type": "object",
             "required": [
-                "name",
-                "sku"
+                "name"
             ],
             "properties": {
                 "description": {
                     "type": "string"
                 },
                 "name": {
-                    "type": "string"
-                },
-                "sku": {
                     "type": "string"
                 }
             }
@@ -9819,22 +9750,56 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "pack_size",
-                "quantity"
+                "quantity",
+                "variant_name"
             ],
             "properties": {
                 "barcode": {
                     "type": "string"
                 },
-                "pack_size": {
+                "brand_name": {
+                    "description": "Required if collaborator_id provided",
                     "type": "string"
                 },
-                "price": {
-                    "type": "number"
+                "collaborator_id": {
+                    "description": "Optional: for collaborator-specific variants",
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "dosage_instructions": {
+                    "type": "string"
+                },
+                "gst_rate": {
+                    "description": "Required if collaborator_id provided",
+                    "type": "number",
+                    "maximum": 100,
+                    "minimum": 0
+                },
+                "hsn_code": {
+                    "description": "Required if collaborator_id provided",
+                    "type": "string"
+                },
+                "images": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "pack_size": {
+                    "type": "string"
                 },
                 "quantity": {
                     "type": "string"
                 },
                 "sku": {
+                    "type": "string"
+                },
+                "usage_details": {
+                    "type": "string"
+                },
+                "variant_name": {
                     "type": "string"
                 }
             }
@@ -9842,20 +9807,20 @@ const docTemplate = `{
         "models.CreatePurchaseOrderItemRequest": {
             "type": "object",
             "required": [
-                "product_id",
                 "quantity",
-                "unit_price"
+                "unit_price",
+                "variant_id"
             ],
             "properties": {
-                "product_id": {
-                    "type": "string"
-                },
                 "quantity": {
                     "type": "integer"
                 },
                 "unit_price": {
                     "description": "ALL-IN price",
                     "type": "number"
+                },
+                "variant_id": {
+                    "type": "string"
                 }
             }
         },
@@ -9954,15 +9919,16 @@ const docTemplate = `{
         "models.CreateSaleItemRequest": {
             "type": "object",
             "required": [
-                "product_id",
-                "quantity"
+                "quantity",
+                "variant_id"
             ],
             "properties": {
-                "product_id": {
-                    "type": "string"
-                },
                 "quantity": {
                     "type": "integer"
+                },
+                "variant_id": {
+                    "description": "Changed from product_id to variant_id",
+                    "type": "string"
                 }
             }
         },
@@ -10448,9 +10414,6 @@ const docTemplate = `{
                 "po_item_id": {
                     "type": "string"
                 },
-                "product_id": {
-                    "type": "string"
-                },
                 "product_name": {
                     "type": "string"
                 },
@@ -10462,6 +10425,9 @@ const docTemplate = `{
                 },
                 "rejected_quantity": {
                     "type": "integer"
+                },
+                "variant_id": {
+                    "type": "string"
                 }
             }
         },
@@ -10544,9 +10510,6 @@ const docTemplate = `{
                 "is_tax_exempt": {
                     "type": "boolean"
                 },
-                "product_id": {
-                    "type": "string"
-                },
                 "sgst_rate": {
                     "type": "number"
                 },
@@ -10554,6 +10517,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "updated_at": {
+                    "type": "string"
+                },
+                "variant_id": {
                     "type": "string"
                 },
                 "warehouse_id": {
@@ -10646,9 +10612,6 @@ const docTemplate = `{
                 "product_description": {
                     "type": "string"
                 },
-                "product_id": {
-                    "type": "string"
-                },
                 "product_name": {
                     "type": "string"
                 },
@@ -10662,6 +10625,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "updated_at": {
+                    "type": "string"
+                },
+                "variant_id": {
                     "type": "string"
                 },
                 "warehouse_id": {
@@ -10699,10 +10665,10 @@ const docTemplate = `{
                 "price_type": {
                     "type": "string"
                 },
-                "product_id": {
+                "updated_at": {
                     "type": "string"
                 },
-                "updated_at": {
+                "variant_id": {
                     "type": "string"
                 }
             }
@@ -10722,9 +10688,6 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
-                "sku": {
-                    "type": "string"
-                },
                 "updated_at": {
                     "type": "string"
                 }
@@ -10741,9 +10704,6 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
-                },
-                "sku": {
-                    "type": "string"
                 }
             }
         },
@@ -10753,20 +10713,42 @@ const docTemplate = `{
                 "barcode": {
                     "type": "string"
                 },
+                "brand_name": {
+                    "type": "string"
+                },
+                "collaborator_id": {
+                    "type": "string"
+                },
                 "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "dosage_instructions": {
+                    "type": "string"
+                },
+                "gst_rate": {
+                    "type": "number"
+                },
+                "hsn_code": {
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
+                },
+                "images": {
+                    "description": "Parsed from JSON",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "is_active": {
                     "type": "boolean"
                 },
                 "pack_size": {
                     "type": "string"
-                },
-                "price": {
-                    "type": "number"
                 },
                 "product_id": {
                     "type": "string"
@@ -10778,6 +10760,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "updated_at": {
+                    "type": "string"
+                },
+                "usage_details": {
+                    "type": "string"
+                },
+                "variant_name": {
                     "type": "string"
                 }
             }
@@ -10803,9 +10791,6 @@ const docTemplate = `{
                         "$ref": "#/definitions/models.ProductPriceResponse"
                     }
                 },
-                "sku": {
-                    "type": "string"
-                },
                 "updated_at": {
                     "type": "string"
                 }
@@ -10826,9 +10811,6 @@ const docTemplate = `{
                 "po_id": {
                     "type": "string"
                 },
-                "product_id": {
-                    "type": "string"
-                },
                 "product_name": {
                     "type": "string"
                 },
@@ -10843,6 +10825,9 @@ const docTemplate = `{
                 },
                 "unit_price": {
                     "type": "number"
+                },
+                "variant_id": {
+                    "type": "string"
                 }
             }
         },
@@ -11922,19 +11907,43 @@ const docTemplate = `{
                 "barcode": {
                     "type": "string"
                 },
+                "brand_name": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "dosage_instructions": {
+                    "type": "string"
+                },
+                "gst_rate": {
+                    "type": "number"
+                },
+                "hsn_code": {
+                    "type": "string"
+                },
+                "images": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "is_active": {
                     "type": "boolean"
                 },
                 "pack_size": {
                     "type": "string"
                 },
-                "price": {
-                    "type": "number"
-                },
                 "quantity": {
                     "type": "string"
                 },
                 "sku": {
+                    "type": "string"
+                },
+                "usage_details": {
+                    "type": "string"
+                },
+                "variant_name": {
                     "type": "string"
                 }
             }

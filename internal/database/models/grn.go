@@ -59,9 +59,9 @@ func (GRN) TableName() string {
 type GRNItem struct {
 	base.BaseModel
 
-	GRNID    string `gorm:"type:varchar(100);not null;index" json:"grn_id"`
-	POItemID string `gorm:"type:varchar(100);not null;index" json:"po_item_id"`
-	ProductID string `gorm:"type:varchar(100);not null;index" json:"product_id"`
+	GRNID     string `gorm:"type:varchar(100);not null;index" json:"grn_id"`
+	POItemID  string `gorm:"type:varchar(100);not null;index" json:"po_item_id"`
+	VariantID string `gorm:"type:varchar(100);not null;index" json:"variant_id"`
 
 	// Quantity tracking
 	OrderedQuantity  int64 `gorm:"type:bigint;not null" json:"ordered_quantity"`
@@ -77,14 +77,14 @@ type GRNItem struct {
 	InventoryBatchID *string `gorm:"type:varchar(100)" json:"inventory_batch_id"` // Created batch ID
 
 	// Associations
-	GRN              GRN               `gorm:"foreignKey:GRNID" json:"grn,omitempty"`
-	PurchaseOrderItem PurchaseOrderItem `gorm:"foreignKey:POItemID" json:"po_item,omitempty"`
-	Product          Product           `gorm:"foreignKey:ProductID;references:ID;tableName:sku" json:"product,omitempty"`
-	InventoryBatch   *InventoryBatch   `gorm:"foreignKey:InventoryBatchID" json:"inventory_batch,omitempty"`
+	GRN               GRN                `gorm:"foreignKey:GRNID" json:"grn,omitempty"`
+	PurchaseOrderItem PurchaseOrderItem  `gorm:"foreignKey:POItemID" json:"po_item,omitempty"`
+	Variant           ProductVariant     `gorm:"foreignKey:VariantID" json:"variant,omitempty"`
+	InventoryBatch    *InventoryBatch    `gorm:"foreignKey:InventoryBatchID" json:"inventory_batch,omitempty"`
 }
 
 // NewGRNItem creates a new GRNItem with initialized fields
-func NewGRNItem(grnID, poItemID, productID string, orderedQty, receivedQty, acceptedQty int64, expiryDate time.Time) *GRNItem {
+func NewGRNItem(grnID, poItemID, variantID string, orderedQty, receivedQty, acceptedQty int64, expiryDate time.Time) *GRNItem {
 	baseModel := base.NewBaseModel(constants.TableGRNItem, hash.Medium)
 	rejectedQty := receivedQty - acceptedQty
 	if rejectedQty < 0 {
@@ -94,7 +94,7 @@ func NewGRNItem(grnID, poItemID, productID string, orderedQty, receivedQty, acce
 		BaseModel:        *baseModel,
 		GRNID:            grnID,
 		POItemID:         poItemID,
-		ProductID:        productID,
+		VariantID:        variantID,
 		OrderedQuantity:  orderedQty,
 		ReceivedQuantity: receivedQty,
 		AcceptedQuantity: acceptedQty,
@@ -127,20 +127,20 @@ type GRNResponse struct {
 
 // GRNItemResponse represents the API response for grn item
 type GRNItemResponse struct {
-	ID                string  `json:"id"`
-	GRNID             string  `json:"grn_id"`
-	POItemID          string  `json:"po_item_id"`
-	ProductID         string  `json:"product_id"`
-	ProductName       string  `json:"product_name"`
-	ProductSKU        string  `json:"product_sku"`
-	OrderedQuantity   int64   `json:"ordered_quantity"`
-	ReceivedQuantity  int64   `json:"received_quantity"`
-	AcceptedQuantity  int64   `json:"accepted_quantity"`
-	RejectedQuantity  int64   `json:"rejected_quantity"`
-	ExpiryDate        string  `json:"expiry_date"`
-	BatchNumber       *string `json:"batch_number"`
-	InventoryBatchID  *string `json:"inventory_batch_id"`
-	CreatedAt         string  `json:"created_at"`
+	ID               string  `json:"id"`
+	GRNID            string  `json:"grn_id"`
+	POItemID         string  `json:"po_item_id"`
+	VariantID        string  `json:"variant_id"`
+	ProductName      string  `json:"product_name"`
+	ProductSKU       string  `json:"product_sku"`
+	OrderedQuantity  int64   `json:"ordered_quantity"`
+	ReceivedQuantity int64   `json:"received_quantity"`
+	AcceptedQuantity int64   `json:"accepted_quantity"`
+	RejectedQuantity int64   `json:"rejected_quantity"`
+	ExpiryDate       string  `json:"expiry_date"`
+	BatchNumber      *string `json:"batch_number"`
+	InventoryBatchID *string `json:"inventory_batch_id"`
+	CreatedAt        string  `json:"created_at"`
 }
 
 // CreateGRNRequest represents the request to create a goods receipt note

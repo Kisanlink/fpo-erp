@@ -57,8 +57,8 @@ func (s *ProductVariantService) CreateProductVariant(ctx context.Context, produc
 	}
 
 	// Create variant
-	variant := models.NewProductVariant(productID, request.Quantity, request.PackSize)
-	variant.Price = request.Price
+	variant := models.NewProductVariant(productID, request.VariantName, request.Quantity, request.PackSize)
+	variant.Description = request.Description
 	variant.SKU = request.SKU
 	variant.Barcode = request.Barcode
 
@@ -181,14 +181,17 @@ func (s *ProductVariantService) UpdateProductVariant(ctx context.Context, id str
 	}
 
 	// Update fields if provided
+	if request.VariantName != nil {
+		variant.VariantName = *request.VariantName
+	}
+	if request.Description != nil {
+		variant.Description = request.Description
+	}
 	if request.Quantity != nil {
 		variant.Quantity = *request.Quantity
 	}
 	if request.PackSize != nil {
 		variant.PackSize = *request.PackSize
-	}
-	if request.Price != nil {
-		variant.Price = request.Price
 	}
 	if request.SKU != nil {
 		variant.SKU = request.SKU
@@ -228,15 +231,16 @@ func (s *ProductVariantService) DeleteProductVariant(ctx context.Context, id str
 // buildProductVariantResponse builds a response with product details
 func (s *ProductVariantService) buildProductVariantResponse(variant *models.ProductVariant, product *models.Product) (*models.ProductVariantResponse, error) {
 	return &models.ProductVariantResponse{
-		ID:        variant.ID,
-		ProductID: variant.ProductID,
-		Quantity:  variant.Quantity,
-		PackSize:  variant.PackSize,
-		Price:     variant.Price,
-		SKU:       variant.SKU,
-		Barcode:   variant.Barcode,
-		IsActive:  variant.IsActive,
-		CreatedAt: variant.CreatedAt.UTC().Format(time.RFC3339),
-		UpdatedAt: variant.UpdatedAt.UTC().Format(time.RFC3339),
+		ID:          variant.ID,
+		ProductID:   variant.ProductID,
+		VariantName: variant.VariantName,
+		Description: variant.Description,
+		Quantity:    variant.Quantity,
+		PackSize:    variant.PackSize,
+		SKU:         variant.SKU,
+		Barcode:     variant.Barcode,
+		IsActive:    variant.IsActive,
+		CreatedAt:   variant.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:   variant.UpdatedAt.UTC().Format(time.RFC3339),
 	}, nil
 }

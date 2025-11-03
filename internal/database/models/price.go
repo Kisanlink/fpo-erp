@@ -8,27 +8,27 @@ import (
 	"github.com/Kisanlink/kisanlink-db/pkg/core/hash"
 )
 
-// ProductPrice represents a price for a product
+// ProductPrice represents a price for a product variant
 type ProductPrice struct {
 	base.BaseModel
-	ProductID     string     `gorm:"type:varchar(100);not null" json:"product_id"`
-	PriceType     string     `gorm:"type:varchar(50);not null" json:"price_type"` // e.g., "retail", "wholesale", "bulk"
+	VariantID     string     `gorm:"type:varchar(100);not null;index:idx_variant_price" json:"variant_id"` // Changed from ProductID to VariantID
+	PriceType     string     `gorm:"type:varchar(50);not null" json:"price_type"`                          // e.g., "retail", "wholesale", "bulk"
 	Price         float64    `gorm:"type:numeric(12,4);not null" json:"price"`
-	Currency      string     `gorm:"type:varchar(3);not null;default:'USD'" json:"currency"`
+	Currency      string     `gorm:"type:varchar(3);not null;default:'INR'" json:"currency"`
 	EffectiveFrom time.Time  `gorm:"type:timestamptz;not null;default:now()" json:"effective_from"`
 	EffectiveTo   *time.Time `gorm:"type:timestamptz" json:"effective_to"`
 	IsActive      bool       `gorm:"type:boolean;not null;default:true" json:"is_active"`
 
 	// Associations
-	Product Product `gorm:"foreignKey:ProductID;references:ID;tableName:sku" json:"product,omitempty"`
+	Variant ProductVariant `gorm:"foreignKey:VariantID;references:ID" json:"variant,omitempty"`
 }
 
 // NewProductPrice creates a new ProductPrice with initialized fields
-func NewProductPrice(productID, priceType string, price float64, currency string, effectiveFrom time.Time, effectiveTo *time.Time, isActive bool) *ProductPrice {
+func NewProductPrice(variantID, priceType string, price float64, currency string, effectiveFrom time.Time, effectiveTo *time.Time, isActive bool) *ProductPrice {
 	baseModel := base.NewBaseModel(constants.TablePrice, hash.Medium)
 	return &ProductPrice{
 		BaseModel:     *baseModel,
-		ProductID:     productID,
+		VariantID:     variantID,
 		PriceType:     priceType,
 		Price:         price,
 		Currency:      currency,
@@ -45,7 +45,7 @@ func (ProductPrice) TableName() string {
 // ProductPriceResponse represents the API response for product price
 type ProductPriceResponse struct {
 	ID            string  `json:"id"`
-	ProductID     string  `json:"product_id"`
+	VariantID     string  `json:"variant_id"`
 	PriceType     string  `json:"price_type"`
 	Price         float64 `json:"price"`
 	Currency      string  `json:"currency"`
@@ -58,7 +58,7 @@ type ProductPriceResponse struct {
 
 // CreateProductPriceRequest represents the request to create a product price
 type CreateProductPriceRequest struct {
-	ProductID     string  `json:"product_id" binding:"required"`
+	VariantID     string  `json:"variant_id" binding:"required"`
 	PriceType     string  `json:"price_type" binding:"required"`
 	Price         float64 `json:"price" binding:"required,gt=0"`
 	Currency      string  `json:"currency"`
@@ -80,7 +80,6 @@ type UpdateProductPriceRequest struct {
 // ProductWithPricesResponse represents a product with its prices
 type ProductWithPricesResponse struct {
 	ID          string                 `json:"id"`
-	SKU         string                 `json:"sku"`
 	Name        string                 `json:"name"`
 	Description *string                `json:"description"`
 	Prices      []ProductPriceResponse `json:"prices,omitempty"`
