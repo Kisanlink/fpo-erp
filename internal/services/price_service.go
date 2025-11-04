@@ -23,11 +23,8 @@ func NewProductPriceService(priceRepo *repositories.ProductPriceRepository, prod
 
 // CreateProductPrice creates a new product price
 func (s *ProductPriceService) CreateProductPrice(request *models.CreateProductPriceRequest) (*models.ProductPriceResponse, error) {
-	// Check if product exists
-	_, err := s.productRepo.GetByID(request.ProductID)
-	if err != nil {
-		return nil, err
-	}
+	// Note: Variant existence is validated by foreign key constraint
+	// No need to check explicitly here
 
 	// Parse effective dates
 	effectiveFrom := time.Now()
@@ -45,7 +42,7 @@ func (s *ProductPriceService) CreateProductPrice(request *models.CreateProductPr
 	}
 
 	// Set default values
-	currency := "USD"
+	currency := "INR"
 	if request.Currency != "" {
 		currency = request.Currency
 	}
@@ -56,7 +53,7 @@ func (s *ProductPriceService) CreateProductPrice(request *models.CreateProductPr
 	}
 
 	// Create price model using the proper constructor
-	price := models.NewProductPrice(request.ProductID, request.PriceType, request.Price, currency, effectiveFrom, effectiveTo, isActive)
+	price := models.NewProductPrice(request.VariantID, request.PriceType, request.Price, currency, effectiveFrom, effectiveTo, isActive)
 
 	// Save to database
 	if err := s.priceRepo.Create(price); err != nil {
@@ -66,7 +63,7 @@ func (s *ProductPriceService) CreateProductPrice(request *models.CreateProductPr
 	// Convert to response
 	response := &models.ProductPriceResponse{
 		ID:            price.ID,
-		ProductID:     price.ProductID,
+		VariantID:     price.VariantID,
 		PriceType:     price.PriceType,
 		Price:         price.Price,
 		Currency:      price.Currency,
@@ -93,7 +90,7 @@ func (s *ProductPriceService) GetProductPrice(id string) (*models.ProductPriceRe
 
 	response := &models.ProductPriceResponse{
 		ID:            price.ID,
-		ProductID:     price.ProductID,
+		VariantID:     price.VariantID,
 		PriceType:     price.PriceType,
 		Price:         price.Price,
 		Currency:      price.Currency,
@@ -111,9 +108,9 @@ func (s *ProductPriceService) GetProductPrice(id string) (*models.ProductPriceRe
 	return response, nil
 }
 
-// GetProductPrices retrieves all prices for a product
-func (s *ProductPriceService) GetProductPrices(productID string) ([]models.ProductPriceResponse, error) {
-	prices, err := s.priceRepo.GetByProductID(productID)
+// GetVariantPrices retrieves all prices for a variant
+func (s *ProductPriceService) GetVariantPrices(variantID string) ([]models.ProductPriceResponse, error) {
+	prices, err := s.priceRepo.GetByVariantID(variantID)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +119,7 @@ func (s *ProductPriceService) GetProductPrices(productID string) ([]models.Produ
 	for _, price := range prices {
 		response := models.ProductPriceResponse{
 			ID:            price.ID,
-			ProductID:     price.ProductID,
+			VariantID:     price.VariantID,
 			PriceType:     price.PriceType,
 			Price:         price.Price,
 			Currency:      price.Currency,
@@ -143,16 +140,16 @@ func (s *ProductPriceService) GetProductPrices(productID string) ([]models.Produ
 	return responses, nil
 }
 
-// GetCurrentPrice retrieves the current active price for a product and type
-func (s *ProductPriceService) GetCurrentPrice(productID, priceType string) (*models.ProductPriceResponse, error) {
-	price, err := s.priceRepo.GetCurrentPrice(productID, priceType)
+// GetCurrentPrice retrieves the current active price for a variant and type
+func (s *ProductPriceService) GetCurrentPrice(variantID, priceType string) (*models.ProductPriceResponse, error) {
+	price, err := s.priceRepo.GetCurrentPrice(variantID, priceType)
 	if err != nil {
 		return nil, err
 	}
 
 	response := &models.ProductPriceResponse{
 		ID:            price.ID,
-		ProductID:     price.ProductID,
+		VariantID:     price.VariantID,
 		PriceType:     price.PriceType,
 		Price:         price.Price,
 		Currency:      price.Currency,
@@ -209,7 +206,7 @@ func (s *ProductPriceService) UpdateProductPrice(id string, request *models.Upda
 
 	response := &models.ProductPriceResponse{
 		ID:            price.ID,
-		ProductID:     price.ProductID,
+		VariantID:     price.VariantID,
 		PriceType:     price.PriceType,
 		Price:         price.Price,
 		Currency:      price.Currency,
@@ -252,7 +249,7 @@ func (s *ProductPriceService) GetExpiredPrices() ([]models.ProductPriceResponse,
 	for _, price := range prices {
 		response := models.ProductPriceResponse{
 			ID:            price.ID,
-			ProductID:     price.ProductID,
+			VariantID:     price.VariantID,
 			PriceType:     price.PriceType,
 			Price:         price.Price,
 			Currency:      price.Currency,

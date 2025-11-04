@@ -9,6 +9,7 @@ import (
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
+	scalar "github.com/MarceloPetrucio/go-scalar-api-reference"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"gorm.io/gorm"
@@ -88,13 +89,46 @@ func (s *Server) setupMiddleware() {
 	// OpenAPI JSON spec route
 	s.Router.GET("/api-docs", func(c *gin.Context) {
 		c.Header("Content-Type", "application/json")
-		c.File("./docs/swagger.json")
+		c.File("docs/swagger.json")
 	})
 
-	// Scalar documentation route - serves the HTML page
+	// Scalar documentation route - using go-scalar-api-reference package
 	s.Router.GET("/docs", func(c *gin.Context) {
-		c.Header("Content-Type", "text/html")
-		c.File("./docs/scalar.html")
+		// Build full spec URL
+		scheme := "http"
+		if c.GetHeader("X-Forwarded-Proto") == "https" {
+			scheme = "https"
+		}
+		host := c.Request.Host
+		if host == "" {
+			host = "localhost:3000"
+		}
+		specURL := scheme + "://" + host + "/api-docs"
+
+		// Configure Scalar options
+		options := scalar.Options{
+			SpecURL:            specURL,
+			Theme:              scalar.ThemePurple,
+			Layout:             scalar.LayoutModern,
+			ShowSidebar:        true,
+			HideDownloadButton: false,
+			DarkMode:           false,
+			WithDefaultFonts:   true,
+			CustomOptions: scalar.CustomOptions{
+				PageTitle: "Kisanlink ERP API Documentation",
+			},
+		}
+
+		// Generate Scalar HTML
+		html, err := scalar.ApiReferenceHTML(&options)
+		if err != nil {
+			utils.Error("Failed to generate Scalar documentation:", err)
+			c.String(500, "Failed to generate API documentation: "+err.Error())
+			return
+		}
+
+		c.Header("Content-Type", "text/html; charset=utf-8")
+		c.String(200, html)
 	})
 }
 

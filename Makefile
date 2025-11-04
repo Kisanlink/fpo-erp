@@ -71,5 +71,10 @@ fmt:
 vet:
 	go vet ./...
 
+# Generate API documentation (requires swag)
+docs:
+	swag init --parseDependency --parseInternal -g cmd/server/main.go
+	swagger2openapi docs/swagger.json -o docs/swagger.json
+
 
 

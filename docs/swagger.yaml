@@ -2,23 +2,32 @@ basePath: /
 definitions:
   models.AddressInfo:
     properties:
-      address_line_1:
-        type: string
-      address_line_2:
-        type: string
-      city:
-        type: string
       country:
+        type: string
+      district:
         type: string
       full_address:
         type: string
+      house:
+        type: string
       id:
         type: string
-      postal_code:
+      landmark:
+        type: string
+      pincode:
+        type: string
+      post_office:
         type: string
       state:
         type: string
+      street:
+        type: string
+      subdistrict:
+        type: string
       type:
+        type: string
+      vtc:
+        description: Village/Town/City
         type: string
     type: object
   models.AppliedTax:
@@ -42,44 +51,55 @@ definitions:
     properties:
       created_at:
         type: string
+      entity_id:
+        description: Entity ID (CLAB_xxx, PO_xxx, etc.)
+        type: string
+      entity_type:
+        description: '"logo", "po", "grn", etc.'
+        type: string
       file_path:
+        description: S3 key/path
         type: string
       file_size:
+        description: File size in bytes
         type: integer
       file_type:
+        description: MIME type
         type: string
       id:
-        type: string
-      return_id:
-        type: string
-      sale_id:
         type: string
       updated_at:
         type: string
       uploaded_at:
         type: string
       uploaded_by:
+        description: User ID
         type: string
     type: object
   models.AttachmentResponse:
     properties:
       created_at:
         type: string
+      entity_id:
+        description: Entity ID (CLAB_xxx, PO_xxx, etc.)
+        type: string
+      entity_type:
+        description: '"logo", "po", "grn", etc.'
+        type: string
       file_path:
+        description: S3 key/path
         type: string
       file_type:
+        description: MIME type
         type: string
       id:
-        type: string
-      return_id:
-        type: string
-      sale_id:
         type: string
       updated_at:
         type: string
       uploaded_at:
         type: string
       uploaded_by:
+        description: User ID
         type: string
     type: object
   models.BankPaymentResponse:
@@ -103,31 +123,112 @@ definitions:
       updated_at:
         type: string
     type: object
+  models.CollaboratorProductResponse:
+    properties:
+      brand_name:
+        type: string
+      collaborator_id:
+        type: string
+      collaborator_name:
+        type: string
+      created_at:
+        type: string
+      dosage_instructions:
+        type: string
+      gst_rate:
+        type: number
+      hsn_code:
+        type: string
+      id:
+        type: string
+      images:
+        description: Parsed from JSON
+        items:
+          type: string
+        type: array
+      is_active:
+        type: boolean
+      product:
+        allOf:
+        - $ref: '#/definitions/models.ProductSummary'
+        description: Embedded product info
+      product_id:
+        type: string
+      product_name:
+        type: string
+      product_sku:
+        type: string
+      updated_at:
+        type: string
+      usage_details:
+        type: string
+    type: object
+  models.CollaboratorResponse:
+    properties:
+      address:
+        allOf:
+        - $ref: '#/definitions/models.AddressInfo'
+        description: Embedded from AAA
+      bank_account_no:
+        type: string
+      bank_ifsc:
+        type: string
+      bank_name:
+        type: string
+      company_name:
+        type: string
+      contact_number:
+        type: string
+      contact_person:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      experience:
+        type: string
+      gst_number:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      logo:
+        type: string
+      pan_number:
+        type: string
+      updated_at:
+        type: string
+    type: object
   models.CreateAddressRequest:
     properties:
-      address_line_1:
-        type: string
-      address_line_2:
-        type: string
-      city:
-        type: string
       country:
+        type: string
+      district:
+        type: string
+      house:
         type: string
       is_primary:
         type: boolean
-      postal_code:
+      landmark:
+        type: string
+      pincode:
+        type: string
+      post_office:
         type: string
       state:
+        type: string
+      street:
+        type: string
+      subdistrict:
         type: string
       type:
         description: HOME, WORK, OTHER
         type: string
+      vtc:
+        description: Village/Town/City
+        type: string
     required:
-    - address_line_1
-    - city
-    - country
-    - postal_code
-    - state
     - type
     type: object
   models.CreateBankPaymentRequest:
@@ -144,6 +245,69 @@ definitions:
     - amount
     - payment_method
     type: object
+  models.CreateCollaboratorProductRequest:
+    properties:
+      brand_name:
+        type: string
+      dosage_instructions:
+        type: string
+      gst_rate:
+        maximum: 100
+        minimum: 0
+        type: number
+      hsn_code:
+        description: HSN codes are 8 digits
+        type: string
+      images:
+        description: Array of S3 paths
+        items:
+          type: string
+        type: array
+      product_id:
+        type: string
+      usage_details:
+        type: string
+    required:
+    - brand_name
+    - gst_rate
+    - hsn_code
+    - product_id
+    type: object
+  models.CreateCollaboratorRequest:
+    properties:
+      address:
+        allOf:
+        - $ref: '#/definitions/models.CreateAddressRequest'
+        description: Inline address creation via AAA
+      bank_account_no:
+        type: string
+      bank_ifsc:
+        type: string
+      bank_name:
+        type: string
+      company_name:
+        type: string
+      contact_number:
+        type: string
+      contact_person:
+        type: string
+      email:
+        type: string
+      experience:
+        type: string
+      gst_number:
+        type: string
+      logo:
+        type: string
+      pan_number:
+        type: string
+    required:
+    - bank_account_no
+    - bank_ifsc
+    - company_name
+    - contact_number
+    - contact_person
+    type: object
   models.CreateDiscountRequest:
     properties:
       applicable_categories:
@@ -152,9 +316,10 @@ definitions:
         type: string
       applicable_warehouses:
         type: string
+      buy_quantity:
+        description: Buy X Get Y specific fields
+        type: integer
       code:
-        type: string
-      customer_groups:
         type: string
       description:
         type: string
@@ -164,6 +329,12 @@ definitions:
         type: string
       excluded_products:
         type: string
+      get_discount_type:
+        type: string
+      get_discount_value:
+        type: number
+      get_quantity:
+        type: integer
       is_active:
         type: boolean
       is_stackable:
@@ -182,8 +353,6 @@ definitions:
         type: string
       usage_limit:
         type: integer
-      usage_per_customer:
-        type: integer
       valid_from:
         type: string
       valid_until:
@@ -196,25 +365,91 @@ definitions:
     - name
     - valid_from
     - valid_until
-    - value
+    type: object
+  models.CreateGRNItemRequest:
+    properties:
+      accepted_quantity:
+        minimum: 0
+        type: integer
+      batch_number:
+        type: string
+      expiry_date:
+        description: 'Format: YYYY-MM-DD'
+        type: string
+      po_item_id:
+        type: string
+      received_quantity:
+        type: integer
+      rejected_quantity:
+        minimum: 0
+        type: integer
+    required:
+    - accepted_quantity
+    - expiry_date
+    - po_item_id
+    - received_quantity
+    type: object
+  models.CreateGRNRequest:
+    properties:
+      grn_number:
+        description: User-provided from vendor PDF
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/models.CreateGRNItemRequest'
+        minItems: 1
+        type: array
+      po_id:
+        type: string
+      quality_status:
+        description: accepted, rejected, partial
+        type: string
+      received_by:
+        type: string
+      received_date:
+        description: Optional, defaults to now
+        type: string
+      remarks:
+        type: string
+    required:
+    - grn_number
+    - items
+    - po_id
+    - quality_status
+    - received_by
     type: object
   models.CreateInventoryBatchRequest:
     properties:
+      cgst_rate:
+        description: Tax Configuration
+        maximum: 100
+        minimum: 0
+        type: number
       cost_price:
         type: number
+      custom_tax_ids:
+        items:
+          type: string
+        type: array
       expiry_date:
         type: string
-      product_id:
-        type: string
+      is_tax_exempt:
+        type: boolean
       quantity:
         type: integer
+      sgst_rate:
+        maximum: 100
+        minimum: 0
+        type: number
+      variant_id:
+        type: string
       warehouse_id:
         type: string
     required:
     - cost_price
     - expiry_date
-    - product_id
     - quantity
+    - variant_id
     - warehouse_id
     type: object
   models.CreateInventoryTransactionRequest:
@@ -245,12 +480,12 @@ definitions:
         type: number
       price_type:
         type: string
-      product_id:
+      variant_id:
         type: string
     required:
     - price
     - price_type
-    - product_id
+    - variant_id
     type: object
   models.CreateProductRequest:
     properties:
@@ -258,11 +493,85 @@ definitions:
         type: string
       name:
         type: string
-      sku:
-        type: string
     required:
     - name
-    - sku
+    type: object
+  models.CreateProductVariantRequest:
+    properties:
+      barcode:
+        type: string
+      brand_name:
+        description: Required if collaborator_id provided
+        type: string
+      collaborator_id:
+        description: 'Optional: for collaborator-specific variants'
+        type: string
+      description:
+        type: string
+      dosage_instructions:
+        type: string
+      gst_rate:
+        description: Required if collaborator_id provided
+        maximum: 100
+        minimum: 0
+        type: number
+      hsn_code:
+        description: Required if collaborator_id provided
+        type: string
+      images:
+        items:
+          type: string
+        type: array
+      pack_size:
+        type: string
+      quantity:
+        type: string
+      sku:
+        type: string
+      usage_details:
+        type: string
+      variant_name:
+        type: string
+    required:
+    - pack_size
+    - quantity
+    - variant_name
+    type: object
+  models.CreatePurchaseOrderItemRequest:
+    properties:
+      quantity:
+        type: integer
+      unit_price:
+        description: ALL-IN price
+        type: number
+      variant_id:
+        type: string
+    required:
+    - quantity
+    - unit_price
+    - variant_id
+    type: object
+  models.CreatePurchaseOrderRequest:
+    properties:
+      collaborator_id:
+        type: string
+      expected_delivery_date:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/models.CreatePurchaseOrderItemRequest'
+        minItems: 1
+        type: array
+      order_date:
+        description: Optional, defaults to now
+        type: string
+      warehouse_id:
+        type: string
+    required:
+    - collaborator_id
+    - expected_delivery_date
+    - items
+    - warehouse_id
     type: object
   models.CreateRefundPolicyRequest:
     properties:
@@ -307,46 +616,50 @@ definitions:
     type: object
   models.CreateSaleItemRequest:
     properties:
-      product_id:
-        type: string
       quantity:
         type: integer
+      variant_id:
+        description: Changed from product_id to variant_id
+        type: string
     required:
-    - product_id
     - quantity
+    - variant_id
     type: object
   models.CreateSaleRequest:
     properties:
-      customer_gstin:
-        description: Customer's GSTIN for tax calculation
-        type: string
-      customer_id:
-        type: string
-      customer_pan:
-        description: Customer's PAN for tax calculation
-        type: string
-      customer_state:
-        description: Customer's state for tax calculation
+      apply_taxes:
+        description: 'Controls tax calculation (default: false)'
+        type: boolean
+      auto_apply_discounts:
+        description: 'Enable automatic discount discovery (default: true)'
+        type: boolean
+      coupon_code:
+        description: Manual discount by code (second priority)
         type: string
       discount_id:
-        description: Optional discount to apply
+        description: Manual discount by ID (highest priority)
         type: string
-      is_inter_state:
-        description: Whether it's an inter-state transaction
-        type: boolean
+      farmer_id:
+        description: BRD Requirements
+        type: string
       items:
         items:
           $ref: '#/definitions/models.CreateSaleItemRequest'
         type: array
+      payment_mode:
+        description: cash, upi, online
+        type: string
       sale_date:
+        type: string
+      sale_type:
+        description: in_store, delivery
         type: string
       warehouse_id:
         type: string
-      warehouse_state:
-        description: Warehouse's state for tax calculation
-        type: string
     required:
     - items
+    - payment_mode
+    - sale_type
     - warehouse_id
     type: object
   models.CreateTaxRequest:
@@ -458,6 +771,48 @@ definitions:
     required:
     - name
     type: object
+  models.DeliveryItemRequest:
+    properties:
+      accept:
+        description: 'Pattern 2: Simple Accept/Reject (for yes/no buttons)'
+        type: boolean
+      accepted_quantity:
+        description: Quantity accepted after inspection
+        type: integer
+      batch_number:
+        description: Optional vendor batch number
+        type: string
+      expiry_date:
+        description: Common fields (required for accepted items)
+        type: string
+      po_item_id:
+        type: string
+      received_quantity:
+        description: 'Pattern 3: Detailed Quantities (for partial acceptances)'
+        type: integer
+      rejection_reason:
+        description: Optional reason for rejection
+        type: string
+    required:
+    - expiry_date
+    - po_item_id
+    type: object
+  models.DiscountApplication:
+    properties:
+      amount:
+        type: number
+      applied_by:
+        description: '"manual", "coupon", "auto"'
+        type: string
+      discount_code:
+        type: string
+      discount_id:
+        type: string
+      discount_name:
+        type: string
+      discount_type:
+        type: string
+    type: object
   models.DiscountResponse:
     properties:
       applicable_categories:
@@ -466,14 +821,15 @@ definitions:
         type: string
       applicable_warehouses:
         type: string
+      buy_quantity:
+        description: Buy X Get Y specific fields
+        type: integer
       code:
         type: string
       created_at:
         type: string
       current_usage:
         type: integer
-      customer_groups:
-        type: string
       description:
         type: string
       discount_type:
@@ -482,6 +838,12 @@ definitions:
         type: string
       excluded_products:
         type: string
+      get_discount_type:
+        type: string
+      get_discount_value:
+        type: number
+      get_quantity:
+        type: integer
       id:
         type: string
       is_active:
@@ -507,8 +869,6 @@ definitions:
         type: string
       usage_limit:
         type: integer
-      usage_per_customer:
-        type: integer
       valid_from:
         type: string
       valid_until:
@@ -521,11 +881,8 @@ definitions:
     - flat
     - percentage
     - buy_x_get_y
-    - first_order
-    - loyalty
     - seasonal
     - bulk
-    - referral
     type: string
     x-enum-comments:
       DiscountTypeFlat: Fixed amount discount
@@ -536,25 +893,17 @@ definitions:
     - ""
     - ""
     - ""
-    - ""
-    - ""
-    - ""
     x-enum-varnames:
     - DiscountTypeFlat
     - DiscountTypePercentage
     - DiscountTypeBuyXGetY
-    - DiscountTypeFirstOrder
-    - DiscountTypeLoyalty
     - DiscountTypeSeasonal
     - DiscountTypeBulk
-    - DiscountTypeReferral
   models.DiscountUsageResponse:
     properties:
       amount:
         type: number
       created_at:
-        type: string
-      customer_id:
         type: string
       discount_id:
         type: string
@@ -586,21 +935,97 @@ definitions:
       value:
         type: number
     type: object
-  models.InventoryBatchResponse:
+  models.GRNItemResponse:
     properties:
-      cost_price:
-        type: number
+      accepted_quantity:
+        type: integer
+      batch_number:
+        type: string
       created_at:
         type: string
       expiry_date:
         type: string
+      grn_id:
+        type: string
       id:
         type: string
-      product_id:
+      inventory_batch_id:
         type: string
+      ordered_quantity:
+        type: integer
+      po_item_id:
+        type: string
+      product_name:
+        type: string
+      product_sku:
+        type: string
+      received_quantity:
+        type: integer
+      rejected_quantity:
+        type: integer
+      variant_id:
+        type: string
+    type: object
+  models.GRNResponse:
+    properties:
+      created_at:
+        type: string
+      grn_document:
+        description: Attachment ID for vendor's GRN PDF
+        type: string
+      grn_number:
+        type: string
+      id:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/models.GRNItemResponse'
+        type: array
+      po_id:
+        type: string
+      po_number:
+        type: string
+      quality_status:
+        type: string
+      received_by:
+        type: string
+      received_date:
+        type: string
+      remarks:
+        type: string
+      updated_at:
+        type: string
+      warehouse_id:
+        type: string
+      warehouse_name:
+        type: string
+    type: object
+  models.InventoryBatchResponse:
+    properties:
+      cgst_rate:
+        description: Tax Configuration
+        type: number
+      cost_price:
+        type: number
+      created_at:
+        type: string
+      custom_tax_ids:
+        items:
+          type: string
+        type: array
+      expiry_date:
+        type: string
+      id:
+        type: string
+      is_tax_exempt:
+        type: boolean
+      sgst_rate:
+        type: number
       total_quantity:
         type: integer
       updated_at:
+        type: string
+      variant_id:
         type: string
       warehouse_id:
         type: string
@@ -641,25 +1066,36 @@ definitions:
         allOf:
         - $ref: '#/definitions/models.AddressInfo'
         description: Embedded address info from AAA
+      cgst_rate:
+        description: Tax Configuration
+        type: number
       cost_price:
         type: number
       created_at:
         type: string
+      custom_tax_ids:
+        items:
+          type: string
+        type: array
       expiry_date:
         type: string
       id:
         type: string
+      is_tax_exempt:
+        type: boolean
       product_description:
-        type: string
-      product_id:
         type: string
       product_name:
         type: string
       product_sku:
         type: string
+      sgst_rate:
+        type: number
       total_quantity:
         type: integer
       updated_at:
+        type: string
+      variant_id:
         type: string
       warehouse_id:
         type: string
@@ -684,9 +1120,9 @@ definitions:
         type: number
       price_type:
         type: string
-      product_id:
-        type: string
       updated_at:
+        type: string
+      variant_id:
         type: string
     type: object
   models.ProductResponse:
@@ -699,9 +1135,58 @@ definitions:
         type: string
       name:
         type: string
+      updated_at:
+        type: string
+    type: object
+  models.ProductSummary:
+    properties:
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  models.ProductVariantResponse:
+    properties:
+      barcode:
+        type: string
+      brand_name:
+        type: string
+      collaborator_id:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      dosage_instructions:
+        type: string
+      gst_rate:
+        type: number
+      hsn_code:
+        type: string
+      id:
+        type: string
+      images:
+        description: Parsed from JSON
+        items:
+          type: string
+        type: array
+      is_active:
+        type: boolean
+      pack_size:
+        type: string
+      product_id:
+        type: string
+      quantity:
+        type: string
       sku:
         type: string
       updated_at:
+        type: string
+      usage_details:
+        type: string
+      variant_name:
         type: string
     type: object
   models.ProductWithPricesResponse:
@@ -718,9 +1203,67 @@ definitions:
         items:
           $ref: '#/definitions/models.ProductPriceResponse'
         type: array
-      sku:
-        type: string
       updated_at:
+        type: string
+    type: object
+  models.PurchaseOrderItemResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      line_total:
+        type: number
+      po_id:
+        type: string
+      product_name:
+        type: string
+      product_sku:
+        type: string
+      quantity:
+        type: integer
+      received_quantity:
+        type: integer
+      unit_price:
+        type: number
+      variant_id:
+        type: string
+    type: object
+  models.PurchaseOrderResponse:
+    properties:
+      actual_delivery_date:
+        type: string
+      collaborator_id:
+        type: string
+      collaborator_name:
+        type: string
+      created_at:
+        type: string
+      expected_delivery_date:
+        type: string
+      id:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/models.PurchaseOrderItemResponse'
+        type: array
+      order_date:
+        type: string
+      paid_amount:
+        type: number
+      payment_status:
+        type: string
+      po_number:
+        type: string
+      status:
+        type: string
+      total_amount:
+        type: number
+      updated_at:
+        type: string
+      warehouse_id:
+        type: string
+      warehouse_name:
         type: string
     type: object
   models.RefundPolicyResponse:
@@ -776,15 +1319,53 @@ definitions:
       updated_at:
         type: string
     type: object
+  models.SaleBreakdown:
+    properties:
+      applied_discounts:
+        description: All discounts applied
+        items:
+          $ref: '#/definitions/models.DiscountApplication'
+        type: array
+      base_amount:
+        description: Total before discounts and taxes
+        type: number
+      discount_amount:
+        description: Total discount amount
+        type: number
+      final_amount:
+        description: Final amount after discounts and taxes
+        type: number
+      tax_amount:
+        description: Total tax amount
+        type: number
+      tax_breakdown:
+        allOf:
+        - $ref: '#/definitions/models.TaxSummaryBreakdown'
+        description: Tax details
+      total_savings:
+        description: Total discount savings
+        type: number
+    type: object
   models.SaleItemResponse:
     properties:
       batch_id:
         type: string
+      cgst_amount:
+        description: Tax amounts
+        type: number
+      cost_price:
+        description: BRD Requirements - Cost and Margin
+        type: number
       created_at:
         type: string
+      custom_tax_amount:
+        type: number
       id:
         type: string
       line_total:
+        type: number
+      margin:
+        description: Profit margin
         type: number
       quantity:
         type: integer
@@ -792,12 +1373,23 @@ definitions:
         type: string
       selling_price:
         type: number
+      sgst_amount:
+        type: number
+      total_tax_amount:
+        type: number
     type: object
   models.SaleResponse:
     properties:
+      apply_taxes:
+        type: boolean
+      breakdown:
+        allOf:
+        - $ref: '#/definitions/models.SaleBreakdown'
+        description: Detailed breakdown of amounts
       created_at:
         type: string
-      customer_id:
+      farmer_id:
+        description: BRD Requirements
         type: string
       id:
         type: string
@@ -805,7 +1397,11 @@ definitions:
         items:
           $ref: '#/definitions/models.SaleItemResponse'
         type: array
+      payment_mode:
+        type: string
       sale_date:
+        type: string
+      sale_type:
         type: string
       status:
         type: string
@@ -906,10 +1502,12 @@ definitions:
       customer_gstin:
         type: string
       customer_id:
+        description: Optional - not required when no customer management
         type: string
       customer_pan:
         type: string
       customer_state:
+        description: Optional - not required when no customer management
         type: string
       is_inter_state:
         type: boolean
@@ -923,8 +1521,6 @@ definitions:
       warehouse_state:
         type: string
     required:
-    - customer_id
-    - customer_state
     - items
     - warehouse_id
     - warehouse_state
@@ -1063,6 +1659,21 @@ definitions:
       valid_until:
         type: string
     type: object
+  models.TaxSummaryBreakdown:
+    properties:
+      cgst_amount:
+        type: number
+      igst_amount:
+        type: number
+      other_tax_amount:
+        type: number
+      sgst_amount:
+        type: number
+      total_tax_amount:
+        type: number
+      vat_amount:
+        type: number
+    type: object
   models.TaxSummaryResponse:
     properties:
       created_at:
@@ -1165,26 +1776,83 @@ definitions:
     type: object
   models.UpdateAddressRequest:
     properties:
-      address_line_1:
-        type: string
-      address_line_2:
-        type: string
-      city:
-        type: string
       country:
+        type: string
+      district:
+        type: string
+      house:
         type: string
       id:
         type: string
       is_primary:
         type: boolean
-      postal_code:
+      landmark:
+        type: string
+      pincode:
+        type: string
+      post_office:
         type: string
       state:
         type: string
+      street:
+        type: string
+      subdistrict:
+        type: string
       type:
+        type: string
+      vtc:
+        description: Village/Town/City
         type: string
     required:
     - id
+    type: object
+  models.UpdateCollaboratorProductRequest:
+    properties:
+      brand_name:
+        type: string
+      dosage_instructions:
+        type: string
+      gst_rate:
+        type: number
+      hsn_code:
+        type: string
+      images:
+        items:
+          type: string
+        type: array
+      is_active:
+        type: boolean
+      usage_details:
+        type: string
+    type: object
+  models.UpdateCollaboratorRequest:
+    properties:
+      address:
+        $ref: '#/definitions/models.UpdateAddressRequest'
+      bank_account_no:
+        type: string
+      bank_ifsc:
+        type: string
+      bank_name:
+        type: string
+      company_name:
+        type: string
+      contact_number:
+        type: string
+      contact_person:
+        type: string
+      email:
+        type: string
+      experience:
+        type: string
+      gst_number:
+        type: string
+      is_active:
+        type: boolean
+      logo:
+        type: string
+      pan_number:
+        type: string
     type: object
   models.UpdateDiscountRequest:
     properties:
@@ -1193,8 +1861,6 @@ definitions:
       applicable_products:
         type: string
       applicable_warehouses:
-        type: string
-      customer_groups:
         type: string
       description:
         type: string
@@ -1220,14 +1886,56 @@ definitions:
         type: string
       usage_limit:
         type: integer
-      usage_per_customer:
-        type: integer
       valid_from:
         type: string
       valid_until:
         type: string
       value:
         type: number
+    type: object
+  models.UpdateGRNRequest:
+    properties:
+      grn_document:
+        description: Attachment ID for vendor's GRN PDF
+        type: string
+      quality_status:
+        description: accepted, rejected, partial
+        type: string
+      remarks:
+        type: string
+    type: object
+  models.UpdatePOPaymentRequest:
+    properties:
+      paid_amount:
+        type: number
+      payment_status:
+        description: unpaid, partial, paid
+        type: string
+    required:
+    - paid_amount
+    - payment_status
+    type: object
+  models.UpdatePOStatusRequest:
+    properties:
+      accept_all:
+        description: 'Pattern 1: Accept All (simplest - for quick processing)'
+        type: boolean
+      actual_delivery_date:
+        description: Set when status = delivered
+        type: string
+      default_expiry_date:
+        description: Applied to all items when accept_all is true
+        type: string
+      items:
+        description: 'Pattern 2 & 3: Per-item details'
+        items:
+          $ref: '#/definitions/models.DeliveryItemRequest'
+        type: array
+      status:
+        description: placed, confirmed, out_for_delivery, delivered, paid
+        type: string
+    required:
+    - status
     type: object
   models.UpdateProductPriceRequest:
     properties:
@@ -1249,6 +1957,37 @@ definitions:
       description:
         type: string
       name:
+        type: string
+    type: object
+  models.UpdateProductVariantRequest:
+    properties:
+      barcode:
+        type: string
+      brand_name:
+        type: string
+      description:
+        type: string
+      dosage_instructions:
+        type: string
+      gst_rate:
+        type: number
+      hsn_code:
+        type: string
+      images:
+        items:
+          type: string
+        type: array
+      is_active:
+        type: boolean
+      pack_size:
+        type: string
+      quantity:
+        type: string
+      sku:
+        type: string
+      usage_details:
+        type: string
+      variant_name:
         type: string
     type: object
   models.UpdateRefundPolicyRequest:
@@ -1378,8 +2117,10 @@ definitions:
     type: object
   models.ValidateDiscountRequest:
     properties:
-      customer_id:
-        type: string
+      category_ids:
+        items:
+          type: string
+        type: array
       discount_code:
         type: string
       order_value:
@@ -1440,9 +2181,9 @@ definitions:
 host: localhost:3000
 info:
   contact:
-    email: support@kisanlink.com
+    email: info@kisanlink.in
     name: Kisanlink Support
-    url: http://www.kisanlink.com/support
+    url: https://github.com/Kisanlink/fpo-erp
   description: Comprehensive ERP system for agricultural cooperatives with multi-tenant
     architecture
   license:
@@ -1456,15 +2197,15 @@ paths:
     get:
       description: Retrieve attachments with optional filters and pagination
       parameters:
-      - description: Filter by Sale ID
-        example: SALE_12345678
+      - description: Filter by entity type (logo, po, grn, etc.)
+        example: logo
         in: query
-        name: sale_id
+        name: entity_type
         type: string
-      - description: Filter by Return ID
-        example: RET_12345678
+      - description: Filter by entity ID
+        example: CLAB_12345678
         in: query
-        name: return_id
+        name: entity_id
         type: string
       - description: 'Number of records to return (default: 10, max: 100)'
         example: 10
@@ -1510,22 +2251,25 @@ paths:
     post:
       consumes:
       - multipart/form-data
-      description: Upload a file attachment for sales or returns (requires authentication)
+      description: Upload a file attachment for any entity (logo, PO, GRN, etc.) (requires
+        authentication)
       parameters:
       - description: File to upload
         in: formData
         name: file
         required: true
         type: file
-      - description: Sale ID (optional)
-        example: SALE_12345678
+      - description: 'Entity type: logo, po, grn, etc.'
+        example: logo
         in: formData
-        name: sale_id
+        name: entity_type
+        required: true
         type: string
-      - description: Return ID (optional)
-        example: RET_12345678
+      - description: Entity ID (e.g., CLAB_xxx, PO_xxx, GRN_xxx)
+        example: CLAB_12345678
         in: formData
-        name: return_id
+        name: entity_id
+        required: true
         type: string
       produces:
       - application/json
@@ -1754,21 +2498,28 @@ paths:
       summary: Generate Download URL
       tags:
       - Attachments
-  /api/v1/attachments/return/{return_id}:
+  /api/v1/attachments/entity/{entity_type}/{entity_id}:
     get:
-      description: Retrieve all attachments associated with a specific return
+      description: Retrieve all attachments associated with a specific entity (logo,
+        PO, GRN, etc.)
       parameters:
-      - description: Return ID
-        example: RET_12345678
+      - description: Entity type (logo, po, grn, etc.)
+        example: logo
         in: path
-        name: return_id
+        name: entity_type
+        required: true
+        type: string
+      - description: Entity ID (CLAB_xxx, PO_xxx, GRN_xxx, etc.)
+        example: CLAB_12345678
+        in: path
+        name: entity_id
         required: true
         type: string
       produces:
       - application/json
       responses:
         "200":
-          description: Return attachments retrieved successfully
+          description: Entity attachments retrieved successfully
           schema:
             allOf:
             - $ref: '#/definitions/utils.Response'
@@ -1792,48 +2543,7 @@ paths:
             $ref: '#/definitions/utils.ErrorResponseModel'
       security:
       - BearerAuth: []
-      summary: Get Attachments by Return
-      tags:
-      - Attachments
-  /api/v1/attachments/sale/{sale_id}:
-    get:
-      description: Retrieve all attachments associated with a specific sale
-      parameters:
-      - description: Sale ID
-        example: SALE_12345678
-        in: path
-        name: sale_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Sale attachments retrieved successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.Response'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/models.AttachmentResponse'
-                  type: array
-              type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Get Attachments by Sale
+      summary: Get Attachments by Entity
       tags:
       - Attachments
   /api/v1/bank-payments:
@@ -2289,6 +2999,564 @@ paths:
       summary: Get Low Stock Batches
       tags:
       - Inventory
+  /api/v1/collaborator-products/{id}:
+    delete:
+      description: Delete collaborator-product association by ID (soft delete, requires
+        authentication)
+      parameters:
+      - description: 'Collaborator Product ID (format: CPRD_xxxxxxxx)'
+        example: CPRD_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Association deleted successfully
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Association not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Delete Collaborator Product
+      tags:
+      - Collaborator Products
+    get:
+      description: Retrieve a specific collaborator-product association
+      parameters:
+      - description: 'Collaborator Product ID (format: CPRD_xxxxxxxx)'
+        example: CPRD_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Association retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.CollaboratorProductResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Association not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: Get Collaborator Product
+      tags:
+      - Collaborator Products
+    put:
+      consumes:
+      - application/json
+      description: Update collaborator-product metadata (requires authentication)
+      parameters:
+      - description: 'Collaborator Product ID (format: CPRD_xxxxxxxx)'
+        example: CPRD_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated metadata
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateCollaboratorProductRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Association updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.CollaboratorProductResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Association not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Update Collaborator Product
+      tags:
+      - Collaborator Products
+  /api/v1/collaborators:
+    get:
+      description: Retrieve all collaborators (requires authentication)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Collaborators retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.CollaboratorResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get All Collaborators
+      tags:
+      - Collaborators
+    post:
+      consumes:
+      - application/json
+      description: Create a new collaborator/vendor (requires authentication)
+      parameters:
+      - description: Collaborator data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateCollaboratorRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Collaborator created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.CollaboratorResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Create Collaborator
+      tags:
+      - Collaborators
+  /api/v1/collaborators/{id}:
+    delete:
+      description: Delete a collaborator (soft delete, requires authentication)
+      parameters:
+      - description: 'Collaborator ID (format: CLAB_xxxxxxxx)'
+        example: CLAB_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Collaborator deleted successfully
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Collaborator not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Delete Collaborator
+      tags:
+      - Collaborators
+    get:
+      description: Retrieve a specific collaborator by ID
+      parameters:
+      - description: 'Collaborator ID (format: CLAB_xxxxxxxx)'
+        example: CLAB_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Collaborator details
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.CollaboratorResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Collaborator not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: Get Collaborator
+      tags:
+      - Collaborators
+    put:
+      consumes:
+      - application/json
+      description: Update an existing collaborator (requires authentication)
+      parameters:
+      - description: 'Collaborator ID (format: CLAB_xxxxxxxx)'
+        example: CLAB_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated collaborator data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateCollaboratorRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Collaborator updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.CollaboratorResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Collaborator not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Update Collaborator
+      tags:
+      - Collaborators
+  /api/v1/collaborators/{id}/products:
+    get:
+      description: Retrieve all products for a specific collaborator
+      parameters:
+      - description: 'Collaborator ID (format: CLAB_xxxxxxxx)'
+        example: CLAB_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Products retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.CollaboratorProductResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Collaborator not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: Get Products by Collaborator
+      tags:
+      - Collaborator Products
+    post:
+      consumes:
+      - application/json
+      description: Associate a product with a collaborator (requires authentication)
+      parameters:
+      - description: 'Collaborator ID (format: CLAB_xxxxxxxx)'
+        example: CLAB_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Product association data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateCollaboratorProductRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Product added successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.CollaboratorProductResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Add Product to Collaborator
+      tags:
+      - Collaborator Products
+  /api/v1/collaborators/{id}/products/{product_id}:
+    delete:
+      description: Remove product association from collaborator (soft delete, requires
+        authentication)
+      parameters:
+      - description: 'Collaborator ID (format: CLAB_xxxxxxxx)'
+        example: CLAB_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 'Product ID (format: PROD_xxxxxxxx)'
+        example: PROD_12345678
+        in: path
+        name: product_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product removed successfully
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Association not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Remove Product from Collaborator
+      tags:
+      - Collaborator Products
+  /api/v1/collaborators/{id}/purchase-orders:
+    get:
+      description: Retrieve all purchase orders for a specific collaborator
+      parameters:
+      - description: 'Collaborator ID (format: CLAB_xxxxxxxx)'
+        example: CLAB_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Purchase orders retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.PurchaseOrderResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Collaborator not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: Get Purchase Orders by Collaborator
+      tags:
+      - Purchase Orders
+  /api/v1/collaborators/active:
+    get:
+      description: Retrieve all active collaborators (requires authentication)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Active collaborators retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.CollaboratorResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Active Collaborators
+      tags:
+      - Collaborators
+  /api/v1/collaborators/search:
+    get:
+      description: Search collaborators by company name (requires authentication)
+      parameters:
+      - description: Search query
+        in: query
+        name: q
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Search results
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.CollaboratorResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Search Collaborators
+      tags:
+      - Collaborators
   /api/v1/discounts:
     get:
       description: Retrieve all discounts with pagination
@@ -2530,6 +3798,106 @@ paths:
       summary: Get Active Discounts
       tags:
       - Discounts
+  /api/v1/discounts/applicable:
+    get:
+      description: Retrieve all discounts applicable for an order with given criteria
+      parameters:
+      - description: Order value
+        example: 1000
+        in: query
+        name: order_value
+        required: true
+        type: number
+      - description: Comma-separated product IDs
+        example: '"PROD_1,PROD_2"'
+        in: query
+        name: product_ids
+        type: string
+      - description: Comma-separated category IDs
+        example: '"CAT_1,CAT_2"'
+        in: query
+        name: category_ids
+        type: string
+      - description: Warehouse ID
+        example: '"WH_123"'
+        in: query
+        name: warehouse_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Applicable discounts retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.DiscountResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Applicable Discounts
+      tags:
+      - Discounts
+  /api/v1/discounts/calculate-optimal:
+    post:
+      consumes:
+      - application/json
+      description: Calculate the optimal combination of discounts for an order
+      parameters:
+      - description: Order details for optimization
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ValidateDiscountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Optimal discounts calculated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.DiscountResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Calculate Optimal Discounts
+      tags:
+      - Discounts
   /api/v1/discounts/status/{status}:
     get:
       description: Retrieve all discounts with a specific status
@@ -2653,6 +4021,50 @@ paths:
       summary: Get Discount Usage by Sale
       tags:
       - Discounts
+  /api/v1/discounts/usage/stats/{discountID}:
+    get:
+      description: Retrieve usage statistics for a specific discount
+      parameters:
+      - description: Discount ID
+        example: DISC_12345678
+        in: path
+        name: discountID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Discount usage statistics retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  additionalProperties: true
+                  type: object
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Discount not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Discount Usage Statistics
+      tags:
+      - Discounts
   /api/v1/discounts/validate:
     post:
       consumes:
@@ -2694,6 +4106,161 @@ paths:
       summary: Validate Discount
       tags:
       - Discounts
+  /api/v1/grns:
+    get:
+      description: Retrieve all GRNs (requires authentication)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: GRNs retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.GRNResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get All Goods Receipt Notes
+      tags:
+      - GRNs
+    post:
+      consumes:
+      - application/json
+      description: Create a new goods receipt note and inventory batches (requires
+        authentication)
+      parameters:
+      - description: GRN data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateGRNRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: GRN created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.GRNResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Create Goods Receipt Note
+      tags:
+      - GRNs
+  /api/v1/grns/{id}:
+    get:
+      description: Retrieve a specific GRN by ID
+      parameters:
+      - description: 'GRN ID (format: GRNX_xxxxxxxx)'
+        example: GRNX_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: GRN details
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.GRNResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: GRN not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: Get Goods Receipt Note
+      tags:
+      - GRNs
+    put:
+      consumes:
+      - application/json
+      description: Update GRN details (attach PDF, update remarks, quality status)
+        (requires authentication)
+      parameters:
+      - description: 'GRN ID (format: GRNX_xxxxxxxx)'
+        example: GRNX_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateGRNRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: GRN updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.GRNResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: GRN not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Update Goods Receipt Note
+      tags:
+      - GRNs
   /api/v1/prices:
     post:
       consumes:
@@ -3087,11 +4654,11 @@ paths:
       summary: Update Product
       tags:
       - Products
-  /api/v1/products/{id}/batches:
+  /api/v1/products/{id}/collaborators:
     get:
-      description: Retrieve all inventory batches for a specific product
+      description: Retrieve all collaborators for a specific product
       parameters:
-      - description: Product ID
+      - description: 'Product ID (format: PROD_xxxxxxxx)'
         example: PROD_12345678
         in: path
         name: id
@@ -3101,120 +4668,31 @@ paths:
       - application/json
       responses:
         "200":
-          description: Batches retrieved successfully
+          description: Collaborators retrieved successfully
           schema:
             allOf:
             - $ref: '#/definitions/utils.Response'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/models.InventoryBatchResponse'
+                    $ref: '#/definitions/models.CollaboratorProductResponse'
                   type: array
               type: object
         "400":
           description: Bad request
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
+        "404":
+          description: Product not found
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Get Batches by Product
+      summary: Get Collaborators by Product
       tags:
-      - Inventory
-  /api/v1/products/{id}/prices:
-    get:
-      description: Retrieve all prices for a specific product
-      parameters:
-      - description: Product ID
-        example: PROD_12345678
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Product prices retrieved successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.Response'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/models.ProductPriceResponse'
-                  type: array
-              type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Get Product Prices
-      tags:
-      - Product Prices
-    post:
-      consumes:
-      - application/json
-      description: Create a new price for a specific product
-      parameters:
-      - description: Product ID
-        example: PROD_12345678
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Product price data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/models.CreateProductPriceRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Product price created successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/models.ProductPriceResponse'
-              type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Create Product Price for Product
-      tags:
-      - Product Prices
+      - Collaborator Products
   /api/v1/products/{id}/prices/current:
     get:
       description: Retrieve the current active price for a specific product
@@ -3259,6 +4737,91 @@ paths:
       summary: Get Current Product Price
       tags:
       - Product Prices
+  /api/v1/products/{id}/variants:
+    get:
+      description: Retrieve all variants for a specific product
+      parameters:
+      - description: 'Product ID (format: PROD_xxxxxxxx)'
+        example: PROD_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Variants retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.ProductVariantResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Product not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: Get Variants by Product
+      tags:
+      - Product Variants
+    post:
+      consumes:
+      - application/json
+      description: Create a new variant for a product (requires authentication)
+      parameters:
+      - description: 'Product ID (format: PROD_xxxxxxxx)'
+        example: PROD_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Variant data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateProductVariantRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Variant created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ProductVariantResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Create Product Variant
+      tags:
+      - Product Variants
   /api/v1/products/{id}/with-prices:
     get:
       description: Retrieve a product with all associated pricing information
@@ -3368,34 +4931,25 @@ paths:
       summary: Search Products
       tags:
       - Products
-  /api/v1/products/sku/{sku}:
+  /api/v1/purchase-orders:
     get:
-      description: Retrieve a specific product by SKU
-      parameters:
-      - description: Product SKU
-        example: SKU123
-        in: path
-        name: sku
-        required: true
-        type: string
+      description: Retrieve all purchase orders (requires authentication)
       produces:
       - application/json
       responses:
         "200":
-          description: Product retrieved successfully
+          description: Purchase orders retrieved successfully
           schema:
             allOf:
             - $ref: '#/definitions/utils.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/models.ProductResponse'
+                  items:
+                    $ref: '#/definitions/models.PurchaseOrderResponse'
+                  type: array
               type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "404":
-          description: Product not found
+        "401":
+          description: Unauthorized
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "500":
@@ -3404,9 +4958,289 @@ paths:
             $ref: '#/definitions/utils.ErrorResponseModel'
       security:
       - BearerAuth: []
-      summary: Get Product by SKU
+      summary: Get All Purchase Orders
       tags:
-      - Products
+      - Purchase Orders
+    post:
+      consumes:
+      - application/json
+      description: Create a new purchase order (requires authentication)
+      parameters:
+      - description: Purchase order data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreatePurchaseOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Purchase order created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.PurchaseOrderResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Create Purchase Order
+      tags:
+      - Purchase Orders
+  /api/v1/purchase-orders/{id}:
+    get:
+      description: Retrieve a specific purchase order by ID
+      parameters:
+      - description: 'Purchase Order ID (format: PORD_xxxxxxxx)'
+        example: PORD_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Purchase order details
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.PurchaseOrderResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Purchase order not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: Get Purchase Order
+      tags:
+      - Purchase Orders
+  /api/v1/purchase-orders/{id}/grn:
+    get:
+      description: Retrieve GRN for a specific purchase order
+      parameters:
+      - description: 'Purchase Order ID (format: PORD_xxxxxxxx)'
+        example: PORD_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: GRN retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.GRNResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: GRN not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: Get GRN by Purchase Order
+      tags:
+      - GRNs
+  /api/v1/purchase-orders/{id}/payment:
+    patch:
+      consumes:
+      - application/json
+      description: Update the payment status of a purchase order (requires authentication)
+      parameters:
+      - description: 'Purchase Order ID (format: PORD_xxxxxxxx)'
+        example: PORD_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Payment update data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdatePOPaymentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Payment status updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.PurchaseOrderResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Purchase order not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Update Payment Status
+      tags:
+      - Purchase Orders
+  /api/v1/purchase-orders/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Update the status of a purchase order (requires authentication)
+      parameters:
+      - description: 'Purchase Order ID (format: PORD_xxxxxxxx)'
+        example: PORD_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Status update data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdatePOStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Status updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.PurchaseOrderResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Purchase order not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Update Purchase Order Status
+      tags:
+      - Purchase Orders
+  /api/v1/purchase-orders/pending-deliveries:
+    get:
+      description: Retrieve all purchase orders with pending deliveries
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Pending deliveries retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.PurchaseOrderResponse'
+                  type: array
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: Get Pending Deliveries
+      tags:
+      - Purchase Orders
+  /api/v1/purchase-orders/status/{status}:
+    get:
+      description: Retrieve all purchase orders with a specific status
+      parameters:
+      - description: Status
+        enum:
+        - placed
+        - confirmed
+        - out_for_delivery
+        - delivered
+        - paid
+        in: path
+        name: status
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Purchase orders retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.PurchaseOrderResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: Get Purchase Orders by Status
+      tags:
+      - Purchase Orders
   /api/v1/refund-policies:
     get:
       description: Retrieve all refund policies with pagination
@@ -4457,47 +6291,6 @@ paths:
       summary: Update Sale Status
       tags:
       - Sales
-  /api/v1/sales/customer/{customerID}:
-    get:
-      description: Retrieve all sales for a specific customer
-      parameters:
-      - description: Customer ID
-        example: CUST_12345678
-        in: path
-        name: customerID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Sales retrieved successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.Response'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/models.SaleResponse'
-                  type: array
-              type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Get Sales by Customer
-      tags:
-      - Sales
   /api/v1/sales/date-range:
     get:
       description: Retrieve sales within a specific date range
@@ -5253,6 +7046,330 @@ paths:
       summary: Get Taxes by Type
       tags:
       - Taxes
+  /api/v1/variants/{id}:
+    delete:
+      description: Delete a product variant (soft delete, requires authentication)
+      parameters:
+      - description: 'Variant ID (format: PVAR_xxxxxxxx)'
+        example: PVAR_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Variant deleted successfully
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Variant not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Delete Product Variant
+      tags:
+      - Product Variants
+    get:
+      description: Retrieve a specific product variant by ID
+      parameters:
+      - description: 'Variant ID (format: PVAR_xxxxxxxx)'
+        example: PVAR_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Variant details
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ProductVariantResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Variant not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: Get Product Variant
+      tags:
+      - Product Variants
+    put:
+      consumes:
+      - application/json
+      description: Update an existing product variant (requires authentication)
+      parameters:
+      - description: 'Variant ID (format: PVAR_xxxxxxxx)'
+        example: PVAR_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated variant data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateProductVariantRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Variant updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ProductVariantResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Variant not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Update Product Variant
+      tags:
+      - Product Variants
+  /api/v1/variants/{id}/batches:
+    get:
+      description: Retrieve all inventory batches for a specific product variant
+      parameters:
+      - description: Variant ID
+        example: PVAR_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Batches retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.InventoryBatchResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Batches by Variant
+      tags:
+      - Inventory
+  /api/v1/variants/{id}/prices:
+    get:
+      description: Retrieve all prices for a specific product variant
+      parameters:
+      - description: Variant ID
+        example: PVAR_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Variant prices retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.ProductPriceResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Variant Prices
+      tags:
+      - Product Prices
+    post:
+      consumes:
+      - application/json
+      description: Create a new price for a specific product
+      parameters:
+      - description: Variant ID
+        example: PVAR_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Product price data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateProductPriceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Product price created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ProductPriceResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Create Product Price for Product
+      tags:
+      - Product Prices
+  /api/v1/variants/barcode/{barcode}:
+    get:
+      description: Retrieve a product variant by barcode
+      parameters:
+      - description: Variant Barcode
+        in: path
+        name: barcode
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Variant details
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ProductVariantResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Variant not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: Get Variant by Barcode
+      tags:
+      - Product Variants
+  /api/v1/variants/sku/{sku}:
+    get:
+      description: Retrieve a product variant by SKU
+      parameters:
+      - description: Variant SKU
+        in: path
+        name: sku
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Variant details
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ProductVariantResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Variant not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: Get Variant by SKU
+      tags:
+      - Product Variants
   /api/v1/warehouses:
     get:
       description: Retrieve all warehouses (requires authentication)
@@ -5488,6 +7605,45 @@ paths:
       summary: Get Batches by Warehouse
       tags:
       - Inventory
+  /api/v1/warehouses/{id}/grns:
+    get:
+      description: Retrieve all GRNs for a specific warehouse
+      parameters:
+      - description: 'Warehouse ID (format: WHSE_xxxxxxxx)'
+        example: WHSE_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: GRNs retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.GRNResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Warehouse not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: Get GRNs by Warehouse
+      tags:
+      - GRNs
   /api/v1/warehouses/search:
     get:
       description: Search warehouses by query string (requires authentication)

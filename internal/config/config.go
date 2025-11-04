@@ -21,8 +21,9 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	HTTPPort string `mapstructure:"http_port"`
-	Mode     string `mapstructure:"mode"`
+	HTTPPort  string `mapstructure:"http_port"`
+	Mode      string `mapstructure:"mode"`
+	PublicURL string `mapstructure:"public_url"`
 }
 
 type DatabaseConfig struct {
@@ -52,10 +53,12 @@ type CORSConfig struct {
 }
 
 type AAAConfig struct {
+	Enabled     bool   `mapstructure:"enabled"`         // Enable/disable AAA authentication (default: true)
 	JWTSecret   string `mapstructure:"jwt_secret"`
 	CacheTTL    int    `mapstructure:"cache_ttl"`
-	ServiceURL  string `mapstructure:"service_url"`
-	GRPCAddress string `mapstructure:"grpc_address"`
+	ServiceURL  string `mapstructure:"service_url"`     // Legacy: kept for backward compatibility
+	BaseURL     string `mapstructure:"base_url"`        // HTTP REST API base URL (e.g., http://localhost:8080)
+	GRPCAddress string `mapstructure:"grpc_address"`    // gRPC address for authorization (e.g., localhost:50051)
 	Timeout     int    `mapstructure:"timeout_seconds"`
 }
 
@@ -73,6 +76,16 @@ func (c *CORSConfig) GetAllowedHeaders() []string {
 		return []string{}
 	}
 	return strings.Split(c.AllowedHeaders, ",")
+}
+
+// getAAABaseURL returns the AAA HTTP base URL with fallback to ServiceURL for backward compatibility
+func getAAABaseURL() string {
+	baseURL := os.Getenv("AAA_BASE_URL")
+	if baseURL != "" {
+		return baseURL
+	}
+	// Fallback to AAA_SERVICE_URL for backward compatibility
+	return os.Getenv("AAA_SERVICE_URL")
 }
 
 func Load() *Config {
@@ -103,11 +116,23 @@ func Load() *Config {
 		aaaTimeout = 30
 	}
 
+	// Parse AAA_ENABLED (default: true)
+	aaaEnabled := true // Default to enabled for production safety
+	aaaEnabledStr := os.Getenv("AAA_ENABLED")
+	if aaaEnabledStr != "" {
+		aaaEnabled, err = strconv.ParseBool(aaaEnabledStr)
+		if err != nil {
+			utils.Info("Invalid AAA_ENABLED value, defaulting to true:", aaaEnabledStr)
+			aaaEnabled = true
+		}
+	}
+
 	// Load all environment variables using os.Getenv directly
 	config := &Config{
 		Server: ServerConfig{
-			HTTPPort: os.Getenv("SERVER_HTTP_PORT"),
-			Mode:     os.Getenv("SERVER_MODE"),
+			HTTPPort:  os.Getenv("SERVER_HTTP_PORT"),
+			Mode:      os.Getenv("SERVER_MODE"),
+			PublicURL: os.Getenv("SERVER_PUBLIC_URL"),
 		},
 		Database: DatabaseConfig{
 			Host:     os.Getenv("DB_POSTGRES_HOST"),
@@ -132,12 +157,19 @@ func Load() *Config {
 			AllowedHeaders: os.Getenv("CORS_ALLOWED_HEADERS"),
 		},
 		AAA: AAAConfig{
+			Enabled:     aaaEnabled,
 			JWTSecret:   os.Getenv("AAA_JWT_SECRET"),
 			CacheTTL:    aaaCacheTTL,
 			ServiceURL:  os.Getenv("AAA_SERVICE_URL"),
+			BaseURL:     getAAABaseURL(), // HTTP REST API base URL
 			GRPCAddress: os.Getenv("AAA_GRPC_ADDRESS"),
 			Timeout:     aaaTimeout,
 		},
+	}
+
+	// Log warning if AAA is disabled
+	if !aaaEnabled {
+		utils.Info("⚠️  WARNING: AAA authentication is DISABLED - For development/testing only!")
 	}
 
 	utils.Info("Configuration loaded successfully")
@@ -145,7 +177,10 @@ func Load() *Config {
 	utils.Info("Database Port:", config.Database.Port)
 	utils.Info("Database Name:", config.Database.Name)
 	utils.Info("Server Mode:", config.Server.Mode)
-	utils.Info("JWT Secret:", config.JWT.Secret)
+	// Never log secrets
+	if config.JWT.Secret == "" {
+		utils.Info("JWT secret not set")
+	}
 
 	return config
 }

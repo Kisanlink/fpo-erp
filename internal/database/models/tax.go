@@ -275,8 +275,8 @@ type UpdateTaxRequest struct {
 }
 
 type TaxCalculationRequest struct {
-	CustomerID     string               `json:"customer_id" binding:"required"`
-	CustomerState  string               `json:"customer_state" binding:"required"`
+	CustomerID     *string              `json:"customer_id"`         // Optional - not required when no customer management
+	CustomerState  *string              `json:"customer_state"`      // Optional - not required when no customer management
 	CustomerGSTIN  *string              `json:"customer_gstin"`
 	CustomerPAN    *string              `json:"customer_pan"`
 	WarehouseID    string               `json:"warehouse_id" binding:"required"`
@@ -299,6 +299,16 @@ type TaxCalculationResponse struct {
 	TotalTaxAmount float64        `json:"total_tax_amount"`
 	GrandTotal     float64        `json:"grand_total"`
 	AppliedTaxes   []AppliedTax   `json:"applied_taxes"`
+}
+
+// BatchTaxCalculation represents tax calculation for a specific inventory batch
+type BatchTaxCalculation struct {
+	BatchID         string  `json:"batch_id"`
+	LineTotal       float64 `json:"line_total"`
+	CGSTAmount      float64 `json:"cgst_amount"`
+	SGSTAmount      float64 `json:"sgst_amount"`
+	CustomTaxAmount float64 `json:"custom_tax_amount"`
+	TotalTaxAmount  float64 `json:"total_tax_amount"`
 }
 
 type TaxBreakdown struct {

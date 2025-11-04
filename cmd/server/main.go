@@ -3,8 +3,8 @@
 // @description Comprehensive ERP system for agricultural cooperatives with multi-tenant architecture
 // @termsOfService http://swagger.io/terms/
 // @contact.name Kisanlink Support
-// @contact.url http://www.kisanlink.com/support
-// @contact.email support@kisanlink.com
+// @contact.url https://github.com/Kisanlink/fpo-erp
+// @contact.email info@kisanlink.in
 // @license.name MIT
 // @license.url https://opensource.org/licenses/MIT
 // @host localhost:3000
@@ -120,6 +120,14 @@ func initializeHashCounters(db *gorm.DB) {
 		constants.TableRefundPolicy:  hash.Medium, // Refund Policies
 		constants.TableBankPayment:   hash.Medium, // Bank Payments
 		constants.TableAttachment:    hash.Medium, // Attachments
+		// Procurement Module
+		constants.TableCollaborator:        hash.Medium, // Collaborators/Vendors
+		constants.TableCollaboratorProduct: hash.Medium, // Collaborator-Product Junction
+		constants.TableProductVariant:      hash.Medium, // Product Variants
+		constants.TablePurchaseOrder:       hash.Medium, // Purchase Orders
+		constants.TablePurchaseOrderItem:   hash.Medium, // PO Items
+		constants.TableGRN:                 hash.Medium, // Goods Receipt Notes
+		constants.TableGRNItem:             hash.Medium, // GRN Items
 	}
 
 	// Initialize counters for each table
@@ -160,6 +168,14 @@ func getExistingIDs(db *gorm.DB, tableID string) []string {
 		constants.TableRefundPolicy:  "refund_policies",
 		constants.TableBankPayment:   "bank_payments",
 		constants.TableAttachment:    "attachments",
+		// Procurement Module
+		constants.TableCollaborator:        "collaborators",
+		constants.TableCollaboratorProduct: "collaborator_products",
+		constants.TableProductVariant:      "product_variants",
+		constants.TablePurchaseOrder:       "purchase_orders",
+		constants.TablePurchaseOrderItem:   "purchase_order_items",
+		constants.TableGRN:                 "goods_receipt_notes",
+		constants.TableGRNItem:             "grn_items",
 	}
 
 	tableName, exists := tableNameMap[tableID]

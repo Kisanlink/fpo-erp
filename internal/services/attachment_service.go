@@ -26,42 +26,55 @@ func NewAttachmentService(attachmentRepo *repositories.AttachmentRepository, s3S
 }
 
 // UploadAttachment uploads a file and creates an attachment record
-func (s *AttachmentService) UploadAttachment(ctx context.Context, file *multipart.FileHeader, saleID, returnID *string, uploadedBy string) (*models.Attachment, error) {
+func (s *AttachmentService) UploadAttachment(ctx context.Context, file *multipart.FileHeader, entityType, entityID, uploadedBy string) (*models.AttachmentResponse, error) {
 	// Validate file
 	if err := s.validateFile(file); err != nil {
 		return nil, err
 	}
 
-	// Validate that either saleID or returnID is provided, but not both
-	if saleID == nil && returnID == nil {
-		return nil, errors.NewBadRequestError("either sale_id or return_id must be provided")
+	// Validate entity_type and entity_id
+	if entityType == "" {
+		return nil, errors.NewBadRequestError("entity_type is required")
 	}
-	if saleID != nil && returnID != nil {
-		return nil, errors.NewBadRequestError("cannot provide both sale_id and return_id")
+	if entityID == "" {
+		return nil, errors.NewBadRequestError("entity_id is required")
 	}
 
-	// Use uploadedBy string directly
-	uploadedByStr := uploadedBy
-
-	// Upload file to S3
-	s3URL, err := s.s3Service.UploadFile(ctx, file, saleID, returnID)
+	// Upload file to S3 with entity-based folder structure
+	s3Key, err := s.s3Service.UploadFile(ctx, file, entityType, entityID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to upload file: %w", err)
 	}
 
 	// Create attachment record using the proper constructor
-	attachment := models.NewAttachment(saleID, returnID, s3URL, s.s3Service.GetContentType(file), &uploadedByStr, time.Now())
+	var uploadedByPtr *string
+	if uploadedBy != "" {
+		uploadedByPtr = &uploadedBy
+	}
+
+	attachment := models.NewAttachment(entityType, entityID, s3Key, s.s3Service.GetContentType(file), uploadedByPtr, time.Now())
 
 	if err := s.attachmentRepo.Create(attachment); err != nil {
 		// If database creation fails, delete the uploaded file
-		if deleteErr := s.s3Service.DeleteFile(ctx, s3URL); deleteErr != nil {
+		if deleteErr := s.s3Service.DeleteFile(ctx, s3Key); deleteErr != nil {
 			// Log the deletion error but return the original error
 			fmt.Printf("Failed to delete S3 file after database error: %v", deleteErr)
 		}
 		return nil, fmt.Errorf("failed to create attachment record: %w", err)
 	}
 
-	return attachment, nil
+	// Build response
+	return &models.AttachmentResponse{
+		ID:         attachment.ID,
+		EntityType: attachment.EntityType,
+		EntityID:   attachment.EntityID,
+		FilePath:   attachment.FilePath,
+		FileType:   attachment.FileType,
+		UploadedBy: attachment.UploadedBy,
+		UploadedAt: attachment.UploadedAt.UTC().Format(time.RFC3339),
+		CreatedAt:  attachment.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:  attachment.UpdatedAt.UTC().Format(time.RFC3339),
+	}, nil
 }
 
 // GetAttachment retrieves an attachment by ID
@@ -75,13 +88,55 @@ func (s *AttachmentService) GetAttachment(id string) (*models.Attachment, error)
 }
 
 // GetAttachments retrieves attachments with optional filters
-func (s *AttachmentService) GetAttachments(saleID, returnID *string, limit, offset int) ([]models.Attachment, error) {
-	attachments, err := s.attachmentRepo.GetAll(saleID, returnID, limit, offset)
+func (s *AttachmentService) GetAttachments(entityType, entityID *string, limit, offset int) ([]models.AttachmentResponse, error) {
+	attachments, err := s.attachmentRepo.GetAll(entityType, entityID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve attachments: %w", err)
 	}
 
-	return attachments, nil
+	// Build response
+	responses := make([]models.AttachmentResponse, len(attachments))
+	for i, att := range attachments {
+		responses[i] = models.AttachmentResponse{
+			ID:         att.ID,
+			EntityType: att.EntityType,
+			EntityID:   att.EntityID,
+			FilePath:   att.FilePath,
+			FileType:   att.FileType,
+			UploadedBy: att.UploadedBy,
+			UploadedAt: att.UploadedAt.UTC().Format(time.RFC3339),
+			CreatedAt:  att.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt:  att.UpdatedAt.UTC().Format(time.RFC3339),
+		}
+	}
+
+	return responses, nil
+}
+
+// GetAttachmentsByEntity retrieves all attachments for a specific entity
+func (s *AttachmentService) GetAttachmentsByEntity(entityType, entityID string) ([]models.AttachmentResponse, error) {
+	attachments, err := s.attachmentRepo.GetByEntity(entityType, entityID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve attachments: %w", err)
+	}
+
+	// Build response
+	responses := make([]models.AttachmentResponse, len(attachments))
+	for i, att := range attachments {
+		responses[i] = models.AttachmentResponse{
+			ID:         att.ID,
+			EntityType: att.EntityType,
+			EntityID:   att.EntityID,
+			FilePath:   att.FilePath,
+			FileType:   att.FileType,
+			UploadedBy: att.UploadedBy,
+			UploadedAt: att.UploadedAt.UTC().Format(time.RFC3339),
+			CreatedAt:  att.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt:  att.UpdatedAt.UTC().Format(time.RFC3339),
+		}
+	}
+
+	return responses, nil
 }
 
 // DeleteAttachment deletes an attachment and its associated file
@@ -140,7 +195,7 @@ func (s *AttachmentService) GenerateDownloadURL(ctx context.Context, id string, 
 }
 
 // GetAttachmentInfo gets information about an attachment
-func (s *AttachmentService) GetAttachmentInfo(ctx context.Context, id string) (*AttachmentInfo, error) {
+func (s *AttachmentService) GetAttachmentInfo(ctx context.Context, id string) (*models.AttachmentInfoResponse, error) {
 	// Get attachment
 	attachment, err := s.attachmentRepo.GetByID(id)
 	if err != nil {
@@ -153,38 +208,18 @@ func (s *AttachmentService) GetAttachmentInfo(ctx context.Context, id string) (*
 		return nil, fmt.Errorf("failed to get file info: %w", err)
 	}
 
-	return &AttachmentInfo{
-		ID:           attachment.ID,
-		SaleID:       attachment.SaleID,
-		ReturnID:     attachment.ReturnID,
-		FilePath:     attachment.FilePath,
-		FileType:     attachment.FileType,
-		UploadedBy:   attachment.UploadedBy,
-		UploadedAt:   attachment.UploadedAt,
-		FileSize:     fileInfo.Size,
-		LastModified: fileInfo.LastModified,
-		Metadata:     fileInfo.Metadata,
+	return &models.AttachmentInfoResponse{
+		ID:         attachment.ID,
+		EntityType: attachment.EntityType,
+		EntityID:   attachment.EntityID,
+		FilePath:   attachment.FilePath,
+		FileType:   attachment.FileType,
+		UploadedBy: attachment.UploadedBy,
+		UploadedAt: attachment.UploadedAt.UTC().Format(time.RFC3339),
+		FileSize:   fileInfo.Size,
+		CreatedAt:  attachment.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:  attachment.UpdatedAt.UTC().Format(time.RFC3339),
 	}, nil
-}
-
-// GetAttachmentsBySale retrieves all attachments for a sale
-func (s *AttachmentService) GetAttachmentsBySale(saleID string) ([]models.Attachment, error) {
-	attachments, err := s.attachmentRepo.GetBySaleID(saleID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve sale attachments: %w", err)
-	}
-
-	return attachments, nil
-}
-
-// GetAttachmentsByReturn retrieves all attachments for a return
-func (s *AttachmentService) GetAttachmentsByReturn(returnID string) ([]models.Attachment, error) {
-	attachments, err := s.attachmentRepo.GetByReturnID(returnID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve return attachments: %w", err)
-	}
-
-	return attachments, nil
 }
 
 // validateFile validates the uploaded file
@@ -201,18 +236,4 @@ func (s *AttachmentService) validateFile(file *multipart.FileHeader) error {
 	}
 
 	return nil
-}
-
-// AttachmentInfo represents comprehensive attachment information
-type AttachmentInfo struct {
-	ID           string            `json:"id"`
-	SaleID       *string           `json:"sale_id"`
-	ReturnID     *string           `json:"return_id"`
-	FilePath     string            `json:"file_path"`
-	FileType     string            `json:"file_type"`
-	UploadedBy   *string           `json:"uploaded_by"`
-	UploadedAt   time.Time         `json:"uploaded_at"`
-	FileSize     int64             `json:"file_size"`
-	LastModified time.Time         `json:"last_modified"`
-	Metadata     map[string]string `json:"metadata"`
 }

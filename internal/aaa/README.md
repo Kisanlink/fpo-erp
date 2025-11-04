@@ -168,7 +168,7 @@ The AAA service provides JWT tokens with this structure:
 Run the tests to verify the integration:
 
 ```bash
-go test ./internal/aaa/...
+go test ./internal/...
 ```
 
 ## Benefits
