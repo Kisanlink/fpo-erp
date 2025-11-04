@@ -657,7 +657,6 @@ definitions:
       warehouse_id:
         type: string
     required:
-    - apply_taxes
     - items
     - payment_mode
     - sale_type

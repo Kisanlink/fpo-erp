@@ -89,14 +89,25 @@ func (s *Server) setupMiddleware() {
 	// OpenAPI JSON spec route
 	s.Router.GET("/api-docs", func(c *gin.Context) {
 		c.Header("Content-Type", "application/json")
-		c.File("./docs/swagger.json")
+		c.File("docs/swagger.json")
 	})
 
-	// Scalar documentation route - serves the HTML page using Go package
+	// Scalar documentation route - using go-scalar-api-reference package
 	s.Router.GET("/docs", func(c *gin.Context) {
+		// Build full spec URL
+		scheme := "http"
+		if c.GetHeader("X-Forwarded-Proto") == "https" {
+			scheme = "https"
+		}
+		host := c.Request.Host
+		if host == "" {
+			host = "localhost:3000"
+		}
+		specURL := scheme + "://" + host + "/api-docs"
+
 		// Configure Scalar options
 		options := scalar.Options{
-			SpecURL:            s.config.Server.PublicURL + "/api-docs",
+			SpecURL:            specURL,
 			Theme:              scalar.ThemePurple,
 			Layout:             scalar.LayoutModern,
 			ShowSidebar:        true,
@@ -112,7 +123,7 @@ func (s *Server) setupMiddleware() {
 		html, err := scalar.ApiReferenceHTML(&options)
 		if err != nil {
 			utils.Error("Failed to generate Scalar documentation:", err)
-			c.String(500, "Failed to generate API documentation")
+			c.String(500, "Failed to generate API documentation: "+err.Error())
 			return
 		}
 

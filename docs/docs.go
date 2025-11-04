@@ -9935,7 +9935,6 @@ const docTemplate = `{
         "models.CreateSaleRequest": {
             "type": "object",
             "required": [
-                "apply_taxes",
                 "items",
                 "payment_mode",
                 "sale_type",
