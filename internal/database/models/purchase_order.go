@@ -13,7 +13,8 @@ type PurchaseOrder struct {
 	base.BaseModel
 
 	// PO Identification
-	PONumber string `gorm:"type:varchar(50);unique;not null" json:"po_number"` // Auto-generated: PO-2025-0001
+	PONumber        string  `gorm:"type:varchar(50);unique;not null" json:"po_number"`          // Auto-generated: PO-2025-0001
+	ExternalOrderID *string `gorm:"type:varchar(100);unique;index" json:"external_order_id"` // E-commerce order ID for webhook mapping
 
 	// Relationships
 	CollaboratorID string `gorm:"type:varchar(100);not null;index" json:"collaborator_id"`

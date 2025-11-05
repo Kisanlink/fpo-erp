@@ -11,6 +11,9 @@ import (
 type Collaborator struct {
 	base.BaseModel
 
+	// E-commerce Integration
+	ExternalID *string `gorm:"type:varchar(100);unique;index" json:"external_id"` // E-commerce supplier ID for webhook matching
+
 	// Business Info
 	CompanyName   string  `gorm:"type:varchar(150);not null" json:"company_name"`
 	Logo          *string `gorm:"type:varchar(500)" json:"logo"` // Attachment ID (ATT_xxxxxxxx) - Use /api/v1/attachments/{id}/url to get image URL

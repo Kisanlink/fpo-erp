@@ -102,3 +102,15 @@ func (r *ProductRepository) GetByName(name string) ([]models.Product, error) {
 	}
 	return products, nil
 }
+
+// FindByExternalID finds a product by external_id (for webhook integration)
+func (r *ProductRepository) FindByExternalID(externalID string) (*models.Product, error) {
+	var product models.Product
+	if err := r.db.Where("external_id = ?", externalID).First(&product).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil // Not found, but not an error for smart matching
+		}
+		return nil, errors.NewInternalServerError("Failed to find product by external_id")
+	}
+	return &product, nil
+}

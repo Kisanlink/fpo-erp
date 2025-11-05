@@ -98,3 +98,15 @@ func (r *CollaboratorRepository) GSTNumberExists(gstNumber string) (bool, error)
 	}
 	return count > 0, nil
 }
+
+// FindByExternalID finds a collaborator by external_id (for webhook integration)
+func (r *CollaboratorRepository) FindByExternalID(externalID string) (*models.Collaborator, error) {
+	var collaborator models.Collaborator
+	if err := r.db.Where("external_id = ?", externalID).First(&collaborator).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil // Not found, but not an error for smart matching
+		}
+		return nil, errors.NewInternalServerError("Failed to find collaborator by external_id")
+	}
+	return &collaborator, nil
+}

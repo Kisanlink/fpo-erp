@@ -10959,11 +10959,661 @@
                     }
                 }
             }
+        },
+        "/api/v1/webhooks/ecommerce/order/confirmed": {
+            "post": {
+                "description": "Receives order.confirmed webhook from e-commerce platform",
+                "tags": [
+                    "Webhooks"
+                ],
+                "summary": "E-commerce Order Confirmed Webhook",
+                "parameters": [
+                    {
+                        "description": "HMAC-SHA256 signature of request body",
+                        "name": "X-Webhook-Signature",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Unique event identifier (for idempotency)",
+                        "name": "X-Webhook-Event-ID",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Unix timestamp of webhook creation",
+                        "name": "X-Webhook-Timestamp",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/models.OrderConfirmedWebhook"
+                            }
+                        }
+                    },
+                    "description": "Order confirmed webhook payload",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Webhook processed successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/utils.Response"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "additionalProperties": true
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request or invalid payload",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/utils.ErrorResponseModel"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid webhook signature",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/utils.ErrorResponseModel"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/utils.ErrorResponseModel"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/webhooks/ecommerce/order/created": {
+            "post": {
+                "description": "Receives order.created webhook from e-commerce platform",
+                "tags": [
+                    "Webhooks"
+                ],
+                "summary": "E-commerce Order Created Webhook",
+                "parameters": [
+                    {
+                        "description": "HMAC-SHA256 signature of request body",
+                        "name": "X-Webhook-Signature",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Unique event identifier (for idempotency)",
+                        "name": "X-Webhook-Event-ID",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Unix timestamp of webhook creation",
+                        "name": "X-Webhook-Timestamp",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/models.OrderCreatedWebhook"
+                            }
+                        }
+                    },
+                    "description": "Order created webhook payload",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Webhook processed successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/utils.Response"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "additionalProperties": true
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request or invalid payload",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/utils.ErrorResponseModel"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid webhook signature",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/utils.ErrorResponseModel"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/utils.ErrorResponseModel"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/webhooks/ecommerce/order/delivered": {
+            "post": {
+                "description": "Receives order.delivered webhook from e-commerce platform",
+                "tags": [
+                    "Webhooks"
+                ],
+                "summary": "E-commerce Order Delivered Webhook",
+                "parameters": [
+                    {
+                        "description": "HMAC-SHA256 signature of request body",
+                        "name": "X-Webhook-Signature",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Unique event identifier (for idempotency)",
+                        "name": "X-Webhook-Event-ID",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Unix timestamp of webhook creation",
+                        "name": "X-Webhook-Timestamp",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/models.OrderDeliveredWebhook"
+                            }
+                        }
+                    },
+                    "description": "Order delivered webhook payload",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Webhook processed successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/utils.Response"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "additionalProperties": true
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request or invalid payload",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/utils.ErrorResponseModel"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid webhook signature",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/utils.ErrorResponseModel"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/utils.ErrorResponseModel"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/webhooks/ecommerce/order/payment": {
+            "post": {
+                "description": "Receives order.payment webhook from e-commerce platform",
+                "tags": [
+                    "Webhooks"
+                ],
+                "summary": "E-commerce Order Payment Webhook",
+                "parameters": [
+                    {
+                        "description": "HMAC-SHA256 signature of request body",
+                        "name": "X-Webhook-Signature",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Unique event identifier (for idempotency)",
+                        "name": "X-Webhook-Event-ID",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Unix timestamp of webhook creation",
+                        "name": "X-Webhook-Timestamp",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/models.OrderPaymentWebhook"
+                            }
+                        }
+                    },
+                    "description": "Order payment webhook payload",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Webhook processed successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/utils.Response"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "additionalProperties": true
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request or invalid payload",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/utils.ErrorResponseModel"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid webhook signature",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/utils.ErrorResponseModel"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/utils.ErrorResponseModel"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/webhooks/ecommerce/order/shipped": {
+            "post": {
+                "description": "Receives order.shipped webhook from e-commerce platform",
+                "tags": [
+                    "Webhooks"
+                ],
+                "summary": "E-commerce Order Shipped Webhook",
+                "parameters": [
+                    {
+                        "description": "HMAC-SHA256 signature of request body",
+                        "name": "X-Webhook-Signature",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Unique event identifier (for idempotency)",
+                        "name": "X-Webhook-Event-ID",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Unix timestamp of webhook creation",
+                        "name": "X-Webhook-Timestamp",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/models.OrderShippedWebhook"
+                            }
+                        }
+                    },
+                    "description": "Order shipped webhook payload",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Webhook processed successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/utils.Response"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "additionalProperties": true
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request or invalid payload",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/utils.ErrorResponseModel"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid webhook signature",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/utils.ErrorResponseModel"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/utils.ErrorResponseModel"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/webhooks/history": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve webhook processing history (requires authentication)",
+                "tags": [
+                    "Webhooks"
+                ],
+                "summary": "Get Webhook History",
+                "parameters": [
+                    {
+                        "description": "Filter by external order ID",
+                        "name": "external_order_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Filter by status (processing, success, failed)",
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Limit results",
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 50
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Webhook history retrieved",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/utils.Response"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/models.WebhookEvent"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/utils.ErrorResponseModel"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/webhooks/stats": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve webhook processing statistics (requires authentication)",
+                "tags": [
+                    "Webhooks"
+                ],
+                "summary": "Get Webhook Statistics",
+                "responses": {
+                    "200": {
+                        "description": "Webhook statistics",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/utils.Response"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "additionalProperties": true
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/utils.ErrorResponseModel"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "servers": [
         {
-            "url": "//localhost:3000"
+            "url": "http://localhost:3000"
+        },
+        {
+            "url": "https://localhost:3000"
         }
     ],
     "components": {
@@ -12286,13 +12936,6 @@
                     "DiscountTypeFlat": "Fixed amount discount",
                     "DiscountTypePercentage": "Percentage discount"
                 },
-                "x-enum-descriptions": [
-                    "Fixed amount discount",
-                    "Percentage discount",
-                    "",
-                    "",
-                    ""
-                ],
                 "x-enum-varnames": [
                     "DiscountTypeFlat",
                     "DiscountTypePercentage",
@@ -12542,6 +13185,192 @@
                     },
                     "total_returned": {
                         "type": "integer"
+                    }
+                }
+            },
+            "models.OrderConfirmedWebhook": {
+                "type": "object",
+                "required": [
+                    "event_id",
+                    "event_type",
+                    "external_order_id",
+                    "timestamp"
+                ],
+                "properties": {
+                    "confirmed_date": {
+                        "type": "string"
+                    },
+                    "event_id": {
+                        "type": "string"
+                    },
+                    "event_type": {
+                        "type": "string"
+                    },
+                    "expected_delivery_date": {
+                        "type": "string"
+                    },
+                    "external_order_id": {
+                        "type": "string"
+                    },
+                    "timestamp": {
+                        "type": "string"
+                    }
+                }
+            },
+            "models.OrderCreatedWebhook": {
+                "type": "object",
+                "required": [
+                    "collaborator",
+                    "event_id",
+                    "event_type",
+                    "fpo",
+                    "items",
+                    "order",
+                    "timestamp"
+                ],
+                "properties": {
+                    "collaborator": {
+                        "$ref": "#/components/schemas/models.WebhookCollaborator"
+                    },
+                    "event_id": {
+                        "type": "string"
+                    },
+                    "event_type": {
+                        "type": "string"
+                    },
+                    "fpo": {
+                        "$ref": "#/components/schemas/models.WebhookFPO"
+                    },
+                    "items": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                            "$ref": "#/components/schemas/models.WebhookOrderItem"
+                        }
+                    },
+                    "order": {
+                        "$ref": "#/components/schemas/models.WebhookOrder"
+                    },
+                    "timestamp": {
+                        "type": "string"
+                    }
+                }
+            },
+            "models.OrderDeliveredWebhook": {
+                "type": "object",
+                "required": [
+                    "event_id",
+                    "event_type",
+                    "external_order_id",
+                    "items",
+                    "timestamp"
+                ],
+                "properties": {
+                    "delivery_date": {
+                        "type": "string"
+                    },
+                    "event_id": {
+                        "type": "string"
+                    },
+                    "event_type": {
+                        "type": "string"
+                    },
+                    "external_order_id": {
+                        "type": "string"
+                    },
+                    "grn_number": {
+                        "type": "string"
+                    },
+                    "invoice_number": {
+                        "type": "string"
+                    },
+                    "items": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                            "$ref": "#/components/schemas/models.WebhookDeliveryItem"
+                        }
+                    },
+                    "timestamp": {
+                        "type": "string"
+                    }
+                }
+            },
+            "models.OrderPaymentWebhook": {
+                "type": "object",
+                "required": [
+                    "event_id",
+                    "event_type",
+                    "external_order_id",
+                    "paid_amount",
+                    "payment_status",
+                    "timestamp"
+                ],
+                "properties": {
+                    "event_id": {
+                        "type": "string"
+                    },
+                    "event_type": {
+                        "type": "string"
+                    },
+                    "external_order_id": {
+                        "type": "string"
+                    },
+                    "paid_amount": {
+                        "type": "number"
+                    },
+                    "payment_date": {
+                        "type": "string"
+                    },
+                    "payment_method": {
+                        "type": "string"
+                    },
+                    "payment_status": {
+                        "type": "string"
+                    },
+                    "remarks": {
+                        "type": "string"
+                    },
+                    "timestamp": {
+                        "type": "string"
+                    },
+                    "transaction_id": {
+                        "type": "string"
+                    }
+                }
+            },
+            "models.OrderShippedWebhook": {
+                "type": "object",
+                "required": [
+                    "event_id",
+                    "event_type",
+                    "external_order_id",
+                    "timestamp"
+                ],
+                "properties": {
+                    "carrier": {
+                        "type": "string"
+                    },
+                    "event_id": {
+                        "type": "string"
+                    },
+                    "event_type": {
+                        "type": "string"
+                    },
+                    "expected_delivery_date": {
+                        "type": "string"
+                    },
+                    "external_order_id": {
+                        "type": "string"
+                    },
+                    "shipped_date": {
+                        "type": "string"
+                    },
+                    "timestamp": {
+                        "type": "string"
+                    },
+                    "tracking_number": {
+                        "type": "string"
                     }
                 }
             },
@@ -13284,11 +14113,6 @@
                     "TaxCalculationPercentage": "Percentage of base amount",
                     "TaxCalculationTiered": "Tiered calculation"
                 },
-                "x-enum-descriptions": [
-                    "Percentage of base amount",
-                    "Fixed amount per unit",
-                    "Tiered calculation"
-                ],
                 "x-enum-varnames": [
                     "TaxCalculationPercentage",
                     "TaxCalculationFixed",
@@ -13550,20 +14374,6 @@
                     "TaxTypeTDS": "Tax Deducted at Source",
                     "TaxTypeVAT": "Value Added Tax"
                 },
-                "x-enum-descriptions": [
-                    "Central Goods and Services Tax",
-                    "State Goods and Services Tax",
-                    "Integrated Goods and Services Tax",
-                    "Value Added Tax",
-                    "Securities Transaction Tax",
-                    "Tax Deducted at Source",
-                    "Tax Collected at Source",
-                    "Excise Duty",
-                    "Customs Duty",
-                    "Item-specific tax",
-                    "Category-based tax",
-                    "Flat tax amount"
-                ],
                 "x-enum-varnames": [
                     "TaxTypeCGST",
                     "TaxTypeSGST",
@@ -14163,6 +14973,346 @@
                         "type": "string"
                     },
                     "updated_at": {
+                        "type": "string"
+                    }
+                }
+            },
+            "models.WebhookAddress": {
+                "type": "object",
+                "required": [
+                    "address_id",
+                    "address_line_1",
+                    "city",
+                    "country",
+                    "postal_code",
+                    "state",
+                    "type"
+                ],
+                "properties": {
+                    "address_id": {
+                        "type": "string"
+                    },
+                    "address_line_1": {
+                        "type": "string"
+                    },
+                    "address_line_2": {
+                        "type": "string"
+                    },
+                    "city": {
+                        "type": "string"
+                    },
+                    "country": {
+                        "type": "string"
+                    },
+                    "postal_code": {
+                        "type": "string"
+                    },
+                    "state": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            },
+            "models.WebhookCollaborator": {
+                "type": "object",
+                "required": [
+                    "external_id"
+                ],
+                "properties": {
+                    "address": {
+                        "$ref": "#/components/schemas/models.WebhookAddress"
+                    },
+                    "bank_account_no": {
+                        "type": "string"
+                    },
+                    "bank_ifsc": {
+                        "type": "string"
+                    },
+                    "bank_name": {
+                        "type": "string"
+                    },
+                    "company_name": {
+                        "type": "string"
+                    },
+                    "contact_number": {
+                        "type": "string"
+                    },
+                    "contact_person": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    },
+                    "experience": {
+                        "type": "string"
+                    },
+                    "external_id": {
+                        "type": "string"
+                    },
+                    "gst_number": {
+                        "type": "string"
+                    },
+                    "pan_number": {
+                        "type": "string"
+                    }
+                }
+            },
+            "models.WebhookDeliveryItem": {
+                "type": "object",
+                "required": [
+                    "accepted_quantity",
+                    "batch_number",
+                    "cost_price",
+                    "expiry_date",
+                    "external_product_id",
+                    "external_variant_id",
+                    "received_quantity"
+                ],
+                "properties": {
+                    "accepted_quantity": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "batch_number": {
+                        "type": "string"
+                    },
+                    "cost_price": {
+                        "type": "number"
+                    },
+                    "expiry_date": {
+                        "type": "string"
+                    },
+                    "external_product_id": {
+                        "type": "string"
+                    },
+                    "external_variant_id": {
+                        "type": "string"
+                    },
+                    "manufacturing_date": {
+                        "type": "string"
+                    },
+                    "received_quantity": {
+                        "type": "integer"
+                    },
+                    "rejected_quantity": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "rejection_reason": {
+                        "type": "string"
+                    }
+                }
+            },
+            "models.WebhookEvent": {
+                "type": "object",
+                "properties": {
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "created_by": {
+                        "type": "string"
+                    },
+                    "deleted_at": {
+                        "type": "string"
+                    },
+                    "deleted_by": {
+                        "type": "string"
+                    },
+                    "error_message": {
+                        "description": "Error details if failed",
+                        "type": "string"
+                    },
+                    "event_id": {
+                        "description": "Event identification",
+                        "type": "string"
+                    },
+                    "event_type": {
+                        "description": "order.created, order.confirmed, etc.",
+                        "type": "string"
+                    },
+                    "external_order_id": {
+                        "description": "Reference tracking",
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "payload_hash": {
+                        "description": "Payload tracking",
+                        "type": "string"
+                    },
+                    "processed_at": {
+                        "type": "string"
+                    },
+                    "purchase_order_id": {
+                        "description": "Created/Updated PO ID",
+                        "type": "string"
+                    },
+                    "request_body": {
+                        "description": "Full JSON payload for debugging",
+                        "type": "string"
+                    },
+                    "signature_valid": {
+                        "description": "HMAC signature verification result",
+                        "type": "boolean"
+                    },
+                    "source_ip": {
+                        "description": "Webhook metadata",
+                        "type": "string"
+                    },
+                    "status": {
+                        "description": "Processing status",
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "updated_by": {
+                        "type": "string"
+                    },
+                    "user_agent": {
+                        "description": "Request user agent",
+                        "type": "string"
+                    }
+                }
+            },
+            "models.WebhookFPO": {
+                "type": "object",
+                "required": [
+                    "delivery_address",
+                    "fpo_id"
+                ],
+                "properties": {
+                    "delivery_address": {
+                        "$ref": "#/components/schemas/models.WebhookAddress"
+                    },
+                    "fpo_id": {
+                        "type": "string"
+                    }
+                }
+            },
+            "models.WebhookOrder": {
+                "type": "object",
+                "required": [
+                    "expected_delivery_date",
+                    "external_order_id"
+                ],
+                "properties": {
+                    "currency": {
+                        "type": "string"
+                    },
+                    "expected_delivery_date": {
+                        "type": "string"
+                    },
+                    "external_order_id": {
+                        "type": "string"
+                    },
+                    "order_date": {
+                        "type": "string"
+                    },
+                    "total_amount": {
+                        "type": "number"
+                    }
+                }
+            },
+            "models.WebhookOrderItem": {
+                "type": "object",
+                "required": [
+                    "product",
+                    "quantity",
+                    "unit_price",
+                    "variant"
+                ],
+                "properties": {
+                    "product": {
+                        "$ref": "#/components/schemas/models.WebhookProduct"
+                    },
+                    "quantity": {
+                        "type": "integer"
+                    },
+                    "unit_price": {
+                        "type": "number"
+                    },
+                    "variant": {
+                        "$ref": "#/components/schemas/models.WebhookVariant"
+                    }
+                }
+            },
+            "models.WebhookProduct": {
+                "type": "object",
+                "required": [
+                    "category",
+                    "external_id",
+                    "name",
+                    "unit"
+                ],
+                "properties": {
+                    "category": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "external_id": {
+                        "type": "string"
+                    },
+                    "hsn_code": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "subcategory": {
+                        "type": "string"
+                    },
+                    "unit": {
+                        "type": "string"
+                    }
+                }
+            },
+            "models.WebhookVariant": {
+                "type": "object",
+                "required": [
+                    "external_id",
+                    "name",
+                    "pack_size",
+                    "quantity_text",
+                    "sku"
+                ],
+                "properties": {
+                    "brand_name": {
+                        "type": "string"
+                    },
+                    "dosage_instructions": {
+                        "type": "string"
+                    },
+                    "external_id": {
+                        "type": "string"
+                    },
+                    "gst_rate": {
+                        "type": "number"
+                    },
+                    "images": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "pack_size": {
+                        "type": "string"
+                    },
+                    "quantity_text": {
+                        "type": "string"
+                    },
+                    "sku": {
+                        "type": "string"
+                    },
+                    "usage_details": {
                         "type": "string"
                     }
                 }

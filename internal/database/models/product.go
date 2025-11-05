@@ -11,6 +11,10 @@ import (
 // SKU is now at the variant level for actual inventory tracking
 type Product struct {
 	base.BaseModel
+
+	// E-commerce Integration
+	ExternalID *string `gorm:"type:varchar(100);unique;index" json:"external_id"` // E-commerce product ID for webhook matching
+
 	Name        string  `gorm:"type:varchar(150);not null" json:"name"`
 	Description *string `gorm:"type:text" json:"description"`
 

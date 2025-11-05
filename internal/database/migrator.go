@@ -50,6 +50,10 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.TaxTier{},
 		&models.TaxApplication{},
 		&models.TaxSummary{},
+
+		// Webhook integration
+		&models.WebhookEvent{},
+		&models.WebhookDeliveryAttempt{},
 	}
 
 	// Perform auto-migration

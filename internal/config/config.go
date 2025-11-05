@@ -18,6 +18,7 @@ type Config struct {
 	AWS      AWSConfig      `mapstructure:"aws"`
 	CORS     CORSConfig     `mapstructure:"cors"`
 	AAA      AAAConfig      `mapstructure:"aaa"`
+	Webhook  WebhookConfig  `mapstructure:"webhook"`
 }
 
 type ServerConfig struct {
@@ -60,6 +61,12 @@ type AAAConfig struct {
 	BaseURL     string `mapstructure:"base_url"`        // HTTP REST API base URL (e.g., http://localhost:8080)
 	GRPCAddress string `mapstructure:"grpc_address"`    // gRPC address for authorization (e.g., localhost:50051)
 	Timeout     int    `mapstructure:"timeout_seconds"`
+}
+
+type WebhookConfig struct {
+	Secret          string `mapstructure:"secret"`           // HMAC-SHA256 shared secret for signature verification
+	TimeoutSeconds  int    `mapstructure:"timeout_seconds"`  // Webhook processing timeout
+	MaxPayloadBytes int64  `mapstructure:"max_payload_bytes"` // Maximum request body size
 }
 
 // GetAllowedOrigins returns the allowed origins as a slice
@@ -127,6 +134,29 @@ func Load() *Config {
 		}
 	}
 
+	// Parse WEBHOOK_TIMEOUT_SECONDS (default: 30)
+	webhookTimeout := 30
+	webhookTimeoutStr := os.Getenv("WEBHOOK_TIMEOUT_SECONDS")
+	if webhookTimeoutStr != "" {
+		webhookTimeout, err = strconv.Atoi(webhookTimeoutStr)
+		if err != nil {
+			utils.Info("Invalid WEBHOOK_TIMEOUT_SECONDS value, defaulting to 30:", webhookTimeoutStr)
+			webhookTimeout = 30
+		}
+	}
+
+	// Parse WEBHOOK_MAX_PAYLOAD_BYTES (default: 10MB)
+	webhookMaxPayload := int64(10485760) // 10MB default
+	webhookMaxPayloadStr := os.Getenv("WEBHOOK_MAX_PAYLOAD_BYTES")
+	if webhookMaxPayloadStr != "" {
+		webhookMaxPayload, err := strconv.ParseInt(webhookMaxPayloadStr, 10, 64)
+		if err != nil {
+			utils.Info("Invalid WEBHOOK_MAX_PAYLOAD_BYTES value, defaulting to 10485760:", webhookMaxPayloadStr)
+			webhookMaxPayload = 10485760
+		}
+		_ = webhookMaxPayload // Prevent unused variable error
+	}
+
 	// Load all environment variables using os.Getenv directly
 	config := &Config{
 		Server: ServerConfig{
@@ -164,6 +194,11 @@ func Load() *Config {
 			BaseURL:     getAAABaseURL(), // HTTP REST API base URL
 			GRPCAddress: os.Getenv("AAA_GRPC_ADDRESS"),
 			Timeout:     aaaTimeout,
+		},
+		Webhook: WebhookConfig{
+			Secret:          os.Getenv("WEBHOOK_SECRET"),
+			TimeoutSeconds:  webhookTimeout,
+			MaxPayloadBytes: webhookMaxPayload,
 		},
 	}
 

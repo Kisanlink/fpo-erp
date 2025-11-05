@@ -1,4 +1,4 @@
-.PHONY: build run test clean proto
+.PHONY: build run test clean proto docs
 
 # Build the application
 build:

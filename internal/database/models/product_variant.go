@@ -14,6 +14,9 @@ type ProductVariant struct {
 
 	ProductID string `gorm:"type:varchar(100);not null;index:idx_product_collaborator" json:"product_id"`
 
+	// E-commerce Integration
+	ExternalID *string `gorm:"type:varchar(100);unique;index" json:"external_id"` // E-commerce variant ID for webhook matching
+
 	// Variant identification
 	VariantName string  `gorm:"type:varchar(150);not null" json:"variant_name"` // e.g., "1kg Premium Pack"
 	Description *string `gorm:"type:text" json:"description"`                   // Detailed variant description

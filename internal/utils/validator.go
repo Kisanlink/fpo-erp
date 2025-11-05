@@ -139,5 +139,9 @@ func ParseCommaSeparatedString(input string) []string {
 	return result
 }
 
-
-
+// ParseInt parses a string to int with error handling
+func ParseInt(s string) (int, error) {
+	var result int
+	_, err := fmt.Sscanf(s, "%d", &result)
+	return result, err
+}

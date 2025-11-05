@@ -101,3 +101,27 @@ func (r *ProductVariantRepository) BarcodeExists(barcode string) (bool, error) {
 	}
 	return count > 0, nil
 }
+
+// FindByExternalID finds a product variant by external_id (for webhook integration)
+func (r *ProductVariantRepository) FindByExternalID(externalID string) (*models.ProductVariant, error) {
+	var variant models.ProductVariant
+	if err := r.db.Where("external_id = ?", externalID).First(&variant).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil // Not found, but not an error for smart matching
+		}
+		return nil, errors.NewInternalServerError("Failed to find variant by external_id")
+	}
+	return &variant, nil
+}
+
+// FindBySKU finds a product variant by SKU (for webhook integration smart matching)
+func (r *ProductVariantRepository) FindBySKU(sku string) (*models.ProductVariant, error) {
+	var variant models.ProductVariant
+	if err := r.db.Where("sku = ?", sku).First(&variant).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil // Not found, but not an error for smart matching
+		}
+		return nil, errors.NewInternalServerError("Failed to find variant by SKU")
+	}
+	return &variant, nil
+}

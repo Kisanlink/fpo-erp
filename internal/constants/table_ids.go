@@ -45,4 +45,8 @@ const (
 	TablePurchaseOrderItem   = "POIM" // PO Items
 	TableGRN                 = "GRNX" // Goods Receipt Notes
 	TableGRNItem             = "GRIT" // GRN Items
+
+	// Webhook Integration
+	TableWebhookEvent          = "WHEV" // Webhook Events
+	TableWebhookDeliveryAttempt = "WHDA" // Webhook Delivery Attempts
 )

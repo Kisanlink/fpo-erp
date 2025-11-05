@@ -33,6 +33,9 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	purchaseOrderRepo := repositories.NewPurchaseOrderRepository(db)
 	grnRepo := repositories.NewGRNRepository(db)
 
+	// Webhook repositories
+	webhookRepo := repositories.NewWebhookRepository(db)
+
 	// Initialize S3 service
 	s3Service, err := services.NewS3Service(cfg)
 	if err != nil {
@@ -68,6 +71,21 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	purchaseOrderService := services.NewPurchaseOrderService(purchaseOrderRepo, collaboratorRepo, warehouseRepo, productRepo, productVariantRepo, grnRepo, inventoryRepo)
 	grnService := services.NewGRNService(grnRepo, purchaseOrderRepo, warehouseRepo, productRepo, inventoryRepo)
 
+	// Webhook services
+	webhookSecurityService := services.NewWebhookSecurityService(cfg.Webhook.Secret)
+	webhookHistoryService := services.NewWebhookHistoryService(webhookRepo)
+	ecommerceWebhookService := services.NewEcommerceWebhookService(
+		purchaseOrderService,
+		collaboratorRepo,
+		productRepo,
+		productVariantRepo,
+		warehouseRepo,
+		grnRepo,
+		inventoryRepo,
+		purchaseOrderRepo,
+		addressClient,
+	)
+
 	// AAA middleware is now passed as parameter
 
 	// Initialize handlers
@@ -89,6 +107,15 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	productVariantHandler := handlers.NewProductVariantHandler(productVariantService, aaaMiddleware)
 	purchaseOrderHandler := handlers.NewPurchaseOrderHandler(purchaseOrderService, aaaMiddleware)
 	grnHandler := handlers.NewGRNHandler(grnService, aaaMiddleware)
+
+	// Webhook handler (no AAA middleware - uses HMAC signature verification)
+	ecommerceWebhookHandler := handlers.NewEcommerceWebhookHandler(
+		ecommerceWebhookService,
+		webhookSecurityService,
+		webhookHistoryService,
+		webhookRepo,
+		aaaMiddleware,
+	)
 
 	// API v1 routes
 	v1 := router.Group("/api/v1")
@@ -112,5 +139,8 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 		productVariantHandler.RegisterRoutes(v1)
 		purchaseOrderHandler.RegisterRoutes(v1)
 		grnHandler.RegisterRoutes(v1)
+
+		// Webhook handler
+		ecommerceWebhookHandler.RegisterRoutes(v1)
 	}
 }

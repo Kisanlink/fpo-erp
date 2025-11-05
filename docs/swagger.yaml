@@ -887,12 +887,6 @@ definitions:
     x-enum-comments:
       DiscountTypeFlat: Fixed amount discount
       DiscountTypePercentage: Percentage discount
-    x-enum-descriptions:
-    - Fixed amount discount
-    - Percentage discount
-    - ""
-    - ""
-    - ""
     x-enum-varnames:
     - DiscountTypeFlat
     - DiscountTypePercentage
@@ -1059,6 +1053,136 @@ definitions:
         type: number
       total_returned:
         type: integer
+    type: object
+  models.OrderConfirmedWebhook:
+    properties:
+      confirmed_date:
+        type: string
+      event_id:
+        type: string
+      event_type:
+        type: string
+      expected_delivery_date:
+        type: string
+      external_order_id:
+        type: string
+      timestamp:
+        type: string
+    required:
+    - event_id
+    - event_type
+    - external_order_id
+    - timestamp
+    type: object
+  models.OrderCreatedWebhook:
+    properties:
+      collaborator:
+        $ref: '#/definitions/models.WebhookCollaborator'
+      event_id:
+        type: string
+      event_type:
+        type: string
+      fpo:
+        $ref: '#/definitions/models.WebhookFPO'
+      items:
+        items:
+          $ref: '#/definitions/models.WebhookOrderItem'
+        minItems: 1
+        type: array
+      order:
+        $ref: '#/definitions/models.WebhookOrder'
+      timestamp:
+        type: string
+    required:
+    - collaborator
+    - event_id
+    - event_type
+    - fpo
+    - items
+    - order
+    - timestamp
+    type: object
+  models.OrderDeliveredWebhook:
+    properties:
+      delivery_date:
+        type: string
+      event_id:
+        type: string
+      event_type:
+        type: string
+      external_order_id:
+        type: string
+      grn_number:
+        type: string
+      invoice_number:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/models.WebhookDeliveryItem'
+        minItems: 1
+        type: array
+      timestamp:
+        type: string
+    required:
+    - event_id
+    - event_type
+    - external_order_id
+    - items
+    - timestamp
+    type: object
+  models.OrderPaymentWebhook:
+    properties:
+      event_id:
+        type: string
+      event_type:
+        type: string
+      external_order_id:
+        type: string
+      paid_amount:
+        type: number
+      payment_date:
+        type: string
+      payment_method:
+        type: string
+      payment_status:
+        type: string
+      remarks:
+        type: string
+      timestamp:
+        type: string
+      transaction_id:
+        type: string
+    required:
+    - event_id
+    - event_type
+    - external_order_id
+    - paid_amount
+    - payment_status
+    - timestamp
+    type: object
+  models.OrderShippedWebhook:
+    properties:
+      carrier:
+        type: string
+      event_id:
+        type: string
+      event_type:
+        type: string
+      expected_delivery_date:
+        type: string
+      external_order_id:
+        type: string
+      shipped_date:
+        type: string
+      timestamp:
+        type: string
+      tracking_number:
+        type: string
+    required:
+    - event_id
+    - event_type
+    - external_order_id
+    - timestamp
     type: object
   models.ProductAvailabilityResponse:
     properties:
@@ -1552,10 +1676,6 @@ definitions:
       TaxCalculationFixed: Fixed amount per unit
       TaxCalculationPercentage: Percentage of base amount
       TaxCalculationTiered: Tiered calculation
-    x-enum-descriptions:
-    - Percentage of base amount
-    - Fixed amount per unit
-    - Tiered calculation
     x-enum-varnames:
     - TaxCalculationPercentage
     - TaxCalculationFixed
@@ -1737,19 +1857,6 @@ definitions:
       TaxTypeTCS: Tax Collected at Source
       TaxTypeTDS: Tax Deducted at Source
       TaxTypeVAT: Value Added Tax
-    x-enum-descriptions:
-    - Central Goods and Services Tax
-    - State Goods and Services Tax
-    - Integrated Goods and Services Tax
-    - Value Added Tax
-    - Securities Transaction Tax
-    - Tax Deducted at Source
-    - Tax Collected at Source
-    - Excise Duty
-    - Customs Duty
-    - Item-specific tax
-    - Category-based tax
-    - Flat tax amount
     x-enum-varnames:
     - TaxTypeCGST
     - TaxTypeSGST
@@ -2150,6 +2257,242 @@ definitions:
         type: string
       updated_at:
         type: string
+    type: object
+  models.WebhookAddress:
+    properties:
+      address_id:
+        type: string
+      address_line_1:
+        type: string
+      address_line_2:
+        type: string
+      city:
+        type: string
+      country:
+        type: string
+      postal_code:
+        type: string
+      state:
+        type: string
+      type:
+        type: string
+    required:
+    - address_id
+    - address_line_1
+    - city
+    - country
+    - postal_code
+    - state
+    - type
+    type: object
+  models.WebhookCollaborator:
+    properties:
+      address:
+        $ref: '#/definitions/models.WebhookAddress'
+      bank_account_no:
+        type: string
+      bank_ifsc:
+        type: string
+      bank_name:
+        type: string
+      company_name:
+        type: string
+      contact_number:
+        type: string
+      contact_person:
+        type: string
+      email:
+        type: string
+      experience:
+        type: string
+      external_id:
+        type: string
+      gst_number:
+        type: string
+      pan_number:
+        type: string
+    required:
+    - external_id
+    type: object
+  models.WebhookDeliveryItem:
+    properties:
+      accepted_quantity:
+        minimum: 0
+        type: integer
+      batch_number:
+        type: string
+      cost_price:
+        type: number
+      expiry_date:
+        type: string
+      external_product_id:
+        type: string
+      external_variant_id:
+        type: string
+      manufacturing_date:
+        type: string
+      received_quantity:
+        type: integer
+      rejected_quantity:
+        minimum: 0
+        type: integer
+      rejection_reason:
+        type: string
+    required:
+    - accepted_quantity
+    - batch_number
+    - cost_price
+    - expiry_date
+    - external_product_id
+    - external_variant_id
+    - received_quantity
+    type: object
+  models.WebhookEvent:
+    properties:
+      created_at:
+        type: string
+      created_by:
+        type: string
+      deleted_at:
+        type: string
+      deleted_by:
+        type: string
+      error_message:
+        description: Error details if failed
+        type: string
+      event_id:
+        description: Event identification
+        type: string
+      event_type:
+        description: order.created, order.confirmed, etc.
+        type: string
+      external_order_id:
+        description: Reference tracking
+        type: string
+      id:
+        type: string
+      payload_hash:
+        description: Payload tracking
+        type: string
+      processed_at:
+        type: string
+      purchase_order_id:
+        description: Created/Updated PO ID
+        type: string
+      request_body:
+        description: Full JSON payload for debugging
+        type: string
+      signature_valid:
+        description: HMAC signature verification result
+        type: boolean
+      source_ip:
+        description: Webhook metadata
+        type: string
+      status:
+        description: Processing status
+        type: string
+      updated_at:
+        type: string
+      updated_by:
+        type: string
+      user_agent:
+        description: Request user agent
+        type: string
+    type: object
+  models.WebhookFPO:
+    properties:
+      delivery_address:
+        $ref: '#/definitions/models.WebhookAddress'
+      fpo_id:
+        type: string
+    required:
+    - delivery_address
+    - fpo_id
+    type: object
+  models.WebhookOrder:
+    properties:
+      currency:
+        type: string
+      expected_delivery_date:
+        type: string
+      external_order_id:
+        type: string
+      order_date:
+        type: string
+      total_amount:
+        type: number
+    required:
+    - expected_delivery_date
+    - external_order_id
+    type: object
+  models.WebhookOrderItem:
+    properties:
+      product:
+        $ref: '#/definitions/models.WebhookProduct'
+      quantity:
+        type: integer
+      unit_price:
+        type: number
+      variant:
+        $ref: '#/definitions/models.WebhookVariant'
+    required:
+    - product
+    - quantity
+    - unit_price
+    - variant
+    type: object
+  models.WebhookProduct:
+    properties:
+      category:
+        type: string
+      description:
+        type: string
+      external_id:
+        type: string
+      hsn_code:
+        type: string
+      name:
+        type: string
+      subcategory:
+        type: string
+      unit:
+        type: string
+    required:
+    - category
+    - external_id
+    - name
+    - unit
+    type: object
+  models.WebhookVariant:
+    properties:
+      brand_name:
+        type: string
+      dosage_instructions:
+        type: string
+      external_id:
+        type: string
+      gst_rate:
+        type: number
+      images:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      pack_size:
+        type: string
+      quantity_text:
+        type: string
+      sku:
+        type: string
+      usage_details:
+        type: string
+    required:
+    - external_id
+    - name
+    - pack_size
+    - quantity_text
+    - sku
     type: object
   utils.ErrorResponseModel:
     properties:
@@ -7684,6 +8027,349 @@ paths:
       summary: Search Warehouses
       tags:
       - Warehouses
+  /api/v1/webhooks/ecommerce/order/confirmed:
+    post:
+      consumes:
+      - application/json
+      description: Receives order.confirmed webhook from e-commerce platform
+      parameters:
+      - description: HMAC-SHA256 signature of request body
+        in: header
+        name: X-Webhook-Signature
+        required: true
+        type: string
+      - description: Unique event identifier (for idempotency)
+        in: header
+        name: X-Webhook-Event-ID
+        required: true
+        type: string
+      - description: Unix timestamp of webhook creation
+        in: header
+        name: X-Webhook-Timestamp
+        required: true
+        type: string
+      - description: Order confirmed webhook payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.OrderConfirmedWebhook'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Webhook processed successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  additionalProperties: true
+                  type: object
+              type: object
+        "400":
+          description: Bad request or invalid payload
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Invalid webhook signature
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: E-commerce Order Confirmed Webhook
+      tags:
+      - Webhooks
+  /api/v1/webhooks/ecommerce/order/created:
+    post:
+      consumes:
+      - application/json
+      description: Receives order.created webhook from e-commerce platform
+      parameters:
+      - description: HMAC-SHA256 signature of request body
+        in: header
+        name: X-Webhook-Signature
+        required: true
+        type: string
+      - description: Unique event identifier (for idempotency)
+        in: header
+        name: X-Webhook-Event-ID
+        required: true
+        type: string
+      - description: Unix timestamp of webhook creation
+        in: header
+        name: X-Webhook-Timestamp
+        required: true
+        type: string
+      - description: Order created webhook payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.OrderCreatedWebhook'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Webhook processed successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  additionalProperties: true
+                  type: object
+              type: object
+        "400":
+          description: Bad request or invalid payload
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Invalid webhook signature
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: E-commerce Order Created Webhook
+      tags:
+      - Webhooks
+  /api/v1/webhooks/ecommerce/order/delivered:
+    post:
+      consumes:
+      - application/json
+      description: Receives order.delivered webhook from e-commerce platform
+      parameters:
+      - description: HMAC-SHA256 signature of request body
+        in: header
+        name: X-Webhook-Signature
+        required: true
+        type: string
+      - description: Unique event identifier (for idempotency)
+        in: header
+        name: X-Webhook-Event-ID
+        required: true
+        type: string
+      - description: Unix timestamp of webhook creation
+        in: header
+        name: X-Webhook-Timestamp
+        required: true
+        type: string
+      - description: Order delivered webhook payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.OrderDeliveredWebhook'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Webhook processed successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  additionalProperties: true
+                  type: object
+              type: object
+        "400":
+          description: Bad request or invalid payload
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Invalid webhook signature
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: E-commerce Order Delivered Webhook
+      tags:
+      - Webhooks
+  /api/v1/webhooks/ecommerce/order/payment:
+    post:
+      consumes:
+      - application/json
+      description: Receives order.payment webhook from e-commerce platform
+      parameters:
+      - description: HMAC-SHA256 signature of request body
+        in: header
+        name: X-Webhook-Signature
+        required: true
+        type: string
+      - description: Unique event identifier (for idempotency)
+        in: header
+        name: X-Webhook-Event-ID
+        required: true
+        type: string
+      - description: Unix timestamp of webhook creation
+        in: header
+        name: X-Webhook-Timestamp
+        required: true
+        type: string
+      - description: Order payment webhook payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.OrderPaymentWebhook'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Webhook processed successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  additionalProperties: true
+                  type: object
+              type: object
+        "400":
+          description: Bad request or invalid payload
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Invalid webhook signature
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: E-commerce Order Payment Webhook
+      tags:
+      - Webhooks
+  /api/v1/webhooks/ecommerce/order/shipped:
+    post:
+      consumes:
+      - application/json
+      description: Receives order.shipped webhook from e-commerce platform
+      parameters:
+      - description: HMAC-SHA256 signature of request body
+        in: header
+        name: X-Webhook-Signature
+        required: true
+        type: string
+      - description: Unique event identifier (for idempotency)
+        in: header
+        name: X-Webhook-Event-ID
+        required: true
+        type: string
+      - description: Unix timestamp of webhook creation
+        in: header
+        name: X-Webhook-Timestamp
+        required: true
+        type: string
+      - description: Order shipped webhook payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.OrderShippedWebhook'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Webhook processed successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  additionalProperties: true
+                  type: object
+              type: object
+        "400":
+          description: Bad request or invalid payload
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Invalid webhook signature
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: E-commerce Order Shipped Webhook
+      tags:
+      - Webhooks
+  /api/v1/webhooks/history:
+    get:
+      description: Retrieve webhook processing history (requires authentication)
+      parameters:
+      - description: Filter by external order ID
+        in: query
+        name: external_order_id
+        type: string
+      - description: Filter by status (processing, success, failed)
+        in: query
+        name: status
+        type: string
+      - default: 50
+        description: Limit results
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Webhook history retrieved
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.WebhookEvent'
+                  type: array
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Webhook History
+      tags:
+      - Webhooks
+  /api/v1/webhooks/stats:
+    get:
+      description: Retrieve webhook processing statistics (requires authentication)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Webhook statistics
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  additionalProperties: true
+                  type: object
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Webhook Statistics
+      tags:
+      - Webhooks
+schemes:
+- http
+- https
 securityDefinitions:
   BearerAuth:
     description: Type "Bearer" followed by a space and JWT token.

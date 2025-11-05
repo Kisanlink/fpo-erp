@@ -36,6 +36,14 @@ func (r *GRNRepository) CreateWithTx(tx *gorm.DB, grn *models.GRN) error {
 	return nil
 }
 
+// CreateItem creates a GRN item
+func (r *GRNRepository) CreateItem(item *models.GRNItem) error {
+	if err := r.db.Create(item).Error; err != nil {
+		return errors.NewInternalServerError("Failed to create GRN item")
+	}
+	return nil
+}
+
 // CreateItemWithTx creates a GRN item within a transaction
 func (r *GRNRepository) CreateItemWithTx(tx *gorm.DB, item *models.GRNItem) error {
 	if err := tx.Create(item).Error; err != nil {

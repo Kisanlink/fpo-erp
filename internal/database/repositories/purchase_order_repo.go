@@ -36,6 +36,14 @@ func (r *PurchaseOrderRepository) CreateWithTx(tx *gorm.DB, po *models.PurchaseO
 	return nil
 }
 
+// CreateItem creates a purchase order item
+func (r *PurchaseOrderRepository) CreateItem(item *models.PurchaseOrderItem) error {
+	if err := r.db.Create(item).Error; err != nil {
+		return errors.NewInternalServerError("Failed to create purchase order item")
+	}
+	return nil
+}
+
 // CreateItemWithTx creates a purchase order item within a transaction
 func (r *PurchaseOrderRepository) CreateItemWithTx(tx *gorm.DB, item *models.PurchaseOrderItem) error {
 	if err := tx.Create(item).Error; err != nil {
@@ -184,4 +192,16 @@ func (r *PurchaseOrderRepository) PONumberExists(poNumber string) (bool, error) 
 		return false, errors.NewInternalServerError("Failed to check PO number existence")
 	}
 	return count > 0, nil
+}
+
+// FindByExternalOrderID finds a purchase order by external_order_id (for webhook integration)
+func (r *PurchaseOrderRepository) FindByExternalOrderID(externalOrderID string) (*models.PurchaseOrder, error) {
+	var po models.PurchaseOrder
+	if err := r.db.Preload("Items").Where("external_order_id = ?", externalOrderID).First(&po).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, errors.NewNotFoundError("Purchase Order")
+		}
+		return nil, errors.NewInternalServerError("Failed to find purchase order by external_order_id")
+	}
+	return &po, nil
 }

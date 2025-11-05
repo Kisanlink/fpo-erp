@@ -9,6 +9,7 @@
 // @license.url https://opensource.org/licenses/MIT
 // @host localhost:3000
 // @BasePath /
+// @schemes http https
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
@@ -128,6 +129,9 @@ func initializeHashCounters(db *gorm.DB) {
 		constants.TablePurchaseOrderItem:   hash.Medium, // PO Items
 		constants.TableGRN:                 hash.Medium, // Goods Receipt Notes
 		constants.TableGRNItem:             hash.Medium, // GRN Items
+		// Webhook Integration
+		constants.TableWebhookEvent:           hash.Medium, // Webhook Events
+		constants.TableWebhookDeliveryAttempt: hash.Medium, // Webhook Delivery Attempts
 	}
 
 	// Initialize counters for each table
@@ -176,6 +180,9 @@ func getExistingIDs(db *gorm.DB, tableID string) []string {
 		constants.TablePurchaseOrderItem:   "purchase_order_items",
 		constants.TableGRN:                 "goods_receipt_notes",
 		constants.TableGRNItem:             "grn_items",
+		// Webhook Integration
+		constants.TableWebhookEvent:           "webhook_events",
+		constants.TableWebhookDeliveryAttempt: "webhook_delivery_attempts",
 	}
 
 	tableName, exists := tableNameMap[tableID]
