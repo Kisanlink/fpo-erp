@@ -13,12 +13,12 @@ import (
 // CollaboratorService handles collaborator business logic
 type CollaboratorService struct {
 	collaboratorRepo *repositories.CollaboratorRepository
-	addressClient    *aaa.AddressHTTPClient
+	addressClient    *aaa.AddressGRPCClient
 	s3Service        *S3Service
 }
 
 // NewCollaboratorService creates a new collaborator service
-func NewCollaboratorService(collaboratorRepo *repositories.CollaboratorRepository, addressClient *aaa.AddressHTTPClient, s3Service *S3Service) *CollaboratorService {
+func NewCollaboratorService(collaboratorRepo *repositories.CollaboratorRepository, addressClient *aaa.AddressGRPCClient, s3Service *S3Service) *CollaboratorService {
 	return &CollaboratorService{
 		collaboratorRepo: collaboratorRepo,
 		addressClient:    addressClient,

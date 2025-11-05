@@ -16,11 +16,11 @@ type InventoryService struct {
 	warehouseRepo *repositories.WarehouseRepository
 	productRepo   *repositories.ProductRepository
 	variantRepo   *repositories.ProductVariantRepository
-	addressClient *aaa.AddressHTTPClient
+	addressClient *aaa.AddressGRPCClient
 }
 
 // NewInventoryService creates a new inventory service
-func NewInventoryService(inventoryRepo *repositories.InventoryRepository, warehouseRepo *repositories.WarehouseRepository, productRepo *repositories.ProductRepository, variantRepo *repositories.ProductVariantRepository, addressClient *aaa.AddressHTTPClient) *InventoryService {
+func NewInventoryService(inventoryRepo *repositories.InventoryRepository, warehouseRepo *repositories.WarehouseRepository, productRepo *repositories.ProductRepository, variantRepo *repositories.ProductVariantRepository, addressClient *aaa.AddressGRPCClient) *InventoryService {
 	return &InventoryService{
 		inventoryRepo: inventoryRepo,
 		warehouseRepo: warehouseRepo,

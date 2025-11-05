@@ -1,5 +1,11 @@
 package aaa
 
+// ========================================
+// DEPRECATED: This HTTP client is deprecated in favor of AddressGRPCClient
+// for server-to-server communication. Use address_grpc_client.go instead.
+// This file is kept for backward compatibility only.
+// ========================================
+
 import (
 	"bytes"
 	"context"

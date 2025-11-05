@@ -12,11 +12,11 @@ import (
 // WarehouseService handles warehouse business logic
 type WarehouseService struct {
 	warehouseRepo *repositories.WarehouseRepository
-	addressClient *aaa.AddressHTTPClient
+	addressClient *aaa.AddressGRPCClient
 }
 
 // NewWarehouseService creates a new warehouse service
-func NewWarehouseService(warehouseRepo *repositories.WarehouseRepository, addressClient *aaa.AddressHTTPClient) *WarehouseService {
+func NewWarehouseService(warehouseRepo *repositories.WarehouseRepository, addressClient *aaa.AddressGRPCClient) *WarehouseService {
 	return &WarehouseService{
 		warehouseRepo: warehouseRepo,
 		addressClient: addressClient,

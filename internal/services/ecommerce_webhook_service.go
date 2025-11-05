@@ -21,7 +21,7 @@ type EcommerceWebhookService struct {
 	grnRepo            *repositories.GRNRepository
 	inventoryRepo      *repositories.InventoryRepository
 	poRepo             *repositories.PurchaseOrderRepository
-	addressClient      *aaa.AddressHTTPClient
+	addressClient      *aaa.AddressGRPCClient
 }
 
 // NewEcommerceWebhookService creates a new e-commerce webhook service
@@ -34,7 +34,7 @@ func NewEcommerceWebhookService(
 	grnRepo *repositories.GRNRepository,
 	inventoryRepo *repositories.InventoryRepository,
 	poRepo *repositories.PurchaseOrderRepository,
-	addressClient *aaa.AddressHTTPClient,
+	addressClient *aaa.AddressGRPCClient,
 ) *EcommerceWebhookService {
 	return &EcommerceWebhookService{
 		poService:          poService,

@@ -19,10 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	AuthorizationService_Check_FullMethodName              = "/pb.AuthorizationService/Check"
-	AuthorizationService_BatchCheck_FullMethodName         = "/pb.AuthorizationService/BatchCheck"
-	AuthorizationService_GetUserPermissions_FullMethodName = "/pb.AuthorizationService/GetUserPermissions"
-	AuthorizationService_GetUserRoles_FullMethodName       = "/pb.AuthorizationService/GetUserRoles"
+	AuthorizationService_Check_FullMethodName      = "/pb.AuthorizationService/Check"
+	AuthorizationService_BatchCheck_FullMethodName = "/pb.AuthorizationService/BatchCheck"
 )
 
 // AuthorizationServiceClient is the client API for AuthorizationService service.
@@ -33,10 +31,6 @@ type AuthorizationServiceClient interface {
 	Check(ctx context.Context, in *CheckRequest, opts ...grpc.CallOption) (*CheckResponse, error)
 	// BatchCheck verifies multiple permissions in a single request
 	BatchCheck(ctx context.Context, in *BatchCheckRequest, opts ...grpc.CallOption) (*BatchCheckResponse, error)
-	// GetUserPermissions returns all permissions for a user
-	GetUserPermissions(ctx context.Context, in *GetUserPermissionsRequest, opts ...grpc.CallOption) (*GetUserPermissionsResponse, error)
-	// GetUserRoles returns all roles for a user
-	GetUserRoles(ctx context.Context, in *GetUserRolesRequest, opts ...grpc.CallOption) (*GetUserRolesResponse, error)
 }
 
 type authorizationServiceClient struct {
@@ -65,24 +59,6 @@ func (c *authorizationServiceClient) BatchCheck(ctx context.Context, in *BatchCh
 	return out, nil
 }
 
-func (c *authorizationServiceClient) GetUserPermissions(ctx context.Context, in *GetUserPermissionsRequest, opts ...grpc.CallOption) (*GetUserPermissionsResponse, error) {
-	out := new(GetUserPermissionsResponse)
-	err := c.cc.Invoke(ctx, AuthorizationService_GetUserPermissions_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *authorizationServiceClient) GetUserRoles(ctx context.Context, in *GetUserRolesRequest, opts ...grpc.CallOption) (*GetUserRolesResponse, error) {
-	out := new(GetUserRolesResponse)
-	err := c.cc.Invoke(ctx, AuthorizationService_GetUserRoles_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // AuthorizationServiceServer is the server API for AuthorizationService service.
 // All implementations must embed UnimplementedAuthorizationServiceServer
 // for forward compatibility
@@ -91,10 +67,6 @@ type AuthorizationServiceServer interface {
 	Check(context.Context, *CheckRequest) (*CheckResponse, error)
 	// BatchCheck verifies multiple permissions in a single request
 	BatchCheck(context.Context, *BatchCheckRequest) (*BatchCheckResponse, error)
-	// GetUserPermissions returns all permissions for a user
-	GetUserPermissions(context.Context, *GetUserPermissionsRequest) (*GetUserPermissionsResponse, error)
-	// GetUserRoles returns all roles for a user
-	GetUserRoles(context.Context, *GetUserRolesRequest) (*GetUserRolesResponse, error)
 	mustEmbedUnimplementedAuthorizationServiceServer()
 }
 
@@ -107,12 +79,6 @@ func (UnimplementedAuthorizationServiceServer) Check(context.Context, *CheckRequ
 }
 func (UnimplementedAuthorizationServiceServer) BatchCheck(context.Context, *BatchCheckRequest) (*BatchCheckResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BatchCheck not implemented")
-}
-func (UnimplementedAuthorizationServiceServer) GetUserPermissions(context.Context, *GetUserPermissionsRequest) (*GetUserPermissionsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetUserPermissions not implemented")
-}
-func (UnimplementedAuthorizationServiceServer) GetUserRoles(context.Context, *GetUserRolesRequest) (*GetUserRolesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetUserRoles not implemented")
 }
 func (UnimplementedAuthorizationServiceServer) mustEmbedUnimplementedAuthorizationServiceServer() {}
 
@@ -163,42 +129,6 @@ func _AuthorizationService_BatchCheck_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AuthorizationService_GetUserPermissions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetUserPermissionsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AuthorizationServiceServer).GetUserPermissions(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AuthorizationService_GetUserPermissions_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthorizationServiceServer).GetUserPermissions(ctx, req.(*GetUserPermissionsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _AuthorizationService_GetUserRoles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetUserRolesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AuthorizationServiceServer).GetUserRoles(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AuthorizationService_GetUserRoles_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthorizationServiceServer).GetUserRoles(ctx, req.(*GetUserRolesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // AuthorizationService_ServiceDesc is the grpc.ServiceDesc for AuthorizationService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -213,14 +143,6 @@ var AuthorizationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BatchCheck",
 			Handler:    _AuthorizationService_BatchCheck_Handler,
-		},
-		{
-			MethodName: "GetUserPermissions",
-			Handler:    _AuthorizationService_GetUserPermissions_Handler,
-		},
-		{
-			MethodName: "GetUserRoles",
-			Handler:    _AuthorizationService_GetUserRoles_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

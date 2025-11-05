@@ -42,14 +42,12 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 		panic("Failed to initialize S3 service: " + err.Error())
 	}
 
-	// Initialize AAA address HTTP client (mock if AAA disabled)
-	var addressClient *aaa.AddressHTTPClient
-	if cfg.AAA.Enabled {
-		addressClient = aaa.NewAddressHTTPClient(cfg.AAA.BaseURL)
-	} else {
-		addressClient = aaa.NewMockAddressHTTPClient()
-		// Note: Mock client returns mock addresses without making HTTP calls
+	// Initialize AAA address gRPC client (for server-to-server communication)
+	addressClient, err := aaa.NewAddressGRPCClient(cfg.AAA.GRPCAddress)
+	if err != nil {
+		panic("Failed to initialize AAA address gRPC client: " + err.Error())
 	}
+	// Note: Connection will be closed when the application shuts down
 
 	// Initialize services
 	warehouseService := services.NewWarehouseService(warehouseRepo, addressClient)

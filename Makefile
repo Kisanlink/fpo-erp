@@ -19,9 +19,9 @@ clean:
 
 # Generate protobuf code (requires protoc and go-grpc plugins)
 proto:
-	protoc --go_out=. --go_opt=paths=source_relative \
-		--go-grpc_out=. --go-grpc_opt=paths=source_relative \
-		proto/stock_import.proto
+	protoc --go_out=. \
+		--go-grpc_out=. \
+		proto/authz.proto proto/address.proto
 
 # Install dependencies
 deps:

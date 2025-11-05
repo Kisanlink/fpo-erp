@@ -342,226 +342,6 @@ func (x *BatchCheckResponse) GetMessage() string {
 	return ""
 }
 
-// GetUserPermissionsRequest requests all permissions for a user
-type GetUserPermissionsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	ResourceType  string                 `protobuf:"bytes,2,opt,name=resource_type,json=resourceType,proto3" json:"resource_type,omitempty"` // Optional filter by resource type
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetUserPermissionsRequest) Reset() {
-	*x = GetUserPermissionsRequest{}
-	mi := &file_proto_authz_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetUserPermissionsRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetUserPermissionsRequest) ProtoMessage() {}
-
-func (x *GetUserPermissionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_authz_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetUserPermissionsRequest.ProtoReflect.Descriptor instead.
-func (*GetUserPermissionsRequest) Descriptor() ([]byte, []int) {
-	return file_proto_authz_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *GetUserPermissionsRequest) GetUserId() string {
-	if x != nil {
-		return x.UserId
-	}
-	return ""
-}
-
-func (x *GetUserPermissionsRequest) GetResourceType() string {
-	if x != nil {
-		return x.ResourceType
-	}
-	return ""
-}
-
-// GetUserPermissionsResponse returns all permissions for a user
-type GetUserPermissionsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Permissions   []string               `protobuf:"bytes,1,rep,name=permissions,proto3" json:"permissions,omitempty"`
-	StatusCode    int32                  `protobuf:"varint,2,opt,name=status_code,json=statusCode,proto3" json:"status_code,omitempty"`
-	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetUserPermissionsResponse) Reset() {
-	*x = GetUserPermissionsResponse{}
-	mi := &file_proto_authz_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetUserPermissionsResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetUserPermissionsResponse) ProtoMessage() {}
-
-func (x *GetUserPermissionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_authz_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetUserPermissionsResponse.ProtoReflect.Descriptor instead.
-func (*GetUserPermissionsResponse) Descriptor() ([]byte, []int) {
-	return file_proto_authz_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *GetUserPermissionsResponse) GetPermissions() []string {
-	if x != nil {
-		return x.Permissions
-	}
-	return nil
-}
-
-func (x *GetUserPermissionsResponse) GetStatusCode() int32 {
-	if x != nil {
-		return x.StatusCode
-	}
-	return 0
-}
-
-func (x *GetUserPermissionsResponse) GetMessage() string {
-	if x != nil {
-		return x.Message
-	}
-	return ""
-}
-
-// GetUserRolesRequest requests all roles for a user
-type GetUserRolesRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetUserRolesRequest) Reset() {
-	*x = GetUserRolesRequest{}
-	mi := &file_proto_authz_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetUserRolesRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetUserRolesRequest) ProtoMessage() {}
-
-func (x *GetUserRolesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_authz_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetUserRolesRequest.ProtoReflect.Descriptor instead.
-func (*GetUserRolesRequest) Descriptor() ([]byte, []int) {
-	return file_proto_authz_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *GetUserRolesRequest) GetUserId() string {
-	if x != nil {
-		return x.UserId
-	}
-	return ""
-}
-
-// GetUserRolesResponse returns all roles for a user
-type GetUserRolesResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Roles         []string               `protobuf:"bytes,1,rep,name=roles,proto3" json:"roles,omitempty"`
-	StatusCode    int32                  `protobuf:"varint,2,opt,name=status_code,json=statusCode,proto3" json:"status_code,omitempty"`
-	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetUserRolesResponse) Reset() {
-	*x = GetUserRolesResponse{}
-	mi := &file_proto_authz_proto_msgTypes[8]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetUserRolesResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetUserRolesResponse) ProtoMessage() {}
-
-func (x *GetUserRolesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_authz_proto_msgTypes[8]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetUserRolesResponse.ProtoReflect.Descriptor instead.
-func (*GetUserRolesResponse) Descriptor() ([]byte, []int) {
-	return file_proto_authz_proto_rawDescGZIP(), []int{8}
-}
-
-func (x *GetUserRolesResponse) GetRoles() []string {
-	if x != nil {
-		return x.Roles
-	}
-	return nil
-}
-
-func (x *GetUserRolesResponse) GetStatusCode() int32 {
-	if x != nil {
-		return x.StatusCode
-	}
-	return 0
-}
-
-func (x *GetUserRolesResponse) GetMessage() string {
-	if x != nil {
-		return x.Message
-	}
-	return ""
-}
-
 var File_proto_authz_proto protoreflect.FileDescriptor
 
 const file_proto_authz_proto_rawDesc = "" +
@@ -593,28 +373,11 @@ const file_proto_authz_proto_rawDesc = "" +
 	"\aresults\x18\x01 \x03(\v2\x11.pb.CheckResponseR\aresults\x12\x1f\n" +
 	"\vstatus_code\x18\x02 \x01(\x05R\n" +
 	"statusCode\x12\x18\n" +
-	"\amessage\x18\x03 \x01(\tR\amessage\"Y\n" +
-	"\x19GetUserPermissionsRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\x12#\n" +
-	"\rresource_type\x18\x02 \x01(\tR\fresourceType\"y\n" +
-	"\x1aGetUserPermissionsResponse\x12 \n" +
-	"\vpermissions\x18\x01 \x03(\tR\vpermissions\x12\x1f\n" +
-	"\vstatus_code\x18\x02 \x01(\x05R\n" +
-	"statusCode\x12\x18\n" +
-	"\amessage\x18\x03 \x01(\tR\amessage\".\n" +
-	"\x13GetUserRolesRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\"g\n" +
-	"\x14GetUserRolesResponse\x12\x14\n" +
-	"\x05roles\x18\x01 \x03(\tR\x05roles\x12\x1f\n" +
-	"\vstatus_code\x18\x02 \x01(\x05R\n" +
-	"statusCode\x12\x18\n" +
-	"\amessage\x18\x03 \x01(\tR\amessage2\x99\x02\n" +
+	"\amessage\x18\x03 \x01(\tR\amessage2\x81\x01\n" +
 	"\x14AuthorizationService\x12,\n" +
 	"\x05Check\x12\x10.pb.CheckRequest\x1a\x11.pb.CheckResponse\x12;\n" +
 	"\n" +
-	"BatchCheck\x12\x15.pb.BatchCheckRequest\x1a\x16.pb.BatchCheckResponse\x12S\n" +
-	"\x12GetUserPermissions\x12\x1d.pb.GetUserPermissionsRequest\x1a\x1e.pb.GetUserPermissionsResponse\x12A\n" +
-	"\fGetUserRoles\x12\x17.pb.GetUserRolesRequest\x1a\x18.pb.GetUserRolesResponseB\x19Z\x17kisanlink-erp/pkg/protob\x06proto3"
+	"BatchCheck\x12\x15.pb.BatchCheckRequest\x1a\x16.pb.BatchCheckResponseB\x19Z\x17kisanlink-erp/pkg/protob\x06proto3"
 
 var (
 	file_proto_authz_proto_rawDescOnce sync.Once
@@ -628,31 +391,23 @@ func file_proto_authz_proto_rawDescGZIP() []byte {
 	return file_proto_authz_proto_rawDescData
 }
 
-var file_proto_authz_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_proto_authz_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_proto_authz_proto_goTypes = []any{
-	(*CheckRequest)(nil),               // 0: pb.CheckRequest
-	(*CheckResponse)(nil),              // 1: pb.CheckResponse
-	(*CheckItem)(nil),                  // 2: pb.CheckItem
-	(*BatchCheckRequest)(nil),          // 3: pb.BatchCheckRequest
-	(*BatchCheckResponse)(nil),         // 4: pb.BatchCheckResponse
-	(*GetUserPermissionsRequest)(nil),  // 5: pb.GetUserPermissionsRequest
-	(*GetUserPermissionsResponse)(nil), // 6: pb.GetUserPermissionsResponse
-	(*GetUserRolesRequest)(nil),        // 7: pb.GetUserRolesRequest
-	(*GetUserRolesResponse)(nil),       // 8: pb.GetUserRolesResponse
+	(*CheckRequest)(nil),       // 0: pb.CheckRequest
+	(*CheckResponse)(nil),      // 1: pb.CheckResponse
+	(*CheckItem)(nil),          // 2: pb.CheckItem
+	(*BatchCheckRequest)(nil),  // 3: pb.BatchCheckRequest
+	(*BatchCheckResponse)(nil), // 4: pb.BatchCheckResponse
 }
 var file_proto_authz_proto_depIdxs = []int32{
 	2, // 0: pb.BatchCheckRequest.items:type_name -> pb.CheckItem
 	1, // 1: pb.BatchCheckResponse.results:type_name -> pb.CheckResponse
 	0, // 2: pb.AuthorizationService.Check:input_type -> pb.CheckRequest
 	3, // 3: pb.AuthorizationService.BatchCheck:input_type -> pb.BatchCheckRequest
-	5, // 4: pb.AuthorizationService.GetUserPermissions:input_type -> pb.GetUserPermissionsRequest
-	7, // 5: pb.AuthorizationService.GetUserRoles:input_type -> pb.GetUserRolesRequest
-	1, // 6: pb.AuthorizationService.Check:output_type -> pb.CheckResponse
-	4, // 7: pb.AuthorizationService.BatchCheck:output_type -> pb.BatchCheckResponse
-	6, // 8: pb.AuthorizationService.GetUserPermissions:output_type -> pb.GetUserPermissionsResponse
-	8, // 9: pb.AuthorizationService.GetUserRoles:output_type -> pb.GetUserRolesResponse
-	6, // [6:10] is the sub-list for method output_type
-	2, // [2:6] is the sub-list for method input_type
+	1, // 4: pb.AuthorizationService.Check:output_type -> pb.CheckResponse
+	4, // 5: pb.AuthorizationService.BatchCheck:output_type -> pb.BatchCheckResponse
+	4, // [4:6] is the sub-list for method output_type
+	2, // [2:4] is the sub-list for method input_type
 	2, // [2:2] is the sub-list for extension type_name
 	2, // [2:2] is the sub-list for extension extendee
 	0, // [0:2] is the sub-list for field type_name
@@ -669,7 +424,7 @@ func file_proto_authz_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_authz_proto_rawDesc), len(file_proto_authz_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
