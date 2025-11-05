@@ -98,12 +98,17 @@ func (c *AddressGRPCClient) CreateAddress(ctx context.Context, req *CreateAddres
 		return nil, fmt.Errorf("gRPC CreateAddress failed: %w", err)
 	}
 
-	if !resp.Success {
-		return nil, fmt.Errorf("AAA service error: %s", resp.Message)
+	// Check status code (2xx is success)
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("AAA service error (status %d): %s", resp.StatusCode, resp.Message)
+	}
+
+	if resp.Address == nil {
+		return nil, fmt.Errorf("AAA service returned success but no address data")
 	}
 
 	// Convert proto response to Address
-	return protoAddressToAddress(resp.Data), nil
+	return protoAddressToAddress(resp.Address), nil
 }
 
 // GetAddress retrieves an address by ID
@@ -120,11 +125,16 @@ func (c *AddressGRPCClient) GetAddress(ctx context.Context, addressID string, jw
 		return nil, fmt.Errorf("gRPC GetAddress failed: %w", err)
 	}
 
-	if !resp.Success {
-		return nil, fmt.Errorf("AAA service error: %s", resp.Message)
+	// Check status code (2xx is success)
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("AAA service error (status %d): %s", resp.StatusCode, resp.Message)
 	}
 
-	return protoAddressToAddress(resp.Data), nil
+	if resp.Address == nil {
+		return nil, fmt.Errorf("AAA service returned success but no address data")
+	}
+
+	return protoAddressToAddress(resp.Address), nil
 }
 
 // UpdateAddress updates an existing address
@@ -179,11 +189,16 @@ func (c *AddressGRPCClient) UpdateAddress(ctx context.Context, req *UpdateAddres
 		return nil, fmt.Errorf("gRPC UpdateAddress failed: %w", err)
 	}
 
-	if !resp.Success {
-		return nil, fmt.Errorf("AAA service error: %s", resp.Message)
+	// Check status code (2xx is success)
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("AAA service error (status %d): %s", resp.StatusCode, resp.Message)
 	}
 
-	return protoAddressToAddress(resp.Data), nil
+	if resp.Address == nil {
+		return nil, fmt.Errorf("AAA service returned success but no address data")
+	}
+
+	return protoAddressToAddress(resp.Address), nil
 }
 
 // DeleteAddress deletes an address
@@ -201,8 +216,9 @@ func (c *AddressGRPCClient) DeleteAddress(ctx context.Context, addressID string,
 		return fmt.Errorf("gRPC DeleteAddress failed: %w", err)
 	}
 
-	if !resp.Success {
-		return fmt.Errorf("AAA service error: %s", resp.Message)
+	// Check status code (2xx is success)
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("AAA service error (status %d): %s", resp.StatusCode, resp.Message)
 	}
 
 	return nil
@@ -224,13 +240,19 @@ func (c *AddressGRPCClient) SearchAddresses(ctx context.Context, query string, l
 		return nil, fmt.Errorf("gRPC SearchAddresses failed: %w", err)
 	}
 
-	if !resp.Success {
-		return nil, fmt.Errorf("AAA service error: %s", resp.Message)
+	// Check status code (2xx is success)
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("AAA service error (status %d): %s", resp.StatusCode, resp.Message)
+	}
+
+	// Return empty slice if no addresses
+	if resp.Addresses == nil {
+		return []*Address{}, nil
 	}
 
 	// Convert proto addresses to Address slice
-	addresses := make([]*Address, len(resp.Data))
-	for i, protoAddr := range resp.Data {
+	addresses := make([]*Address, len(resp.Addresses))
+	for i, protoAddr := range resp.Addresses {
 		addresses[i] = protoAddressToAddress(protoAddr)
 	}
 

@@ -2287,8 +2287,9 @@ definitions:
     type: object
   models.WebhookCollaborator:
     properties:
-      address:
-        $ref: '#/definitions/models.WebhookAddress'
+      address_id:
+        description: Reference to AAA address (AAA is source of truth)
+        type: string
       bank_account_no:
         type: string
       bank_ifsc:

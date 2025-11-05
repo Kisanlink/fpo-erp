@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package pb;
+package pb.v2;
 
 option go_package = "kisanlink-erp/pkg/proto";
 
@@ -93,28 +93,39 @@ message SearchAddressesRequest {
 // Response Messages
 // ========================================
 
-// AddressResponse represents a response containing an address
-message AddressResponse {
-    bool success = 1;
+// CreateAddressResponse represents a response for creating an address
+message CreateAddressResponse {
+    int32 status_code = 1;
     string message = 2;
-    int32 status_code = 3;
-    Address data = 4;
+    Address address = 3;
+}
+
+// GetAddressResponse represents a response for getting an address
+message GetAddressResponse {
+    int32 status_code = 1;
+    string message = 2;
+    Address address = 3;
+}
+
+// UpdateAddressResponse represents a response for updating an address
+message UpdateAddressResponse {
+    int32 status_code = 1;
+    string message = 2;
+    Address address = 3;
 }
 
 // DeleteAddressResponse represents a response for delete operation
 message DeleteAddressResponse {
-    bool success = 1;
+    int32 status_code = 1;
     string message = 2;
-    int32 status_code = 3;
 }
 
 // SearchAddressesResponse represents a response containing multiple addresses
 message SearchAddressesResponse {
-    bool success = 1;
+    int32 status_code = 1;
     string message = 2;
-    int32 status_code = 3;
-    repeated Address data = 4;
-    int32 total_count = 5;
+    repeated Address addresses = 3;
+    int32 total_count = 4;
 }
 
 // ========================================
@@ -124,13 +135,13 @@ message SearchAddressesResponse {
 // AddressService provides address management functionality
 service AddressService {
     // CreateAddress creates a new address
-    rpc CreateAddress(CreateAddressRequest) returns (AddressResponse);
+    rpc CreateAddress(CreateAddressRequest) returns (CreateAddressResponse);
 
     // GetAddress retrieves an address by ID
-    rpc GetAddress(GetAddressRequest) returns (AddressResponse);
+    rpc GetAddress(GetAddressRequest) returns (GetAddressResponse);
 
     // UpdateAddress updates an existing address
-    rpc UpdateAddress(UpdateAddressRequest) returns (AddressResponse);
+    rpc UpdateAddress(UpdateAddressRequest) returns (UpdateAddressResponse);
 
     // DeleteAddress deletes an address (soft or hard delete)
     rpc DeleteAddress(DeleteAddressRequest) returns (DeleteAddressResponse);

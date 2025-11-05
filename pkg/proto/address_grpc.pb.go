@@ -19,11 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	AddressService_CreateAddress_FullMethodName   = "/pb.AddressService/CreateAddress"
-	AddressService_GetAddress_FullMethodName      = "/pb.AddressService/GetAddress"
-	AddressService_UpdateAddress_FullMethodName   = "/pb.AddressService/UpdateAddress"
-	AddressService_DeleteAddress_FullMethodName   = "/pb.AddressService/DeleteAddress"
-	AddressService_SearchAddresses_FullMethodName = "/pb.AddressService/SearchAddresses"
+	AddressService_CreateAddress_FullMethodName   = "/pb.v2.AddressService/CreateAddress"
+	AddressService_GetAddress_FullMethodName      = "/pb.v2.AddressService/GetAddress"
+	AddressService_UpdateAddress_FullMethodName   = "/pb.v2.AddressService/UpdateAddress"
+	AddressService_DeleteAddress_FullMethodName   = "/pb.v2.AddressService/DeleteAddress"
+	AddressService_SearchAddresses_FullMethodName = "/pb.v2.AddressService/SearchAddresses"
 )
 
 // AddressServiceClient is the client API for AddressService service.
@@ -31,11 +31,11 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AddressServiceClient interface {
 	// CreateAddress creates a new address
-	CreateAddress(ctx context.Context, in *CreateAddressRequest, opts ...grpc.CallOption) (*AddressResponse, error)
+	CreateAddress(ctx context.Context, in *CreateAddressRequest, opts ...grpc.CallOption) (*CreateAddressResponse, error)
 	// GetAddress retrieves an address by ID
-	GetAddress(ctx context.Context, in *GetAddressRequest, opts ...grpc.CallOption) (*AddressResponse, error)
+	GetAddress(ctx context.Context, in *GetAddressRequest, opts ...grpc.CallOption) (*GetAddressResponse, error)
 	// UpdateAddress updates an existing address
-	UpdateAddress(ctx context.Context, in *UpdateAddressRequest, opts ...grpc.CallOption) (*AddressResponse, error)
+	UpdateAddress(ctx context.Context, in *UpdateAddressRequest, opts ...grpc.CallOption) (*UpdateAddressResponse, error)
 	// DeleteAddress deletes an address (soft or hard delete)
 	DeleteAddress(ctx context.Context, in *DeleteAddressRequest, opts ...grpc.CallOption) (*DeleteAddressResponse, error)
 	// SearchAddresses searches for addresses
@@ -50,8 +50,8 @@ func NewAddressServiceClient(cc grpc.ClientConnInterface) AddressServiceClient {
 	return &addressServiceClient{cc}
 }
 
-func (c *addressServiceClient) CreateAddress(ctx context.Context, in *CreateAddressRequest, opts ...grpc.CallOption) (*AddressResponse, error) {
-	out := new(AddressResponse)
+func (c *addressServiceClient) CreateAddress(ctx context.Context, in *CreateAddressRequest, opts ...grpc.CallOption) (*CreateAddressResponse, error) {
+	out := new(CreateAddressResponse)
 	err := c.cc.Invoke(ctx, AddressService_CreateAddress_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -59,8 +59,8 @@ func (c *addressServiceClient) CreateAddress(ctx context.Context, in *CreateAddr
 	return out, nil
 }
 
-func (c *addressServiceClient) GetAddress(ctx context.Context, in *GetAddressRequest, opts ...grpc.CallOption) (*AddressResponse, error) {
-	out := new(AddressResponse)
+func (c *addressServiceClient) GetAddress(ctx context.Context, in *GetAddressRequest, opts ...grpc.CallOption) (*GetAddressResponse, error) {
+	out := new(GetAddressResponse)
 	err := c.cc.Invoke(ctx, AddressService_GetAddress_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -68,8 +68,8 @@ func (c *addressServiceClient) GetAddress(ctx context.Context, in *GetAddressReq
 	return out, nil
 }
 
-func (c *addressServiceClient) UpdateAddress(ctx context.Context, in *UpdateAddressRequest, opts ...grpc.CallOption) (*AddressResponse, error) {
-	out := new(AddressResponse)
+func (c *addressServiceClient) UpdateAddress(ctx context.Context, in *UpdateAddressRequest, opts ...grpc.CallOption) (*UpdateAddressResponse, error) {
+	out := new(UpdateAddressResponse)
 	err := c.cc.Invoke(ctx, AddressService_UpdateAddress_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -100,11 +100,11 @@ func (c *addressServiceClient) SearchAddresses(ctx context.Context, in *SearchAd
 // for forward compatibility
 type AddressServiceServer interface {
 	// CreateAddress creates a new address
-	CreateAddress(context.Context, *CreateAddressRequest) (*AddressResponse, error)
+	CreateAddress(context.Context, *CreateAddressRequest) (*CreateAddressResponse, error)
 	// GetAddress retrieves an address by ID
-	GetAddress(context.Context, *GetAddressRequest) (*AddressResponse, error)
+	GetAddress(context.Context, *GetAddressRequest) (*GetAddressResponse, error)
 	// UpdateAddress updates an existing address
-	UpdateAddress(context.Context, *UpdateAddressRequest) (*AddressResponse, error)
+	UpdateAddress(context.Context, *UpdateAddressRequest) (*UpdateAddressResponse, error)
 	// DeleteAddress deletes an address (soft or hard delete)
 	DeleteAddress(context.Context, *DeleteAddressRequest) (*DeleteAddressResponse, error)
 	// SearchAddresses searches for addresses
@@ -116,13 +116,13 @@ type AddressServiceServer interface {
 type UnimplementedAddressServiceServer struct {
 }
 
-func (UnimplementedAddressServiceServer) CreateAddress(context.Context, *CreateAddressRequest) (*AddressResponse, error) {
+func (UnimplementedAddressServiceServer) CreateAddress(context.Context, *CreateAddressRequest) (*CreateAddressResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateAddress not implemented")
 }
-func (UnimplementedAddressServiceServer) GetAddress(context.Context, *GetAddressRequest) (*AddressResponse, error) {
+func (UnimplementedAddressServiceServer) GetAddress(context.Context, *GetAddressRequest) (*GetAddressResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAddress not implemented")
 }
-func (UnimplementedAddressServiceServer) UpdateAddress(context.Context, *UpdateAddressRequest) (*AddressResponse, error) {
+func (UnimplementedAddressServiceServer) UpdateAddress(context.Context, *UpdateAddressRequest) (*UpdateAddressResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateAddress not implemented")
 }
 func (UnimplementedAddressServiceServer) DeleteAddress(context.Context, *DeleteAddressRequest) (*DeleteAddressResponse, error) {
@@ -238,7 +238,7 @@ func _AddressService_SearchAddresses_Handler(srv interface{}, ctx context.Contex
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var AddressService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "pb.AddressService",
+	ServiceName: "pb.v2.AddressService",
 	HandlerType: (*AddressServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

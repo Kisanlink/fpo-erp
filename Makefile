@@ -19,8 +19,8 @@ clean:
 
 # Generate protobuf code (requires protoc and go-grpc plugins)
 proto:
-	protoc --go_out=. \
-		--go-grpc_out=. \
+	protoc --go_out=. --go_opt=module=kisanlink-erp \
+		--go-grpc_out=. --go-grpc_opt=module=kisanlink-erp \
 		proto/authz.proto proto/address.proto
 
 # Install dependencies
