@@ -421,3 +421,31 @@ func FixtureTaxCGST() *models.Tax {
 func FixtureTaxSGST() *models.Tax {
 	return FixtureTax("SGST", 9.0)
 }
+
+// ========================================
+// ProductPrice Fixtures
+// ========================================
+
+// FixtureProductPrice creates an in-memory ProductPrice
+func FixtureProductPrice(variantID, priceType string, price float64) *models.ProductPrice {
+	effectiveFrom := time.Now().UTC()
+	return models.NewProductPrice(variantID, priceType, price, "INR", effectiveFrom, nil, true)
+}
+
+// FixtureProductPriceWithDates creates a ProductPrice with custom dates
+func FixtureProductPriceWithDates(variantID, priceType string, price float64, effectiveFrom time.Time, effectiveTo *time.Time) *models.ProductPrice {
+	return models.NewProductPrice(variantID, priceType, price, "INR", effectiveFrom, effectiveTo, true)
+}
+
+// FixtureProductPriceExpired creates an expired ProductPrice
+func FixtureProductPriceExpired(variantID, priceType string, price float64) *models.ProductPrice {
+	effectiveFrom := time.Now().UTC().Add(-30 * 24 * time.Hour) // 30 days ago
+	effectiveTo := time.Now().UTC().Add(-1 * 24 * time.Hour)    // Yesterday
+	return models.NewProductPrice(variantID, priceType, price, "INR", effectiveFrom, &effectiveTo, true)
+}
+
+// FixtureProductPriceInactive creates an inactive ProductPrice
+func FixtureProductPriceInactive(variantID, priceType string, price float64) *models.ProductPrice {
+	effectiveFrom := time.Now().UTC()
+	return models.NewProductPrice(variantID, priceType, price, "INR", effectiveFrom, nil, false)
+}
