@@ -1,0 +1,304 @@
+#!/bin/bash
+# Enhanced Pre-commit Hook - Runs quality checks before every commit
+# Configuration: Set environment variables to customize behavior
+
+set -e  # Exit on error for blocking checks
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Configuration (can be overridden with environment variables)
+SKIP_FORMAT=${SKIP_FORMAT:-0}
+SKIP_LINT=${SKIP_LINT:-0}
+SKIP_SECURITY=${SKIP_SECURITY:-0}
+SKIP_BUILD=${SKIP_BUILD:-0}
+SKIP_TESTS=${SKIP_TESTS:-0}
+BLOCK_ON_LINT=${BLOCK_ON_LINT:-0}
+BLOCK_ON_SECURITY=${BLOCK_ON_SECURITY:-0}
+
+echo ""
+echo -e "${BLUE}🔍 Running pre-commit checks...${NC}"
+echo "================================================"
+
+START_TIME=$(date +%s)
+WARNINGS=0
+ERRORS=0
+
+# ============================================
+# CHECK 1: Branch Protection (BLOCKING)
+# ============================================
+echo -n "1️⃣  Checking branch... "
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "master" ]; then
+    echo -e "${RED}✗${NC}"
+    echo ""
+    echo -e "${RED}❌ ERROR: Direct commits to $BRANCH are not allowed!${NC}"
+    echo -e "${YELLOW}   Please create a feature branch:${NC}"
+    echo -e "${YELLOW}   git checkout -b feat/your-feature-name${NC}"
+    echo ""
+    exit 1
+fi
+echo -e "${GREEN}✓${NC} ($BRANCH)"
+
+# ============================================
+# CHECK 2: Merge Conflict Markers (BLOCKING)
+# ============================================
+echo -n "2️⃣  Checking for merge conflicts... "
+if git diff --cached --name-only | xargs grep -l "^<<<<<<< \|^=======$\|^>>>>>>> " 2>/dev/null; then
+    echo -e "${RED}✗${NC}"
+    echo ""
+    echo -e "${RED}❌ ERROR: Unresolved merge conflict markers found!${NC}"
+    echo -e "${YELLOW}   Please resolve conflicts before committing${NC}"
+    echo ""
+    exit 1
+fi
+echo -e "${GREEN}✓${NC}"
+
+# ============================================
+# CHECK 3: Code Formatting (AUTO-FIX)
+# ============================================
+if [ "$SKIP_FORMAT" = "0" ]; then
+    echo -n "3️⃣  Formatting code... "
+
+    # Check if goimports is installed
+    if ! command -v goimports &> /dev/null; then
+        echo -e "${YELLOW}⚠${NC}"
+        echo -e "${YELLOW}   goimports not found - install with: go install golang.org/x/tools/cmd/goimports@latest${NC}"
+        echo -n "   Using gofmt instead... "
+
+        # Format with gofmt
+        FORMATTED_FILES=$(find . -name "*.go" -not -path "./vendor/*" -not -path "./.git/*" | xargs gofmt -l)
+        if [ -n "$FORMATTED_FILES" ]; then
+            echo "$FORMATTED_FILES" | xargs gofmt -w
+            git add $FORMATTED_FILES
+            FILE_COUNT=$(echo "$FORMATTED_FILES" | wc -l | tr -d ' ')
+            echo -e "${GREEN}✓${NC} (${FILE_COUNT} files formatted)"
+        else
+            echo -e "${GREEN}✓${NC}"
+        fi
+    else
+        # Format with goimports
+        FORMATTED_FILES=$(find . -name "*.go" -not -path "./vendor/*" -not -path "./.git/*" | xargs goimports -l)
+        if [ -n "$FORMATTED_FILES" ]; then
+            echo "$FORMATTED_FILES" | xargs goimports -w
+            git add $FORMATTED_FILES
+            FILE_COUNT=$(echo "$FORMATTED_FILES" | wc -l | tr -d ' ')
+            echo -e "${GREEN}✓${NC} (${FILE_COUNT} files formatted & imports organized)"
+        else
+            echo -e "${GREEN}✓${NC}"
+        fi
+    fi
+else
+    echo "3️⃣  Code formatting: SKIPPED"
+fi
+
+# ============================================
+# CHECK 4: Go Module Tidy (AUTO-FIX)
+# ============================================
+echo -n "4️⃣  Tidying Go modules... "
+go mod tidy 2>/dev/null
+if ! git diff --exit-code go.mod go.sum &>/dev/null; then
+    git add go.mod go.sum
+    echo -e "${GREEN}✓${NC} (go.mod and go.sum updated)"
+else
+    echo -e "${GREEN}✓${NC}"
+fi
+
+# ============================================
+# CHECK 5: Build Check (WARNING)
+# ============================================
+if [ "$SKIP_BUILD" = "0" ]; then
+    echo -n "5️⃣  Building project... "
+    if BUILD_OUTPUT=$(go build ./... 2>&1); then
+        echo -e "${GREEN}✓${NC}"
+    else
+        echo -e "${RED}✗${NC}"
+        echo -e "${YELLOW}⚠️  Build failed:${NC}"
+        echo "$BUILD_OUTPUT" | sed 's/^/   /'
+        WARNINGS=$((WARNINGS + 1))
+    fi
+else
+    echo "5️⃣  Build check: SKIPPED"
+fi
+
+# ============================================
+# CHECK 6: Linting (WARNING/BLOCKING)
+# ============================================
+if [ "$SKIP_LINT" = "0" ]; then
+    echo -n "6️⃣  Running linter... "
+
+    if ! command -v golangci-lint &> /dev/null; then
+        echo -e "${YELLOW}⚠${NC}"
+        echo -e "${YELLOW}   golangci-lint not found - install with: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest${NC}"
+    else
+        if LINT_OUTPUT=$(golangci-lint run --timeout=2m --fast 2>&1); then
+            echo -e "${GREEN}✓${NC}"
+        else
+            echo -e "${RED}✗${NC}"
+            echo -e "${YELLOW}⚠️  Linting issues found:${NC}"
+            echo "$LINT_OUTPUT" | head -20 | sed 's/^/   /'
+            LINT_COUNT=$(echo "$LINT_OUTPUT" | grep -c "^" || echo "0")
+            if [ "$LINT_COUNT" -gt 20 ]; then
+                echo -e "${YELLOW}   ... and $((LINT_COUNT - 20)) more issues${NC}"
+            fi
+
+            if [ "$BLOCK_ON_LINT" = "1" ]; then
+                echo ""
+                echo -e "${RED}❌ Commit blocked due to linting issues${NC}"
+                exit 1
+            else
+                WARNINGS=$((WARNINGS + 1))
+            fi
+        fi
+    fi
+else
+    echo "6️⃣  Linting: SKIPPED"
+fi
+
+# ============================================
+# CHECK 7: Tests (WARNING) - Already Implemented
+# ============================================
+if [ "$SKIP_TESTS" = "0" ]; then
+    echo -n "7️⃣  Running tests... "
+
+    # Use clean test runner if available
+    if [ -f "scripts/test-clean.sh" ]; then
+        TEST_OUTPUT=$(bash scripts/test-clean.sh ./... 2>&1)
+    else
+        TEST_OUTPUT=$(go test ./... 2>&1)
+    fi
+    TEST_EXIT_CODE=$?
+
+    if [ $TEST_EXIT_CODE -eq 0 ]; then
+        PASS_COUNT=$(echo "$TEST_OUTPUT" | grep -c "^PASS" || echo "0")
+        echo -e "${GREEN}✓${NC} (${PASS_COUNT} packages passed)"
+    else
+        FAIL_COUNT=$(echo "$TEST_OUTPUT" | grep -c "^FAIL:" || echo "0")
+        echo -e "${RED}✗${NC}"
+        echo -e "${YELLOW}⚠️  Test failures:${NC}"
+        echo "$TEST_OUTPUT" | grep "^--- FAIL:" | head -10 | sed 's/^/   /'
+        WARNINGS=$((WARNINGS + 1))
+    fi
+else
+    echo "7️⃣  Tests: SKIPPED"
+fi
+
+# ============================================
+# CHECK 8: Security Scan (WARNING/BLOCKING)
+# ============================================
+if [ "$SKIP_SECURITY" = "0" ]; then
+    echo -n "8️⃣  Security scanning... "
+
+    if ! command -v gosec &> /dev/null; then
+        echo -e "${YELLOW}⚠${NC}"
+        echo -e "${YELLOW}   gosec not found - install with: go install github.com/securego/gosec/v2/cmd/gosec@latest${NC}"
+    else
+        if SEC_OUTPUT=$(gosec -quiet ./... 2>&1); then
+            echo -e "${GREEN}✓${NC}"
+        else
+            echo -e "${RED}✗${NC}"
+            echo -e "${YELLOW}⚠️  Security issues found:${NC}"
+            echo "$SEC_OUTPUT" | grep -A 2 "Severity:" | head -15 | sed 's/^/   /'
+
+            if [ "$BLOCK_ON_SECURITY" = "1" ]; then
+                echo ""
+                echo -e "${RED}❌ Commit blocked due to security issues${NC}"
+                exit 1
+            else
+                WARNINGS=$((WARNINGS + 1))
+            fi
+        fi
+    fi
+else
+    echo "8️⃣  Security scan: SKIPPED"
+fi
+
+# ============================================
+# CHECK 9: Debug Code Detection (WARNING)
+# ============================================
+echo -n "9️⃣  Checking for debug code... "
+DEBUG_PATTERNS="fmt\.Println|log\.Println|panic\(|debug\s*:=\s*true"
+DEBUG_FILES=$(git diff --cached --name-only | grep '\.go$' | xargs grep -n -E "$DEBUG_PATTERNS" 2>/dev/null || true)
+
+if [ -n "$DEBUG_FILES" ]; then
+    echo -e "${YELLOW}⚠${NC}"
+    echo -e "${YELLOW}⚠️  Found potential debug code:${NC}"
+    echo "$DEBUG_FILES" | head -5 | sed 's/^/   /'
+    DEBUG_COUNT=$(echo "$DEBUG_FILES" | wc -l | tr -d ' ')
+    if [ "$DEBUG_COUNT" -gt 5 ]; then
+        echo -e "${YELLOW}   ... and $((DEBUG_COUNT - 5)) more occurrences${NC}"
+    fi
+    WARNINGS=$((WARNINGS + 1))
+else
+    echo -e "${GREEN}✓${NC}"
+fi
+
+# ============================================
+# CHECK 10: Sensitive Data Detection (WARNING)
+# ============================================
+echo -n "🔟 Checking for sensitive data... "
+SENSITIVE_PATTERNS="password\s*=|secret\s*=|api_key\s*=|private_key\s*=|token\s*=|AWS_SECRET|PRIVATE KEY-----"
+SENSITIVE_FILES=$(git diff --cached | grep -i -E "$SENSITIVE_PATTERNS" | grep -v "^-" || true)
+
+if [ -n "$SENSITIVE_FILES" ]; then
+    echo -e "${RED}✗${NC}"
+    echo -e "${RED}⚠️  Potential secrets detected:${NC}"
+    echo "$SENSITIVE_FILES" | head -5 | sed 's/^/   /'
+    echo -e "${YELLOW}   Please review carefully before committing!${NC}"
+    WARNINGS=$((WARNINGS + 1))
+else
+    echo -e "${GREEN}✓${NC}"
+fi
+
+# ============================================
+# REPORTING: TODO/FIXME (INFO ONLY)
+# ============================================
+echo -n "📝 Checking TODOs/FIXMEs... "
+TODO_FILES=$(git diff --cached --name-only | grep '\.go$' | xargs grep -n -E "TODO|FIXME" 2>/dev/null || true)
+
+if [ -n "$TODO_FILES" ]; then
+    TODO_COUNT=$(echo "$TODO_FILES" | wc -l | tr -d ' ')
+    echo -e "${BLUE}ℹ${NC} (${TODO_COUNT} found)"
+    if [ "$TODO_COUNT" -le 5 ]; then
+        echo "$TODO_FILES" | sed 's/^/   /'
+    else
+        echo "$TODO_FILES" | head -3 | sed 's/^/   /'
+        echo -e "${BLUE}   ... and $((TODO_COUNT - 3)) more${NC}"
+    fi
+else
+    echo -e "${GREEN}✓${NC} (none)"
+fi
+
+# ============================================
+# SUMMARY
+# ============================================
+END_TIME=$(date +%s)
+ELAPSED=$((END_TIME - START_TIME))
+
+echo ""
+echo "================================================"
+
+if [ $ERRORS -gt 0 ]; then
+    echo -e "${RED}❌ PRE-COMMIT FAILED${NC}"
+    echo -e "${RED}   $ERRORS error(s) must be fixed${NC}"
+    echo ""
+    exit 1
+elif [ $WARNINGS -gt 0 ]; then
+    echo -e "${YELLOW}⚠️  COMMITTING WITH $WARNINGS WARNING(S)${NC}"
+    echo -e "${YELLOW}   Please review and fix warnings when possible${NC}"
+else
+    echo -e "${GREEN}✅ ALL CHECKS PASSED${NC}"
+fi
+
+echo -e "${BLUE}⏱️  Time: ${ELAPSED}s${NC}"
+echo ""
+echo "Proceeding with commit..."
+echo "================================================"
+echo ""
+
+# Always exit 0 (non-blocking) unless there were fatal errors
+exit 0

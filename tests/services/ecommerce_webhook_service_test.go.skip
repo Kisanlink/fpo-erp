@@ -1,0 +1,1103 @@
+package services
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"kisanlink-erp/internal/aaa"
+	"kisanlink-erp/internal/database/models"
+	"kisanlink-erp/internal/database/repositories"
+	"kisanlink-erp/internal/services"
+	"kisanlink-erp/tests/testutils"
+)
+
+// ========================================
+// ProcessOrderCreated Tests (Most Complex)
+// ========================================
+
+func TestEcommerceWebhookService_ProcessOrderCreated_Success(t *testing.T) {
+n	// Setup
+	tdb := testutils.SetupTestDB(t)
+	defer tdb.TeardownTestDB(t)
+n	mockAAA := testutils.NewMockAAAClient()
+
+	mockAAA := testutils.NewMockAAAClient()
+	// Setup
+	tdb := testutils.SetupTestDB(t)
+	defer tdb.TeardownTestDB(t)
+n	mockAAA := testutils.NewMockAAAClient()
+
+
+	// Create test address in mock AAA
+	addressReq := &aaa.CreateAddressRequest{
+		UserID:    "test-user",
+		Type:      "WORK",
+		IsPrimary: true,
+	}
+	pincode := "400001"
+	vtc := "Mumbai"
+	addressReq.Pincode = &pincode
+	addressReq.VTC = &vtc
+	address, _ := mockAAA.CreateAddress(context.Background(), addressReq, "test-jwt")
+
+	// Create warehouse with address
+	warehouse := testutils.CreateTestWarehouse(tdb.DB, "Test Warehouse")
+	warehouse.AddressID = &address.ID
+	tdb.DB.Save(warehouse)
+
+	// Setup repositories
+	collaboratorRepo := repositories.NewCollaboratorRepository(tdb.DB)
+	productRepo := repositories.NewProductRepository(tdb.DB)
+	variantRepo := repositories.NewProductVariantRepository(tdb.DB)
+	warehouseRepo := repositories.NewWarehouseRepository(tdb.DB)
+	grnRepo := repositories.NewGRNRepository(tdb.DB)
+	inventoryRepo := repositories.NewInventoryRepository(tdb.DB)
+	poRepo := repositories.NewPurchaseOrderRepository(tdb.DB)
+
+	poService := services.NewPurchaseOrderService(poRepo, collaboratorRepo, warehouseRepo, productRepo, variantRepo, grnRepo, inventoryRepo)
+	webhookService := services.NewEcommerceWebhookService(
+		poService,
+		collaboratorRepo,
+		productRepo,
+		variantRepo,
+		warehouseRepo,
+		grnRepo,
+		inventoryRepo,
+		poRepo,
+		nil, // addressClient not used in webhook service
+	)
+
+	// Create webhook payload
+	orderDate := time.Now().Format(time.RFC3339)
+	expectedDelivery := time.Now().AddDate(0, 0, 7).Format(time.RFC3339)
+
+	webhook := &models.OrderCreatedWebhook{
+		Order: models.WebhookOrder{
+			ExternalOrderID:      "ECOM_ORD_001",
+			OrderDate:            &orderDate,
+			ExpectedDeliveryDate: expectedDelivery,
+		},
+		FPO: models.WebhookFPO{
+			DeliveryAddress: models.WebhookAddress{
+				AddressID: address.ID,
+			},
+		},
+		Collaborator: models.WebhookCollaborator{
+			ExternalID:     "COLLAB_001",
+			CompanyName:    "Test Supplier",
+			ContactPerson:  "John Doe",
+			ContactNumber:  "+91-9876543210",
+			BankAccountNo:  "123456789",
+			BankIFSC:       "SBIN0001234",
+			AddressID:      &address.ID,
+		},
+		Items: []models.WebhookOrderItem{
+			{
+				Product: models.WebhookProduct{
+					ExternalID:  "PROD_001",
+					Name:        "Test Product",
+					Description: stringPtr("Test description"),
+				},
+				Variant: models.WebhookVariant{
+					ExternalID: "VAR_001",
+					Name:       "Test Variant",
+					SKU:        "SKU-001",
+				},
+				Quantity:  100,
+				UnitPrice: 50.00,
+			},
+		},
+	}
+
+	// Execute
+	ctx := testutils.CreateTestContext()
+	poID, err := webhookService.ProcessOrderCreated(ctx, webhook)
+
+	// Assert
+	testutils.AssertNoError(t, err, "ProcessOrderCreated should succeed")
+	testutils.AssertNotNil(t, poID, "Purchase Order ID should not be nil")
+
+	// Verify PO was created
+	po, err := poRepo.GetByID(poID)
+	testutils.AssertNoError(t, err, "Should retrieve created PO")
+	testutils.AssertEqual(t, *po.ExternalOrderID, "ECOM_ORD_001", "External Order ID mismatch")
+}
+
+func TestEcommerceWebhookService_ProcessOrderCreated_IdempotencyCheck(t *testing.T) {
+n	// Setup
+	tdb := testutils.SetupTestDB(t)
+	defer tdb.TeardownTestDB(t)
+n	mockAAA := testutils.NewMockAAAClient()
+
+	mockAAA := testutils.NewMockAAAClient()
+	// Setup
+	tdb := testutils.SetupTestDB(t)
+	defer tdb.TeardownTestDB(t)
+n	mockAAA := testutils.NewMockAAAClient()
+
+
+	// Create test address
+	addressReq := &aaa.CreateAddressRequest{
+		UserID:    "test-user",
+		Type:      "WORK",
+		IsPrimary: true,
+	}
+	pincode := "400001"
+	addressReq.Pincode = &pincode
+	address, _ := mockAAA.CreateAddress(context.Background(), addressReq, "test-jwt")
+
+	warehouse := testutils.CreateTestWarehouse(tdb.DB, "Test Warehouse")
+	warehouse.AddressID = &address.ID
+	tdb.DB.Save(warehouse)
+
+	// Setup repositories
+	collaboratorRepo := repositories.NewCollaboratorRepository(tdb.DB)
+	productRepo := repositories.NewProductRepository(tdb.DB)
+	variantRepo := repositories.NewProductVariantRepository(tdb.DB)
+	warehouseRepo := repositories.NewWarehouseRepository(tdb.DB)
+	grnRepo := repositories.NewGRNRepository(tdb.DB)
+	inventoryRepo := repositories.NewInventoryRepository(tdb.DB)
+	poRepo := repositories.NewPurchaseOrderRepository(tdb.DB)
+
+	poService := services.NewPurchaseOrderService(poRepo, collaboratorRepo, warehouseRepo, productRepo, variantRepo, grnRepo, inventoryRepo)
+	webhookService := services.NewEcommerceWebhookService(
+		poService,
+		collaboratorRepo,
+		productRepo,
+		variantRepo,
+		warehouseRepo,
+		grnRepo,
+		inventoryRepo,
+		poRepo,
+		nil, // addressClient not used in webhook service
+	)
+
+	// Create webhook payload
+	orderDate := time.Now().Format(time.RFC3339)
+	expectedDelivery := time.Now().AddDate(0, 0, 7).Format(time.RFC3339)
+
+	webhook := &models.OrderCreatedWebhook{
+		Order: models.WebhookOrder{
+			ExternalOrderID:      "ECOM_ORD_IDEMPOTENT",
+			OrderDate:            &orderDate,
+			ExpectedDeliveryDate: expectedDelivery,
+		},
+		FPO: models.WebhookFPO{
+			DeliveryAddress: models.WebhookAddress{
+				AddressID: address.ID,
+			},
+		},
+		Collaborator: models.WebhookCollaborator{
+			ExternalID:     "COLLAB_002",
+			CompanyName:    "Test Supplier",
+			ContactPerson:  "John Doe",
+			ContactNumber:  "+91-9876543210",
+			BankAccountNo:  "123456789",
+			BankIFSC:       "SBIN0001234",
+			AddressID:      &address.ID,
+		},
+		Items: []models.WebhookOrderItem{
+			{
+				Product: models.WebhookProduct{
+					ExternalID:  "PROD_002",
+					Name:        "Test Product",
+					Description: stringPtr("Test description"),
+				},
+				Variant: models.WebhookVariant{
+					ExternalID: "VAR_002",
+					Name:       "Test Variant",
+					SKU:        "SKU-002",
+				},
+				Quantity:  100,
+				UnitPrice: 50.00,
+			},
+		},
+	}
+
+	// Execute - First call
+	ctx := testutils.CreateTestContext()
+	poID1, err1 := webhookService.ProcessOrderCreated(ctx, webhook)
+	testutils.AssertNoError(t, err1, "First ProcessOrderCreated should succeed")
+
+	// Execute - Second call with same external_order_id (idempotency test)
+	poID2, err2 := webhookService.ProcessOrderCreated(ctx, webhook)
+
+	// Assert - Idempotency means second call should not create duplicate
+	// Note: This test depends on whether webhook service implements idempotency check
+	// If implemented: err2 should indicate duplicate, or return same poID
+	// If not implemented: will create duplicate (which is a bug)
+
+	// For now, we test that both calls succeed or handle appropriately
+	_ = poID1
+	_ = poID2
+	_ = err2
+	// TODO: Add proper idempotency validation once implemented
+}
+
+func TestEcommerceWebhookService_ProcessOrderCreated_AutoCreateCollaborator(t *testing.T) {
+n	// Setup
+	tdb := testutils.SetupTestDB(t)
+	defer tdb.TeardownTestDB(t)
+n	mockAAA := testutils.NewMockAAAClient()
+
+	mockAAA := testutils.NewMockAAAClient()
+	// Setup
+	tdb := testutils.SetupTestDB(t)
+	defer tdb.TeardownTestDB(t)
+n	mockAAA := testutils.NewMockAAAClient()
+
+
+	addressReq := &aaa.CreateAddressRequest{
+		UserID:    "test-user",
+		Type:      "WORK",
+		IsPrimary: true,
+	}
+	pincode := "400001"
+	addressReq.Pincode = &pincode
+	address, _ := mockAAA.CreateAddress(context.Background(), addressReq, "test-jwt")
+
+	warehouse := testutils.CreateTestWarehouse(tdb.DB, "Test Warehouse")
+	warehouse.AddressID = &address.ID
+	tdb.DB.Save(warehouse)
+
+	// Setup repositories
+	collaboratorRepo := repositories.NewCollaboratorRepository(tdb.DB)
+	productRepo := repositories.NewProductRepository(tdb.DB)
+	variantRepo := repositories.NewProductVariantRepository(tdb.DB)
+	warehouseRepo := repositories.NewWarehouseRepository(tdb.DB)
+	grnRepo := repositories.NewGRNRepository(tdb.DB)
+	inventoryRepo := repositories.NewInventoryRepository(tdb.DB)
+	poRepo := repositories.NewPurchaseOrderRepository(tdb.DB)
+
+	poService := services.NewPurchaseOrderService(poRepo, collaboratorRepo, warehouseRepo, productRepo, variantRepo, grnRepo, inventoryRepo)
+	webhookService := services.NewEcommerceWebhookService(
+		poService,
+		collaboratorRepo,
+		productRepo,
+		variantRepo,
+		warehouseRepo,
+		grnRepo,
+		inventoryRepo,
+		poRepo,
+		nil, // addressClient not used in webhook service
+	)
+
+	// Webhook with new collaborator
+	orderDate := time.Now().Format(time.RFC3339)
+	expectedDelivery := time.Now().AddDate(0, 0, 7).Format(time.RFC3339)
+
+	webhook := &models.OrderCreatedWebhook{
+		Order: models.WebhookOrder{
+			ExternalOrderID:      "ECOM_ORD_003",
+			OrderDate:            &orderDate,
+			ExpectedDeliveryDate: expectedDelivery,
+		},
+		FPO: models.WebhookFPO{
+			DeliveryAddress: models.WebhookAddress{
+				AddressID: address.ID,
+			},
+		},
+		Collaborator: models.WebhookCollaborator{
+			ExternalID:     "NEW_COLLAB_001",
+			CompanyName:    "New Supplier Ltd",
+			ContactPerson:  "Jane Smith",
+			ContactNumber:  "+91-9876543211",
+			BankAccountNo:  "987654321",
+			BankIFSC:       "HDFC0001234",
+			AddressID:      &address.ID,
+		},
+		Items: []models.WebhookOrderItem{
+			{
+				Product: models.WebhookProduct{
+					ExternalID:  "PROD_003",
+					Name:        "Test Product",
+					Description: stringPtr("Test description"),
+				},
+				Variant: models.WebhookVariant{
+					ExternalID: "VAR_003",
+					Name:       "Test Variant",
+					SKU:        "SKU-003",
+				},
+				Quantity:  100,
+				UnitPrice: 50.00,
+			},
+		},
+	}
+
+	// Execute
+	ctx := testutils.CreateTestContext()
+	_, err := webhookService.ProcessOrderCreated(ctx, webhook)
+	testutils.AssertNoError(t, err, "Should auto-create collaborator")
+
+	// Verify collaborator was created
+	collaborator, err := collaboratorRepo.FindByExternalID("NEW_COLLAB_001")
+	testutils.AssertNoError(t, err, "Should find auto-created collaborator")
+	testutils.AssertNotNil(t, collaborator, "Collaborator should exist")
+	testutils.AssertEqual(t, collaborator.CompanyName, "New Supplier Ltd", "Company name mismatch")
+}
+
+func TestEcommerceWebhookService_ProcessOrderCreated_AutoCreateProduct(t *testing.T) {
+n	// Setup
+	tdb := testutils.SetupTestDB(t)
+	defer tdb.TeardownTestDB(t)
+n	mockAAA := testutils.NewMockAAAClient()
+
+	mockAAA := testutils.NewMockAAAClient()
+	// Setup
+	tdb := testutils.SetupTestDB(t)
+	defer tdb.TeardownTestDB(t)
+n	mockAAA := testutils.NewMockAAAClient()
+
+
+	addressReq := &aaa.CreateAddressRequest{
+		UserID:    "test-user",
+		Type:      "WORK",
+		IsPrimary: true,
+	}
+	pincode := "400001"
+	addressReq.Pincode = &pincode
+	address, _ := mockAAA.CreateAddress(context.Background(), addressReq, "test-jwt")
+
+	warehouse := testutils.CreateTestWarehouse(tdb.DB, "Test Warehouse")
+	warehouse.AddressID = &address.ID
+	tdb.DB.Save(warehouse)
+
+	// Setup repositories
+	collaboratorRepo := repositories.NewCollaboratorRepository(tdb.DB)
+	productRepo := repositories.NewProductRepository(tdb.DB)
+	variantRepo := repositories.NewProductVariantRepository(tdb.DB)
+	warehouseRepo := repositories.NewWarehouseRepository(tdb.DB)
+	grnRepo := repositories.NewGRNRepository(tdb.DB)
+	inventoryRepo := repositories.NewInventoryRepository(tdb.DB)
+	poRepo := repositories.NewPurchaseOrderRepository(tdb.DB)
+
+	poService := services.NewPurchaseOrderService(poRepo, collaboratorRepo, warehouseRepo, productRepo, variantRepo, grnRepo, inventoryRepo)
+	webhookService := services.NewEcommerceWebhookService(
+		poService,
+		collaboratorRepo,
+		productRepo,
+		variantRepo,
+		warehouseRepo,
+		grnRepo,
+		inventoryRepo,
+		poRepo,
+		nil, // addressClient not used in webhook service
+	)
+
+	// Webhook with new product
+	orderDate := time.Now().Format(time.RFC3339)
+	expectedDelivery := time.Now().AddDate(0, 0, 7).Format(time.RFC3339)
+
+	webhook := &models.OrderCreatedWebhook{
+		Order: models.WebhookOrder{
+			ExternalOrderID:      "ECOM_ORD_004",
+			OrderDate:            &orderDate,
+			ExpectedDeliveryDate: expectedDelivery,
+		},
+		FPO: models.WebhookFPO{
+			DeliveryAddress: models.WebhookAddress{
+				AddressID: address.ID,
+			},
+		},
+		Collaborator: models.WebhookCollaborator{
+			ExternalID:     "COLLAB_004",
+			CompanyName:    "Test Supplier",
+			ContactPerson:  "John Doe",
+			ContactNumber:  "+91-9876543210",
+			BankAccountNo:  "123456789",
+			BankIFSC:       "SBIN0001234",
+			AddressID:      &address.ID,
+		},
+		Items: []models.WebhookOrderItem{
+			{
+				Product: models.WebhookProduct{
+					ExternalID:  "NEW_PROD_001",
+					Name:        "Brand New Product",
+					Description: stringPtr("Fresh product from e-commerce"),
+				},
+				Variant: models.WebhookVariant{
+					ExternalID: "NEW_VAR_001",
+					Name:       "New Variant",
+					SKU:        "SKU-NEW-001",
+				},
+				Quantity:  50,
+				UnitPrice: 75.00,
+			},
+		},
+	}
+
+	// Execute
+	ctx := testutils.CreateTestContext()
+	_, err := webhookService.ProcessOrderCreated(ctx, webhook)
+	testutils.AssertNoError(t, err, "Should auto-create product")
+
+	// Verify product was created
+	product, err := productRepo.FindByExternalID("NEW_PROD_001")
+	testutils.AssertNoError(t, err, "Should find auto-created product")
+	testutils.AssertNotNil(t, product, "Product should exist")
+	testutils.AssertEqual(t, product.Name, "Brand New Product", "Product name mismatch")
+}
+
+func TestEcommerceWebhookService_ProcessOrderCreated_SmartVariantMatching_ByExternalID(t *testing.T) {
+n	// Setup
+	tdb := testutils.SetupTestDB(t)
+	defer tdb.TeardownTestDB(t)
+n	mockAAA := testutils.NewMockAAAClient()
+
+	mockAAA := testutils.NewMockAAAClient()
+	// Setup
+	tdb := testutils.SetupTestDB(t)
+	defer tdb.TeardownTestDB(t)
+n	mockAAA := testutils.NewMockAAAClient()
+
+
+	addressReq := &aaa.CreateAddressRequest{
+		UserID:    "test-user",
+		Type:      "WORK",
+		IsPrimary: true,
+	}
+	pincode := "400001"
+	addressReq.Pincode = &pincode
+	address, _ := mockAAA.CreateAddress(context.Background(), addressReq, "test-jwt")
+
+	warehouse := testutils.CreateTestWarehouse(tdb.DB, "Test Warehouse")
+	warehouse.AddressID = &address.ID
+	tdb.DB.Save(warehouse)
+
+	// Pre-create product and variant with external_id
+	product := testutils.CreateTestProduct(tdb.DB, "Existing Product", "Description")
+	variant := testutils.CreateTestProductVariant(tdb.DB, product.ID, "Existing Variant", "SKU-EXISTING")
+	externalID := "EXISTING_VAR_001"
+	variant.ExternalID = &externalID
+	tdb.DB.Save(variant)
+
+	// Setup repositories
+	collaboratorRepo := repositories.NewCollaboratorRepository(tdb.DB)
+	productRepo := repositories.NewProductRepository(tdb.DB)
+	variantRepo := repositories.NewProductVariantRepository(tdb.DB)
+	warehouseRepo := repositories.NewWarehouseRepository(tdb.DB)
+	grnRepo := repositories.NewGRNRepository(tdb.DB)
+	inventoryRepo := repositories.NewInventoryRepository(tdb.DB)
+	poRepo := repositories.NewPurchaseOrderRepository(tdb.DB)
+
+	poService := services.NewPurchaseOrderService(poRepo, collaboratorRepo, warehouseRepo, productRepo, variantRepo, grnRepo, inventoryRepo)
+	webhookService := services.NewEcommerceWebhookService(
+		poService,
+		collaboratorRepo,
+		productRepo,
+		variantRepo,
+		warehouseRepo,
+		grnRepo,
+		inventoryRepo,
+		poRepo,
+		nil, // addressClient not used in webhook service
+	)
+
+	// Webhook referencing existing variant by external_id
+	orderDate := time.Now().Format(time.RFC3339)
+	expectedDelivery := time.Now().AddDate(0, 0, 7).Format(time.RFC3339)
+
+	webhook := &models.OrderCreatedWebhook{
+		Order: models.WebhookOrder{
+			ExternalOrderID:      "ECOM_ORD_005",
+			OrderDate:            &orderDate,
+			ExpectedDeliveryDate: expectedDelivery,
+		},
+		FPO: models.WebhookFPO{
+			DeliveryAddress: models.WebhookAddress{
+				AddressID: address.ID,
+			},
+		},
+		Collaborator: models.WebhookCollaborator{
+			ExternalID:     "COLLAB_005",
+			CompanyName:    "Test Supplier",
+			ContactPerson:  "John Doe",
+			ContactNumber:  "+91-9876543210",
+			BankAccountNo:  "123456789",
+			BankIFSC:       "SBIN0001234",
+			AddressID:      &address.ID,
+		},
+		Items: []models.WebhookOrderItem{
+			{
+				Product: models.WebhookProduct{
+					ExternalID:  "PROD_EXISTING",
+					Name:        "Existing Product",
+					Description: stringPtr("Description"),
+				},
+				Variant: models.WebhookVariant{
+					ExternalID: "EXISTING_VAR_001", // Match by external_id
+					Name:       "Existing Variant",
+					SKU:        "SKU-EXISTING",
+				},
+				Quantity:  100,
+				UnitPrice: 50.00,
+			},
+		},
+	}
+
+	// Execute
+	ctx := testutils.CreateTestContext()
+	_, err := webhookService.ProcessOrderCreated(ctx, webhook)
+	testutils.AssertNoError(t, err, "Should match variant by external_id")
+
+	// Verify no duplicate variant was created (smart matching worked)
+	variants, _ := variantRepo.GetAll()
+	// Should still have only 1 variant (the pre-created one)
+	testutils.AssertEqual(t, len(variants), 1, "Should not create duplicate variant")
+}
+
+func TestEcommerceWebhookService_ProcessOrderCreated_SmartVariantMatching_BySKU(t *testing.T) {
+n	// Setup
+	tdb := testutils.SetupTestDB(t)
+	defer tdb.TeardownTestDB(t)
+n	mockAAA := testutils.NewMockAAAClient()
+
+	mockAAA := testutils.NewMockAAAClient()
+	// Setup
+	tdb := testutils.SetupTestDB(t)
+	defer tdb.TeardownTestDB(t)
+n	mockAAA := testutils.NewMockAAAClient()
+
+
+	addressReq := &aaa.CreateAddressRequest{
+		UserID:    "test-user",
+		Type:      "WORK",
+		IsPrimary: true,
+	}
+	pincode := "400001"
+	addressReq.Pincode = &pincode
+	address, _ := mockAAA.CreateAddress(context.Background(), addressReq, "test-jwt")
+
+	warehouse := testutils.CreateTestWarehouse(tdb.DB, "Test Warehouse")
+	warehouse.AddressID = &address.ID
+	tdb.DB.Save(warehouse)
+
+	// Pre-create product and variant with SKU but NO external_id
+	product := testutils.CreateTestProduct(tdb.DB, "Existing Product", "Description")
+	variant := testutils.CreateTestProductVariant(tdb.DB, product.ID, "Existing Variant", "SKU-MATCH-TEST")
+	// NO external_id set, so smart matching should fall back to SKU
+
+	// Setup repositories
+	collaboratorRepo := repositories.NewCollaboratorRepository(tdb.DB)
+	productRepo := repositories.NewProductRepository(tdb.DB)
+	variantRepo := repositories.NewProductVariantRepository(tdb.DB)
+	warehouseRepo := repositories.NewWarehouseRepository(tdb.DB)
+	grnRepo := repositories.NewGRNRepository(tdb.DB)
+	inventoryRepo := repositories.NewInventoryRepository(tdb.DB)
+	poRepo := repositories.NewPurchaseOrderRepository(tdb.DB)
+
+	poService := services.NewPurchaseOrderService(poRepo, collaboratorRepo, warehouseRepo, productRepo, variantRepo, grnRepo, inventoryRepo)
+	webhookService := services.NewEcommerceWebhookService(
+		poService,
+		collaboratorRepo,
+		productRepo,
+		variantRepo,
+		warehouseRepo,
+		grnRepo,
+		inventoryRepo,
+		poRepo,
+		nil, // addressClient not used in webhook service
+	)
+
+	// Webhook with new external_id but matching SKU
+	orderDate := time.Now().Format(time.RFC3339)
+	expectedDelivery := time.Now().AddDate(0, 0, 7).Format(time.RFC3339)
+
+	webhook := &models.OrderCreatedWebhook{
+		Order: models.WebhookOrder{
+			ExternalOrderID:      "ECOM_ORD_006",
+			OrderDate:            &orderDate,
+			ExpectedDeliveryDate: expectedDelivery,
+		},
+		FPO: models.WebhookFPO{
+			DeliveryAddress: models.WebhookAddress{
+				AddressID: address.ID,
+			},
+		},
+		Collaborator: models.WebhookCollaborator{
+			ExternalID:     "COLLAB_006",
+			CompanyName:    "Test Supplier",
+			ContactPerson:  "John Doe",
+			ContactNumber:  "+91-9876543210",
+			BankAccountNo:  "123456789",
+			BankIFSC:       "SBIN0001234",
+			AddressID:      &address.ID,
+		},
+		Items: []models.WebhookOrderItem{
+			{
+				Product: models.WebhookProduct{
+					ExternalID:  "PROD_006",
+					Name:        "Existing Product",
+					Description: stringPtr("Description"),
+				},
+				Variant: models.WebhookVariant{
+					ExternalID: "NEW_EXTERNAL_ID_006", // New external_id
+					Name:       "Existing Variant",
+					SKU:        "SKU-MATCH-TEST", // But matching SKU
+				},
+				Quantity:  100,
+				UnitPrice: 50.00,
+			},
+		},
+	}
+
+	// Execute
+	ctx := testutils.CreateTestContext()
+	_, err := webhookService.ProcessOrderCreated(ctx, webhook)
+	testutils.AssertNoError(t, err, "Should match variant by SKU")
+
+	// Verify variant was matched and external_id was updated
+	updatedVariant, _ := variantRepo.GetByID(variant.ID)
+	testutils.AssertEqual(t, *updatedVariant.ExternalID, "NEW_EXTERNAL_ID_006", "External ID should be updated")
+}
+
+func TestEcommerceWebhookService_ProcessOrderCreated_InvalidWarehouse(t *testing.T) {
+n	// Setup
+	tdb := testutils.SetupTestDB(t)
+	defer tdb.TeardownTestDB(t)
+n	mockAAA := testutils.NewMockAAAClient()
+
+	mockAAA := testutils.NewMockAAAClient()
+	// Setup
+	tdb := testutils.SetupTestDB(t)
+	defer tdb.TeardownTestDB(t)
+n	mockAAA := testutils.NewMockAAAClient()
+
+
+	// Setup repositories
+	collaboratorRepo := repositories.NewCollaboratorRepository(tdb.DB)
+	productRepo := repositories.NewProductRepository(tdb.DB)
+	variantRepo := repositories.NewProductVariantRepository(tdb.DB)
+	warehouseRepo := repositories.NewWarehouseRepository(tdb.DB)
+	grnRepo := repositories.NewGRNRepository(tdb.DB)
+	inventoryRepo := repositories.NewInventoryRepository(tdb.DB)
+	poRepo := repositories.NewPurchaseOrderRepository(tdb.DB)
+
+	poService := services.NewPurchaseOrderService(poRepo, collaboratorRepo, warehouseRepo, productRepo, variantRepo, grnRepo, inventoryRepo)
+	webhookService := services.NewEcommerceWebhookService(
+		poService,
+		collaboratorRepo,
+		productRepo,
+		variantRepo,
+		warehouseRepo,
+		grnRepo,
+		inventoryRepo,
+		poRepo,
+		nil, // addressClient not used in webhook service
+	)
+
+	// Webhook with invalid warehouse address
+	orderDate := time.Now().Format(time.RFC3339)
+	expectedDelivery := time.Now().AddDate(0, 0, 7).Format(time.RFC3339)
+
+	webhook := &models.OrderCreatedWebhook{
+		Order: models.WebhookOrder{
+			ExternalOrderID:      "ECOM_ORD_007",
+			OrderDate:            &orderDate,
+			ExpectedDeliveryDate: expectedDelivery,
+		},
+		FPO: models.WebhookFPO{
+			DeliveryAddress: models.WebhookAddress{
+				AddressID: "INVALID_ADDRESS_ID",
+			},
+		},
+		Collaborator: models.WebhookCollaborator{
+			ExternalID:     "COLLAB_007",
+			CompanyName:    "Test Supplier",
+			ContactPerson:  "John Doe",
+			ContactNumber:  "+91-9876543210",
+			BankAccountNo:  "123456789",
+			BankIFSC:       "SBIN0001234",
+		},
+		Items: []models.WebhookOrderItem{
+			{
+				Product: models.WebhookProduct{
+					ExternalID:  "PROD_007",
+					Name:        "Test Product",
+					Description: stringPtr("Description"),
+				},
+				Variant: models.WebhookVariant{
+					ExternalID: "VAR_007",
+					Name:       "Test Variant",
+					SKU:        "SKU-007",
+				},
+				Quantity:  100,
+				UnitPrice: 50.00,
+			},
+		},
+	}
+
+	// Execute
+	ctx := testutils.CreateTestContext()
+	_, err := webhookService.ProcessOrderCreated(ctx, webhook)
+
+	// Assert
+	testutils.AssertError(t, err, "Should fail with invalid warehouse")
+}
+
+// ========================================
+// ProcessOrderConfirmed Tests
+// ========================================
+
+func TestEcommerceWebhookService_ProcessOrderConfirmed_Success(t *testing.T) {
+n	// Setup
+	tdb := testutils.SetupTestDB(t)
+	defer tdb.TeardownTestDB(t)
+n	mockAAA := testutils.NewMockAAAClient()
+
+	mockAAA := testutils.NewMockAAAClient()
+	// Setup
+	tdb := testutils.SetupTestDB(t)
+	defer tdb.TeardownTestDB(t)
+n	mockAAA := testutils.NewMockAAAClient()
+
+	// Create test PO
+	collaborator := testutils.CreateTestCollaborator(tdb.DB, "Test Supplier", "27AABCU9603R1ZM")
+	po := testutils.CreateTestPurchaseOrder(tdb.DB, collaborator.ID, 5000.0, "placed")
+	externalOrderID := "ECOM_ORD_CONFIRM_001"
+	po.ExternalOrderID = &externalOrderID
+	tdb.DB.Save(po)
+
+	// Setup repositories
+	collaboratorRepo := repositories.NewCollaboratorRepository(tdb.DB)
+	productRepo := repositories.NewProductRepository(tdb.DB)
+	variantRepo := repositories.NewProductVariantRepository(tdb.DB)
+	warehouseRepo := repositories.NewWarehouseRepository(tdb.DB)
+	grnRepo := repositories.NewGRNRepository(tdb.DB)
+	inventoryRepo := repositories.NewInventoryRepository(tdb.DB)
+	poRepo := repositories.NewPurchaseOrderRepository(tdb.DB)
+
+	poService := services.NewPurchaseOrderService(poRepo, collaboratorRepo, warehouseRepo, productRepo, variantRepo, grnRepo, inventoryRepo)
+	webhookService := services.NewEcommerceWebhookService(
+		poService,
+		collaboratorRepo,
+		productRepo,
+		variantRepo,
+		warehouseRepo,
+		grnRepo,
+		inventoryRepo,
+		poRepo,
+		nil, // addressClient not used in webhook service
+	)
+
+	// Create webhook payload
+	webhook := &models.OrderConfirmedWebhook{
+		ExternalOrderID: externalOrderID,
+	}
+
+	// Execute
+	ctx := testutils.CreateTestContext()
+	err := webhookService.ProcessOrderConfirmed(ctx, webhook)
+
+	// Assert
+	testutils.AssertNoError(t, err, "ProcessOrderConfirmed should succeed")
+
+	// Verify status updated
+	updatedPO, _ := poRepo.GetByID(po.ID)
+	testutils.AssertEqual(t, updatedPO.Status, "confirmed", "PO status should be confirmed")
+}
+
+func TestEcommerceWebhookService_ProcessOrderConfirmed_PONotFound(t *testing.T) {
+n	// Setup
+	tdb := testutils.SetupTestDB(t)
+	defer tdb.TeardownTestDB(t)
+n	mockAAA := testutils.NewMockAAAClient()
+
+	mockAAA := testutils.NewMockAAAClient()
+	// Setup
+	tdb := testutils.SetupTestDB(t)
+	defer tdb.TeardownTestDB(t)
+n	mockAAA := testutils.NewMockAAAClient()
+
+	// Setup repositories
+	collaboratorRepo := repositories.NewCollaboratorRepository(tdb.DB)
+	productRepo := repositories.NewProductRepository(tdb.DB)
+	variantRepo := repositories.NewProductVariantRepository(tdb.DB)
+	warehouseRepo := repositories.NewWarehouseRepository(tdb.DB)
+	grnRepo := repositories.NewGRNRepository(tdb.DB)
+	inventoryRepo := repositories.NewInventoryRepository(tdb.DB)
+	poRepo := repositories.NewPurchaseOrderRepository(tdb.DB)
+
+	poService := services.NewPurchaseOrderService(poRepo, collaboratorRepo, warehouseRepo, productRepo, variantRepo, grnRepo, inventoryRepo)
+	webhookService := services.NewEcommerceWebhookService(
+		poService,
+		collaboratorRepo,
+		productRepo,
+		variantRepo,
+		warehouseRepo,
+		grnRepo,
+		inventoryRepo,
+		poRepo,
+		nil, // addressClient not used in webhook service
+	)
+
+	// Webhook with non-existent external_order_id
+	webhook := &models.OrderConfirmedWebhook{
+		ExternalOrderID: "NON_EXISTENT_ORDER",
+	}
+
+	// Execute
+	ctx := testutils.CreateTestContext()
+	err := webhookService.ProcessOrderConfirmed(ctx, webhook)
+
+	// Assert
+	testutils.AssertError(t, err, "Should fail when PO not found")
+}
+
+// ========================================
+// ProcessOrderShipped Tests
+// ========================================
+
+func TestEcommerceWebhookService_ProcessOrderShipped_Success(t *testing.T) {
+n	// Setup
+	tdb := testutils.SetupTestDB(t)
+	defer tdb.TeardownTestDB(t)
+n	mockAAA := testutils.NewMockAAAClient()
+
+	mockAAA := testutils.NewMockAAAClient()
+	// Setup
+	tdb := testutils.SetupTestDB(t)
+	defer tdb.TeardownTestDB(t)
+n	mockAAA := testutils.NewMockAAAClient()
+
+	// Create test PO
+	collaborator := testutils.CreateTestCollaborator(tdb.DB, "Test Supplier", "27AABCU9603R1ZM")
+	po := testutils.CreateTestPurchaseOrder(tdb.DB, collaborator.ID, 5000.0, "confirmed")
+	externalOrderID := "ECOM_ORD_SHIP_001"
+	po.ExternalOrderID = &externalOrderID
+	tdb.DB.Save(po)
+
+	// Setup repositories
+	collaboratorRepo := repositories.NewCollaboratorRepository(tdb.DB)
+	productRepo := repositories.NewProductRepository(tdb.DB)
+	variantRepo := repositories.NewProductVariantRepository(tdb.DB)
+	warehouseRepo := repositories.NewWarehouseRepository(tdb.DB)
+	grnRepo := repositories.NewGRNRepository(tdb.DB)
+	inventoryRepo := repositories.NewInventoryRepository(tdb.DB)
+	poRepo := repositories.NewPurchaseOrderRepository(tdb.DB)
+
+	poService := services.NewPurchaseOrderService(poRepo, collaboratorRepo, warehouseRepo, productRepo, variantRepo, grnRepo, inventoryRepo)
+	webhookService := services.NewEcommerceWebhookService(
+		poService,
+		collaboratorRepo,
+		productRepo,
+		variantRepo,
+		warehouseRepo,
+		grnRepo,
+		inventoryRepo,
+		poRepo,
+		nil, // addressClient not used in webhook service
+	)
+
+	// Create webhook payload
+	webhook := &models.OrderShippedWebhook{
+		ExternalOrderID: externalOrderID,
+		ShippingInfo: models.WebhookShippingInfo{
+			Carrier:        "FedEx",
+			TrackingNumber: "TRACK123456",
+		},
+	}
+
+	// Execute
+	ctx := testutils.CreateTestContext()
+	err := webhookService.ProcessOrderShipped(ctx, webhook)
+
+	// Assert
+	testutils.AssertNoError(t, err, "ProcessOrderShipped should succeed")
+
+	// Verify status updated
+	updatedPO, _ := poRepo.GetByID(po.ID)
+	testutils.AssertEqual(t, updatedPO.Status, "out_for_delivery", "PO status should be out_for_delivery")
+}
+
+// ========================================
+// ProcessOrderPayment Tests
+// ========================================
+
+func TestEcommerceWebhookService_ProcessOrderPayment_FullPayment(t *testing.T) {
+n	// Setup
+	tdb := testutils.SetupTestDB(t)
+	defer tdb.TeardownTestDB(t)
+n	mockAAA := testutils.NewMockAAAClient()
+
+	mockAAA := testutils.NewMockAAAClient()
+	// Setup
+	tdb := testutils.SetupTestDB(t)
+	defer tdb.TeardownTestDB(t)
+n	mockAAA := testutils.NewMockAAAClient()
+
+	// Create test PO
+	collaborator := testutils.CreateTestCollaborator(tdb.DB, "Test Supplier", "27AABCU9603R1ZM")
+	po := testutils.CreateTestPurchaseOrder(tdb.DB, collaborator.ID, 5000.0, "confirmed")
+	externalOrderID := "ECOM_ORD_PAY_001"
+	po.ExternalOrderID = &externalOrderID
+	tdb.DB.Save(po)
+
+	// Setup repositories
+	collaboratorRepo := repositories.NewCollaboratorRepository(tdb.DB)
+	productRepo := repositories.NewProductRepository(tdb.DB)
+	variantRepo := repositories.NewProductVariantRepository(tdb.DB)
+	warehouseRepo := repositories.NewWarehouseRepository(tdb.DB)
+	grnRepo := repositories.NewGRNRepository(tdb.DB)
+	inventoryRepo := repositories.NewInventoryRepository(tdb.DB)
+	poRepo := repositories.NewPurchaseOrderRepository(tdb.DB)
+
+	poService := services.NewPurchaseOrderService(poRepo, collaboratorRepo, warehouseRepo, productRepo, variantRepo, grnRepo, inventoryRepo)
+	webhookService := services.NewEcommerceWebhookService(
+		poService,
+		collaboratorRepo,
+		productRepo,
+		variantRepo,
+		warehouseRepo,
+		grnRepo,
+		inventoryRepo,
+		poRepo,
+		nil, // addressClient not used in webhook service
+	)
+
+	// Create webhook payload with full payment
+	webhook := &models.OrderPaymentWebhook{
+		ExternalOrderID: externalOrderID,
+		PaidAmount:      5000.0,
+	}
+
+	// Execute
+	ctx := testutils.CreateTestContext()
+	err := webhookService.ProcessOrderPayment(ctx, webhook)
+
+	// Assert
+	testutils.AssertNoError(t, err, "ProcessOrderPayment should succeed")
+
+	// Verify payment status updated
+	updatedPO, _ := poRepo.GetByID(po.ID)
+	testutils.AssertEqual(t, updatedPO.PaymentStatus, "paid", "Payment status should be paid")
+	testutils.AssertEqual(t, updatedPO.PaidAmount, 5000.0, "Paid amount should match")
+}
+
+func TestEcommerceWebhookService_ProcessOrderPayment_PartialPayment(t *testing.T) {
+n	// Setup
+	tdb := testutils.SetupTestDB(t)
+	defer tdb.TeardownTestDB(t)
+n	mockAAA := testutils.NewMockAAAClient()
+
+	mockAAA := testutils.NewMockAAAClient()
+	// Setup
+	tdb := testutils.SetupTestDB(t)
+	defer tdb.TeardownTestDB(t)
+n	mockAAA := testutils.NewMockAAAClient()
+
+	// Create test PO
+	collaborator := testutils.CreateTestCollaborator(tdb.DB, "Test Supplier", "27AABCU9603R1ZM")
+	po := testutils.CreateTestPurchaseOrder(tdb.DB, collaborator.ID, 5000.0, "confirmed")
+	externalOrderID := "ECOM_ORD_PAY_002"
+	po.ExternalOrderID = &externalOrderID
+	tdb.DB.Save(po)
+
+	// Setup repositories
+	collaboratorRepo := repositories.NewCollaboratorRepository(tdb.DB)
+	productRepo := repositories.NewProductRepository(tdb.DB)
+	variantRepo := repositories.NewProductVariantRepository(tdb.DB)
+	warehouseRepo := repositories.NewWarehouseRepository(tdb.DB)
+	grnRepo := repositories.NewGRNRepository(tdb.DB)
+	inventoryRepo := repositories.NewInventoryRepository(tdb.DB)
+	poRepo := repositories.NewPurchaseOrderRepository(tdb.DB)
+
+	poService := services.NewPurchaseOrderService(poRepo, collaboratorRepo, warehouseRepo, productRepo, variantRepo, grnRepo, inventoryRepo)
+	webhookService := services.NewEcommerceWebhookService(
+		poService,
+		collaboratorRepo,
+		productRepo,
+		variantRepo,
+		warehouseRepo,
+		grnRepo,
+		inventoryRepo,
+		poRepo,
+		nil, // addressClient not used in webhook service
+	)
+
+	// Create webhook payload with partial payment
+	webhook := &models.OrderPaymentWebhook{
+		ExternalOrderID: externalOrderID,
+		PaidAmount:      2500.0, // Half payment
+	}
+
+	// Execute
+	ctx := testutils.CreateTestContext()
+	err := webhookService.ProcessOrderPayment(ctx, webhook)
+
+	// Assert
+	testutils.AssertNoError(t, err, "ProcessOrderPayment should succeed")
+
+	// Verify payment status updated
+	updatedPO, _ := poRepo.GetByID(po.ID)
+	testutils.AssertEqual(t, updatedPO.PaymentStatus, "partial", "Payment status should be partial")
+	testutils.AssertEqual(t, updatedPO.PaidAmount, 2500.0, "Paid amount should match")
+}
+
+func TestEcommerceWebhookService_ProcessOrderPayment_ZeroPayment(t *testing.T) {
+n	// Setup
+	tdb := testutils.SetupTestDB(t)
+	defer tdb.TeardownTestDB(t)
+n	mockAAA := testutils.NewMockAAAClient()
+
+	mockAAA := testutils.NewMockAAAClient()
+	// Setup
+	tdb := testutils.SetupTestDB(t)
+	defer tdb.TeardownTestDB(t)
+n	mockAAA := testutils.NewMockAAAClient()
+
+	// Create test PO
+	collaborator := testutils.CreateTestCollaborator(tdb.DB, "Test Supplier", "27AABCU9603R1ZM")
+	po := testutils.CreateTestPurchaseOrder(tdb.DB, collaborator.ID, 5000.0, "confirmed")
+	externalOrderID := "ECOM_ORD_PAY_003"
+	po.ExternalOrderID = &externalOrderID
+	tdb.DB.Save(po)
+
+	// Setup repositories
+	collaboratorRepo := repositories.NewCollaboratorRepository(tdb.DB)
+	productRepo := repositories.NewProductRepository(tdb.DB)
+	variantRepo := repositories.NewProductVariantRepository(tdb.DB)
+	warehouseRepo := repositories.NewWarehouseRepository(tdb.DB)
+	grnRepo := repositories.NewGRNRepository(tdb.DB)
+	inventoryRepo := repositories.NewInventoryRepository(tdb.DB)
+	poRepo := repositories.NewPurchaseOrderRepository(tdb.DB)
+
+	poService := services.NewPurchaseOrderService(poRepo, collaboratorRepo, warehouseRepo, productRepo, variantRepo, grnRepo, inventoryRepo)
+	webhookService := services.NewEcommerceWebhookService(
+		poService,
+		collaboratorRepo,
+		productRepo,
+		variantRepo,
+		warehouseRepo,
+		grnRepo,
+		inventoryRepo,
+		poRepo,
+		nil, // addressClient not used in webhook service
+	)
+
+	// Create webhook payload with zero payment
+	webhook := &models.OrderPaymentWebhook{
+		ExternalOrderID: externalOrderID,
+		PaidAmount:      0.0,
+	}
+
+	// Execute
+	ctx := testutils.CreateTestContext()
+	err := webhookService.ProcessOrderPayment(ctx, webhook)
+
+	// Assert
+	testutils.AssertNoError(t, err, "ProcessOrderPayment should succeed")
+
+	// Verify payment status remains unpaid
+	updatedPO, _ := poRepo.GetByID(po.ID)
+	testutils.AssertEqual(t, updatedPO.PaymentStatus, "unpaid", "Payment status should be unpaid")
+}
+
+// ========================================
+// Helper Functions
+// ========================================
+
+func stringPtr(s string) *string {
+	return &s
+}

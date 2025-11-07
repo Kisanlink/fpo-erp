@@ -190,12 +190,10 @@ config.local.*
 .dev/
 
 # Local scripts
-scripts/
 scripts/local/
 local-scripts/
 
 # Test scripts with sensitive data
-tests/
 scripts/test-kisanlink-api.ps1
 scripts/test-kisanlink-erp-api.ps1
 

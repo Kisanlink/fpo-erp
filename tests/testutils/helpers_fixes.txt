@@ -1,0 +1,24 @@
+# Fix CreateTestProductVariant
+s/variant := models\.NewProductVariant(productID, variantName, nil, &sku)/variant := models.NewProductVariant(productID, variantName, "1", "1kg")\n\tvariant.SKU = \&sku/
+
+# Fix CreateTestCollaborator 
+s/collaborator := models\.NewCollaborator(name, name, contactNumber, gstNumber, nil, nil, nil, nil)/collaborator := models.NewCollaborator(name, name, contactNumber, "ACC123456", "IFSC0001234", nil)/
+
+# Fix CreateTestSalesOrder - change to CreateTestSale
+s/func CreateTestSalesOrder(db \*gorm\.DB, totalAmount float64) \*models\.SalesOrder {/func CreateTestSale(db *gorm.DB, warehouseID string, totalAmount float64) *models.Sale {/
+s/sale := models\.NewSalesOrder(totalAmount)/sale := models.NewSale(warehouseID, time.Now(), totalAmount, "completed", nil, "cash", "direct", false)/
+
+# Fix CreateTestGRN
+s/grn := models\.NewGRN(purchaseOrderID, warehouseID, status)/grn := models.NewGRN("GRN-"+purchaseOrderID, purchaseOrderID, warehouseID, "Test User", time.Now(), status)/
+
+# Fix CreateTestDiscount 
+s/discount := models\.NewDiscount(name, discountType, startDate, endDate)/desc := new(string)\n\t*desc = "Test discount"\n\tdiscount := models.NewDiscount(name, name, desc, models.DiscountType(discountType), 10.0, startDate, endDate)/
+
+# Fix CreateTestWebhookHistory - change to CreateTestWebhookEvent
+s/func CreateTestWebhookHistory(db \*gorm\.DB, eventID string, eventType string, status string) \*models\.WebhookHistory {/func CreateTestWebhookEvent(db *gorm.DB, eventID string, eventType string, status string) *models.WebhookEvent {/
+s/webhook := models\.NewWebhookHistory(eventID, eventType, "", status, nil, nil, nil, time\.Now())/webhook := models.NewWebhookEvent(eventType, "ecommerce", "{}", status)/
+
+# Fix return types
+s/\*models\.SalesOrder/\*models.Sale/g
+s/\*models\.GoodsReceivedNote/\*models.GRN/g
+s/\*models\.WebhookHistory/\*models.WebhookEvent/g
