@@ -174,10 +174,10 @@ if [ "$SKIP_TESTS" = "0" ]; then
     TEST_EXIT_CODE=$?
 
     if [ $TEST_EXIT_CODE -eq 0 ]; then
-        PASS_COUNT=$(echo "$TEST_OUTPUT" | grep -c "^PASS" || echo "0")
+        PASS_COUNT=$(echo "$TEST_OUTPUT" | grep -c "^ok" || echo "0")
         echo -e "${GREEN}✓${NC} (${PASS_COUNT} packages passed)"
     else
-        FAIL_COUNT=$(echo "$TEST_OUTPUT" | grep -c "^FAIL:" || echo "0")
+        FAIL_COUNT=$(echo "$TEST_OUTPUT" | grep -c "^FAIL" || echo "0")
         echo -e "${RED}✗${NC}"
         echo -e "${YELLOW}⚠️  Test failures:${NC}"
         echo "$TEST_OUTPUT" | grep "^--- FAIL:" | head -10 | sed 's/^/   /'
