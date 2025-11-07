@@ -53,12 +53,12 @@ func (InventoryTransaction) TableName() string {
 
 // InventoryBatchResponse represents the API response for inventory batch
 type InventoryBatchResponse struct {
-	ID            string   `json:"id"`
-	WarehouseID   string   `json:"warehouse_id"`
-	VariantID     string   `json:"variant_id"`
-	CostPrice     float64  `json:"cost_price"`
-	ExpiryDate    string   `json:"expiry_date"`
-	TotalQuantity int64    `json:"total_quantity"`
+	ID            string  `json:"id"`
+	WarehouseID   string  `json:"warehouse_id"`
+	VariantID     string  `json:"variant_id"`
+	CostPrice     float64 `json:"cost_price"`
+	ExpiryDate    string  `json:"expiry_date"`
+	TotalQuantity int64   `json:"total_quantity"`
 
 	// Tax Configuration
 	CGSTRate     float64  `json:"cgst_rate"`

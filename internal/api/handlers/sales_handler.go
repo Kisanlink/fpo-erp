@@ -187,7 +187,6 @@ func (h *SalesHandler) DeleteSale(c *gin.Context) {
 	utils.OKResponse(c, "Sale deleted successfully", nil)
 }
 
-
 // GetSalesByDateRange handles GET /api/v1/sales/date-range
 // @Summary Get Sales by Date Range
 // @Description Retrieve sales within a specific date range

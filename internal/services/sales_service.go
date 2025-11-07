@@ -91,154 +91,154 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 		}
 		log.Printf("[DEBUG] Sale created successfully in database")
 
-	// Create sale items
-	log.Printf("[DEBUG] Starting to process %d sale items", len(req.Items))
-	var totalAmount float64
-	var saleItems []models.SaleItem // Collect sale items for tax calculation
-	for i, itemReq := range req.Items {
-		log.Printf("[DEBUG] Processing item %d: variant=%s, qty=%d", i+1, itemReq.VariantID, itemReq.Quantity)
+		// Create sale items
+		log.Printf("[DEBUG] Starting to process %d sale items", len(req.Items))
+		var totalAmount float64
+		var saleItems []models.SaleItem // Collect sale items for tax calculation
+		for i, itemReq := range req.Items {
+			log.Printf("[DEBUG] Processing item %d: variant=%s, qty=%d", i+1, itemReq.VariantID, itemReq.Quantity)
 
-		// Get selling price from product_prices table (by variant_id)
-		log.Printf("[DEBUG] Getting selling price for variant: %s", itemReq.VariantID)
-		sellingPrice, err := s.getSellingPrice(itemReq.VariantID)
-		if err != nil {
-			log.Printf("[ERROR] Failed to get selling price: %v", err)
-			return errors.New("selling price not found for product")
-		}
-		log.Printf("[DEBUG] Selling price retrieved: %.2f", sellingPrice)
-
-		// Get batches for this variant in the warehouse ordered by expiry date (FEFO)
-		log.Printf("[DEBUG] Getting batches for variant: %s in warehouse: %s", itemReq.VariantID, req.WarehouseID)
-		batches, err := s.inventoryRepo.GetBatchesByVariantAndWarehouseOrderedByExpiry(itemReq.VariantID, req.WarehouseID)
-		if err != nil {
-			log.Printf("[ERROR] Failed to get batches for variant: %v", err)
-			return errors.New("failed to retrieve variant batches")
-		}
-
-		if len(batches) == 0 {
-			log.Printf("[ERROR] No batches found for variant: %s in warehouse: %s", itemReq.VariantID, req.WarehouseID)
-			return errors.New("no inventory available for variant in this warehouse")
-		}
-
-		log.Printf("[DEBUG] Found %d batches for product", len(batches))
-
-		// Calculate total available quantity across all batches
-		totalAvailable := int64(0)
-		for _, batch := range batches {
-			totalAvailable += batch.TotalQuantity
-		}
-
-		if totalAvailable < itemReq.Quantity {
-			log.Printf("[ERROR] Insufficient stock: available %d, requested %d", totalAvailable, itemReq.Quantity)
-			return errors.New("insufficient stock for product")
-		}
-
-		log.Printf("[DEBUG] Stock validation passed - available: %d, requested: %d", totalAvailable, itemReq.Quantity)
-
-		// Allocate quantity across batches using FEFO (First Expired, First Out)
-		remainingQuantity := itemReq.Quantity
-		var itemTotal float64
-
-		for _, batch := range batches {
-			if remainingQuantity <= 0 {
-				break
-			}
-
-			// Calculate how much to take from this batch
-			quantityFromBatch := remainingQuantity
-			if batch.TotalQuantity < remainingQuantity {
-				quantityFromBatch = batch.TotalQuantity
-			}
-
-			log.Printf("[DEBUG] Allocating %d units from batch %s (expires: %s)", quantityFromBatch, batch.ID, batch.ExpiryDate.Format("2006-01-02"))
-
-			// BRD Requirement: Capture cost price from batch for margin calculation
-			costPrice := batch.CostPrice
-			log.Printf("[DEBUG] Batch cost price: %.2f, selling price: %.2f, margin: %.2f",
-				costPrice, sellingPrice, sellingPrice-costPrice)
-
-			// Calculate line total for this batch allocation
-			batchLineTotal := sellingPrice * float64(quantityFromBatch)
-
-			// Calculate taxes for this batch allocation
-			log.Printf("[DEBUG] Calculating taxes for batch allocation")
-			taxCalculation, err := s.taxService.CalculateBatchTax(batch, quantityFromBatch, sellingPrice)
+			// Get selling price from product_prices table (by variant_id)
+			log.Printf("[DEBUG] Getting selling price for variant: %s", itemReq.VariantID)
+			sellingPrice, err := s.getSellingPrice(itemReq.VariantID)
 			if err != nil {
-				log.Printf("[ERROR] Failed to calculate taxes: %v", err)
-				return err
+				log.Printf("[ERROR] Failed to get selling price: %v", err)
+				return errors.New("selling price not found for product")
 			}
-			log.Printf("[DEBUG] Tax calculation completed: CGST=%.2f, SGST=%.2f, Custom=%.2f, Total=%.2f",
-				taxCalculation.CGSTAmount, taxCalculation.SGSTAmount, taxCalculation.CustomTaxAmount, taxCalculation.TotalTaxAmount)
+			log.Printf("[DEBUG] Selling price retrieved: %.2f", sellingPrice)
 
-			itemTotal += batchLineTotal
-
-			// Create sale item with tax amounts and cost price (BRD requirement)
-			saleItem := models.NewSaleItemWithTax(sale.ID, batch.ID, quantityFromBatch, sellingPrice, costPrice, batchLineTotal,
-				taxCalculation.CGSTAmount, taxCalculation.SGSTAmount, taxCalculation.CustomTaxAmount)
-			log.Printf("[DEBUG] Sale item created with ID: %s (includes cost price: %.2f, margin: %.2f, tax amounts)",
-				saleItem.ID, costPrice, saleItem.Margin)
-
-			if err := s.salesRepo.CreateSaleItemWithTx(tx, saleItem); err != nil {
-				log.Printf("[ERROR] Failed to create sale item: %v", err)
-				return err
+			// Get batches for this variant in the warehouse ordered by expiry date (FEFO)
+			log.Printf("[DEBUG] Getting batches for variant: %s in warehouse: %s", itemReq.VariantID, req.WarehouseID)
+			batches, err := s.inventoryRepo.GetBatchesByVariantAndWarehouseOrderedByExpiry(itemReq.VariantID, req.WarehouseID)
+			if err != nil {
+				log.Printf("[ERROR] Failed to get batches for variant: %v", err)
+				return errors.New("failed to retrieve variant batches")
 			}
-			log.Printf("[DEBUG] Sale item created successfully in database")
 
-			// Add to collection for tax calculation
-			saleItems = append(saleItems, *saleItem)
-
-			// Update inventory using the proper constructor
-			log.Printf("[DEBUG] Creating inventory transaction for batch: %s", batch.ID)
-			transaction := models.NewInventoryTransaction(batch.ID, "sale", -quantityFromBatch, &sale.ID, nil, stringPtr("Sale transaction"), time.Now())
-			log.Printf("[DEBUG] Inventory transaction created with ID: %s", transaction.ID)
-
-			if err := s.inventoryRepo.CreateTransactionWithTx(tx, transaction); err != nil {
-				log.Printf("[ERROR] Failed to create inventory transaction: %v", err)
-				return err
+			if len(batches) == 0 {
+				log.Printf("[ERROR] No batches found for variant: %s in warehouse: %s", itemReq.VariantID, req.WarehouseID)
+				return errors.New("no inventory available for variant in this warehouse")
 			}
-			log.Printf("[DEBUG] Inventory transaction created successfully")
 
-			// Update batch stock level with row lock to prevent race conditions
-			log.Printf("[DEBUG] Updating batch stock: %s, change: %d", batch.ID, -quantityFromBatch)
-			if err := s.inventoryRepo.UpdateBatchStockWithTx(tx, batch.ID, -quantityFromBatch); err != nil {
-				log.Printf("[ERROR] Failed to update batch stock: %v", err)
-				return err
+			log.Printf("[DEBUG] Found %d batches for product", len(batches))
+
+			// Calculate total available quantity across all batches
+			totalAvailable := int64(0)
+			for _, batch := range batches {
+				totalAvailable += batch.TotalQuantity
 			}
-			log.Printf("[DEBUG] Batch stock updated successfully")
 
-			remainingQuantity -= quantityFromBatch
+			if totalAvailable < itemReq.Quantity {
+				log.Printf("[ERROR] Insufficient stock: available %d, requested %d", totalAvailable, itemReq.Quantity)
+				return errors.New("insufficient stock for product")
+			}
+
+			log.Printf("[DEBUG] Stock validation passed - available: %d, requested: %d", totalAvailable, itemReq.Quantity)
+
+			// Allocate quantity across batches using FEFO (First Expired, First Out)
+			remainingQuantity := itemReq.Quantity
+			var itemTotal float64
+
+			for _, batch := range batches {
+				if remainingQuantity <= 0 {
+					break
+				}
+
+				// Calculate how much to take from this batch
+				quantityFromBatch := remainingQuantity
+				if batch.TotalQuantity < remainingQuantity {
+					quantityFromBatch = batch.TotalQuantity
+				}
+
+				log.Printf("[DEBUG] Allocating %d units from batch %s (expires: %s)", quantityFromBatch, batch.ID, batch.ExpiryDate.Format("2006-01-02"))
+
+				// BRD Requirement: Capture cost price from batch for margin calculation
+				costPrice := batch.CostPrice
+				log.Printf("[DEBUG] Batch cost price: %.2f, selling price: %.2f, margin: %.2f",
+					costPrice, sellingPrice, sellingPrice-costPrice)
+
+				// Calculate line total for this batch allocation
+				batchLineTotal := sellingPrice * float64(quantityFromBatch)
+
+				// Calculate taxes for this batch allocation
+				log.Printf("[DEBUG] Calculating taxes for batch allocation")
+				taxCalculation, err := s.taxService.CalculateBatchTax(batch, quantityFromBatch, sellingPrice)
+				if err != nil {
+					log.Printf("[ERROR] Failed to calculate taxes: %v", err)
+					return err
+				}
+				log.Printf("[DEBUG] Tax calculation completed: CGST=%.2f, SGST=%.2f, Custom=%.2f, Total=%.2f",
+					taxCalculation.CGSTAmount, taxCalculation.SGSTAmount, taxCalculation.CustomTaxAmount, taxCalculation.TotalTaxAmount)
+
+				itemTotal += batchLineTotal
+
+				// Create sale item with tax amounts and cost price (BRD requirement)
+				saleItem := models.NewSaleItemWithTax(sale.ID, batch.ID, quantityFromBatch, sellingPrice, costPrice, batchLineTotal,
+					taxCalculation.CGSTAmount, taxCalculation.SGSTAmount, taxCalculation.CustomTaxAmount)
+				log.Printf("[DEBUG] Sale item created with ID: %s (includes cost price: %.2f, margin: %.2f, tax amounts)",
+					saleItem.ID, costPrice, saleItem.Margin)
+
+				if err := s.salesRepo.CreateSaleItemWithTx(tx, saleItem); err != nil {
+					log.Printf("[ERROR] Failed to create sale item: %v", err)
+					return err
+				}
+				log.Printf("[DEBUG] Sale item created successfully in database")
+
+				// Add to collection for tax calculation
+				saleItems = append(saleItems, *saleItem)
+
+				// Update inventory using the proper constructor
+				log.Printf("[DEBUG] Creating inventory transaction for batch: %s", batch.ID)
+				transaction := models.NewInventoryTransaction(batch.ID, "sale", -quantityFromBatch, &sale.ID, nil, stringPtr("Sale transaction"), time.Now())
+				log.Printf("[DEBUG] Inventory transaction created with ID: %s", transaction.ID)
+
+				if err := s.inventoryRepo.CreateTransactionWithTx(tx, transaction); err != nil {
+					log.Printf("[ERROR] Failed to create inventory transaction: %v", err)
+					return err
+				}
+				log.Printf("[DEBUG] Inventory transaction created successfully")
+
+				// Update batch stock level with row lock to prevent race conditions
+				log.Printf("[DEBUG] Updating batch stock: %s, change: %d", batch.ID, -quantityFromBatch)
+				if err := s.inventoryRepo.UpdateBatchStockWithTx(tx, batch.ID, -quantityFromBatch); err != nil {
+					log.Printf("[ERROR] Failed to update batch stock: %v", err)
+					return err
+				}
+				log.Printf("[DEBUG] Batch stock updated successfully")
+
+				remainingQuantity -= quantityFromBatch
+			}
+
+			totalAmount += itemTotal
+			log.Printf("[DEBUG] Running total: %.2f", totalAmount)
 		}
 
-		totalAmount += itemTotal
-		log.Printf("[DEBUG] Running total: %.2f", totalAmount)
-	}
-
-	// Collect product IDs for discount discovery
-	var productIDs []string
-	for _, item := range saleItems {
-		batch, err := s.inventoryRepo.GetBatchByID(item.BatchID)
-		if err == nil {
-			productIDs = append(productIDs, batch.VariantID)
+		// Collect product IDs for discount discovery
+		var productIDs []string
+		for _, item := range saleItems {
+			batch, err := s.inventoryRepo.GetBatchByID(item.BatchID)
+			if err == nil {
+				productIDs = append(productIDs, batch.VariantID)
+			}
 		}
-	}
 
-	// Apply discounts using priority-based resolution
-	var discountAmount float64
-	var appliedDiscounts []models.DiscountApplication
-	// Convert saleItems to pointer slice for discount calculation
-	var saleItemPtrs []*models.SaleItem
-	for i := range saleItems {
-		saleItemPtrs = append(saleItemPtrs, &saleItems[i])
-	}
+		// Apply discounts using priority-based resolution
+		var discountAmount float64
+		var appliedDiscounts []models.DiscountApplication
+		// Convert saleItems to pointer slice for discount calculation
+		var saleItemPtrs []*models.SaleItem
+		for i := range saleItems {
+			saleItemPtrs = append(saleItemPtrs, &saleItems[i])
+		}
 
-	finalDiscounts, applications, totalDiscountAmount, err := s.resolveDiscountsWithPriority(req, totalAmount, productIDs, saleItemPtrs)
-	if err != nil {
-		log.Printf("[ERROR] Failed to resolve discounts: %v", err)
-		return err
-	}
+		finalDiscounts, applications, totalDiscountAmount, err := s.resolveDiscountsWithPriority(req, totalAmount, productIDs, saleItemPtrs)
+		if err != nil {
+			log.Printf("[ERROR] Failed to resolve discounts: %v", err)
+			return err
+		}
 
-	discountAmount = totalDiscountAmount
-	appliedDiscounts = applications
+		discountAmount = totalDiscountAmount
+		appliedDiscounts = applications
 
 		// Create discount usage records for applied discounts
 		for _, discount := range finalDiscounts {
@@ -254,11 +254,11 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 			}
 		}
 
-	log.Printf("[DEBUG] Total discount applied: %.2f from %d discounts", discountAmount, len(finalDiscounts))
+		log.Printf("[DEBUG] Total discount applied: %.2f from %d discounts", discountAmount, len(finalDiscounts))
 
-	// Calculate final amount after discount
-	finalAmount := totalAmount - discountAmount
-	log.Printf("[DEBUG] Final amount after discount: %.2f", finalAmount)
+		// Calculate final amount after discount
+		finalAmount := totalAmount - discountAmount
+		log.Printf("[DEBUG] Final amount after discount: %.2f", finalAmount)
 
 		// Apply taxes using the existing tax service (no customer data needed)
 		// Only apply taxes if ApplyTaxes field is true
@@ -376,7 +376,6 @@ func (s *SalesService) UpdateSale(id string, req *models.UpdateSaleRequest) (*mo
 func (s *SalesService) DeleteSale(id string) error {
 	return s.salesRepo.DeleteSale(id)
 }
-
 
 // GetSalesByDateRange retrieves sales within a date range
 func (s *SalesService) GetSalesByDateRange(startDate, endDate time.Time) ([]models.SaleResponse, error) {
@@ -534,12 +533,12 @@ func (s *SalesService) mapSaleToResponse(sale *models.Sale) *models.SaleResponse
 	// Map items
 	for _, item := range sale.Items {
 		response.Items = append(response.Items, models.SaleItemResponse{
-			ID:              item.ID,
-			SaleID:          item.SaleID,
-			BatchID:         item.BatchID,
-			Quantity:        item.Quantity,
-			SellingPrice:    item.SellingPrice,
-			LineTotal:       item.LineTotal,
+			ID:           item.ID,
+			SaleID:       item.SaleID,
+			BatchID:      item.BatchID,
+			Quantity:     item.Quantity,
+			SellingPrice: item.SellingPrice,
+			LineTotal:    item.LineTotal,
 			// BRD Requirements - Cost and Margin
 			CostPrice:       item.CostPrice,
 			Margin:          item.Margin,
@@ -553,7 +552,6 @@ func (s *SalesService) mapSaleToResponse(sale *models.Sale) *models.SaleResponse
 
 	return response
 }
-
 
 // applyDiscountToSale applies a discount to a sale and returns the discount amount
 func (s *SalesService) applyDiscountToSale(discountID string, saleID string, orderValue float64) (float64, error) {
@@ -788,7 +786,6 @@ func (s *SalesService) applyTaxesToSale(saleID string, saleItems []models.SaleIt
 		if err != nil {
 			return nil, err
 		}
-
 
 		taxItem := models.TaxCalculationItem{
 			ProductID:  batch.VariantID,

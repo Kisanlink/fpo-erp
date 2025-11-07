@@ -45,10 +45,10 @@ type Discount struct {
 	Terms                *string      `gorm:"type:text" json:"terms"`                         // Terms and conditions
 
 	// Buy X Get Y specific fields
-	BuyQuantity          *int         `gorm:"type:int" json:"buy_quantity"`                   // X in Buy X Get Y
-	GetQuantity          *int         `gorm:"type:int" json:"get_quantity"`                   // Y in Buy X Get Y
-	GetDiscountType      *string      `gorm:"type:varchar(20)" json:"get_discount_type"`     // "free", "percentage", "flat"
-	GetDiscountValue     *float64     `gorm:"type:numeric(10,4)" json:"get_discount_value"`  // Discount value for Y items
+	BuyQuantity      *int     `gorm:"type:int" json:"buy_quantity"`                 // X in Buy X Get Y
+	GetQuantity      *int     `gorm:"type:int" json:"get_quantity"`                 // Y in Buy X Get Y
+	GetDiscountType  *string  `gorm:"type:varchar(20)" json:"get_discount_type"`    // "free", "percentage", "flat"
+	GetDiscountValue *float64 `gorm:"type:numeric(10,4)" json:"get_discount_value"` // Discount value for Y items
 }
 
 func (Discount) TableName() string {
@@ -129,12 +129,12 @@ type DiscountResponse struct {
 	Status               string       `json:"status"` // "active", "expired", "inactive", "usage_limit_reached", "scheduled"
 
 	// Buy X Get Y specific fields
-	BuyQuantity          *int         `json:"buy_quantity"`
-	GetQuantity          *int         `json:"get_quantity"`
-	GetDiscountType      *string      `json:"get_discount_type"`
-	GetDiscountValue     *float64     `json:"get_discount_value"`
-	CreatedAt            string       `json:"created_at"`
-	UpdatedAt            string       `json:"updated_at"`
+	BuyQuantity      *int     `json:"buy_quantity"`
+	GetQuantity      *int     `json:"get_quantity"`
+	GetDiscountType  *string  `json:"get_discount_type"`
+	GetDiscountValue *float64 `json:"get_discount_value"`
+	CreatedAt        string   `json:"created_at"`
+	UpdatedAt        string   `json:"updated_at"`
 }
 
 // DiscountUsageResponse represents the API response for discount usage
@@ -171,10 +171,10 @@ type CreateDiscountRequest struct {
 	Terms                *string      `json:"terms"`
 
 	// Buy X Get Y specific fields
-	BuyQuantity          *int         `json:"buy_quantity"`
-	GetQuantity          *int         `json:"get_quantity"`
-	GetDiscountType      *string      `json:"get_discount_type"`
-	GetDiscountValue     *float64     `json:"get_discount_value"`
+	BuyQuantity      *int     `json:"buy_quantity"`
+	GetQuantity      *int     `json:"get_quantity"`
+	GetDiscountType  *string  `json:"get_discount_type"`
+	GetDiscountValue *float64 `json:"get_discount_value"`
 }
 
 // UpdateDiscountRequest represents the request to update a discount

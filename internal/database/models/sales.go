@@ -17,9 +17,9 @@ type Sale struct {
 	Status      string    `gorm:"type:varchar(20);not null" json:"status"`
 
 	// BRD Requirements
-	FarmerID    *string `gorm:"type:varchar(100)" json:"farmer_id"`            // Optional farmer identifier
-	PaymentMode string  `gorm:"type:varchar(20);not null" json:"payment_mode"` // cash, upi, online
-	SaleType    string  `gorm:"type:varchar(20);not null" json:"sale_type"`    // in_store, delivery
+	FarmerID    *string `gorm:"type:varchar(100)" json:"farmer_id"`                     // Optional farmer identifier
+	PaymentMode string  `gorm:"type:varchar(20);not null" json:"payment_mode"`          // cash, upi, online
+	SaleType    string  `gorm:"type:varchar(20);not null" json:"sale_type"`             // in_store, delivery
 	ApplyTaxes  bool    `gorm:"type:boolean;not null;default:false" json:"apply_taxes"` // Controls tax calculation for this sale
 
 	// Associations
@@ -146,11 +146,11 @@ func NewSaleSummary(summaryDate time.Time, warehouseID string, totalSales float6
 
 // SaleResponse represents the API response for sale
 type SaleResponse struct {
-	ID          string             `json:"id"`
-	WarehouseID string             `json:"warehouse_id"`
-	SaleDate    string             `json:"sale_date"`
-	TotalAmount float64            `json:"total_amount"`
-	Status      string             `json:"status"`
+	ID          string  `json:"id"`
+	WarehouseID string  `json:"warehouse_id"`
+	SaleDate    string  `json:"sale_date"`
+	TotalAmount float64 `json:"total_amount"`
+	Status      string  `json:"status"`
 
 	// BRD Requirements
 	FarmerID    *string `json:"farmer_id,omitempty"`
@@ -158,21 +158,21 @@ type SaleResponse struct {
 	SaleType    string  `json:"sale_type"`
 	ApplyTaxes  bool    `json:"apply_taxes"`
 
-	Items       []SaleItemResponse `json:"items,omitempty"`
-	Breakdown   *SaleBreakdown     `json:"breakdown,omitempty"` // Detailed breakdown of amounts
-	CreatedAt   string             `json:"created_at"`
-	UpdatedAt   string             `json:"updated_at"`
+	Items     []SaleItemResponse `json:"items,omitempty"`
+	Breakdown *SaleBreakdown     `json:"breakdown,omitempty"` // Detailed breakdown of amounts
+	CreatedAt string             `json:"created_at"`
+	UpdatedAt string             `json:"updated_at"`
 }
 
 // SaleBreakdown represents detailed breakdown of sale calculations
 type SaleBreakdown struct {
-	BaseAmount       float64                 `json:"base_amount"`        // Total before discounts and taxes
-	AppliedDiscounts []DiscountApplication   `json:"applied_discounts"`  // All discounts applied
-	DiscountAmount   float64                 `json:"discount_amount"`    // Total discount amount
-	TaxBreakdown     *TaxSummaryBreakdown    `json:"tax_breakdown"`      // Tax details
-	TaxAmount        float64                 `json:"tax_amount"`         // Total tax amount
-	TotalSavings     float64                 `json:"total_savings"`      // Total discount savings
-	FinalAmount      float64                 `json:"final_amount"`       // Final amount after discounts and taxes
+	BaseAmount       float64               `json:"base_amount"`       // Total before discounts and taxes
+	AppliedDiscounts []DiscountApplication `json:"applied_discounts"` // All discounts applied
+	DiscountAmount   float64               `json:"discount_amount"`   // Total discount amount
+	TaxBreakdown     *TaxSummaryBreakdown  `json:"tax_breakdown"`     // Tax details
+	TaxAmount        float64               `json:"tax_amount"`        // Total tax amount
+	TotalSavings     float64               `json:"total_savings"`     // Total discount savings
+	FinalAmount      float64               `json:"final_amount"`      // Final amount after discounts and taxes
 }
 
 // DiscountApplication represents an applied discount in the breakdown
@@ -197,16 +197,16 @@ type TaxSummaryBreakdown struct {
 
 // SaleItemResponse represents the API response for sale item
 type SaleItemResponse struct {
-	ID              string  `json:"id"`
-	SaleID          string  `json:"sale_id"`
-	BatchID         string  `json:"batch_id"`
-	Quantity        int64   `json:"quantity"`
-	SellingPrice    float64 `json:"selling_price"`
-	LineTotal       float64 `json:"line_total"`
+	ID           string  `json:"id"`
+	SaleID       string  `json:"sale_id"`
+	BatchID      string  `json:"batch_id"`
+	Quantity     int64   `json:"quantity"`
+	SellingPrice float64 `json:"selling_price"`
+	LineTotal    float64 `json:"line_total"`
 
 	// BRD Requirements - Cost and Margin
-	CostPrice       float64 `json:"cost_price"` // Purchase price
-	Margin          float64 `json:"margin"`     // Profit margin
+	CostPrice float64 `json:"cost_price"` // Purchase price
+	Margin    float64 `json:"margin"`     // Profit margin
 
 	// Tax amounts
 	CGSTAmount      float64 `json:"cgst_amount"`
@@ -214,19 +214,19 @@ type SaleItemResponse struct {
 	CustomTaxAmount float64 `json:"custom_tax_amount"`
 	TotalTaxAmount  float64 `json:"total_tax_amount"`
 
-	CreatedAt       string  `json:"created_at"`
+	CreatedAt string `json:"created_at"`
 }
 
 // CreateSaleRequest represents the request to create a sale
 type CreateSaleRequest struct {
-	WarehouseID        string                  `json:"warehouse_id" binding:"required"`
-	SaleDate           *string                 `json:"sale_date"`
+	WarehouseID string  `json:"warehouse_id" binding:"required"`
+	SaleDate    *string `json:"sale_date"`
 
 	// BRD Requirements
-	FarmerID           *string                 `json:"farmer_id"`                             // Optional farmer identifier
-	PaymentMode        string                  `json:"payment_mode" binding:"required"`       // cash, upi, online
-	SaleType           string                  `json:"sale_type" binding:"required"`          // in_store, delivery
-	ApplyTaxes         *bool                   `json:"apply_taxes"`                           // Controls tax calculation (default: false)
+	FarmerID    *string `json:"farmer_id"`                       // Optional farmer identifier
+	PaymentMode string  `json:"payment_mode" binding:"required"` // cash, upi, online
+	SaleType    string  `json:"sale_type" binding:"required"`    // in_store, delivery
+	ApplyTaxes  *bool   `json:"apply_taxes"`                     // Controls tax calculation (default: false)
 
 	DiscountID         *string                 `json:"discount_id"`          // Manual discount by ID (highest priority)
 	CouponCode         *string                 `json:"coupon_code"`          // Manual discount by code (second priority)

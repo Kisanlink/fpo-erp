@@ -47,6 +47,6 @@ const (
 	TableGRNItem             = "GRIT" // GRN Items
 
 	// Webhook Integration
-	TableWebhookEvent          = "WHEV" // Webhook Events
+	TableWebhookEvent           = "WHEV" // Webhook Events
 	TableWebhookDeliveryAttempt = "WHDA" // Webhook Delivery Attempts
 )

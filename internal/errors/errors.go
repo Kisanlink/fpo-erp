@@ -105,6 +105,3 @@ const (
 	ErrConflict            = "Resource conflict"
 	ErrInternalServer      = "Internal server error"
 )
-
-
-

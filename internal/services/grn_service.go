@@ -172,10 +172,10 @@ func (s *GRNService) CreateGRN(ctx context.Context, request *models.CreateGRNReq
 					poItem.UnitPrice, // ALL-IN cost price from PO
 					expiryDate,
 					itemReq.AcceptedQuantity,
-					0, // CGST rate 0 (price is ALL-IN)
-					0, // SGST rate 0 (price is ALL-IN)
+					0,          // CGST rate 0 (price is ALL-IN)
+					0,          // SGST rate 0 (price is ALL-IN)
 					[]string{}, // No custom taxes
-					false, // Not tax exempt
+					false,      // Not tax exempt
 				)
 
 				if err := s.inventoryRepo.CreateBatch(batch); err != nil {
@@ -363,12 +363,12 @@ func (s *GRNService) buildGRNResponse(grn *models.GRN) (*models.GRNResponse, err
 	var items []models.GRNItemResponse
 	for _, item := range grn.Items {
 		items = append(items, models.GRNItemResponse{
-			ID:               item.ID,
-			GRNID:            item.GRNID,
-			POItemID:         item.POItemID,
-			VariantID:        item.VariantID,
-			ProductName:      item.Variant.VariantName, // Using variant name instead of product name
-			ProductSKU:       func() string {
+			ID:          item.ID,
+			GRNID:       item.GRNID,
+			POItemID:    item.POItemID,
+			VariantID:   item.VariantID,
+			ProductName: item.Variant.VariantName, // Using variant name instead of product name
+			ProductSKU: func() string {
 				if item.Variant.SKU != nil {
 					return *item.Variant.SKU
 				}

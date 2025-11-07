@@ -277,11 +277,11 @@ func (s *InventoryService) GetAllProductsAvailability(ctx context.Context, jwtTo
 	var responses []models.ProductAvailabilityResponse
 	for _, batch := range batches {
 		response := models.ProductAvailabilityResponse{
-			ID:                 batch.ID,
-			WarehouseID:        batch.WarehouseID,
-			WarehouseName:      batch.Warehouse.Name,
-			VariantID:          batch.VariantID,
-			ProductSKU:         func() string {
+			ID:            batch.ID,
+			WarehouseID:   batch.WarehouseID,
+			WarehouseName: batch.Warehouse.Name,
+			VariantID:     batch.VariantID,
+			ProductSKU: func() string {
 				if batch.Variant.SKU != nil {
 					return *batch.Variant.SKU
 				}

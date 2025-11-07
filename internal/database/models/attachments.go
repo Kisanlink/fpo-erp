@@ -14,9 +14,9 @@ type Attachment struct {
 	base.BaseModel
 	EntityType string    `gorm:"type:varchar(50);not null;index:idx_attachment_entity" json:"entity_type"` // "logo", "po", "grn", etc.
 	EntityID   string    `gorm:"type:varchar(100);not null;index:idx_attachment_entity" json:"entity_id"`  // Entity ID (CLAB_xxx, PO_xxx, GRN_xxx, etc.)
-	FilePath   string    `gorm:"type:text;not null" json:"file_path"`                                       // S3 key/path
-	FileType   string    `gorm:"type:varchar(50);not null" json:"file_type"`                                // MIME type
-	UploadedBy *string   `gorm:"type:varchar(100)" json:"uploaded_by"`                                      // User ID from AAA
+	FilePath   string    `gorm:"type:text;not null" json:"file_path"`                                      // S3 key/path
+	FileType   string    `gorm:"type:varchar(50);not null" json:"file_type"`                               // MIME type
+	UploadedBy *string   `gorm:"type:varchar(100)" json:"uploaded_by"`                                     // User ID from AAA
 	UploadedAt time.Time `gorm:"type:timestamptz;not null;default:now()" json:"uploaded_at"`
 }
 

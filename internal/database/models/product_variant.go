@@ -22,21 +22,21 @@ type ProductVariant struct {
 	Description *string `gorm:"type:text" json:"description"`                   // Detailed variant description
 
 	// Variant details
-	Quantity string `gorm:"type:varchar(50);not null" json:"quantity"` // e.g., "500g", "1kg", "5kg", "1L"
+	Quantity string `gorm:"type:varchar(50);not null" json:"quantity"`   // e.g., "500g", "1kg", "5kg", "1L"
 	PackSize string `gorm:"type:varchar(100);not null" json:"pack_size"` // e.g., "Small Pack", "Medium Pack", "Bulk"
 
 	// Inventory tracking
-	SKU     *string `gorm:"type:varchar(50);unique" json:"sku"`     // Variant-specific SKU (optional)
-	Barcode *string `gorm:"type:varchar(50)" json:"barcode"` // For scanning
+	SKU     *string `gorm:"type:varchar(50);unique" json:"sku"` // Variant-specific SKU (optional)
+	Barcode *string `gorm:"type:varchar(50)" json:"barcode"`    // For scanning
 
 	// Collaborator-specific fields (optional - for supplier-specific variants)
 	CollaboratorID     *string  `gorm:"type:varchar(100);index:idx_product_collaborator" json:"collaborator_id"`
-	BrandName          *string  `gorm:"type:varchar(100)" json:"brand_name"`           // Collaborator's brand
-	HSNCode            *string  `gorm:"type:varchar(8)" json:"hsn_code"`               // For GST classification
-	GSTRate            *float64 `gorm:"type:numeric(5,2)" json:"gst_rate"`             // e.g., 5.00, 12.00, 18.00, 28.00
-	Images             *string  `gorm:"type:json" json:"images"`                       // JSON array of S3 paths
-	DosageInstructions *string  `gorm:"type:text" json:"dosage_instructions"`          // Usage instructions
-	UsageDetails       *string  `gorm:"type:text" json:"usage_details"`                // Detailed usage
+	BrandName          *string  `gorm:"type:varchar(100)" json:"brand_name"`  // Collaborator's brand
+	HSNCode            *string  `gorm:"type:varchar(8)" json:"hsn_code"`      // For GST classification
+	GSTRate            *float64 `gorm:"type:numeric(5,2)" json:"gst_rate"`    // e.g., 5.00, 12.00, 18.00, 28.00
+	Images             *string  `gorm:"type:json" json:"images"`              // JSON array of S3 paths
+	DosageInstructions *string  `gorm:"type:text" json:"dosage_instructions"` // Usage instructions
+	UsageDetails       *string  `gorm:"type:text" json:"usage_details"`       // Detailed usage
 
 	IsActive bool `gorm:"default:true" json:"is_active"`
 
@@ -93,7 +93,7 @@ type ProductVariantResponse struct {
 	BrandName          *string  `json:"brand_name,omitempty"`
 	HSNCode            *string  `json:"hsn_code,omitempty"`
 	GSTRate            *float64 `json:"gst_rate,omitempty"`
-	Images             []string `json:"images,omitempty"`              // Parsed from JSON
+	Images             []string `json:"images,omitempty"` // Parsed from JSON
 	DosageInstructions *string  `json:"dosage_instructions,omitempty"`
 	UsageDetails       *string  `json:"usage_details,omitempty"`
 	IsActive           bool     `json:"is_active"`
@@ -109,9 +109,9 @@ type CreateProductVariantRequest struct {
 	PackSize           string   `json:"pack_size" binding:"required"`
 	SKU                *string  `json:"sku"`
 	Barcode            *string  `json:"barcode"`
-	CollaboratorID     *string  `json:"collaborator_id"`                      // Optional: for collaborator-specific variants
-	BrandName          *string  `json:"brand_name"`                           // Required if collaborator_id provided
-	HSNCode            *string  `json:"hsn_code"`                             // Required if collaborator_id provided
+	CollaboratorID     *string  `json:"collaborator_id"`                            // Optional: for collaborator-specific variants
+	BrandName          *string  `json:"brand_name"`                                 // Required if collaborator_id provided
+	HSNCode            *string  `json:"hsn_code"`                                   // Required if collaborator_id provided
 	GSTRate            *float64 `json:"gst_rate" binding:"omitempty,min=0,max=100"` // Required if collaborator_id provided
 	Images             []string `json:"images"`
 	DosageInstructions *string  `json:"dosage_instructions"`

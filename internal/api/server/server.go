@@ -8,8 +8,8 @@ import (
 	"kisanlink-erp/internal/config"
 	"kisanlink-erp/internal/utils"
 
-	"github.com/gin-gonic/gin"
 	scalar "github.com/MarceloPetrucio/go-scalar-api-reference"
+	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"gorm.io/gorm"

@@ -65,7 +65,7 @@ func (s *CollaboratorProductService) AddProductToCollaborator(ctx context.Contex
 
 	// Auto-generate variant details
 	variantName := fmt.Sprintf("%s - %s", product.Name, request.BrandName)
-	quantity := "1"      // Default quantity
+	quantity := "1"        // Default quantity
 	packSize := "Standard" // Default pack size
 
 	// Serialize images to JSON if provided
@@ -323,7 +323,7 @@ func (s *CollaboratorProductService) buildCollaboratorProductResponseFromVariant
 		CollaboratorName: collaborator.CompanyName,
 		ProductID:        variant.ProductID,
 		ProductName:      product.Name,
-		ProductSKU:       func() string {
+		ProductSKU: func() string {
 			if variant.SKU != nil {
 				return *variant.SKU
 			}

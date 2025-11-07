@@ -27,12 +27,12 @@ type WebhookEvent struct {
 
 	// Reference tracking
 	ExternalOrderID *string `gorm:"type:varchar(100);index" json:"external_order_id"` // For quick lookup
-	PurchaseOrderID *string `gorm:"type:varchar(100)" json:"purchase_order_id"`      // Created/Updated PO ID
+	PurchaseOrderID *string `gorm:"type:varchar(100)" json:"purchase_order_id"`       // Created/Updated PO ID
 
 	// Webhook metadata
-	SourceIP       *string `gorm:"type:varchar(50)" json:"source_ip"`        // Request source IP
-	UserAgent      *string `gorm:"type:varchar(255)" json:"user_agent"`     // Request user agent
-	SignatureValid bool    `gorm:"default:false" json:"signature_valid"`   // HMAC signature verification result
+	SourceIP       *string `gorm:"type:varchar(50)" json:"source_ip"`    // Request source IP
+	UserAgent      *string `gorm:"type:varchar(255)" json:"user_agent"`  // Request user agent
+	SignatureValid bool    `gorm:"default:false" json:"signature_valid"` // HMAC signature verification result
 }
 
 // NewWebhookEvent creates a new WebhookEvent with initialized fields
@@ -57,10 +57,10 @@ func (WebhookEvent) TableName() string {
 type WebhookDeliveryAttempt struct {
 	base.BaseModel
 
-	WebhookEventID string `gorm:"type:varchar(100);not null;index" json:"webhook_event_id"`
-	AttemptNumber  int    `gorm:"type:int;not null" json:"attempt_number"`
-	ResponseCode   int    `gorm:"type:int" json:"response_code"`
-	ErrorMessage   *string `gorm:"type:text" json:"error_message"`
+	WebhookEventID string    `gorm:"type:varchar(100);not null;index" json:"webhook_event_id"`
+	AttemptNumber  int       `gorm:"type:int;not null" json:"attempt_number"`
+	ResponseCode   int       `gorm:"type:int" json:"response_code"`
+	ErrorMessage   *string   `gorm:"type:text" json:"error_message"`
 	AttemptedAt    time.Time `gorm:"type:timestamptz;not null;default:now()" json:"attempted_at"`
 
 	// Associations

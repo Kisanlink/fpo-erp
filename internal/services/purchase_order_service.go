@@ -496,8 +496,8 @@ func (s *PurchaseOrderService) processDeliveryItems(ctx context.Context, po *mod
 					poItem.UnitPrice, // ALL-IN cost price from PO
 					expiryDate,
 					acceptedQty,
-					0, // CGST rate 0 (price is ALL-IN)
-					0, // SGST rate 0 (price is ALL-IN)
+					0,          // CGST rate 0 (price is ALL-IN)
+					0,          // SGST rate 0 (price is ALL-IN)
 					[]string{}, // No custom taxes
 					false,      // Not tax exempt
 				)

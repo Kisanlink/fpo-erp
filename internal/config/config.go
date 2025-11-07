@@ -54,18 +54,18 @@ type CORSConfig struct {
 }
 
 type AAAConfig struct {
-	Enabled     bool   `mapstructure:"enabled"`         // Enable/disable AAA authentication (default: true)
+	Enabled     bool   `mapstructure:"enabled"` // Enable/disable AAA authentication (default: true)
 	JWTSecret   string `mapstructure:"jwt_secret"`
 	CacheTTL    int    `mapstructure:"cache_ttl"`
-	ServiceURL  string `mapstructure:"service_url"`     // Legacy: kept for backward compatibility
-	BaseURL     string `mapstructure:"base_url"`        // HTTP REST API base URL (e.g., http://localhost:8080)
-	GRPCAddress string `mapstructure:"grpc_address"`    // gRPC address for authorization (e.g., localhost:50051)
+	ServiceURL  string `mapstructure:"service_url"`  // Legacy: kept for backward compatibility
+	BaseURL     string `mapstructure:"base_url"`     // HTTP REST API base URL (e.g., http://localhost:8080)
+	GRPCAddress string `mapstructure:"grpc_address"` // gRPC address for authorization (e.g., localhost:50051)
 	Timeout     int    `mapstructure:"timeout_seconds"`
 }
 
 type WebhookConfig struct {
-	Secret          string `mapstructure:"secret"`           // HMAC-SHA256 shared secret for signature verification
-	TimeoutSeconds  int    `mapstructure:"timeout_seconds"`  // Webhook processing timeout
+	Secret          string `mapstructure:"secret"`            // HMAC-SHA256 shared secret for signature verification
+	TimeoutSeconds  int    `mapstructure:"timeout_seconds"`   // Webhook processing timeout
 	MaxPayloadBytes int64  `mapstructure:"max_payload_bytes"` // Maximum request body size
 }
 

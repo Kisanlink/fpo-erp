@@ -62,7 +62,6 @@ func (r *SalesRepository) DeleteSale(id string) error {
 	return r.db.Delete(&models.Sale{}, "id = ?", id).Error
 }
 
-
 func (r *SalesRepository) GetSalesByDateRange(startDate, endDate time.Time) ([]models.Sale, error) {
 	var sales []models.Sale
 	err := r.db.Preload("Items").Where("sale_date BETWEEN ? AND ?", startDate, endDate).Find(&sales).Error

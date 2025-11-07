@@ -13,7 +13,7 @@ type PurchaseOrder struct {
 	base.BaseModel
 
 	// PO Identification
-	PONumber        string  `gorm:"type:varchar(50);unique;not null" json:"po_number"`          // Auto-generated: PO-2025-0001
+	PONumber        string  `gorm:"type:varchar(50);unique;not null" json:"po_number"`       // Auto-generated: PO-2025-0001
 	ExternalOrderID *string `gorm:"type:varchar(100);unique;index" json:"external_order_id"` // E-commerce order ID for webhook mapping
 
 	// Relationships
@@ -33,15 +33,15 @@ type PurchaseOrder struct {
 	TotalAmount float64 `gorm:"type:numeric(14,4);not null" json:"total_amount"` // Grand total
 
 	// Payment tracking
-	PaymentStatus string  `gorm:"type:varchar(20);not null" json:"payment_status"`
+	PaymentStatus string `gorm:"type:varchar(20);not null" json:"payment_status"`
 	// Values: "unpaid", "partial", "paid"
 	PaidAmount float64 `gorm:"type:numeric(14,4);default:0" json:"paid_amount"`
 
 	// Associations
-	Collaborator Collaborator       `gorm:"foreignKey:CollaboratorID" json:"collaborator,omitempty"`
-	Warehouse    Warehouse          `gorm:"foreignKey:WarehouseID" json:"warehouse,omitempty"`
+	Collaborator Collaborator        `gorm:"foreignKey:CollaboratorID" json:"collaborator,omitempty"`
+	Warehouse    Warehouse           `gorm:"foreignKey:WarehouseID" json:"warehouse,omitempty"`
 	Items        []PurchaseOrderItem `gorm:"foreignKey:POID" json:"items,omitempty"`
-	GRN          *GRN               `gorm:"foreignKey:POID" json:"grn,omitempty"`
+	GRN          *GRN                `gorm:"foreignKey:POID" json:"grn,omitempty"`
 }
 
 // NewPurchaseOrder creates a new PurchaseOrder with initialized fields
@@ -109,22 +109,22 @@ func (PurchaseOrderItem) TableName() string {
 
 // PurchaseOrderResponse represents the API response for purchase order
 type PurchaseOrderResponse struct {
-	ID                string                    `json:"id"`
-	PONumber          string                    `json:"po_number"`
-	CollaboratorID    string                    `json:"collaborator_id"`
-	CollaboratorName  string                    `json:"collaborator_name"`
-	WarehouseID       string                    `json:"warehouse_id"`
-	WarehouseName     string                    `json:"warehouse_name"`
-	OrderDate         string                    `json:"order_date"`
-	ExpectedDelivery  string                    `json:"expected_delivery_date"`
-	ActualDelivery    *string                   `json:"actual_delivery_date"`
-	Status            string                    `json:"status"`
-	TotalAmount       float64                   `json:"total_amount"`
-	PaymentStatus     string                    `json:"payment_status"`
-	PaidAmount        float64                   `json:"paid_amount"`
-	Items             []PurchaseOrderItemResponse `json:"items,omitempty"`
-	CreatedAt         string                    `json:"created_at"`
-	UpdatedAt         string                    `json:"updated_at"`
+	ID               string                      `json:"id"`
+	PONumber         string                      `json:"po_number"`
+	CollaboratorID   string                      `json:"collaborator_id"`
+	CollaboratorName string                      `json:"collaborator_name"`
+	WarehouseID      string                      `json:"warehouse_id"`
+	WarehouseName    string                      `json:"warehouse_name"`
+	OrderDate        string                      `json:"order_date"`
+	ExpectedDelivery string                      `json:"expected_delivery_date"`
+	ActualDelivery   *string                     `json:"actual_delivery_date"`
+	Status           string                      `json:"status"`
+	TotalAmount      float64                     `json:"total_amount"`
+	PaymentStatus    string                      `json:"payment_status"`
+	PaidAmount       float64                     `json:"paid_amount"`
+	Items            []PurchaseOrderItemResponse `json:"items,omitempty"`
+	CreatedAt        string                      `json:"created_at"`
+	UpdatedAt        string                      `json:"updated_at"`
 }
 
 // PurchaseOrderItemResponse represents the API response for purchase order item
@@ -143,10 +143,10 @@ type PurchaseOrderItemResponse struct {
 
 // CreatePurchaseOrderRequest represents the request to create a purchase order
 type CreatePurchaseOrderRequest struct {
-	CollaboratorID   string                        `json:"collaborator_id" binding:"required"`
-	WarehouseID      string                        `json:"warehouse_id" binding:"required"`
-	OrderDate        *string                       `json:"order_date"`         // Optional, defaults to now
-	ExpectedDelivery string                        `json:"expected_delivery_date" binding:"required"`
+	CollaboratorID   string                           `json:"collaborator_id" binding:"required"`
+	WarehouseID      string                           `json:"warehouse_id" binding:"required"`
+	OrderDate        *string                          `json:"order_date"` // Optional, defaults to now
+	ExpectedDelivery string                           `json:"expected_delivery_date" binding:"required"`
 	Items            []CreatePurchaseOrderItemRequest `json:"items" binding:"required,min=1"`
 }
 
@@ -159,12 +159,12 @@ type CreatePurchaseOrderItemRequest struct {
 
 // UpdatePOStatusRequest represents the request to update purchase order status
 type UpdatePOStatusRequest struct {
-	Status string     `json:"status" binding:"required"` // placed, confirmed, out_for_delivery, delivered, paid
+	Status         string     `json:"status" binding:"required"` // placed, confirmed, out_for_delivery, delivered, paid
 	ActualDelivery *time.Time `json:"actual_delivery_date"`      // Set when status = delivered
 
 	// Pattern 1: Accept All (simplest - for quick processing)
-	AcceptAll         *bool   `json:"accept_all"`           // If true, accept all items with default expiry
-	DefaultExpiryDate *string `json:"default_expiry_date"`  // Applied to all items when accept_all is true
+	AcceptAll         *bool   `json:"accept_all"`          // If true, accept all items with default expiry
+	DefaultExpiryDate *string `json:"default_expiry_date"` // Applied to all items when accept_all is true
 
 	// Pattern 2 & 3: Per-item details
 	Items []DeliveryItemRequest `json:"items"` // Optional: for auto-GRN creation

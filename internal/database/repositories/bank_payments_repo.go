@@ -1,8 +1,8 @@
 package repositories
 
 import (
-	"kisanlink-erp/internal/database/models"
 	"gorm.io/gorm"
+	"kisanlink-erp/internal/database/models"
 )
 
 type BankPaymentsRepository struct {

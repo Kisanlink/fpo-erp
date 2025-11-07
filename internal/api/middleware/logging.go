@@ -85,6 +85,3 @@ func PerformanceMiddleware(threshold time.Duration) gin.HandlerFunc {
 		}
 	}
 }
-
-
-

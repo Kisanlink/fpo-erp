@@ -133,7 +133,6 @@ func (r *DiscountsRepository) IncrementUsage(id string) error {
 	return nil
 }
 
-
 // CreateDiscountUsage creates a discount usage record
 func (r *DiscountsRepository) CreateDiscountUsage(usage *models.DiscountUsage) error {
 	if err := r.db.Create(usage).Error; err != nil {
@@ -193,7 +192,6 @@ func (r *DiscountsRepository) ValidateDiscount(code string, orderValue float64, 
 	if discount.UsageLimit != nil && discount.CurrentUsage >= *discount.UsageLimit {
 		return nil, errors.NewBadRequestError("Discount usage limit reached")
 	}
-
 
 	// Check minimum order value
 	if discount.MinOrderValue != nil && orderValue < *discount.MinOrderValue {
@@ -512,7 +510,7 @@ type SaleItem struct {
 func (r *DiscountsRepository) CalculateBuyXGetYDiscount(discount models.Discount, items []SaleItem) float64 {
 	// Validate Buy X Get Y configuration
 	if discount.BuyQuantity == nil || discount.GetQuantity == nil ||
-	   *discount.BuyQuantity <= 0 || *discount.GetQuantity <= 0 {
+		*discount.BuyQuantity <= 0 || *discount.GetQuantity <= 0 {
 		return 0
 	}
 

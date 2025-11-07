@@ -66,9 +66,9 @@ func (c *AddressHTTPClient) CreateAddress(ctx context.Context, req *CreateAddres
 			Pincode:     req.Pincode,
 			FullAddress: stringPtr(fmt.Sprintf("%s, %s, %s",
 				stringValue(req.Street), stringValue(req.District), stringValue(req.State))),
-			IsPrimary:   req.IsPrimary,
-			CreatedAt:   time.Now(),
-			UpdatedAt:   time.Now(),
+			IsPrimary: req.IsPrimary,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
 		}
 		return mockAddr, nil
 	}
@@ -205,9 +205,9 @@ func (c *AddressHTTPClient) UpdateAddress(ctx context.Context, req *UpdateAddres
 			Pincode:     req.Pincode,
 			FullAddress: stringPtr(fmt.Sprintf("%s, %s, %s",
 				stringValue(req.Street), stringValue(req.District), stringValue(req.State))),
-			IsPrimary:   req.IsPrimary,
-			CreatedAt:   time.Now().Add(-24 * time.Hour), // Mock created time
-			UpdatedAt:   time.Now(),
+			IsPrimary: req.IsPrimary,
+			CreatedAt: time.Now().Add(-24 * time.Hour), // Mock created time
+			UpdatedAt: time.Now(),
 		}, nil
 	}
 

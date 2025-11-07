@@ -24,33 +24,33 @@ type AAAAddress struct {
 
 // AAAProfile represents user profile information
 type AAAProfile struct {
-	UserID        string      `json:"user_id"`
-	Name          *string     `json:"name"`
-	CareOf        *string     `json:"care_of"`
-	DateOfBirth   *time.Time  `json:"date_of_birth"`
-	Photo         *string     `json:"photo"`
-	YearOfBirth   *int        `json:"year_of_birth"`
-	Message       *string     `json:"message"`
-	AadhaarNumber *string     `json:"aadhaar_number"`
-	EmailHash     *string     `json:"email_hash"`
-	ShareCode     *string     `json:"share_code"`
-	AddressID     *string     `json:"address_id"`
-	Address       AAAAddress  `json:"address"`
+	UserID        string     `json:"user_id"`
+	Name          *string    `json:"name"`
+	CareOf        *string    `json:"care_of"`
+	DateOfBirth   *time.Time `json:"date_of_birth"`
+	Photo         *string    `json:"photo"`
+	YearOfBirth   *int       `json:"year_of_birth"`
+	Message       *string    `json:"message"`
+	AadhaarNumber *string    `json:"aadhaar_number"`
+	EmailHash     *string    `json:"email_hash"`
+	ShareCode     *string    `json:"share_code"`
+	AddressID     *string    `json:"address_id"`
+	Address       AAAAddress `json:"address"`
 }
 
 // AAAUser represents user information in role
 type AAAUser struct {
-	PhoneNumber   string      `json:"phone_number"`
-	CountryCode   string      `json:"country_code"`
-	Username      *string     `json:"username"`
-	Password      string      `json:"password"`
-	MPIN          *string     `json:"mpin"`
-	IsValidated   bool        `json:"is_validated"`
-	Status        *string     `json:"status"`
-	Tokens        int         `json:"tokens"`
-	Profile       AAAProfile  `json:"profile"`
-	Contacts      interface{} `json:"contacts"`
-	Roles         interface{} `json:"roles"`
+	PhoneNumber string      `json:"phone_number"`
+	CountryCode string      `json:"country_code"`
+	Username    *string     `json:"username"`
+	Password    string      `json:"password"`
+	MPIN        *string     `json:"mpin"`
+	IsValidated bool        `json:"is_validated"`
+	Status      *string     `json:"status"`
+	Tokens      int         `json:"tokens"`
+	Profile     AAAProfile  `json:"profile"`
+	Contacts    interface{} `json:"contacts"`
+	Roles       interface{} `json:"roles"`
 }
 
 // AAAUserRole represents a role definition
@@ -108,14 +108,14 @@ type JWTGroup struct {
 
 // JWTUserContext represents the user_context field in JWT token
 type JWTUserContext struct {
-	ID             string            `json:"id"`
-	Username       string            `json:"username"`
-	PhoneNumber    string            `json:"phone_number"`
-	CountryCode    string            `json:"country_code"`
-	IsValidated    bool              `json:"is_validated"`
-	Roles          []JWTRole         `json:"roles"`
-	Organizations  []JWTOrganization `json:"organizations"`  // Support nested organizations in user_context
-	Groups         []JWTGroup        `json:"groups"`         // Support nested groups in user_context
+	ID            string            `json:"id"`
+	Username      string            `json:"username"`
+	PhoneNumber   string            `json:"phone_number"`
+	CountryCode   string            `json:"country_code"`
+	IsValidated   bool              `json:"is_validated"`
+	Roles         []JWTRole         `json:"roles"`
+	Organizations []JWTOrganization `json:"organizations"` // Support nested organizations in user_context
+	Groups        []JWTGroup        `json:"groups"`        // Support nested groups in user_context
 }
 
 // AAATokenClaims represents JWT claims from AAA service (updated to match actual JWT structure)
@@ -123,13 +123,13 @@ type AAATokenClaims struct {
 	UserID        string            `json:"user_id"`
 	Username      string            `json:"username"`
 	IsValidated   bool              `json:"isvalidate"`
-	RoleIDs       []string          `json:"roleIds"`        // Array of role ID strings (legacy)
-	Permissions   interface{}       `json:"permissions"`    // Permissions (may be null)
-	UserContext   *JWTUserContext   `json:"user_context"`   // Contains actual role objects and user info
-	Organizations []JWTOrganization `json:"organizations"`  // ✅ Organizations (FPO ID is here)
-	Groups        []JWTGroup        `json:"groups"`         // ✅ Groups
-	Roles         []JWTRole         `json:"roles"`          // ✅ Roles with org/group context
-	Scopes        []string          `json:"scopes"`         // ✅ Scopes (org:xxx, group:xxx)
+	RoleIDs       []string          `json:"roleIds"`       // Array of role ID strings (legacy)
+	Permissions   interface{}       `json:"permissions"`   // Permissions (may be null)
+	UserContext   *JWTUserContext   `json:"user_context"`  // Contains actual role objects and user info
+	Organizations []JWTOrganization `json:"organizations"` // ✅ Organizations (FPO ID is here)
+	Groups        []JWTGroup        `json:"groups"`        // ✅ Groups
+	Roles         []JWTRole         `json:"roles"`         // ✅ Roles with org/group context
+	Scopes        []string          `json:"scopes"`        // ✅ Scopes (org:xxx, group:xxx)
 	TokenType     string            `json:"token_type"`
 	TokenVersion  string            `json:"token_version"`
 	SessionID     string            `json:"session_id"`
@@ -344,7 +344,7 @@ type Address struct {
 	FullAddress *string `json:"full_address,omitempty"`
 
 	// Metadata
-	Type      string                 `json:"type"`       // HOME, WORK, OTHER
+	Type      string                 `json:"type"` // HOME, WORK, OTHER
 	IsPrimary bool                   `json:"is_primary"`
 	IsActive  bool                   `json:"is_active"`
 	Metadata  map[string]interface{} `json:"metadata,omitempty"`

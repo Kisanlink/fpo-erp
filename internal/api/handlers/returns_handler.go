@@ -513,4 +513,3 @@ func (h *ReturnsHandler) RegisterRoutes(router *gin.RouterGroup) {
 		returns.GET("/most-returned", h.aaaMiddleware.RequireOrgPermission("return", "read"), h.GetMostReturnedProducts)
 	}
 }
-

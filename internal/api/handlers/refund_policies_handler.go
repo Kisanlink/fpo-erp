@@ -159,4 +159,3 @@ func (h *RefundPoliciesHandler) RegisterRoutes(router *gin.RouterGroup) {
 		policies.PATCH("/:id", h.aaaMiddleware.RequireOrgPermission("refund_policy", "update"), h.UpdateRefundPolicy)
 	}
 }
-

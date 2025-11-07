@@ -82,7 +82,7 @@ func ScalarDocumentationHandler(c *gin.Context) {
                     showSidebar: true,
                     hideDownloadButton: false,
                     darkMode: false,
-                    customCss: ` + "`" + `
+                    customCss: `+"`"+`
                         .scalar-app {
                             height: 100vh;
                         }
@@ -90,7 +90,7 @@ func ScalarDocumentationHandler(c *gin.Context) {
                             margin: 0;
                             padding: 0;
                         }
-                    ` + "`" + `
+                    `+"`"+`
                 };
 
                 // Hide loading and show documentation
@@ -149,7 +149,7 @@ func ScalarAlternativeHandler(c *gin.Context) {
                 }
             } catch (e) {
                 console.error(e);
-                document.getElementById('openapi-ui').innerHTML = ` + "`" + `
+                document.getElementById('openapi-ui').innerHTML = `+"`"+`
                     <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
                         <h1 style="color: #d32f2f;">Documentation Load Error</h1>
                         <p style="color: #666;">Failed to load Scalar documentation.</p>
@@ -158,7 +158,7 @@ func ScalarAlternativeHandler(c *gin.Context) {
                             <a href="/api/openapi.json" style="color: #1976d2;">View OpenAPI JSON</a>
                         </p>
                     </div>
-                ` + "`" + `;
+                `+"`"+`;
             }
         });
     </script>

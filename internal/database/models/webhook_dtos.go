@@ -47,24 +47,24 @@ type WebhookProduct struct {
 
 // WebhookVariant represents a product variant in webhook payloads
 type WebhookVariant struct {
-	ExternalID           string    `json:"external_id" binding:"required"`
-	SKU                  string    `json:"sku" binding:"required"`
-	Name                 string    `json:"name" binding:"required"`
-	QuantityText         string    `json:"quantity_text" binding:"required"`
-	PackSize             string    `json:"pack_size" binding:"required"`
-	BrandName            *string   `json:"brand_name"`
-	GSTRate              *float64  `json:"gst_rate"`
-	Images               *[]string `json:"images"`
-	DosageInstructions   *string   `json:"dosage_instructions"`
-	UsageDetails         *string   `json:"usage_details"`
+	ExternalID         string    `json:"external_id" binding:"required"`
+	SKU                string    `json:"sku" binding:"required"`
+	Name               string    `json:"name" binding:"required"`
+	QuantityText       string    `json:"quantity_text" binding:"required"`
+	PackSize           string    `json:"pack_size" binding:"required"`
+	BrandName          *string   `json:"brand_name"`
+	GSTRate            *float64  `json:"gst_rate"`
+	Images             *[]string `json:"images"`
+	DosageInstructions *string   `json:"dosage_instructions"`
+	UsageDetails       *string   `json:"usage_details"`
 }
 
 // WebhookOrderItem represents a line item in order.created webhook
 type WebhookOrderItem struct {
-	Product    WebhookProduct  `json:"product" binding:"required"`
-	Variant    WebhookVariant  `json:"variant" binding:"required"`
-	Quantity   int64           `json:"quantity" binding:"required,gt=0"`
-	UnitPrice  float64         `json:"unit_price" binding:"required,gt=0"`
+	Product   WebhookProduct `json:"product" binding:"required"`
+	Variant   WebhookVariant `json:"variant" binding:"required"`
+	Quantity  int64          `json:"quantity" binding:"required,gt=0"`
+	UnitPrice float64        `json:"unit_price" binding:"required,gt=0"`
 }
 
 // WebhookFPO represents FPO information in webhook payloads
@@ -88,13 +88,13 @@ type WebhookOrder struct {
 
 // OrderCreatedWebhook represents the complete order.created webhook payload
 type OrderCreatedWebhook struct {
-	EventType    string                 `json:"event_type" binding:"required"`
-	EventID      string                 `json:"event_id" binding:"required"`
-	Timestamp    string                 `json:"timestamp" binding:"required"`
-	Order        WebhookOrder           `json:"order" binding:"required"`
-	FPO          WebhookFPO             `json:"fpo" binding:"required"`
-	Collaborator WebhookCollaborator    `json:"collaborator" binding:"required"`
-	Items        []WebhookOrderItem     `json:"items" binding:"required,min=1,dive"`
+	EventType    string              `json:"event_type" binding:"required"`
+	EventID      string              `json:"event_id" binding:"required"`
+	Timestamp    string              `json:"timestamp" binding:"required"`
+	Order        WebhookOrder        `json:"order" binding:"required"`
+	FPO          WebhookFPO          `json:"fpo" binding:"required"`
+	Collaborator WebhookCollaborator `json:"collaborator" binding:"required"`
+	Items        []WebhookOrderItem  `json:"items" binding:"required,min=1,dive"`
 }
 
 // ========================================
@@ -133,28 +133,28 @@ type OrderShippedWebhook struct {
 
 // WebhookDeliveryItem represents a delivered item with batch details
 type WebhookDeliveryItem struct {
-	ExternalProductID  string  `json:"external_product_id" binding:"required"`
-	ExternalVariantID  string  `json:"external_variant_id" binding:"required"`
-	ReceivedQuantity   int64   `json:"received_quantity" binding:"required,gt=0"`
-	AcceptedQuantity   int64   `json:"accepted_quantity" binding:"required,gte=0"`
-	RejectedQuantity   int64   `json:"rejected_quantity" binding:"gte=0"`
-	RejectionReason    *string `json:"rejection_reason"`
-	BatchNumber        string  `json:"batch_number" binding:"required"`
-	ExpiryDate         string  `json:"expiry_date" binding:"required"`
-	ManufacturingDate  *string `json:"manufacturing_date"`
-	CostPrice          float64 `json:"cost_price" binding:"required,gt=0"`
+	ExternalProductID string  `json:"external_product_id" binding:"required"`
+	ExternalVariantID string  `json:"external_variant_id" binding:"required"`
+	ReceivedQuantity  int64   `json:"received_quantity" binding:"required,gt=0"`
+	AcceptedQuantity  int64   `json:"accepted_quantity" binding:"required,gte=0"`
+	RejectedQuantity  int64   `json:"rejected_quantity" binding:"gte=0"`
+	RejectionReason   *string `json:"rejection_reason"`
+	BatchNumber       string  `json:"batch_number" binding:"required"`
+	ExpiryDate        string  `json:"expiry_date" binding:"required"`
+	ManufacturingDate *string `json:"manufacturing_date"`
+	CostPrice         float64 `json:"cost_price" binding:"required,gt=0"`
 }
 
 // OrderDeliveredWebhook represents the order.delivered webhook payload
 type OrderDeliveredWebhook struct {
-	EventType       string                 `json:"event_type" binding:"required"`
-	EventID         string                 `json:"event_id" binding:"required"`
-	Timestamp       string                 `json:"timestamp" binding:"required"`
-	ExternalOrderID string                 `json:"external_order_id" binding:"required"`
-	DeliveryDate    *string                `json:"delivery_date"`
-	InvoiceNumber   *string                `json:"invoice_number"`
-	GRNNumber       *string                `json:"grn_number"`
-	Items           []WebhookDeliveryItem  `json:"items" binding:"required,min=1,dive"`
+	EventType       string                `json:"event_type" binding:"required"`
+	EventID         string                `json:"event_id" binding:"required"`
+	Timestamp       string                `json:"timestamp" binding:"required"`
+	ExternalOrderID string                `json:"external_order_id" binding:"required"`
+	DeliveryDate    *string               `json:"delivery_date"`
+	InvoiceNumber   *string               `json:"invoice_number"`
+	GRNNumber       *string               `json:"grn_number"`
+	Items           []WebhookDeliveryItem `json:"items" binding:"required,min=1,dive"`
 }
 
 // ========================================
