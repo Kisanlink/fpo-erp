@@ -74,8 +74,8 @@ func (r *ProductPriceRepository) GetCurrentPrice(variantID, priceType string) (*
 	var price models.ProductPrice
 	now := time.Now()
 
-	if err := r.db.Where("variant_id = ? AND price_type = ? AND is_active = ? AND (effective_to IS NULL OR effective_to > ?)",
-		variantID, priceType, true, now).Order("effective_from DESC").First(&price).Error; err != nil {
+	if err := r.db.Where("variant_id = ? AND price_type = ? AND is_active = ? AND effective_from <= ? AND (effective_to IS NULL OR effective_to > ?)",
+		variantID, priceType, true, now, now).Order("effective_from DESC").First(&price).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, errors.NewNotFoundError("ProductPrice")
 		}

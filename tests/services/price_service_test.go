@@ -25,9 +25,10 @@ func setupPriceService(t *testing.T) (*services.ProductPriceService, *gorm.DB, f
 	// Create repositories
 	priceRepo := repositories.NewProductPriceRepository(db)
 	productRepo := repositories.NewProductRepository(db)
+	variantRepo := repositories.NewProductVariantRepository(db)
 
 	// Create service
-	service := services.NewProductPriceService(priceRepo, productRepo)
+	service := services.NewProductPriceService(priceRepo, productRepo, variantRepo)
 
 	cleanup := func() {
 		testutils.CleanupTestDB(db)

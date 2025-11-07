@@ -429,23 +429,27 @@ func FixtureTaxSGST() *models.Tax {
 // FixtureProductPrice creates an in-memory ProductPrice
 func FixtureProductPrice(variantID, priceType string, price float64) *models.ProductPrice {
 	effectiveFrom := time.Now().UTC()
-	return models.NewProductPrice(variantID, priceType, price, "INR", effectiveFrom, nil, true)
+	isActive := true
+	return models.NewProductPrice(variantID, priceType, price, "INR", effectiveFrom, nil, &isActive)
 }
 
 // FixtureProductPriceWithDates creates a ProductPrice with custom dates
 func FixtureProductPriceWithDates(variantID, priceType string, price float64, effectiveFrom time.Time, effectiveTo *time.Time) *models.ProductPrice {
-	return models.NewProductPrice(variantID, priceType, price, "INR", effectiveFrom, effectiveTo, true)
+	isActive := true
+	return models.NewProductPrice(variantID, priceType, price, "INR", effectiveFrom, effectiveTo, &isActive)
 }
 
 // FixtureProductPriceExpired creates an expired ProductPrice
 func FixtureProductPriceExpired(variantID, priceType string, price float64) *models.ProductPrice {
 	effectiveFrom := time.Now().UTC().Add(-30 * 24 * time.Hour) // 30 days ago
 	effectiveTo := time.Now().UTC().Add(-1 * 24 * time.Hour)    // Yesterday
-	return models.NewProductPrice(variantID, priceType, price, "INR", effectiveFrom, &effectiveTo, true)
+	isActive := true
+	return models.NewProductPrice(variantID, priceType, price, "INR", effectiveFrom, &effectiveTo, &isActive)
 }
 
 // FixtureProductPriceInactive creates an inactive ProductPrice
 func FixtureProductPriceInactive(variantID, priceType string, price float64) *models.ProductPrice {
 	effectiveFrom := time.Now().UTC()
-	return models.NewProductPrice(variantID, priceType, price, "INR", effectiveFrom, nil, false)
+	isActive := false
+	return models.NewProductPrice(variantID, priceType, price, "INR", effectiveFrom, nil, &isActive)
 }

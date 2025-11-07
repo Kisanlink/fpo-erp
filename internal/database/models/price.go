@@ -17,14 +17,14 @@ type ProductPrice struct {
 	Currency      string     `gorm:"type:varchar(3);not null;default:'INR'" json:"currency"`
 	EffectiveFrom time.Time  `gorm:"type:timestamptz;not null;default:now()" json:"effective_from"`
 	EffectiveTo   *time.Time `gorm:"type:timestamptz" json:"effective_to"`
-	IsActive      bool       `gorm:"type:boolean;not null;default:true" json:"is_active"`
+	IsActive      *bool      `gorm:"type:boolean" json:"is_active"` // Pointer to allow explicit false values
 
 	// Associations
 	Variant ProductVariant `gorm:"foreignKey:VariantID;references:ID" json:"variant,omitempty"`
 }
 
 // NewProductPrice creates a new ProductPrice with initialized fields
-func NewProductPrice(variantID, priceType string, price float64, currency string, effectiveFrom time.Time, effectiveTo *time.Time, isActive bool) *ProductPrice {
+func NewProductPrice(variantID, priceType string, price float64, currency string, effectiveFrom time.Time, effectiveTo *time.Time, isActive *bool) *ProductPrice {
 	baseModel := base.NewBaseModel(constants.TablePrice, hash.Medium)
 	return &ProductPrice{
 		BaseModel:     *baseModel,

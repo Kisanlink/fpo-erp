@@ -2,6 +2,7 @@ package testutils
 
 import (
 	"context"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -78,9 +79,15 @@ func AssertFalse(t *testing.T, condition bool, msg string) {
 // AssertNil asserts that a value is nil
 func AssertNil(t *testing.T, value interface{}, msg string) {
 	t.Helper()
-	if value != nil {
-		t.Errorf("%s: got %v, want nil", msg, value)
+	if value == nil {
+		return
 	}
+	// Use reflection to handle typed nil pointers (e.g., (*string)(nil))
+	v := reflect.ValueOf(value)
+	if v.Kind() == reflect.Ptr && v.IsNil() {
+		return
+	}
+	t.Errorf("%s: got %v, want nil", msg, value)
 }
 
 // AssertNotNil asserts that a value is not nil

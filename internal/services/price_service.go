@@ -11,20 +11,24 @@ import (
 type ProductPriceService struct {
 	priceRepo   *repositories.ProductPriceRepository
 	productRepo *repositories.ProductRepository
+	variantRepo *repositories.ProductVariantRepository
 }
 
 // NewProductPriceService creates a new product price service
-func NewProductPriceService(priceRepo *repositories.ProductPriceRepository, productRepo *repositories.ProductRepository) *ProductPriceService {
+func NewProductPriceService(priceRepo *repositories.ProductPriceRepository, productRepo *repositories.ProductRepository, variantRepo *repositories.ProductVariantRepository) *ProductPriceService {
 	return &ProductPriceService{
 		priceRepo:   priceRepo,
 		productRepo: productRepo,
+		variantRepo: variantRepo,
 	}
 }
 
 // CreateProductPrice creates a new product price
 func (s *ProductPriceService) CreateProductPrice(request *models.CreateProductPriceRequest) (*models.ProductPriceResponse, error) {
-	// Note: Variant existence is validated by foreign key constraint
-	// No need to check explicitly here
+	// Validate variant exists
+	if _, err := s.variantRepo.GetByID(request.VariantID); err != nil {
+		return nil, errors.NewNotFoundError("ProductVariant")
+	}
 
 	// Parse effective dates
 	effectiveFrom := time.Now()
@@ -47,13 +51,15 @@ func (s *ProductPriceService) CreateProductPrice(request *models.CreateProductPr
 		currency = request.Currency
 	}
 
+	// Default to true if not specified
 	isActive := true
+	isActivePtr := &isActive
 	if request.IsActive != nil {
-		isActive = *request.IsActive
+		isActivePtr = request.IsActive
 	}
 
 	// Create price model using the proper constructor
-	price := models.NewProductPrice(request.VariantID, request.PriceType, request.Price, currency, effectiveFrom, effectiveTo, isActive)
+	price := models.NewProductPrice(request.VariantID, request.PriceType, request.Price, currency, effectiveFrom, effectiveTo, isActivePtr)
 
 	// Save to database
 	if err := s.priceRepo.Create(price); err != nil {
@@ -61,6 +67,10 @@ func (s *ProductPriceService) CreateProductPrice(request *models.CreateProductPr
 	}
 
 	// Convert to response
+	isActiveValue := false
+	if price.IsActive != nil {
+		isActiveValue = *price.IsActive
+	}
 	response := &models.ProductPriceResponse{
 		ID:            price.ID,
 		VariantID:     price.VariantID,
@@ -68,7 +78,7 @@ func (s *ProductPriceService) CreateProductPrice(request *models.CreateProductPr
 		Price:         price.Price,
 		Currency:      price.Currency,
 		EffectiveFrom: price.EffectiveFrom.Format(time.RFC3339),
-		IsActive:      price.IsActive,
+		IsActive:      isActiveValue,
 		CreatedAt:     price.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:     price.UpdatedAt.Format(time.RFC3339),
 	}
@@ -88,6 +98,10 @@ func (s *ProductPriceService) GetProductPrice(id string) (*models.ProductPriceRe
 		return nil, err
 	}
 
+	isActiveValue := false
+	if price.IsActive != nil {
+		isActiveValue = *price.IsActive
+	}
 	response := &models.ProductPriceResponse{
 		ID:            price.ID,
 		VariantID:     price.VariantID,
@@ -95,7 +109,7 @@ func (s *ProductPriceService) GetProductPrice(id string) (*models.ProductPriceRe
 		Price:         price.Price,
 		Currency:      price.Currency,
 		EffectiveFrom: price.EffectiveFrom.Format(time.RFC3339),
-		IsActive:      price.IsActive,
+		IsActive:      isActiveValue,
 		CreatedAt:     price.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:     price.UpdatedAt.Format(time.RFC3339),
 	}
@@ -117,6 +131,11 @@ func (s *ProductPriceService) GetVariantPrices(variantID string) ([]models.Produ
 
 	var responses []models.ProductPriceResponse
 	for _, price := range prices {
+		isActiveValue := false
+		if price.IsActive != nil {
+			isActiveValue = *price.IsActive
+		}
+
 		response := models.ProductPriceResponse{
 			ID:            price.ID,
 			VariantID:     price.VariantID,
@@ -124,7 +143,7 @@ func (s *ProductPriceService) GetVariantPrices(variantID string) ([]models.Produ
 			Price:         price.Price,
 			Currency:      price.Currency,
 			EffectiveFrom: price.EffectiveFrom.Format(time.RFC3339),
-			IsActive:      price.IsActive,
+			IsActive:      isActiveValue,
 			CreatedAt:     price.CreatedAt.Format(time.RFC3339),
 			UpdatedAt:     price.UpdatedAt.Format(time.RFC3339),
 		}
@@ -147,6 +166,10 @@ func (s *ProductPriceService) GetCurrentPrice(variantID, priceType string) (*mod
 		return nil, err
 	}
 
+	isActiveValue := false
+	if price.IsActive != nil {
+		isActiveValue = *price.IsActive
+	}
 	response := &models.ProductPriceResponse{
 		ID:            price.ID,
 		VariantID:     price.VariantID,
@@ -154,7 +177,7 @@ func (s *ProductPriceService) GetCurrentPrice(variantID, priceType string) (*mod
 		Price:         price.Price,
 		Currency:      price.Currency,
 		EffectiveFrom: price.EffectiveFrom.Format(time.RFC3339),
-		IsActive:      price.IsActive,
+		IsActive:      isActiveValue,
 		CreatedAt:     price.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:     price.UpdatedAt.Format(time.RFC3339),
 	}
@@ -196,7 +219,7 @@ func (s *ProductPriceService) UpdateProductPrice(id string, request *models.Upda
 		}
 	}
 	if request.IsActive != nil {
-		price.IsActive = *request.IsActive
+		price.IsActive = request.IsActive
 	}
 
 	// Save to database
@@ -204,6 +227,10 @@ func (s *ProductPriceService) UpdateProductPrice(id string, request *models.Upda
 		return nil, err
 	}
 
+	isActiveValue := false
+	if price.IsActive != nil {
+		isActiveValue = *price.IsActive
+	}
 	response := &models.ProductPriceResponse{
 		ID:            price.ID,
 		VariantID:     price.VariantID,
@@ -211,7 +238,7 @@ func (s *ProductPriceService) UpdateProductPrice(id string, request *models.Upda
 		Price:         price.Price,
 		Currency:      price.Currency,
 		EffectiveFrom: price.EffectiveFrom.Format(time.RFC3339),
-		IsActive:      price.IsActive,
+		IsActive:      isActiveValue,
 		CreatedAt:     price.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:     price.UpdatedAt.Format(time.RFC3339),
 	}
@@ -247,6 +274,11 @@ func (s *ProductPriceService) GetExpiredPrices() ([]models.ProductPriceResponse,
 
 	var responses []models.ProductPriceResponse
 	for _, price := range prices {
+		isActiveValue := false
+		if price.IsActive != nil {
+			isActiveValue = *price.IsActive
+		}
+
 		response := models.ProductPriceResponse{
 			ID:            price.ID,
 			VariantID:     price.VariantID,
@@ -254,7 +286,7 @@ func (s *ProductPriceService) GetExpiredPrices() ([]models.ProductPriceResponse,
 			Price:         price.Price,
 			Currency:      price.Currency,
 			EffectiveFrom: price.EffectiveFrom.Format(time.RFC3339),
-			IsActive:      price.IsActive,
+			IsActive:      isActiveValue,
 			CreatedAt:     price.CreatedAt.Format(time.RFC3339),
 			UpdatedAt:     price.UpdatedAt.Format(time.RFC3339),
 		}

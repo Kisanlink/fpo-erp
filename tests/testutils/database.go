@@ -78,13 +78,13 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 	}
 
 	// Auto-migrate models one by one to identify which fails
-	// Skip models already created manually: ProductPrice, InventoryTransaction, Sale, SaleItem, DiscountUsage, Attachment
+	// Skip models already created manually: ProductPrice, InventoryBatch, InventoryTransaction, Sale, SaleItem, DiscountUsage, Attachment
 	modelsToMigrate := []interface{}{
 		&models.Warehouse{},
 		&models.Product{},
 		&models.ProductVariant{},
 		// Skip ProductPrice - already created manually
-		&models.InventoryBatch{},
+		// Skip InventoryBatch - already created manually
 		// Skip InventoryTransaction - already created manually
 		&models.Collaborator{},
 		&models.CollaboratorProduct{},

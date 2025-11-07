@@ -160,5 +160,36 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 		return err
 	}
 
+	// InventoryBatch table
+	if err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS inventory_batches (
+			id TEXT PRIMARY KEY,
+			warehouse_id TEXT NOT NULL,
+			variant_id TEXT NOT NULL,
+			cost_price REAL NOT NULL,
+			expiry_date TEXT NOT NULL,
+			total_quantity INTEGER NOT NULL,
+			cgst_rate REAL DEFAULT 0,
+			sgst_rate REAL DEFAULT 0,
+			custom_tax_ids TEXT,
+			is_tax_exempt INTEGER DEFAULT 0,
+			created_at DATETIME,
+			updated_at DATETIME,
+			deleted_at DATETIME,
+			created_by TEXT,
+			updated_by TEXT,
+			deleted_by TEXT
+		)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Create composite index for warehouse and variant lookup
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_inventory_batch_warehouse_variant ON inventory_batches(warehouse_id, variant_id)
+	`).Error; err != nil {
+		return err
+	}
+
 	return nil
 }

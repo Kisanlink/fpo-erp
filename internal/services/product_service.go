@@ -193,6 +193,11 @@ func (s *ProductService) GetProductWithPrices(id string) (*models.ProductWithPri
 			effectiveTo = price.EffectiveTo.Format("2006-01-02T15:04:05Z")
 		}
 
+		isActiveValue := false
+		if price.IsActive != nil {
+			isActiveValue = *price.IsActive
+		}
+
 		priceResponse := models.ProductPriceResponse{
 			ID:            price.ID,
 			VariantID:     price.VariantID,
@@ -201,7 +206,7 @@ func (s *ProductService) GetProductWithPrices(id string) (*models.ProductWithPri
 			Currency:      price.Currency,
 			EffectiveFrom: price.EffectiveFrom.Format("2006-01-02T15:04:05Z"),
 			EffectiveTo:   &effectiveTo,
-			IsActive:      price.IsActive,
+			IsActive:      isActiveValue,
 			CreatedAt:     price.CreatedAt.Format("2006-01-02T15:04:05Z"),
 			UpdatedAt:     price.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 		}

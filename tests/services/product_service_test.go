@@ -448,12 +448,13 @@ func TestProductService_GetProductWithPrices_WithVariantsAndPrices(t *testing.T)
 	db.Create(variant)
 
 	// Create price for variant
+	isActive := true
 	price := &models.ProductPrice{
 		VariantID: variant.ID,
 		PriceType: "retail",
 		Price:     100.0,
 		Currency:  "INR",
-		IsActive:  true,
+		IsActive:  &isActive,
 	}
 	result := db.Create(price)
 
