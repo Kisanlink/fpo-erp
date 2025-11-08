@@ -59,8 +59,9 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 			sale_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			total_amount REAL NOT NULL,
 			status TEXT NOT NULL,
-			payment_method TEXT,
-			sale_type TEXT,
+			farmer_id TEXT,
+			payment_mode TEXT NOT NULL,
+			sale_type TEXT NOT NULL,
 			is_returned INTEGER DEFAULT 0,
 			apply_taxes INTEGER NOT NULL DEFAULT 0,
 			created_at DATETIME,
@@ -84,13 +85,10 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 		CREATE TABLE sale_items (
 			id TEXT PRIMARY KEY,
 			sale_id TEXT NOT NULL,
-			variant_id TEXT NOT NULL,
-			batch_id TEXT,
+			batch_id TEXT NOT NULL,
 			quantity INTEGER NOT NULL,
 			selling_price REAL NOT NULL,
 			line_total REAL NOT NULL,
-			discount_amount REAL DEFAULT 0,
-			tax_amount REAL DEFAULT 0,
 			cost_price REAL NOT NULL,
 			margin REAL NOT NULL,
 			cgst_amount REAL DEFAULT 0,
@@ -782,6 +780,86 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 
 	if err := db.Exec(`
 		CREATE INDEX IF NOT EXISTS idx_webhook_external_order ON webhook_events(external_order_id)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Returns table
+	// Drop table first to ensure schema is correct
+	if err := db.Exec(`DROP TABLE IF EXISTS returns`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE TABLE returns (
+			id TEXT PRIMARY KEY,
+			sale_id TEXT NOT NULL,
+			return_date DATETIME NOT NULL,
+			total_refund REAL NOT NULL,
+			status TEXT NOT NULL,
+			created_at DATETIME,
+			updated_at DATETIME,
+			deleted_at DATETIME,
+			created_by TEXT,
+			updated_by TEXT,
+			deleted_by TEXT
+		)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Create indexes for returns
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_return_sale_id ON returns(sale_id)
+	`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_return_status ON returns(status)
+	`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_return_date ON returns(return_date)
+	`).Error; err != nil {
+		return err
+	}
+
+	// ReturnItem table
+	// Drop table first to ensure schema is correct
+	if err := db.Exec(`DROP TABLE IF EXISTS return_items`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE TABLE return_items (
+			id TEXT PRIMARY KEY,
+			return_id TEXT NOT NULL,
+			batch_id TEXT NOT NULL,
+			quantity INTEGER NOT NULL,
+			refund_amount REAL NOT NULL,
+			created_at DATETIME,
+			updated_at DATETIME,
+			deleted_at DATETIME,
+			created_by TEXT,
+			updated_by TEXT,
+			deleted_by TEXT
+		)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Create indexes for return_items
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_return_item_return_id ON return_items(return_id)
+	`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_return_item_batch_id ON return_items(batch_id)
 	`).Error; err != nil {
 		return err
 	}

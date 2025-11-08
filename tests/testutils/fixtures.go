@@ -267,7 +267,7 @@ func FixtureGRNItemWithID(id, grnID, poItemID, variantID string, quantity int64)
 // ========================================
 
 func FixtureSale(warehouseID string, totalAmount float64) *models.Sale {
-	sale := models.NewSale(warehouseID, time.Now(), totalAmount, "completed", nil, "cash", "direct", false)
+	sale := models.NewSale(warehouseID, time.Now(), totalAmount, "completed", nil, "cash", "in_store", false)
 	sale.ID = "SALE-TEST-001"
 	return sale
 }
@@ -453,4 +453,49 @@ func FixtureProductPriceInactive(variantID, priceType string, price float64) *mo
 	effectiveFrom := time.Now().UTC()
 	isActive := false
 	return models.NewProductPrice(variantID, priceType, price, "INR", effectiveFrom, nil, &isActive)
+}
+
+// ========================================
+// Return Fixtures
+// ========================================
+
+func FixtureReturn(saleID string, totalRefund float64) *models.Return {
+	returnDate := time.Now()
+	status := "pending"
+	return models.NewReturn(saleID, returnDate, totalRefund, status)
+}
+
+func FixtureReturnWithID(id, saleID string, totalRefund float64) *models.Return {
+	ret := FixtureReturn(saleID, totalRefund)
+	ret.ID = id
+	return ret
+}
+
+func FixtureReturnWithStatus(saleID, status string, totalRefund float64) *models.Return {
+	returnDate := time.Now()
+	return models.NewReturn(saleID, returnDate, totalRefund, status)
+}
+
+func FixtureReturnWithItems(saleID string, items []models.ReturnItem) *models.Return {
+	totalRefund := 0.0
+	for _, item := range items {
+		totalRefund += item.RefundAmount
+	}
+	ret := FixtureReturn(saleID, totalRefund)
+	ret.Items = items
+	return ret
+}
+
+// ========================================
+// Return Item Fixtures
+// ========================================
+
+func FixtureReturnItem(returnID, batchID string, quantity int64, refundAmount float64) *models.ReturnItem {
+	return models.NewReturnItem(returnID, batchID, quantity, refundAmount)
+}
+
+func FixtureReturnItemWithID(id, returnID, batchID string, quantity int64, refundAmount float64) *models.ReturnItem {
+	item := FixtureReturnItem(returnID, batchID, quantity, refundAmount)
+	item.ID = id
+	return item
 }
