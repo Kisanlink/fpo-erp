@@ -1,69 +1,42 @@
 package services
 
 import (
+	"context"
 	"testing"
 
+	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/services"
-	"kisanlink-erp/tests/testutils"
+	mockRepos "kisanlink-erp/tests/mocks/repositories"
 
-	"gorm.io/gorm"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
-// setupEcommerceWebhookService creates an EcommerceWebhookService with test database
-// NOTE: This service has extensive dependencies (AAA client, 8+ repositories)
-// which makes comprehensive testing complex without proper mocking infrastructure
-func setupEcommerceWebhookService(t *testing.T) (*services.EcommerceWebhookService, *gorm.DB, func()) {
-	t.Skip("Ecommerce Webhook Service tests require extensive mocking infrastructure (AAA client, 8+ repositories)")
-
-	db := testutils.SetupTestDB(t)
-
-	// This would require:
-	// - Mock AAA gRPC client for address resolution
-	// - PO Service (which itself has dependencies)
-	// - 7+ repository mocks (collaborator, product, variant, warehouse, grn, inventory, po)
-	// - Complex webhook payload structures
-	// - Extensive database setup for each test
-
-	cleanup := func() {
-		testutils.CleanupTestDB(db)
-	}
-
-	return nil, db, cleanup
-}
-
-// ============================================================================
-// ProcessOrderCreated Tests (Most Complex - Requires Mocking)
-// ============================================================================
-
-func TestEcommerceWebhook_ProcessOrderCreated_Success(t *testing.T) {
-	t.Skip("Requires AAA address client mock, all repository mocks, complex webhook payload")
-	// This test would need to:
-	// - Mock warehouse address resolution (AAA gRPC)
-	// - Mock collaborator find/create with repository
-	// - Mock product find/create
-	// - Mock variant find/create with smart matching logic
-	// - Mock PO number generation
-	// - Mock PO and PO item creation
-	// - Create complex OrderCreatedWebhook payload with nested structures
-	// Implementation deferred until mocking infrastructure is in place
-}
-
-func TestEcommerceWebhook_ProcessOrderCreated_WarehouseNotFound(t *testing.T) {
-	t.Skip("Requires AAA address client mock")
-	// Test case: delivery address doesn't match any warehouse
-	// Expected: Error "no warehouse found with address_id"
-}
-
-func TestEcommerceWebhook_ProcessOrderCreated_CollaboratorCreation(t *testing.T) {
-	t.Skip("Requires collaborator repository mock")
-	// Test case: New collaborator in webhook (external_id not found)
-	// Expected: Creates new collaborator with webhook data
-}
-
-func TestEcommerceWebhook_ProcessOrderCreated_ProductVariantSmartMatching(t *testing.T) {
-	t.Skip("Requires product variant repository mock with smart matching")
-	// Test case: Variant found by SKU when external_id doesn't match
-	// Expected: Uses existing variant and updates external_id
+// setupEcommerceWebhookService creates an EcommerceWebhookService with mocked dependencies
+func setupEcommerceWebhookService(
+	mockCollabRepo *mockRepos.MockCollaboratorRepository,
+	mockProductRepo *mockRepos.MockProductRepository,
+	mockVariantRepo *mockRepos.MockProductVariantRepository,
+	mockWarehouseRepo *mockRepos.MockWarehouseRepository,
+	mockGRNRepo *mockRepos.MockGRNRepository,
+	mockPORepo *mockRepos.MockPurchaseOrderRepository,
+	mockInventoryRepo *mockRepos.MockInventoryRepository,
+) *services.EcommerceWebhookService {
+	// Note: PurchaseOrderService and AddressClient can be nil for simple webhook tests
+	// that only update PO status. For complex tests (order.created, order.delivered),
+	// we would need to mock these as well.
+	return services.NewEcommerceWebhookService(
+		nil, // poService (not needed for simple status updates)
+		mockCollabRepo,
+		mockProductRepo,
+		mockVariantRepo,
+		mockWarehouseRepo,
+		mockGRNRepo,
+		mockInventoryRepo, // inventoryRepo
+		mockPORepo,
+		nil, // addressClient (not needed for status updates)
+	)
 }
 
 // ============================================================================
@@ -71,15 +44,61 @@ func TestEcommerceWebhook_ProcessOrderCreated_ProductVariantSmartMatching(t *tes
 // ============================================================================
 
 func TestEcommerceWebhook_ProcessOrderConfirmed_Success(t *testing.T) {
-	t.Skip("Requires PO repository mock (FindByExternalOrderID, Update)")
-	// Test case: Valid external_order_id
-	// Expected: PO status updated to "confirmed"
+	// Setup mocks
+	mockPORepo := new(mockRepos.MockPurchaseOrderRepository)
+	service := setupEcommerceWebhookService(nil, nil, nil, nil, nil, mockPORepo, nil)
+
+	// Create test data
+	externalOrderID := "EXT_ORDER_123"
+	existingPO := &models.PurchaseOrder{
+		PONumber:        "PO-2025-0001",
+		Status:          "placed",
+		ExternalOrderID: &externalOrderID,
+	}
+	existingPO.ID = "PO_001"
+
+	// Setup mock expectations
+	mockPORepo.On("FindByExternalOrderID", externalOrderID).Return(existingPO, nil)
+	mockPORepo.On("Update", mock.MatchedBy(func(po *models.PurchaseOrder) bool {
+		return po.Status == "confirmed"
+	})).Return(nil)
+
+	// Create webhook payload
+	webhook := &models.OrderConfirmedWebhook{
+		ExternalOrderID: externalOrderID,
+	}
+
+	// Execute
+	err := service.ProcessOrderConfirmed(context.Background(), webhook)
+
+	// Assert
+	require.NoError(t, err)
+	mockPORepo.AssertExpectations(t)
+	assert.Equal(t, "confirmed", existingPO.Status)
 }
 
 func TestEcommerceWebhook_ProcessOrderConfirmed_PONotFound(t *testing.T) {
-	t.Skip("Requires PO repository mock")
-	// Test case: Invalid external_order_id
-	// Expected: Error "failed to find purchase order"
+	// Setup mocks
+	mockPORepo := new(mockRepos.MockPurchaseOrderRepository)
+	service := setupEcommerceWebhookService(nil, nil, nil, nil, nil, mockPORepo, nil)
+
+	// Setup mock to return not found error
+	externalOrderID := "NONEXISTENT_ORDER"
+	mockPORepo.On("FindByExternalOrderID", externalOrderID).
+		Return(nil, assert.AnError)
+
+	// Create webhook payload
+	webhook := &models.OrderConfirmedWebhook{
+		ExternalOrderID: externalOrderID,
+	}
+
+	// Execute
+	err := service.ProcessOrderConfirmed(context.Background(), webhook)
+
+	// Assert
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to find purchase order")
+	mockPORepo.AssertExpectations(t)
 }
 
 // ============================================================================
@@ -87,50 +106,61 @@ func TestEcommerceWebhook_ProcessOrderConfirmed_PONotFound(t *testing.T) {
 // ============================================================================
 
 func TestEcommerceWebhook_ProcessOrderShipped_Success(t *testing.T) {
-	t.Skip("Requires PO repository mock (FindByExternalOrderID, Update)")
-	// Test case: Valid external_order_id
-	// Expected: PO status updated to "out_for_delivery"
+	// Setup mocks
+	mockPORepo := new(mockRepos.MockPurchaseOrderRepository)
+	service := setupEcommerceWebhookService(nil, nil, nil, nil, nil, mockPORepo, nil)
+
+	// Create test data
+	externalOrderID := "EXT_ORDER_456"
+	existingPO := &models.PurchaseOrder{
+		PONumber:        "PO-2025-0002",
+		Status:          "confirmed",
+		ExternalOrderID: &externalOrderID,
+	}
+	existingPO.ID = "PO_002"
+
+	// Setup mock expectations
+	mockPORepo.On("FindByExternalOrderID", externalOrderID).Return(existingPO, nil)
+	mockPORepo.On("Update", mock.MatchedBy(func(po *models.PurchaseOrder) bool {
+		return po.Status == "out_for_delivery"
+	})).Return(nil)
+
+	// Create webhook payload
+	webhook := &models.OrderShippedWebhook{
+		ExternalOrderID: externalOrderID,
+	}
+
+	// Execute
+	err := service.ProcessOrderShipped(context.Background(), webhook)
+
+	// Assert
+	require.NoError(t, err)
+	mockPORepo.AssertExpectations(t)
+	assert.Equal(t, "out_for_delivery", existingPO.Status)
 }
 
 func TestEcommerceWebhook_ProcessOrderShipped_PONotFound(t *testing.T) {
-	t.Skip("Requires PO repository mock")
-	// Test case: Invalid external_order_id
-	// Expected: Error "failed to find purchase order"
-}
+	// Setup mocks
+	mockPORepo := new(mockRepos.MockPurchaseOrderRepository)
+	service := setupEcommerceWebhookService(nil, nil, nil, nil, nil, mockPORepo, nil)
 
-// ============================================================================
-// ProcessOrderDelivered Tests (Second Most Complex)
-// ============================================================================
+	// Setup mock
+	externalOrderID := "NONEXISTENT_ORDER"
+	mockPORepo.On("FindByExternalOrderID", externalOrderID).
+		Return(nil, assert.AnError)
 
-func TestEcommerceWebhook_ProcessOrderDelivered_Success(t *testing.T) {
-	t.Skip("Requires GRN repo, PO repo, variant repo mocks + complex delivery webhook payload")
-	// This test would need to:
-	// - Mock PO retrieval with items
-	// - Mock variant loading for item matching
-	// - Mock GRN creation
-	// - Mock GRN item creation with expiry date parsing
-	// - Mock inventory batch creation
-	// - Mock PO status update to "delivered"
-	// - Create complex OrderDeliveredWebhook payload
-	// Implementation deferred until mocking infrastructure is in place
-}
+	// Create webhook payload
+	webhook := &models.OrderShippedWebhook{
+		ExternalOrderID: externalOrderID,
+	}
 
-func TestEcommerceWebhook_ProcessOrderDelivered_QualityStatusPartial(t *testing.T) {
-	t.Skip("Requires full repository mocking")
-	// Test case: Some items accepted, some rejected
-	// Expected: GRN quality_status = "partial"
-}
+	// Execute
+	err := service.ProcessOrderShipped(context.Background(), webhook)
 
-func TestEcommerceWebhook_ProcessOrderDelivered_QualityStatusRejected(t *testing.T) {
-	t.Skip("Requires full repository mocking")
-	// Test case: All items rejected
-	// Expected: GRN quality_status = "rejected"
-}
-
-func TestEcommerceWebhook_ProcessOrderDelivered_InvalidExpiryDate(t *testing.T) {
-	t.Skip("Requires repository mocking")
-	// Test case: Invalid expiry date format in webhook
-	// Expected: Error "failed to parse expiry date"
+	// Assert
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to find purchase order")
+	mockPORepo.AssertExpectations(t)
 }
 
 // ============================================================================
@@ -138,115 +168,216 @@ func TestEcommerceWebhook_ProcessOrderDelivered_InvalidExpiryDate(t *testing.T) 
 // ============================================================================
 
 func TestEcommerceWebhook_ProcessOrderPayment_FullPayment(t *testing.T) {
-	t.Skip("Requires PO repository mock")
-	// Test case: paid_amount >= total_amount
-	// Expected: payment_status = "paid"
+	// Setup mocks
+	mockPORepo := new(mockRepos.MockPurchaseOrderRepository)
+	service := setupEcommerceWebhookService(nil, nil, nil, nil, nil, mockPORepo, nil)
+
+	// Create test data
+	externalOrderID := "EXT_ORDER_789"
+	existingPO := &models.PurchaseOrder{
+		PONumber:        "PO-2025-0003",
+		TotalAmount:     1000.00,
+		PaidAmount:      0,
+		PaymentStatus:   "unpaid",
+		ExternalOrderID: &externalOrderID,
+	}
+	existingPO.ID = "PO_003"
+
+	// Setup mock expectations
+	mockPORepo.On("FindByExternalOrderID", externalOrderID).Return(existingPO, nil)
+	mockPORepo.On("Update", mock.MatchedBy(func(po *models.PurchaseOrder) bool {
+		return po.PaymentStatus == "paid" && po.PaidAmount == 1000.00
+	})).Return(nil)
+
+	// Create webhook payload
+	webhook := &models.OrderPaymentWebhook{
+		ExternalOrderID: externalOrderID,
+		PaidAmount:      1000.00,
+	}
+
+	// Execute
+	err := service.ProcessOrderPayment(context.Background(), webhook)
+
+	// Assert
+	require.NoError(t, err)
+	mockPORepo.AssertExpectations(t)
+	assert.Equal(t, "paid", existingPO.PaymentStatus)
+	assert.Equal(t, 1000.00, existingPO.PaidAmount)
 }
 
 func TestEcommerceWebhook_ProcessOrderPayment_PartialPayment(t *testing.T) {
-	t.Skip("Requires PO repository mock")
-	// Test case: 0 < paid_amount < total_amount
-	// Expected: payment_status = "partial"
+	// Setup mocks
+	mockPORepo := new(mockRepos.MockPurchaseOrderRepository)
+	service := setupEcommerceWebhookService(nil, nil, nil, nil, nil, mockPORepo, nil)
+
+	// Create test data
+	externalOrderID := "EXT_ORDER_999"
+	existingPO := &models.PurchaseOrder{
+		PONumber:        "PO-2025-0004",
+		TotalAmount:     1000.00,
+		PaidAmount:      0,
+		PaymentStatus:   "unpaid",
+		ExternalOrderID: &externalOrderID,
+	}
+	existingPO.ID = "PO_004"
+
+	// Setup mock expectations
+	mockPORepo.On("FindByExternalOrderID", externalOrderID).Return(existingPO, nil)
+	mockPORepo.On("Update", mock.MatchedBy(func(po *models.PurchaseOrder) bool {
+		return po.PaymentStatus == "partial" && po.PaidAmount == 500.00
+	})).Return(nil)
+
+	// Create webhook payload
+	webhook := &models.OrderPaymentWebhook{
+		ExternalOrderID: externalOrderID,
+		PaidAmount:      500.00,
+	}
+
+	// Execute
+	err := service.ProcessOrderPayment(context.Background(), webhook)
+
+	// Assert
+	require.NoError(t, err)
+	mockPORepo.AssertExpectations(t)
+	assert.Equal(t, "partial", existingPO.PaymentStatus)
+	assert.Equal(t, 500.00, existingPO.PaidAmount)
 }
 
-func TestEcommerceWebhook_ProcessOrderPayment_UnpaidStatus(t *testing.T) {
-	t.Skip("Requires PO repository mock")
-	// Test case: paid_amount = 0
-	// Expected: payment_status = "unpaid"
+func TestEcommerceWebhook_ProcessOrderPayment_ZeroPayment(t *testing.T) {
+	// Setup mocks
+	mockPORepo := new(mockRepos.MockPurchaseOrderRepository)
+	service := setupEcommerceWebhookService(nil, nil, nil, nil, nil, mockPORepo, nil)
+
+	// Create test data
+	externalOrderID := "EXT_ORDER_000"
+	existingPO := &models.PurchaseOrder{
+		PONumber:        "PO-2025-0005",
+		TotalAmount:     1000.00,
+		PaidAmount:      0,
+		PaymentStatus:   "unpaid",
+		ExternalOrderID: &externalOrderID,
+	}
+	existingPO.ID = "PO_005"
+
+	// Setup mock expectations
+	mockPORepo.On("FindByExternalOrderID", externalOrderID).Return(existingPO, nil)
+	mockPORepo.On("Update", mock.MatchedBy(func(po *models.PurchaseOrder) bool {
+		return po.PaymentStatus == "unpaid" && po.PaidAmount == 0
+	})).Return(nil)
+
+	// Create webhook payload
+	webhook := &models.OrderPaymentWebhook{
+		ExternalOrderID: externalOrderID,
+		PaidAmount:      0,
+	}
+
+	// Execute
+	err := service.ProcessOrderPayment(context.Background(), webhook)
+
+	// Assert
+	require.NoError(t, err)
+	mockPORepo.AssertExpectations(t)
+	assert.Equal(t, "unpaid", existingPO.PaymentStatus)
+	assert.Equal(t, 0.0, existingPO.PaidAmount)
 }
 
 func TestEcommerceWebhook_ProcessOrderPayment_PONotFound(t *testing.T) {
-	t.Skip("Requires PO repository mock")
-	// Test case: Invalid external_order_id
-	// Expected: Error "failed to find purchase order"
+	// Setup mocks
+	mockPORepo := new(mockRepos.MockPurchaseOrderRepository)
+	service := setupEcommerceWebhookService(nil, nil, nil, nil, nil, mockPORepo, nil)
+
+	// Setup mock
+	externalOrderID := "NONEXISTENT_ORDER"
+	mockPORepo.On("FindByExternalOrderID", externalOrderID).
+		Return(nil, assert.AnError)
+
+	// Create webhook payload
+	webhook := &models.OrderPaymentWebhook{
+		ExternalOrderID: externalOrderID,
+		PaidAmount:      100.00,
+	}
+
+	// Execute
+	err := service.ProcessOrderPayment(context.Background(), webhook)
+
+	// Assert
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to find purchase order")
+	mockPORepo.AssertExpectations(t)
 }
 
 // ============================================================================
-// Helper Method Tests
+// NOTE: Complex Tests Not Yet Implemented
 // ============================================================================
-
-func TestEcommerceWebhook_ResolveWarehouse_Success(t *testing.T) {
-	t.Skip("Requires warehouse repository mock")
-	// Test case: Warehouse with matching address_id exists
-	// Expected: Returns warehouse
-}
-
-func TestEcommerceWebhook_ResolveWarehouse_NotFound(t *testing.T) {
-	t.Skip("Requires warehouse repository mock")
-	// Test case: No warehouse with address_id
-	// Expected: Error "no warehouse found with address_id"
-}
-
-func TestEcommerceWebhook_FindOrCreateCollaborator_ExistingByExternalID(t *testing.T) {
-	t.Skip("Requires collaborator repository mock")
-	// Test case: Collaborator exists with external_id
-	// Expected: Returns existing collaborator (no creation)
-}
-
-func TestEcommerceWebhook_FindOrCreateCollaborator_CreateNew(t *testing.T) {
-	t.Skip("Requires collaborator repository mock")
-	// Test case: Collaborator not found by external_id
-	// Expected: Creates new collaborator with webhook data
-}
-
-func TestEcommerceWebhook_FindOrCreateProduct_ExistingByExternalID(t *testing.T) {
-	t.Skip("Requires product repository mock")
-	// Test case: Product exists with external_id
-	// Expected: Returns existing product (no creation)
-}
-
-func TestEcommerceWebhook_FindOrCreateProduct_CreateNew(t *testing.T) {
-	t.Skip("Requires product repository mock")
-	// Test case: Product not found by external_id
-	// Expected: Creates new product with webhook data
-}
-
-func TestEcommerceWebhook_FindOrCreateVariant_MatchByExternalID(t *testing.T) {
-	t.Skip("Requires product variant repository mock")
-	// Test case: Tier 1 - Variant found by external_id
-	// Expected: Returns existing variant immediately
-}
-
-func TestEcommerceWebhook_FindOrCreateVariant_MatchBySKU(t *testing.T) {
-	t.Skip("Requires product variant repository mock")
-	// Test case: Tier 2 - Variant not found by external_id, but found by SKU
-	// Expected: Returns variant and updates its external_id
-}
-
-func TestEcommerceWebhook_FindOrCreateVariant_CreateNew(t *testing.T) {
-	t.Skip("Requires product variant repository mock")
-	// Test case: Tier 3 - Not found by external_id or SKU
-	// Expected: Creates new variant with webhook data
-}
-
-func TestEcommerceWebhook_GeneratePONumber_UniqueNumber(t *testing.T) {
-	t.Skip("Requires PO repository mock for PONumberExists check")
-	// Test case: Generate unique PO number
-	// Expected: Format "PO-YYYY-NNNN" that doesn't exist
-}
-
-// ============================================================================
-// SUMMARY
-// ============================================================================
-
-// Total Tests Planned: 24
-// - ProcessOrderCreated: 4 tests (all skipped - extensive mocking needed)
-// - ProcessOrderConfirmed: 2 tests (all skipped - repo mocking needed)
-// - ProcessOrderShipped: 2 tests (all skipped - repo mocking needed)
-// - ProcessOrderDelivered: 4 tests (all skipped - extensive mocking needed)
-// - ProcessOrderPayment: 4 tests (all skipped - repo mocking needed)
-// - Helper Methods: 8 tests (all skipped - repo mocking needed)
-
-// Reason for Skipping: EcommerceWebhookService requires:
-// 1. AAA gRPC client mock for address resolution
-// 2. Multiple repository mocks (8+ repos)
-// 3. Complex webhook payload structures (nested DTOs)
-// 4. Extensive database state setup for each test
 //
-// Recommendation: Implement proper mocking infrastructure (testify/mock or gomock)
-// before attempting comprehensive testing of this service. Current SQLite-based
-// test approach works well for simple services but becomes impractical for
-// services with many external dependencies.
+// The following tests require more extensive mocking and are left for future implementation:
 //
-// Alternative: Integration tests with real dependencies in a test environment
-// would be more practical than unit tests with extensive mocking.
+// ProcessOrderCreated Tests (Most Complex):
+// - TestProcessOrderCreated_Success
+// - TestProcessOrderCreated_CollaboratorCreation
+// - TestProcessOrderCreated_ProductCreation
+// - TestProcessOrderCreated_VariantSmartMatchingByExternalID
+// - TestProcessOrderCreated_VariantSmartMatchingBySKU
+// - TestProcessOrderCreated_InvalidWarehouse
+//
+// ProcessOrderDelivered Tests (Second Most Complex):
+// - TestProcessOrderDelivered_Success
+// - TestProcessOrderDelivered_QualityStatusPartial
+// - TestProcessOrderDelivered_QualityStatusRejected
+// - TestProcessOrderDelivered_InvalidExpiryDate
+//
+// These tests require mocking:
+// - Address client (warehouse resolution)
+// - All repository mocks with complex chained calls
+// - Complex webhook payload structures
+// - Smart matching logic (3-tier fallback)
+//
+// Implementation Pattern:
+// 1. Create all necessary mocks (collab, product, variant, warehouse, grn)
+// 2. Setup complex webhook payloads with nested data
+// 3. Configure mock expectations for chained repository calls
+// 4. Verify created entities and their relationships
+//
+// Example skeleton for ProcessOrderCreated:
+// func TestProcessOrderCreated_Success(t *testing.T) {
+//     // Setup ALL mocks
+//     mockWarehouseRepo := new(mockRepos.MockWarehouseRepository)
+//     mockCollabRepo := new(mockRepos.MockCollaboratorRepository)
+//     mockProductRepo := new(mockRepos.MockProductRepository)
+//     mockVariantRepo := new(mockRepos.MockProductVariantRepository)
+//     mockPORepo := new(mockRepos.MockPurchaseOrderRepository)
+//
+//     // Configure warehouse resolution
+//     mockWarehouseRepo.On("GetAll").Return(warehouses, nil)
+//
+//     // Configure collaborator find/create
+//     mockCollabRepo.On("FindByExternalID", "COLLAB_123").Return(nil, nil)
+//     mockCollabRepo.On("Create", mock.Anything).Return(nil)
+//
+//     // Configure product/variant find/create chain
+//     // ... etc
+//
+//     // Create complex webhook payload
+//     webhook := &models.OrderCreatedWebhook{...}
+//
+//     // Execute and assert
+// }
+//
+// ============================================================================
+
+// ============================================================================
+// Test Summary
+// ============================================================================
+//
+// IMPLEMENTED (8 tests):
+// - ProcessOrderConfirmed: 2 tests (success, not found)
+// - ProcessOrderShipped: 2 tests (success, not found)
+// - ProcessOrderPayment: 4 tests (full, partial, zero, not found)
+//
+// NOT IMPLEMENTED (16 tests):
+// - ProcessOrderCreated: 6-8 tests (requires complex mocking)
+// - ProcessOrderDelivered: 4 tests (requires GRN mocking)
+// - Helper methods: 4-6 tests (warehouse resolution, smart matching)
+//
+// Total: 8 passing tests demonstrating the testify/mock pattern
+// ============================================================================

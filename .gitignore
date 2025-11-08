@@ -246,7 +246,6 @@ local-test-data/
 testenv.go
 
 # Local mock files
-mocks/
 local-mocks/
 
 # Local fixtures

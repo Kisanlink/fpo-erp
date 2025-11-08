@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
-	"kisanlink-erp/internal/database/repositories"
+	"kisanlink-erp/internal/database/repositories/interfaces"
 	"kisanlink-erp/internal/utils"
 	"time"
 )
@@ -14,26 +14,26 @@ import (
 // EcommerceWebhookService handles e-commerce webhook business logic
 type EcommerceWebhookService struct {
 	poService          *PurchaseOrderService
-	collaboratorRepo   *repositories.CollaboratorRepository
-	productRepo        *repositories.ProductRepository
-	productVariantRepo *repositories.ProductVariantRepository
-	warehouseRepo      *repositories.WarehouseRepository
-	grnRepo            *repositories.GRNRepository
-	inventoryRepo      *repositories.InventoryRepository
-	poRepo             *repositories.PurchaseOrderRepository
+	collaboratorRepo   interfaces.CollaboratorInterface
+	productRepo        interfaces.ProductInterface
+	productVariantRepo interfaces.ProductVariantInterface
+	warehouseRepo      interfaces.WarehouseInterface
+	grnRepo            interfaces.GRNInterface
+	inventoryRepo      interfaces.InventoryInterface
+	poRepo             interfaces.PurchaseOrderInterface
 	addressClient      *aaa.AddressGRPCClient
 }
 
 // NewEcommerceWebhookService creates a new e-commerce webhook service
 func NewEcommerceWebhookService(
 	poService *PurchaseOrderService,
-	collaboratorRepo *repositories.CollaboratorRepository,
-	productRepo *repositories.ProductRepository,
-	productVariantRepo *repositories.ProductVariantRepository,
-	warehouseRepo *repositories.WarehouseRepository,
-	grnRepo *repositories.GRNRepository,
-	inventoryRepo *repositories.InventoryRepository,
-	poRepo *repositories.PurchaseOrderRepository,
+	collaboratorRepo interfaces.CollaboratorInterface,
+	productRepo interfaces.ProductInterface,
+	productVariantRepo interfaces.ProductVariantInterface,
+	warehouseRepo interfaces.WarehouseInterface,
+	grnRepo interfaces.GRNInterface,
+	inventoryRepo interfaces.InventoryInterface,
+	poRepo interfaces.PurchaseOrderInterface,
 	addressClient *aaa.AddressGRPCClient,
 ) *EcommerceWebhookService {
 	return &EcommerceWebhookService{
