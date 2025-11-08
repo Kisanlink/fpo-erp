@@ -510,13 +510,10 @@ func TestSalesService_GetTopSellingProducts_RespectsLimit(t *testing.T) {
 // CreateSale Tests - Basic Functionality
 // =============================================================================
 
-// NOTE: CreateSale tests are currently disabled due to SQLite transaction deadlock issues.
-// The CreateSale service calls repository read methods inside a transaction, but those methods
-// use the original DB connection instead of the transaction, causing deadlocks in SQLite.
-// This needs to be refactored to do all reads before the transaction (like CreatePurchaseOrder does).
-// See: sales_service.go:57 (WithTransaction), sales_service.go:103 (getSellingPrice), sales_service.go:112 (GetBatchesByVariant)
+// NOTE: CreateSale tests were previously disabled due to SQLite transaction deadlock issues.
+// The issue has been fixed by moving all reads (getSellingPrice, GetBatchesByVariantAndWarehouseOrderedByExpiry)
+// before the transaction starts, following the same pattern as CreatePurchaseOrder.
 
-/*
 // Helper function to create a complete sale test setup (variant with price and inventory)
 func setupSaleTestData(t *testing.T, db *gorm.DB) (*models.Warehouse, *models.Product, *models.ProductVariant, *models.ProductPrice, *models.InventoryBatch) {
 	t.Helper()
@@ -759,4 +756,3 @@ func TestSalesService_CreateSale_Failure_InsufficientInventory(t *testing.T) {
 	// Assert
 	testutils.AssertError(t, err, "Should return error for insufficient inventory")
 }
-*/

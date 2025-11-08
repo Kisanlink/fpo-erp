@@ -51,6 +51,71 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 	}
 	log.Printf("[DEBUG] Sale validation passed")
 
+	// Pre-fetch all required data BEFORE transaction to avoid SQLite deadlocks
+	// This follows the same pattern as CreatePurchaseOrder
+	type itemData struct {
+		sellingPrice float64
+		batches      []models.InventoryBatch
+	}
+
+	itemDataMap := make(map[string]*itemData)
+	for _, itemReq := range req.Items {
+		// Get selling price from product_prices table (by variant_id)
+		log.Printf("[DEBUG] Getting selling price for variant: %s", itemReq.VariantID)
+		sellingPrice, err := s.getSellingPrice(itemReq.VariantID)
+		if err != nil {
+			log.Printf("[ERROR] Failed to get selling price: %v", err)
+			return nil, errors.New("selling price not found for product")
+		}
+		log.Printf("[DEBUG] Selling price retrieved: %.2f", sellingPrice)
+
+		// Get batches for this variant in the warehouse ordered by expiry date (FEFO)
+		log.Printf("[DEBUG] Getting batches for variant: %s in warehouse: %s", itemReq.VariantID, req.WarehouseID)
+		batches, err := s.inventoryRepo.GetBatchesByVariantAndWarehouseOrderedByExpiry(itemReq.VariantID, req.WarehouseID)
+		if err != nil {
+			log.Printf("[ERROR] Failed to get batches for variant: %v", err)
+			return nil, errors.New("failed to retrieve variant batches")
+		}
+
+		if len(batches) == 0 {
+			log.Printf("[ERROR] No batches found for variant: %s in warehouse: %s", itemReq.VariantID, req.WarehouseID)
+			return nil, errors.New("no inventory available for variant in this warehouse")
+		}
+
+		log.Printf("[DEBUG] Found %d batches for product", len(batches))
+
+		// Calculate total available quantity across all batches
+		totalAvailable := int64(0)
+		for _, batch := range batches {
+			totalAvailable += batch.TotalQuantity
+		}
+
+		if totalAvailable < itemReq.Quantity {
+			log.Printf("[ERROR] Insufficient stock: available %d, requested %d", totalAvailable, itemReq.Quantity)
+			return nil, errors.New("insufficient stock for product")
+		}
+
+		log.Printf("[DEBUG] Stock validation passed - available: %d, requested: %d", totalAvailable, itemReq.Quantity)
+
+		itemDataMap[itemReq.VariantID] = &itemData{
+			sellingPrice: sellingPrice,
+			batches:      batches,
+		}
+	}
+
+	// Pre-build product IDs map for discount discovery (using pre-fetched batch data)
+	// This avoids calling GetBatchByID inside the transaction
+	productIDsMap := make(map[string]bool)
+	for _, itemData := range itemDataMap {
+		for _, batch := range itemData.batches {
+			productIDsMap[batch.VariantID] = true
+		}
+	}
+	var productIDs []string
+	for variantID := range productIDsMap {
+		productIDs = append(productIDs, variantID)
+	}
+
 	var response *models.SaleResponse
 
 	// Execute everything within a database transaction
@@ -91,49 +156,17 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 		}
 		log.Printf("[DEBUG] Sale created successfully in database")
 
-		// Create sale items
+		// Create sale items using pre-fetched data
 		log.Printf("[DEBUG] Starting to process %d sale items", len(req.Items))
 		var totalAmount float64
 		var saleItems []models.SaleItem // Collect sale items for tax calculation
 		for i, itemReq := range req.Items {
 			log.Printf("[DEBUG] Processing item %d: variant=%s, qty=%d", i+1, itemReq.VariantID, itemReq.Quantity)
 
-			// Get selling price from product_prices table (by variant_id)
-			log.Printf("[DEBUG] Getting selling price for variant: %s", itemReq.VariantID)
-			sellingPrice, err := s.getSellingPrice(itemReq.VariantID)
-			if err != nil {
-				log.Printf("[ERROR] Failed to get selling price: %v", err)
-				return errors.New("selling price not found for product")
-			}
-			log.Printf("[DEBUG] Selling price retrieved: %.2f", sellingPrice)
-
-			// Get batches for this variant in the warehouse ordered by expiry date (FEFO)
-			log.Printf("[DEBUG] Getting batches for variant: %s in warehouse: %s", itemReq.VariantID, req.WarehouseID)
-			batches, err := s.inventoryRepo.GetBatchesByVariantAndWarehouseOrderedByExpiry(itemReq.VariantID, req.WarehouseID)
-			if err != nil {
-				log.Printf("[ERROR] Failed to get batches for variant: %v", err)
-				return errors.New("failed to retrieve variant batches")
-			}
-
-			if len(batches) == 0 {
-				log.Printf("[ERROR] No batches found for variant: %s in warehouse: %s", itemReq.VariantID, req.WarehouseID)
-				return errors.New("no inventory available for variant in this warehouse")
-			}
-
-			log.Printf("[DEBUG] Found %d batches for product", len(batches))
-
-			// Calculate total available quantity across all batches
-			totalAvailable := int64(0)
-			for _, batch := range batches {
-				totalAvailable += batch.TotalQuantity
-			}
-
-			if totalAvailable < itemReq.Quantity {
-				log.Printf("[ERROR] Insufficient stock: available %d, requested %d", totalAvailable, itemReq.Quantity)
-				return errors.New("insufficient stock for product")
-			}
-
-			log.Printf("[DEBUG] Stock validation passed - available: %d, requested: %d", totalAvailable, itemReq.Quantity)
+			// Get pre-fetched data
+			itemData := itemDataMap[itemReq.VariantID]
+			sellingPrice := itemData.sellingPrice
+			batches := itemData.batches
 
 			// Allocate quantity across batches using FEFO (First Expired, First Out)
 			remainingQuantity := itemReq.Quantity
@@ -213,14 +246,7 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 			log.Printf("[DEBUG] Running total: %.2f", totalAmount)
 		}
 
-		// Collect product IDs for discount discovery
-		var productIDs []string
-		for _, item := range saleItems {
-			batch, err := s.inventoryRepo.GetBatchByID(item.BatchID)
-			if err == nil {
-				productIDs = append(productIDs, batch.VariantID)
-			}
-		}
+		// Use pre-built product IDs for discount discovery (already built before transaction)
 
 		// Apply discounts using priority-based resolution
 		var discountAmount float64
@@ -287,6 +313,10 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 			return err
 		}
 		log.Printf("[DEBUG] Sale updated with final amount successfully")
+
+		// Load sale items into sale.Items for response mapping
+		// The sale object doesn't have items preloaded, so we set them from the saleItems we created
+		sale.Items = saleItems
 
 		// Build response within transaction (before committing)
 		response = s.mapSaleToResponse(sale)

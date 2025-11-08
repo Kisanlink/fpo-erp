@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -566,8 +567,8 @@ func TestReturnsService_GetReturnsByStatus_Empty(t *testing.T) {
 // GetTotalReturnsAmount Tests
 // ============================================================================
 
-// NOTE: GetTotalReturnsAmount tests commented out - repository method may not be implemented or has incorrect SQLite query
-/*
+// NOTE: GetTotalReturnsAmount tests were previously disabled due to incorrect column name (total_amount vs total_refund).
+// The issue has been fixed by changing the query to use total_refund column.
 func TestReturnsService_GetTotalReturnsAmount_Success(t *testing.T) {
 	service, db, cleanup := setupReturnsService(t)
 	defer cleanup()
@@ -617,15 +618,14 @@ func TestReturnsService_GetTotalReturnsAmount_ZeroWhenEmpty(t *testing.T) {
 		t.Errorf("Expected total 0.0, got %f", total)
 	}
 }
-*/
 
 // ============================================================================
 // GetMostReturnedProducts Tests
 // ============================================================================
 
-// NOTE: GetMostReturnedProducts tests commented out - SKU uniqueness constraint violation when creating multiple test sales
-// The setupReturnTestSale() creates variants with the same SKU, violating UNIQUE constraint in product_variants table
-/*
+// NOTE: GetMostReturnedProducts tests were previously disabled due to incorrect query (using product_id instead of batch_id).
+// The issue has been fixed by rewriting the query to join through inventory_batches -> product_variants -> sku.
+// The SKU uniqueness issue in setupReturnTestSale() should be addressed by using unique SKUs in test helpers.
 func TestReturnsService_GetMostReturnedProducts_Success(t *testing.T) {
 	service, db, cleanup := setupReturnsService(t)
 	defer cleanup()
@@ -662,8 +662,52 @@ func TestReturnsService_GetMostReturnedProducts_RespectsLimit(t *testing.T) {
 	defer cleanup()
 
 	// Create multiple products with returns
+	// Use unique SKUs to avoid UNIQUE constraint violations
 	for i := 0; i < 5; i++ {
-		_, _, _, batch, sale := setupReturnTestSale(t, db)
+		// Create warehouse
+		warehouse := testutils.FixtureWarehouse(fmt.Sprintf("Test Warehouse %d", i))
+		if err := db.Create(warehouse).Error; err != nil {
+			t.Fatalf("Failed to create warehouse: %v", err)
+		}
+
+		// Create product
+		product := testutils.FixtureProduct(fmt.Sprintf("Test Product %d", i))
+		if err := db.Create(product).Error; err != nil {
+			t.Fatalf("Failed to create product: %v", err)
+		}
+
+		// Create variant with unique SKU
+		variant := testutils.FixtureProductVariantWithSKU(product.ID, fmt.Sprintf("1kg-%d", i), fmt.Sprintf("SKU-UNIQUE-%d", i))
+		if err := db.Create(variant).Error; err != nil {
+			t.Fatalf("Failed to create variant: %v", err)
+		}
+
+		// Create price
+		price := testutils.FixtureProductPrice(variant.ID, "retail", 100.0)
+		if err := db.Create(price).Error; err != nil {
+			t.Fatalf("Failed to create price: %v", err)
+		}
+
+		// Create inventory batch
+		expiryDate := time.Now().AddDate(0, 6, 0)
+		batch := testutils.FixtureInventoryBatchWithExpiry(warehouse.ID, variant.ID, 1000, expiryDate)
+		if err := db.Create(batch).Error; err != nil {
+			t.Fatalf("Failed to create batch: %v", err)
+		}
+
+		// Create sale
+		sale := models.NewSale(warehouse.ID, time.Now(), 500.0, "completed", nil, "cash", "in_store", false)
+		if err := db.Create(sale).Error; err != nil {
+			t.Fatalf("Failed to create sale: %v", err)
+		}
+
+		// Create sale item
+		saleItem := models.NewSaleItem(sale.ID, batch.ID, 5, 100.0, 50.0, 500.0)
+		if err := db.Create(saleItem).Error; err != nil {
+			t.Fatalf("Failed to create sale item: %v", err)
+		}
+
+		// Create return
 		ret := models.NewReturn(sale.ID, time.Now(), 100.0, "approved")
 		if err := db.Create(ret).Error; err != nil {
 			t.Fatalf("Failed to create return: %v", err)
@@ -686,7 +730,6 @@ func TestReturnsService_GetMostReturnedProducts_RespectsLimit(t *testing.T) {
 		t.Errorf("Expected at most 2 products (limit), got %d", len(responses))
 	}
 }
-*/
 
 // ============================================================================
 // CreateReturn Tests
