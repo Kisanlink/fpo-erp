@@ -3,6 +3,7 @@ package testutils
 import (
 	"io"
 	"log"
+	"reflect"
 	"testing"
 
 	"github.com/glebarez/sqlite"
@@ -43,9 +44,14 @@ func (s SQLiteJSONNamingStrategy) ColumnName(table, column string) string {
 }
 
 // ColumnDataType returns the data type for SQLite columns
-func (SQLiteJSONNamingStrategy) ColumnDataType(field *schema.Field) string {
+func (s SQLiteJSONNamingStrategy) ColumnDataType(field *schema.Field) string {
 	// For []string fields with type:json tag, use TEXT
-	if field.Tag.Get("gorm") == "type:json" {
+	// Also handle serialization automatically
+	if field.Tag.Get("gorm") == "type:json" ||
+		field.Tag.Get("serializer") == "json" ||
+		(field.FieldType.Kind() == reflect.Slice && field.FieldType.Elem().Kind() == reflect.String) {
+		// Register serializer if not already registered
+		schema.RegisterSerializer("json", JSONStringSliceSerializer{})
 		return "TEXT"
 	}
 	return ""
@@ -118,7 +124,45 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("Failed to create SQLite-compatible tables: %v\nThis error occurred during table creation. Check sqlite_migrations.go for SQL syntax errors.", err)
 	}
 
+	// Register callbacks to handle JSON serialization for []string fields in SQLite
+	RegisterJSONCallbacks(db)
+
 	return db
+}
+
+// RegisterJSONCallbacks patches GORM schemas to automatically apply JSON serializer
+// for []string fields with type:json tag
+func RegisterJSONCallbacks(db *gorm.DB) {
+	// Hook into schema initialization to patch field tags
+	db.Callback().Create().Before("gorm:before_create").Register("sqlite_json_patch_schema", func(db *gorm.DB) {
+		patchSchemaForJSON(db)
+	})
+
+	db.Callback().Query().Before("gorm:query").Register("sqlite_json_patch_schema", func(db *gorm.DB) {
+		patchSchemaForJSON(db)
+	})
+
+	db.Callback().Update().Before("gorm:before_update").Register("sqlite_json_patch_schema", func(db *gorm.DB) {
+		patchSchemaForJSON(db)
+	})
+}
+
+// patchSchemaForJSON modifies schema fields to use JSON serializer for []string fields with type:json
+func patchSchemaForJSON(db *gorm.DB) {
+	if db.Statement.Schema == nil {
+		return
+	}
+
+	for _, field := range db.Statement.Schema.Fields {
+		// Check if field is []string with type:json tag
+		if field.FieldType.Kind() == reflect.Slice &&
+			field.FieldType.Elem().Kind() == reflect.String &&
+			field.Tag.Get("gorm") == "type:json" {
+
+			// Set the serializer for this field
+			field.Serializer = JSONStringSliceSerializer{}
+		}
+	}
 }
 
 // CleanupTestDB closes the database connection and restores log output

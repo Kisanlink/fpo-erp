@@ -31,17 +31,17 @@ func NewInventoryService(inventoryRepo *repositories.InventoryRepository, wareho
 }
 
 // CreateBatch creates a new inventory batch with tax configuration
-func (s *InventoryService) CreateBatch(warehouseID, productID string, costPrice float64, expiryDate time.Time, quantity int64, cgstRate, sgstRate float64, customTaxIDs []string, isTaxExempt bool) (*models.InventoryBatchResponse, error) {
+func (s *InventoryService) CreateBatch(warehouseID, variantID string, costPrice float64, expiryDate time.Time, quantity int64, cgstRate, sgstRate float64, customTaxIDs []string, isTaxExempt bool) (*models.InventoryBatchResponse, error) {
 	// Validate warehouse exists
 	_, err := s.warehouseRepo.GetByID(warehouseID)
 	if err != nil {
 		return nil, errors.NewNotFoundError("Warehouse")
 	}
 
-	// Validate product exists
-	_, err = s.productRepo.GetByID(productID)
+	// Validate product variant exists
+	_, err = s.variantRepo.GetByID(variantID)
 	if err != nil {
-		return nil, errors.NewNotFoundError("Product")
+		return nil, errors.NewNotFoundError("ProductVariant")
 	}
 
 	// Validate expiry date is in the future
@@ -63,7 +63,7 @@ func (s *InventoryService) CreateBatch(warehouseID, productID string, costPrice 
 	}
 
 	// Create batch using the updated constructor
-	batch := models.NewInventoryBatch(warehouseID, productID, costPrice, expiryDate, quantity, cgstRate, sgstRate, customTaxIDs, isTaxExempt)
+	batch := models.NewInventoryBatch(warehouseID, variantID, costPrice, expiryDate, quantity, cgstRate, sgstRate, customTaxIDs, isTaxExempt)
 
 	// Create initial transaction using the proper constructor
 	note := "Initial import"

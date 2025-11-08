@@ -59,6 +59,7 @@ linters:
     - staticcheck    # Go static analysis (very comprehensive)
     - typecheck      # Type checking
     - unused         # Checks for unused constants, variables, functions
+    - copyloopvar    # Replaces exportloopref
 
     # Code quality
     - gofmt          # Checks if code is gofmt-ed (formatting)
@@ -283,6 +284,21 @@ issues:
       text: "mnd:"
       linters:
         - gocritic
+  
+  #Exclude directories
+  exclude-dirs:
+    - vendor
+    - .git
+    - .github
+    - scripts
+    - docs
+  
+  #Exclude files
+  exclude-files:
+    - ".*\\.pb\\.go$"
+    - ".*_generated\\.go$"
+
+  uniq-by-line: true
 
   # Independently of option `exclude` we use default exclude patterns
   exclude-use-default: true

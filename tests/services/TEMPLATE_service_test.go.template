@@ -1,0 +1,330 @@
+package services
+
+import (
+	"testing"
+
+	"kisanlink-erp/internal/database/models"
+	"kisanlink-erp/internal/database/repositories"
+	"kisanlink-erp/internal/services"
+	"kisanlink-erp/tests/testutils"
+
+	"gorm.io/gorm"
+)
+
+// TODO: Replace "MyService" with actual service name throughout this file
+// TODO: Replace "MyEntity" with actual entity name throughout this file
+// TODO: Update repository dependencies as needed
+
+// =============================================================================
+// SETUP HELPER
+// =============================================================================
+
+// setupMyServiceService creates service with all required dependencies
+func setupMyServiceService(t *testing.T) (*services.MyServiceService, *gorm.DB, func()) {
+	t.Helper()
+
+	// Setup database
+	db := testutils.SetupTestDB(t)
+
+	// Create repositories
+	// TODO: Add all required repositories for your service
+	myEntityRepo := repositories.NewMyEntityRepository(db)
+	// dependencyRepo := repositories.NewDependencyRepository(db)
+
+	// Create service
+	service := services.NewMyServiceService(myEntityRepo /* , dependencyRepo */)
+
+	// Cleanup function
+	cleanup := func() {
+		testutils.CleanupTestDB(db)
+	}
+
+	return service, db, cleanup
+}
+
+// =============================================================================
+// CREATE TESTS
+// =============================================================================
+
+func TestMyServiceService_CreateMyEntity_Success(t *testing.T) {
+	service, db, cleanup := setupMyServiceService(t)
+	defer cleanup()
+
+	// TODO: Create test data (if needed)
+	// dependency := testutils.FixtureDependency("Test Dependency")
+	// db.Create(dependency)
+
+	// TODO: Create request
+	request := &models.CreateMyEntityRequest{
+		Name: "Test Entity",
+		// Add other required fields
+	}
+
+	// Execute
+	result, err := service.CreateMyEntity(request)
+
+	// Assert
+	testutils.AssertNoError(t, err, "CreateMyEntity should succeed")
+	testutils.AssertNotNil(t, result, "Result should not be nil")
+	testutils.AssertEqual(t, result.Name, "Test Entity", "Name should match")
+	testutils.AssertNotEqual(t, result.ID, "", "ID should be generated")
+
+	// TODO: Add additional assertions
+}
+
+func TestMyServiceService_CreateMyEntity_ValidationFails(t *testing.T) {
+	service, _, cleanup := setupMyServiceService(t)
+	defer cleanup()
+
+	// TODO: Create invalid request
+	request := &models.CreateMyEntityRequest{
+		Name: "", // Invalid: empty name
+	}
+
+	// Execute
+	_, err := service.CreateMyEntity(request)
+
+	// Assert
+	testutils.AssertError(t, err, "Should fail with invalid input")
+	// TODO: Assert specific error type/message if needed
+}
+
+// TODO: Add more create tests
+// - CreateMyEntity_DuplicateKey
+// - CreateMyEntity_ForeignKeyViolation
+// - etc.
+
+// =============================================================================
+// READ TESTS
+// =============================================================================
+
+func TestMyServiceService_GetMyEntity_Success(t *testing.T) {
+	service, db, cleanup := setupMyServiceService(t)
+	defer cleanup()
+
+	// Create test data
+	entity := testutils.FixtureMyEntity("Test Entity")
+	db.Create(entity)
+
+	// Execute
+	result, err := service.GetMyEntity(entity.ID)
+
+	// Assert
+	testutils.AssertNoError(t, err, "GetMyEntity should succeed")
+	testutils.AssertNotNil(t, result, "Result should not be nil")
+	testutils.AssertEqual(t, result.ID, entity.ID, "ID should match")
+	testutils.AssertEqual(t, result.Name, "Test Entity", "Name should match")
+
+	// TODO: Add additional assertions
+}
+
+func TestMyServiceService_GetMyEntity_NotFound(t *testing.T) {
+	service, _, cleanup := setupMyServiceService(t)
+	defer cleanup()
+
+	// Don't create any test data
+
+	// Execute
+	_, err := service.GetMyEntity("non-existent-id")
+
+	// Assert
+	testutils.AssertError(t, err, "Should fail when entity not found")
+	// TODO: Assert specific error type if needed
+}
+
+func TestMyServiceService_GetAllMyEntities_Empty(t *testing.T) {
+	service, _, cleanup := setupMyServiceService(t)
+	defer cleanup()
+
+	// Don't create any test data
+
+	// Execute
+	results, err := service.GetAllMyEntities()
+
+	// Assert
+	testutils.AssertNoError(t, err, "GetAllMyEntities should succeed")
+	testutils.AssertEqual(t, len(results), 0, "Should return empty list")
+}
+
+func TestMyServiceService_GetAllMyEntities_Multiple(t *testing.T) {
+	service, db, cleanup := setupMyServiceService(t)
+	defer cleanup()
+
+	// Create test data
+	db.Create(testutils.FixtureMyEntity("Entity 1"))
+	db.Create(testutils.FixtureMyEntity("Entity 2"))
+	db.Create(testutils.FixtureMyEntity("Entity 3"))
+
+	// Execute
+	results, err := service.GetAllMyEntities()
+
+	// Assert
+	testutils.AssertNoError(t, err, "GetAllMyEntities should succeed")
+	testutils.AssertEqual(t, len(results), 3, "Should return 3 entities")
+}
+
+// TODO: Add more read tests
+// - GetMyEntitiesByDependency
+// - SearchMyEntities
+// - etc.
+
+// =============================================================================
+// UPDATE TESTS
+// =============================================================================
+
+func TestMyServiceService_UpdateMyEntity_Success(t *testing.T) {
+	service, db, cleanup := setupMyServiceService(t)
+	defer cleanup()
+
+	// Create test data
+	entity := testutils.FixtureMyEntity("Old Name")
+	db.Create(entity)
+
+	// Create update request
+	request := &models.UpdateMyEntityRequest{
+		Name: "New Name",
+		// Add other fields to update
+	}
+
+	// Execute
+	result, err := service.UpdateMyEntity(entity.ID, request)
+
+	// Assert
+	testutils.AssertNoError(t, err, "UpdateMyEntity should succeed")
+	testutils.AssertEqual(t, result.Name, "New Name", "Name should be updated")
+
+	// Verify in database
+	var updated models.MyEntity
+	db.First(&updated, "id = ?", entity.ID)
+	testutils.AssertEqual(t, updated.Name, "New Name", "Should be updated in database")
+}
+
+func TestMyServiceService_UpdateMyEntity_NotFound(t *testing.T) {
+	service, _, cleanup := setupMyServiceService(t)
+	defer cleanup()
+
+	// Don't create any test data
+
+	// Create update request
+	request := &models.UpdateMyEntityRequest{
+		Name: "New Name",
+	}
+
+	// Execute
+	_, err := service.UpdateMyEntity("non-existent-id", request)
+
+	// Assert
+	testutils.AssertError(t, err, "Should fail when entity not found")
+}
+
+// TODO: Add more update tests
+// - UpdateMyEntity_PartialUpdate
+// - UpdateMyEntity_ValidationFails
+// - UpdateMyEntity_ConcurrencyConflict
+// - etc.
+
+// =============================================================================
+// DELETE TESTS
+// =============================================================================
+
+func TestMyServiceService_DeleteMyEntity_Success(t *testing.T) {
+	service, db, cleanup := setupMyServiceService(t)
+	defer cleanup()
+
+	// Create test data
+	entity := testutils.FixtureMyEntity("Test Entity")
+	db.Create(entity)
+
+	// Execute
+	err := service.DeleteMyEntity(entity.ID)
+
+	// Assert
+	testutils.AssertNoError(t, err, "DeleteMyEntity should succeed")
+
+	// Verify deletion (soft delete check)
+	var deleted models.MyEntity
+	result := db.Unscoped().First(&deleted, "id = ?", entity.ID)
+	testutils.AssertNoError(t, result.Error, "Should find soft-deleted record")
+	testutils.AssertNotNil(t, deleted.DeletedAt, "Should be soft-deleted")
+}
+
+func TestMyServiceService_DeleteMyEntity_NotFound(t *testing.T) {
+	service, _, cleanup := setupMyServiceService(t)
+	defer cleanup()
+
+	// Don't create any test data
+
+	// Execute
+	err := service.DeleteMyEntity("non-existent-id")
+
+	// Assert
+	testutils.AssertError(t, err, "Should fail when entity not found")
+}
+
+// TODO: Add more delete tests
+// - DeleteMyEntity_WithDependencies (cascade or prevent)
+// - etc.
+
+// =============================================================================
+// BUSINESS LOGIC TESTS
+// =============================================================================
+
+// TODO: Add tests for business logic specific to your service
+// Examples:
+// - TestMyServiceService_SpecificBusinessRule_Success
+// - TestMyServiceService_CalculateSomething_Success
+// - TestMyServiceService_ValidateSomething_Fails
+// - etc.
+
+func TestMyServiceService_BusinessLogic_Success(t *testing.T) {
+	service, db, cleanup := setupMyServiceService(t)
+	defer cleanup()
+
+	// TODO: Create test data
+	// TODO: Execute business logic
+	// TODO: Assert results
+
+	t.Skip("TODO: Implement business logic test")
+}
+
+// =============================================================================
+// EDGE CASE TESTS
+// =============================================================================
+
+// TODO: Add tests for edge cases
+// Examples:
+// - Nil values
+// - Empty strings
+// - Boundary conditions
+// - Concurrent operations
+// - Transaction rollbacks
+// - etc.
+
+func TestMyServiceService_EdgeCase_Success(t *testing.T) {
+	service, db, cleanup := setupMyServiceService(t)
+	defer cleanup()
+
+	// TODO: Test edge case
+
+	t.Skip("TODO: Implement edge case test")
+}
+
+// =============================================================================
+// INTEGRATION TESTS (if applicable)
+// =============================================================================
+
+// TODO: Add integration tests that test multiple services working together
+// Examples:
+// - Create entity → Update → Delete workflow
+// - Complex business process spanning multiple services
+// - Transaction boundaries
+// - etc.
+
+func TestMyServiceService_Integration_Success(t *testing.T) {
+	service, db, cleanup := setupMyServiceService(t)
+	defer cleanup()
+
+	// TODO: Test integration scenario
+
+	t.Skip("TODO: Implement integration test")
+}
