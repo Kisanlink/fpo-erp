@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -45,7 +46,15 @@ func (r *InventoryRepository) CreateBatchWithTransaction(batch *models.Inventory
 // CreateBatch creates a new inventory batch
 func (r *InventoryRepository) CreateBatch(batch *models.InventoryBatch) error {
 	if err := r.db.Create(batch).Error; err != nil {
-		return errors.NewInternalServerError("Failed to create inventory batch")
+		return errors.NewInternalServerError(fmt.Sprintf("Failed to create inventory batch: %v", err))
+	}
+	return nil
+}
+
+// CreateBatchWithTx creates a new inventory batch within a transaction
+func (r *InventoryRepository) CreateBatchWithTx(tx *gorm.DB, batch *models.InventoryBatch) error {
+	if err := tx.Create(batch).Error; err != nil {
+		return errors.NewInternalServerError(fmt.Sprintf("Failed to create inventory batch: %v", err))
 	}
 	return nil
 }

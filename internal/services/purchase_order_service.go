@@ -50,7 +50,7 @@ func (s *PurchaseOrderService) CreatePurchaseOrder(ctx context.Context, request 
 	if err != nil {
 		return nil, err
 	}
-	if !collaborator.IsActive {
+	if collaborator.IsActive != nil && !*collaborator.IsActive {
 		return nil, fmt.Errorf("collaborator is not active")
 	}
 
@@ -396,12 +396,10 @@ func (s *PurchaseOrderService) processAcceptAll(ctx context.Context, po *models.
 	for _, poItem := range po.Items {
 		acceptTrue := true
 		deliveryItems = append(deliveryItems, models.DeliveryItemRequest{
-			POItemID:         poItem.ID,
-			Accept:           &acceptTrue,
-			ReceivedQuantity: &poItem.Quantity,
-			AcceptedQuantity: &poItem.Quantity,
-			ExpiryDate:       *defaultExpiryDate,
-			BatchNumber:      nil,
+			POItemID:    poItem.ID,
+			Accept:      &acceptTrue, // Pattern 1: Accept field only - system auto-derives quantities
+			ExpiryDate:  *defaultExpiryDate,
+			BatchNumber: nil, // Optional - not available in AcceptAll pattern
 		})
 	}
 
@@ -502,7 +500,7 @@ func (s *PurchaseOrderService) processDeliveryItems(ctx context.Context, po *mod
 					false,      // Not tax exempt
 				)
 
-				if err := s.inventoryRepo.CreateBatch(batch); err != nil {
+				if err := s.inventoryRepo.CreateBatchWithTx(tx, batch); err != nil {
 					return err
 				}
 
@@ -520,7 +518,7 @@ func (s *PurchaseOrderService) processDeliveryItems(ctx context.Context, po *mod
 					&note,
 					actualDelivery,
 				)
-				if err := s.inventoryRepo.CreateTransaction(transaction); err != nil {
+				if err := s.inventoryRepo.CreateTransactionWithTx(tx, transaction); err != nil {
 					return err
 				}
 			}
@@ -531,7 +529,7 @@ func (s *PurchaseOrderService) processDeliveryItems(ctx context.Context, po *mod
 			}
 
 			// Update PO item received quantity
-			if err := s.poRepo.UpdateItemReceivedQuantity(poItem.ID, receivedQty); err != nil {
+			if err := s.poRepo.UpdateItemReceivedQuantityWithTx(tx, poItem.ID, receivedQty); err != nil {
 				return err
 			}
 		}

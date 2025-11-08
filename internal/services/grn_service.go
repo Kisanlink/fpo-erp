@@ -178,7 +178,7 @@ func (s *GRNService) CreateGRN(ctx context.Context, request *models.CreateGRNReq
 					false,      // Not tax exempt
 				)
 
-				if err := s.inventoryRepo.CreateBatch(batch); err != nil {
+				if err := s.inventoryRepo.CreateBatchWithTx(tx, batch); err != nil {
 					return err
 				}
 
@@ -196,7 +196,7 @@ func (s *GRNService) CreateGRN(ctx context.Context, request *models.CreateGRNReq
 					&note,
 					receivedDate,
 				)
-				if err := s.inventoryRepo.CreateTransaction(transaction); err != nil {
+				if err := s.inventoryRepo.CreateTransactionWithTx(tx, transaction); err != nil {
 					return err
 				}
 			}
@@ -207,7 +207,7 @@ func (s *GRNService) CreateGRN(ctx context.Context, request *models.CreateGRNReq
 			}
 
 			// Update PO item received quantity
-			if err := s.poRepo.UpdateItemReceivedQuantity(poItem.ID, itemReq.ReceivedQuantity); err != nil {
+			if err := s.poRepo.UpdateItemReceivedQuantityWithTx(tx, poItem.ID, itemReq.ReceivedQuantity); err != nil {
 				return err
 			}
 		}

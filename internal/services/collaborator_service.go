@@ -223,7 +223,7 @@ func (s *CollaboratorService) UpdateCollaborator(ctx context.Context, id string,
 		collaborator.Experience = request.Experience
 	}
 	if request.IsActive != nil {
-		collaborator.IsActive = *request.IsActive
+		collaborator.IsActive = request.IsActive
 	}
 
 	// Save to database
@@ -274,6 +274,10 @@ func (s *CollaboratorService) SearchCollaborators(ctx context.Context, query str
 
 // buildCollaboratorResponse builds a collaborator response with address details
 func (s *CollaboratorService) buildCollaboratorResponse(ctx context.Context, collaborator *models.Collaborator, jwtToken string) (*models.CollaboratorResponse, error) {
+	isActiveValue := false
+	if collaborator.IsActive != nil {
+		isActiveValue = *collaborator.IsActive
+	}
 	response := &models.CollaboratorResponse{
 		ID:            collaborator.ID,
 		CompanyName:   collaborator.CompanyName,
@@ -287,7 +291,7 @@ func (s *CollaboratorService) buildCollaboratorResponse(ctx context.Context, col
 		BankIFSC:      collaborator.BankIFSC,
 		BankName:      collaborator.BankName,
 		Experience:    collaborator.Experience,
-		IsActive:      collaborator.IsActive,
+		IsActive:      isActiveValue,
 		CreatedAt:     collaborator.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:     collaborator.UpdatedAt.UTC().Format(time.RFC3339),
 	}

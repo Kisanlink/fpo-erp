@@ -41,7 +41,7 @@ func (s *CollaboratorProductService) AddProductToCollaborator(ctx context.Contex
 	if err != nil {
 		return nil, err
 	}
-	if !collaborator.IsActive {
+	if collaborator.IsActive != nil && !*collaborator.IsActive {
 		return nil, fmt.Errorf("collaborator is not active")
 	}
 

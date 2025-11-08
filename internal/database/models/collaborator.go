@@ -34,8 +34,8 @@ type Collaborator struct {
 	AddressID *string `gorm:"type:varchar(50)" json:"address_id"` // Reference to AAA address
 
 	// Metadata
-	Experience *string `gorm:"type:text" json:"experience"` // Description
-	IsActive   bool    `gorm:"default:true" json:"is_active"`
+	Experience *string `gorm:"type:text" json:"experience"`   // Description
+	IsActive   *bool   `gorm:"type:boolean" json:"is_active"` // Pointer to allow explicit false values
 
 	// Associations
 	Products []CollaboratorProduct `gorm:"foreignKey:CollaboratorID" json:"products,omitempty"`
@@ -44,6 +44,7 @@ type Collaborator struct {
 // NewCollaborator creates a new Collaborator with initialized fields
 func NewCollaborator(companyName, contactPerson, contactNumber, bankAccountNo, bankIFSC string, addressID *string) *Collaborator {
 	baseModel := base.NewBaseModel(constants.TableCollaborator, hash.Medium)
+	isActive := true
 	return &Collaborator{
 		BaseModel:     *baseModel,
 		CompanyName:   companyName,
@@ -52,7 +53,7 @@ func NewCollaborator(companyName, contactPerson, contactNumber, bankAccountNo, b
 		BankAccountNo: bankAccountNo,
 		BankIFSC:      bankIFSC,
 		AddressID:     addressID,
-		IsActive:      true,
+		IsActive:      &isActive,
 	}
 }
 

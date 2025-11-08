@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"fmt"
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/errors"
 
@@ -39,7 +40,7 @@ func (r *PurchaseOrderRepository) CreateWithTx(tx *gorm.DB, po *models.PurchaseO
 // CreateItem creates a purchase order item
 func (r *PurchaseOrderRepository) CreateItem(item *models.PurchaseOrderItem) error {
 	if err := r.db.Create(item).Error; err != nil {
-		return errors.NewInternalServerError("Failed to create purchase order item")
+		return errors.NewInternalServerError(fmt.Sprintf("Failed to create purchase order item: %v", err))
 	}
 	return nil
 }
@@ -134,7 +135,7 @@ func (r *PurchaseOrderRepository) GetPendingDeliveries() ([]models.PurchaseOrder
 		Where("status NOT IN ?", []string{"delivered", "paid"}).
 		Order("expected_delivery_date ASC").
 		Find(&pos).Error; err != nil {
-		return nil, errors.NewInternalServerError("Failed to retrieve pending deliveries")
+		return nil, errors.NewInternalServerError(fmt.Sprintf("Failed to retrieve pending deliveries: %v", err))
 	}
 	return pos, nil
 }
@@ -180,7 +181,17 @@ func (r *PurchaseOrderRepository) UpdateItemReceivedQuantity(itemID string, rece
 	if err := r.db.Model(&models.PurchaseOrderItem{}).
 		Where("id = ?", itemID).
 		Update("received_quantity", receivedQty).Error; err != nil {
-		return errors.NewInternalServerError("Failed to update received quantity")
+		return errors.NewInternalServerError(fmt.Sprintf("Failed to update received quantity: %v", err))
+	}
+	return nil
+}
+
+// UpdateItemReceivedQuantityWithTx updates the received quantity for a PO item within a transaction
+func (r *PurchaseOrderRepository) UpdateItemReceivedQuantityWithTx(tx *gorm.DB, itemID string, receivedQty int64) error {
+	if err := tx.Model(&models.PurchaseOrderItem{}).
+		Where("id = ?", itemID).
+		Update("received_quantity", receivedQty).Error; err != nil {
+		return errors.NewInternalServerError(fmt.Sprintf("Failed to update received quantity: %v", err))
 	}
 	return nil
 }

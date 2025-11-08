@@ -5,11 +5,10 @@ import (
 	"log"
 	"testing"
 
-	"kisanlink-erp/internal/database/models"
-
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"gorm.io/gorm/schema"
 )
 
 var (
@@ -17,6 +16,40 @@ var (
 	originalLogFlags  int
 	logSuppressed     bool
 )
+
+// SQLiteJSONNamingStrategy wraps the default naming strategy to handle JSON serialization
+type SQLiteJSONNamingStrategy struct {
+	schema.NamingStrategy
+}
+
+// ColumnName returns the column name for a field
+// This is used to map fields with _date suffix in JSON to match production queries
+func (s SQLiteJSONNamingStrategy) ColumnName(table, column string) string {
+	// First get the default snake_case column name
+	defaultName := s.NamingStrategy.ColumnName(table, column)
+
+	// Map ExpectedDelivery field to expected_delivery_date column to match production queries
+	// Check both the original column name and the converted name
+	if column == "ExpectedDelivery" || defaultName == "expected_delivery" {
+		return "expected_delivery_date"
+	}
+
+	// Map ActualDelivery field to actual_delivery_date column to match production queries
+	if column == "ActualDelivery" || defaultName == "actual_delivery" {
+		return "actual_delivery_date"
+	}
+
+	return defaultName
+}
+
+// ColumnDataType returns the data type for SQLite columns
+func (SQLiteJSONNamingStrategy) ColumnDataType(field *schema.Field) string {
+	// For []string fields with type:json tag, use TEXT
+	if field.Tag.Get("gorm") == "type:json" {
+		return "TEXT"
+	}
+	return ""
+}
 
 func init() {
 	// Save original log writer and flags
@@ -51,11 +84,15 @@ func restoreLogOutput() {
 func SetupTestDB(t *testing.T) *gorm.DB {
 	// Ensure log output is suppressed (already done in init, but ensure it's set)
 	suppressLogOutput()
-	// Create a custom logger using log.New with io.Discard and no flags
-	// This completely suppresses all output including formatting and timestamps
-	// Using flags=0 prevents any formatting (timestamps, prefixes) that could leave blank lines
-	customLogger := logger.New(
-		log.New(io.Discard, "", 0), // Use io.Discard with no flags to suppress all output
+
+	// Register SQLite JSON serializer for []string fields BEFORE opening database
+	// This is needed because SQLite doesn't have native JSON type like PostgreSQL
+	// Registering globally before DB connection prevents schema re-parsing issues
+	RegisterSQLiteJSONSerializer(nil)
+
+	// Create silent logger
+	silentLogger := logger.New(
+		log.New(io.Discard, "", 0),
 		logger.Config{
 			SlowThreshold:             0,
 			LogLevel:                  logger.Silent,
@@ -64,60 +101,21 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 		},
 	)
 
+	// Use :memory: database - transactions handle connection management automatically
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
-		Logger: customLogger,
+		Logger:                                   silentLogger,
+		NamingStrategy:                           SQLiteJSONNamingStrategy{},
+		DisableForeignKeyConstraintWhenMigrating: true,
 	})
 	if err != nil {
 		t.Fatalf("failed to connect to test database: %v", err)
 	}
 
-	// Create SQLite-compatible tables for models with PostgreSQL-specific types
+	// Create SQLite-compatible tables for all models
+	// We use manual table creation instead of AutoMigrate to ensure correct schema
+	// including all fields like deleted_by, and to avoid GORM overwriting our tables
 	if err := CreateSQLiteCompatibleTables(db); err != nil {
-		t.Logf("WARNING: Failed to create SQLite-compatible tables: %v", err)
-		// Continue with AutoMigrate as fallback
-	}
-
-	// Auto-migrate models one by one to identify which fails
-	// Skip models already created manually: ProductPrice, InventoryBatch, InventoryTransaction, Sale, SaleItem, DiscountUsage, Attachment
-	modelsToMigrate := []interface{}{
-		&models.Warehouse{},
-		&models.Product{},
-		&models.ProductVariant{},
-		// Skip ProductPrice - already created manually
-		// Skip InventoryBatch - already created manually
-		// Skip InventoryTransaction - already created manually
-		&models.Collaborator{},
-		&models.CollaboratorProduct{},
-		&models.PurchaseOrder{},
-		&models.PurchaseOrderItem{},
-		&models.GRN{},
-		&models.GRNItem{},
-		// Skip Sale - already created manually
-		// Skip SaleItem - already created manually
-		&models.Discount{},
-		// Skip DiscountUsage - already created manually
-		&models.Tax{},
-		&models.WebhookEvent{},
-		// Skip Attachment - already created manually
-	}
-
-	// Suppress GORM warnings by disabling colored output and using a silent session
-	// Create a completely silent database session for migration only
-	silentDB := db.Session(&gorm.Session{
-		Logger:                   customLogger,
-		SkipDefaultTransaction:   true,
-		DisableNestedTransaction: true,
-		AllowGlobalUpdate:        false,
-		QueryFields:              false,
-		CreateBatchSize:          0,
-		PrepareStmt:              false,
-	})
-
-	for _, model := range modelsToMigrate {
-		// Migrate using the silent session - errors will still be logged to test output
-		if err := silentDB.AutoMigrate(model); err != nil {
-			t.Logf("WARNING: Failed to migrate %T: %v", model, err)
-		}
+		t.Fatalf("Failed to create SQLite-compatible tables: %v\nThis error occurred during table creation. Check sqlite_migrations.go for SQL syntax errors.", err)
 	}
 
 	return db

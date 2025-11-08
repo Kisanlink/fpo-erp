@@ -61,7 +61,7 @@ func createTestCollaborator(t *testing.T, db *gorm.DB, id string, isActive bool)
 		Email:         &email,
 		ContactPerson: "Test Contact",
 		ContactNumber: "1234567890",
-		IsActive:      isActive,
+		IsActive:      &isActive,
 	}
 	collaborator.ID = id // Set ID after creating the struct
 

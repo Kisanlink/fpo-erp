@@ -805,15 +805,249 @@ NOTES - MISSING HELPER FUNCTIONS
    be flexible and reusable.
 
 ================================================================================
+ISSUE 10: Repository Error Messages Not Including Actual Database Errors
+================================================================================
+
+PROBLEM:
+--------
+Test failures show empty error messages like:
+- "Failed to retrieve pending deliveries: " (empty after colon)
+- "Failed to create inventory batch: " (empty after colon)
+- "Failed to update received quantity: " (empty after colon)
+
+This makes it impossible to diagnose the root cause of test failures because the
+actual database error is being lost.
+
+Affected Files:
+- internal/database/repositories/inventory_repo.go:54 (CreateBatch)
+- internal/database/repositories/purchase_order_repo.go:137 (GetPendingDeliveries)
+- internal/database/repositories/purchase_order_repo.go:183 (UpdateItemReceivedQuantity)
+
+Root Causes:
+1. Error messages are created without including the actual GORM error
+   Example: `errors.NewInternalServerError("Failed to create inventory batch")`
+   Should be: `errors.NewInternalServerError(fmt.Sprintf("Failed to create inventory batch: %v", err))`
+
+2. The actual database error (from `err.Error()`) is not being included in the
+   error message, making debugging impossible.
+
+Impact:
+- Test failures show empty error messages
+- Impossible to diagnose database schema issues
+- Makes debugging test failures very difficult
+- Wastes developer time trying to guess what went wrong
+
+SOLUTION:
+---------
+Include the actual error in all repository error messages using fmt.Sprintf.
+
+================================================================================
+CODE FIXES - REPOSITORY ERROR MESSAGES
+================================================================================
+
+FILE: internal/database/repositories/inventory_repo.go (MODIFIED)
+------------------------------------------------------------------
+
+MODIFY CreateBatch function to include actual error:
+
+```go
+// CreateBatch creates a new inventory batch
+func (r *InventoryRepository) CreateBatch(batch *models.InventoryBatch) error {
+	if err := r.db.Create(batch).Error; err != nil {
+		return errors.NewInternalServerError(fmt.Sprintf("Failed to create inventory batch: %v", err))
+	}
+	return nil
+}
+```
+
+FILE: internal/database/repositories/purchase_order_repo.go (MODIFIED)
+-----------------------------------------------------------------------
+
+MODIFY GetPendingDeliveries function to include actual error:
+
+```go
+// GetPendingDeliveries retrieves purchase orders with status not delivered or paid
+func (r *PurchaseOrderRepository) GetPendingDeliveries() ([]models.PurchaseOrder, error) {
+	var pos []models.PurchaseOrder
+	if err := r.db.Preload("Collaborator").
+		Preload("Warehouse").
+		Where("status NOT IN ?", []string{"delivered", "paid"}).
+		Order("expected_delivery_date ASC").
+		Find(&pos).Error; err != nil {
+		return nil, errors.NewInternalServerError(fmt.Sprintf("Failed to retrieve pending deliveries: %v", err))
+	}
+	return pos, nil
+}
+```
+
+MODIFY UpdateItemReceivedQuantity function to include actual error:
+
+```go
+// UpdateItemReceivedQuantity updates the received quantity for a PO item
+func (r *PurchaseOrderRepository) UpdateItemReceivedQuantity(itemID string, receivedQty int64) error {
+	if err := r.db.Model(&models.PurchaseOrderItem{}).
+		Where("id = ?", itemID).
+		Update("received_quantity", receivedQty).Error; err != nil {
+		return errors.NewInternalServerError(fmt.Sprintf("Failed to update received quantity: %v", err))
+	}
+	return nil
+}
+```
+
+Also add fmt import at the top of both files:
+```go
+import (
+	"fmt"
+	// ... other imports
+)
+```
+
+================================================================================
+ISSUE 11: SQLite Schema Mismatches Causing Test Failures
+================================================================================
+
+PROBLEM:
+--------
+Test failures occur due to SQLite schema mismatches between the model definitions
+and the manually created tables in sqlite_migrations.go.
+
+Specific Issues:
+1. expiry_date column type mismatch:
+   - Model: `ExpiryDate time.Time` with `gorm:"type:date"`
+   - SQLite table: `expiry_date TEXT NOT NULL`
+   - Should be: `expiry_date DATETIME NOT NULL` for proper date handling
+
+2. Missing columns in inventory_transactions table:
+   - Model has: `RelatedEntityID *string` and `PerformedBy *string`
+   - SQLite table is missing: `related_entity_id TEXT` and `performed_by TEXT`
+
+Root Causes:
+1. Type translation not properly handled - SQLite DATETIME is better than TEXT
+   for time.Time fields as GORM can properly serialize/deserialize dates.
+
+2. Manual table creation in sqlite_migrations.go doesn't match the model schema
+   exactly, causing INSERT/UPDATE operations to fail.
+
+Impact:
+- Tests fail with cryptic errors (made worse by Issue 10)
+- Inventory batch creation fails
+- Inventory transaction creation fails
+- Test debugging is extremely difficult
+
+SOLUTION:
+---------
+Fix the SQLite migration schema to match the model definitions exactly.
+
+================================================================================
+CODE FIXES - SQLITE SCHEMA MISMATCHES
+================================================================================
+
+FILE: tests/testutils/sqlite_migrations.go (MODIFIED)
+------------------------------------------------------
+
+MODIFY inventory_batches table creation - change expiry_date from TEXT to DATETIME:
+
+```go
+// InventoryBatch table
+if err := db.Exec(`
+	CREATE TABLE IF NOT EXISTS inventory_batches (
+		id TEXT PRIMARY KEY,
+		warehouse_id TEXT NOT NULL,
+		variant_id TEXT NOT NULL,
+		cost_price REAL NOT NULL,
+		expiry_date DATETIME NOT NULL,  // Changed from TEXT to DATETIME
+		total_quantity INTEGER NOT NULL,
+		cgst_rate REAL DEFAULT 0,
+		sgst_rate REAL DEFAULT 0,
+		custom_tax_ids TEXT DEFAULT '[]',
+		is_tax_exempt INTEGER DEFAULT 0,
+		created_at DATETIME,
+		updated_at DATETIME,
+		deleted_at DATETIME,
+		created_by TEXT,
+		updated_by TEXT,
+		deleted_by TEXT
+	)
+`).Error; err != nil {
+	return err
+}
+```
+
+MODIFY inventory_transactions table creation - add missing columns:
+
+```go
+// InventoryTransaction table
+if err := db.Exec(`
+	CREATE TABLE IF NOT EXISTS inventory_transactions (
+		id TEXT PRIMARY KEY,
+		batch_id TEXT NOT NULL,
+		transaction_type TEXT NOT NULL,
+		quantity_change INTEGER NOT NULL,
+		previous_quantity INTEGER,
+		new_quantity INTEGER,
+		related_entity_id TEXT,  // ADDED - missing column
+		performed_by TEXT,       // ADDED - missing column
+		note TEXT,
+		occurred_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		created_at DATETIME,
+		updated_at DATETIME,
+		deleted_at DATETIME,
+		created_by TEXT,
+		updated_by TEXT,
+		deleted_by TEXT
+	)
+`).Error; err != nil {
+	return err
+}
+```
+
+================================================================================
+TESTING CHECKLIST - REPOSITORY ERRORS AND SCHEMA FIXES
+================================================================================
+
+After applying fixes:
+
+[ ] Update inventory_repo.go CreateBatch to include actual error
+[ ] Update purchase_order_repo.go GetPendingDeliveries to include actual error
+[ ] Update purchase_order_repo.go UpdateItemReceivedQuantity to include actual error
+[ ] Add fmt import to both repository files
+[ ] Fix expiry_date column type in sqlite_migrations.go (TEXT → DATETIME)
+[ ] Add related_entity_id column to inventory_transactions table
+[ ] Add performed_by column to inventory_transactions table
+[ ] Run `go test ./tests/services -run TestPurchaseOrderService -v` to verify
+[ ] Verify error messages now show actual database errors
+[ ] Verify all tests pass with corrected schema
+
+================================================================================
+NOTES - REPOSITORY ERRORS AND SCHEMA FIXES
+================================================================================
+
+1. Always include actual errors in error messages for better debugging:
+   Use: `fmt.Sprintf("Error message: %v", err)` instead of just `"Error message"`
+
+2. SQLite DATETIME type works better with GORM's time.Time serialization than TEXT.
+   GORM can properly format dates as ISO8601 strings for DATETIME columns.
+
+3. When manually creating tables for SQLite compatibility, ensure all model fields
+   are represented in the table schema, including nullable fields (*string, *int64).
+
+4. Missing columns will cause INSERT/UPDATE operations to fail silently or with
+   cryptic errors, making debugging very difficult.
+
+5. The combination of Issue 10 and Issue 11 made it nearly impossible to diagnose
+   the root cause - fixing both is essential for maintainable tests.
+
+================================================================================
 PRIORITY - ALL ISSUES
 ================================================================================
 
 HIGH PRIORITY:
 - Issue 7: SQLite Migration Compatibility (blocks test execution for affected models)
-- Issue 8: GORM Warnings Leaving Blank Spaces (affects test output readability)
-- Issue 9: Missing Helper Functions (blocks writing tests for other services)
+- Issue 10: Repository Error Messages Not Including Actual Errors (blocks debugging)
+- Issue 11: SQLite Schema Mismatches (causes test failures)
 
 MEDIUM PRIORITY:
-- Issue 8 and 9 are important for developer experience and test maintainability
+- Issue 8: GORM Warnings Leaving Blank Spaces (affects test output readability)
+- Issue 9: Missing Helper Functions (blocks writing tests for other services)
 
 ================================================================================
