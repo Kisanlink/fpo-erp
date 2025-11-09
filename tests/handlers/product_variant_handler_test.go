@@ -73,7 +73,7 @@ func TestProductVariantHandler_GetProductVariant_NotFound(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	// Assert
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Equal(t, http.StatusNotFound, w.Code)
 	mockService.AssertExpectations(t)
 }
 
@@ -164,7 +164,7 @@ func TestProductVariantHandler_DeleteProductVariant_Success(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	// Assert
-	assert.Equal(t, http.StatusNoContent, w.Code)
+	assert.Equal(t, http.StatusOK, w.Code)
 	mockService.AssertExpectations(t)
 }
 
@@ -241,7 +241,7 @@ func TestProductVariantHandler_GetVariantBySKU_NotFound(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	// Assert
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Equal(t, http.StatusNotFound, w.Code)
 	mockService.AssertExpectations(t)
 }
 
@@ -297,7 +297,7 @@ func TestProductVariantHandler_GetVariantByBarcode_NotFound(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	// Assert
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Equal(t, http.StatusNotFound, w.Code)
 	mockService.AssertExpectations(t)
 }
 

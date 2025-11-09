@@ -31,7 +31,7 @@ func TestProductHandler_CreateProduct_Success(t *testing.T) {
 		Name:        "Organic Rice",
 		Description: &desc,
 	}
-	mockService.On("CreateProduct", mock.Anything, mock.AnythingOfType("*models.CreateProductRequest")).
+	mockService.On("CreateProduct", mock.AnythingOfType("*models.CreateProductRequest")).
 		Return(expectedResponse, nil)
 
 	// Create request
@@ -89,7 +89,7 @@ func TestProductHandler_CreateProduct_ServiceError(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
-	mockService.On("CreateProduct", mock.Anything, mock.AnythingOfType("*models.CreateProductRequest")).
+	mockService.On("CreateProduct", mock.AnythingOfType("*models.CreateProductRequest")).
 		Return(nil, errors.New("database error"))
 
 	// Create request
@@ -125,7 +125,7 @@ func TestProductHandler_UpdateProduct_Success(t *testing.T) {
 		Name:        "Updated Rice",
 		Description: &updatedDesc,
 	}
-	mockService.On("UpdateProduct", mock.Anything, "PROD00000001", mock.AnythingOfType("*models.UpdateProductRequest")).
+	mockService.On("UpdateProduct", "PROD00000001", mock.AnythingOfType("*models.UpdateProductRequest")).
 		Return(expectedResponse, nil)
 
 	// Create request
@@ -156,7 +156,7 @@ func TestProductHandler_UpdateProduct_NotFound(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
-	mockService.On("UpdateProduct", mock.Anything, "PROD99999999", mock.AnythingOfType("*models.UpdateProductRequest")).
+	mockService.On("UpdateProduct", "PROD99999999", mock.AnythingOfType("*models.UpdateProductRequest")).
 		Return(nil, errors.New("product not found"))
 
 	// Create request
@@ -185,7 +185,7 @@ func TestProductHandler_DeleteProduct_Success(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
-	mockService.On("DeleteProduct", mock.Anything, "PROD00000001").
+	mockService.On("DeleteProduct", "PROD00000001").
 		Return(nil)
 
 	// Create request
@@ -196,7 +196,7 @@ func TestProductHandler_DeleteProduct_Success(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	// Assert
-	assert.Equal(t, http.StatusNoContent, w.Code)
+	assert.Equal(t, http.StatusOK, w.Code)
 	mockService.AssertExpectations(t)
 }
 
@@ -208,7 +208,7 @@ func TestProductHandler_DeleteProduct_NotFound(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
-	mockService.On("DeleteProduct", mock.Anything, "PROD99999999").
+	mockService.On("DeleteProduct", "PROD99999999").
 		Return(errors.New("product not found"))
 
 	// Create request
@@ -298,7 +298,7 @@ func TestProductHandler_SearchProducts_Success(t *testing.T) {
 			Name: "Organic Rice",
 		},
 	}
-	mockService.On("SearchProducts", mock.Anything, "Rice").
+	mockService.On("SearchProducts", "Rice").
 		Return(expectedResponse, nil)
 
 	// Create request
@@ -321,7 +321,7 @@ func TestProductHandler_SearchProducts_NoResults(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
-	mockService.On("SearchProducts", mock.Anything, "NonExistent").
+	mockService.On("SearchProducts", "NonExistent").
 		Return([]models.ProductResponse{}, nil)
 
 	// Create request
@@ -350,7 +350,7 @@ func TestProductHandler_GetProduct_Success(t *testing.T) {
 		Name:        "Organic Rice",
 		Description: &desc,
 	}
-	mockService.On("GetProductByID", mock.Anything, "PROD00000001").
+	mockService.On("GetProduct", "PROD00000001").
 		Return(expectedResponse, nil)
 
 	// Create request
@@ -373,7 +373,7 @@ func TestProductHandler_GetProduct_NotFound(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
-	mockService.On("GetProductByID", mock.Anything, "PROD99999999").
+	mockService.On("GetProduct", "PROD99999999").
 		Return(nil, errors.New("product not found"))
 
 	// Create request
@@ -384,7 +384,7 @@ func TestProductHandler_GetProduct_NotFound(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	// Assert
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Equal(t, http.StatusNotFound, w.Code)
 	mockService.AssertExpectations(t)
 }
 
@@ -407,7 +407,7 @@ func TestProductHandler_GetProductWithPrices_Success(t *testing.T) {
 			},
 		},
 	}
-	mockService.On("GetProductWithPrices", mock.Anything, "PROD00000001").
+	mockService.On("GetProductWithPrices", "PROD00000001").
 		Return(expectedResponse, nil)
 
 	// Create request
@@ -430,7 +430,7 @@ func TestProductHandler_GetProductWithPrices_NotFound(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
-	mockService.On("GetProductWithPrices", mock.Anything, "PROD99999999").
+	mockService.On("GetProductWithPrices", "PROD99999999").
 		Return(nil, errors.New("product not found"))
 
 	// Create request
@@ -441,6 +441,6 @@ func TestProductHandler_GetProductWithPrices_NotFound(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	// Assert
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Equal(t, http.StatusNotFound, w.Code)
 	mockService.AssertExpectations(t)
 }

@@ -268,7 +268,7 @@ func TestWarehouseHandler_GetWarehouse_NotFound(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	// Assert
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Equal(t, http.StatusNotFound, w.Code)
 	mockService.AssertExpectations(t)
 }
 
@@ -372,7 +372,7 @@ func TestWarehouseHandler_DeleteWarehouse_Success(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	// Assert
-	assert.Equal(t, http.StatusNoContent, w.Code)
+	assert.Equal(t, http.StatusOK, w.Code)
 	mockService.AssertExpectations(t)
 }
 
