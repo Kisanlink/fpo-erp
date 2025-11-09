@@ -289,7 +289,7 @@ func TestPriceHandler_GetProductPrice_NotFound(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	// Assert
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Equal(t, http.StatusNotFound, w.Code)
 	mockService.AssertExpectations(t)
 }
 
@@ -464,7 +464,7 @@ func TestPriceHandler_GetCurrentPrice_NotFound(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	// Assert
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Equal(t, http.StatusNotFound, w.Code)
 	mockService.AssertExpectations(t)
 }
 
@@ -475,6 +475,18 @@ func TestPriceHandler_GetCurrentPrice_MissingPriceType(t *testing.T) {
 	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware())
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
+	// Mock expectations - should default to "retail" when price_type is missing
+	validFrom := time.Now().Format(time.RFC3339)
+	expectedResponse := &models.ProductPriceResponse{
+		ID:            "PRIC00000001",
+		VariantID:     "PVAR00000001",
+		PriceType:     "retail",
+		Price:         100.50,
+		EffectiveFrom: validFrom,
+	}
+	mockService.On("GetCurrentPrice", "PVAR00000001", "retail").
+		Return(expectedResponse, nil)
+
 	// Create request without price_type parameter
 	req := httptest.NewRequest("GET", "/api/v1/variants/PVAR00000001/prices/current", nil)
 
@@ -482,8 +494,9 @@ func TestPriceHandler_GetCurrentPrice_MissingPriceType(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	// Assert
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	// Assert - should succeed with default "retail" price_type
+	assert.Equal(t, http.StatusOK, w.Code)
+	mockService.AssertExpectations(t)
 }
 
 func TestPriceHandler_CreateProductPriceForVariant_Success(t *testing.T) {
