@@ -3,7 +3,7 @@ package handlers
 import (
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
-	"kisanlink-erp/internal/services"
+	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
@@ -11,12 +11,12 @@ import (
 
 // ProductPriceHandler handles product price HTTP requests
 type ProductPriceHandler struct {
-	priceService  *services.ProductPriceService
+	priceService  interfaces.ProductPriceServiceInterface
 	aaaMiddleware *aaa.AAAMiddleware
 }
 
 // NewProductPriceHandler creates a new product price handler
-func NewProductPriceHandler(priceService *services.ProductPriceService, aaaMiddleware *aaa.AAAMiddleware) *ProductPriceHandler {
+func NewProductPriceHandler(priceService interfaces.ProductPriceServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *ProductPriceHandler {
 	return &ProductPriceHandler{
 		priceService:  priceService,
 		aaaMiddleware: aaaMiddleware,

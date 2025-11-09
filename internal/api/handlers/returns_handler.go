@@ -6,18 +6,18 @@ import (
 
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
-	"kisanlink-erp/internal/services"
+	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
 
 type ReturnsHandler struct {
-	returnsService *services.ReturnsService
+	returnsService interfaces.ReturnsServiceInterface
 	aaaMiddleware  *aaa.AAAMiddleware
 }
 
-func NewReturnsHandler(returnsService *services.ReturnsService, aaaMiddleware *aaa.AAAMiddleware) *ReturnsHandler {
+func NewReturnsHandler(returnsService interfaces.ReturnsServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *ReturnsHandler {
 	return &ReturnsHandler{
 		returnsService: returnsService,
 		aaaMiddleware:  aaaMiddleware,

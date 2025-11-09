@@ -3,7 +3,7 @@ package handlers
 import (
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
-	"kisanlink-erp/internal/services"
+	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
@@ -11,12 +11,12 @@ import (
 
 // CollaboratorProductHandler handles collaborator-product association HTTP requests
 type CollaboratorProductHandler struct {
-	collabProductService *services.CollaboratorProductService
+	collabProductService interfaces.CollaboratorProductServiceInterface
 	aaaMiddleware        *aaa.AAAMiddleware
 }
 
 // NewCollaboratorProductHandler creates a new collaborator product handler
-func NewCollaboratorProductHandler(collabProductService *services.CollaboratorProductService, aaaMiddleware *aaa.AAAMiddleware) *CollaboratorProductHandler {
+func NewCollaboratorProductHandler(collabProductService interfaces.CollaboratorProductServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *CollaboratorProductHandler {
 	return &CollaboratorProductHandler{
 		collabProductService: collabProductService,
 		aaaMiddleware:        aaaMiddleware,

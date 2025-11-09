@@ -3,7 +3,7 @@ package handlers
 import (
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
-	"kisanlink-erp/internal/services"
+	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
@@ -11,12 +11,12 @@ import (
 
 // WarehouseHandler handles warehouse HTTP requests
 type WarehouseHandler struct {
-	warehouseService *services.WarehouseService
+	warehouseService interfaces.WarehouseServiceInterface
 	aaaMiddleware    *aaa.AAAMiddleware
 }
 
 // NewWarehouseHandler creates a new warehouse handler
-func NewWarehouseHandler(warehouseService *services.WarehouseService, aaaMiddleware *aaa.AAAMiddleware) *WarehouseHandler {
+func NewWarehouseHandler(warehouseService interfaces.WarehouseServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *WarehouseHandler {
 	return &WarehouseHandler{
 		warehouseService: warehouseService,
 		aaaMiddleware:    aaaMiddleware,

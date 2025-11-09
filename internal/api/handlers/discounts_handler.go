@@ -6,18 +6,18 @@ import (
 
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
-	"kisanlink-erp/internal/services"
+	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
 
 type DiscountsHandler struct {
-	discountsService *services.DiscountsService
+	discountsService interfaces.DiscountsServiceInterface
 	aaaMiddleware    *aaa.AAAMiddleware
 }
 
-func NewDiscountsHandler(discountsService *services.DiscountsService, aaaMiddleware *aaa.AAAMiddleware) *DiscountsHandler {
+func NewDiscountsHandler(discountsService interfaces.DiscountsServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *DiscountsHandler {
 	return &DiscountsHandler{
 		discountsService: discountsService,
 		aaaMiddleware:    aaaMiddleware,

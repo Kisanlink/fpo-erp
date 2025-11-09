@@ -5,18 +5,18 @@ import (
 
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
-	"kisanlink-erp/internal/services"
+	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
 
 type TaxHandler struct {
-	taxService    *services.TaxService
+	taxService    interfaces.TaxServiceInterface
 	aaaMiddleware *aaa.AAAMiddleware
 }
 
-func NewTaxHandler(taxService *services.TaxService, aaaMiddleware *aaa.AAAMiddleware) *TaxHandler {
+func NewTaxHandler(taxService interfaces.TaxServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *TaxHandler {
 	return &TaxHandler{
 		taxService:    taxService,
 		aaaMiddleware: aaaMiddleware,

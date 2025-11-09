@@ -3,7 +3,7 @@ package handlers
 import (
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
-	"kisanlink-erp/internal/services"
+	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
@@ -11,12 +11,12 @@ import (
 
 // PurchaseOrderHandler handles purchase order HTTP requests
 type PurchaseOrderHandler struct {
-	poService     *services.PurchaseOrderService
+	poService     interfaces.PurchaseOrderServiceInterface
 	aaaMiddleware *aaa.AAAMiddleware
 }
 
 // NewPurchaseOrderHandler creates a new purchase order handler
-func NewPurchaseOrderHandler(poService *services.PurchaseOrderService, aaaMiddleware *aaa.AAAMiddleware) *PurchaseOrderHandler {
+func NewPurchaseOrderHandler(poService interfaces.PurchaseOrderServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *PurchaseOrderHandler {
 	return &PurchaseOrderHandler{
 		poService:     poService,
 		aaaMiddleware: aaaMiddleware,

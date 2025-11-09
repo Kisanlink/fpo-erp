@@ -9,6 +9,7 @@ import (
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
 	"kisanlink-erp/internal/services"
+	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 	"time"
 
@@ -17,7 +18,7 @@ import (
 
 // EcommerceWebhookHandler handles incoming webhooks from e-commerce platform
 type EcommerceWebhookHandler struct {
-	webhookService  *services.EcommerceWebhookService
+	webhookService  interfaces.EcommerceWebhookServiceInterface
 	securityService *services.WebhookSecurityService
 	historyService  *services.WebhookHistoryService
 	webhookRepo     *repositories.WebhookRepository
@@ -26,7 +27,7 @@ type EcommerceWebhookHandler struct {
 
 // NewEcommerceWebhookHandler creates a new e-commerce webhook handler
 func NewEcommerceWebhookHandler(
-	webhookService *services.EcommerceWebhookService,
+	webhookService interfaces.EcommerceWebhookServiceInterface,
 	securityService *services.WebhookSecurityService,
 	historyService *services.WebhookHistoryService,
 	webhookRepo *repositories.WebhookRepository,

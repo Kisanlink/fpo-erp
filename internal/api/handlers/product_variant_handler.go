@@ -3,7 +3,7 @@ package handlers
 import (
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
-	"kisanlink-erp/internal/services"
+	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
@@ -11,12 +11,12 @@ import (
 
 // ProductVariantHandler handles product variant HTTP requests
 type ProductVariantHandler struct {
-	variantService *services.ProductVariantService
+	variantService interfaces.ProductVariantServiceInterface
 	aaaMiddleware  *aaa.AAAMiddleware
 }
 
 // NewProductVariantHandler creates a new product variant handler
-func NewProductVariantHandler(variantService *services.ProductVariantService, aaaMiddleware *aaa.AAAMiddleware) *ProductVariantHandler {
+func NewProductVariantHandler(variantService interfaces.ProductVariantServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *ProductVariantHandler {
 	return &ProductVariantHandler{
 		variantService: variantService,
 		aaaMiddleware:  aaaMiddleware,

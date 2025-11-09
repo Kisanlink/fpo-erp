@@ -3,18 +3,18 @@ package handlers
 import (
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
-	"kisanlink-erp/internal/services"
+	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
 
 type RefundPoliciesHandler struct {
-	refundPoliciesService *services.RefundPoliciesService
+	refundPoliciesService interfaces.RefundPoliciesServiceInterface
 	aaaMiddleware         *aaa.AAAMiddleware
 }
 
-func NewRefundPoliciesHandler(refundPoliciesService *services.RefundPoliciesService, aaaMiddleware *aaa.AAAMiddleware) *RefundPoliciesHandler {
+func NewRefundPoliciesHandler(refundPoliciesService interfaces.RefundPoliciesServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *RefundPoliciesHandler {
 	return &RefundPoliciesHandler{
 		refundPoliciesService: refundPoliciesService,
 		aaaMiddleware:         aaaMiddleware,

@@ -5,18 +5,18 @@ import (
 
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
-	"kisanlink-erp/internal/services"
+	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
 
 type BankPaymentsHandler struct {
-	bankPaymentsService *services.BankPaymentsService
+	bankPaymentsService interfaces.BankPaymentsServiceInterface
 	aaaMiddleware       *aaa.AAAMiddleware
 }
 
-func NewBankPaymentsHandler(bankPaymentsService *services.BankPaymentsService, aaaMiddleware *aaa.AAAMiddleware) *BankPaymentsHandler {
+func NewBankPaymentsHandler(bankPaymentsService interfaces.BankPaymentsServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *BankPaymentsHandler {
 	return &BankPaymentsHandler{
 		bankPaymentsService: bankPaymentsService,
 		aaaMiddleware:       aaaMiddleware,

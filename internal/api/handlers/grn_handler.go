@@ -3,7 +3,7 @@ package handlers
 import (
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
-	"kisanlink-erp/internal/services"
+	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
@@ -11,12 +11,12 @@ import (
 
 // GRNHandler handles goods receipt note HTTP requests
 type GRNHandler struct {
-	grnService    *services.GRNService
+	grnService    interfaces.GRNServiceInterface
 	aaaMiddleware *aaa.AAAMiddleware
 }
 
 // NewGRNHandler creates a new GRN handler
-func NewGRNHandler(grnService *services.GRNService, aaaMiddleware *aaa.AAAMiddleware) *GRNHandler {
+func NewGRNHandler(grnService interfaces.GRNServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *GRNHandler {
 	return &GRNHandler{
 		grnService:    grnService,
 		aaaMiddleware: aaaMiddleware,

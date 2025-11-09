@@ -6,7 +6,7 @@ import (
 
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
-	"kisanlink-erp/internal/services"
+	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
@@ -14,12 +14,12 @@ import (
 
 // InventoryHandler handles inventory HTTP requests
 type InventoryHandler struct {
-	inventoryService *services.InventoryService
+	inventoryService interfaces.InventoryServiceInterface
 	aaaMiddleware    *aaa.AAAMiddleware
 }
 
 // NewInventoryHandler creates a new inventory handler
-func NewInventoryHandler(inventoryService *services.InventoryService, aaaMiddleware *aaa.AAAMiddleware) *InventoryHandler {
+func NewInventoryHandler(inventoryService interfaces.InventoryServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *InventoryHandler {
 	return &InventoryHandler{
 		inventoryService: inventoryService,
 		aaaMiddleware:    aaaMiddleware,

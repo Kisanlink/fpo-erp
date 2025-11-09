@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"kisanlink-erp/internal/aaa"
-	"kisanlink-erp/internal/services"
+	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
@@ -15,12 +15,12 @@ import (
 
 // AttachmentHandler handles attachment HTTP requests
 type AttachmentHandler struct {
-	attachmentService *services.AttachmentService
+	attachmentService interfaces.AttachmentServiceInterface
 	aaaMiddleware     *aaa.AAAMiddleware
 }
 
 // NewAttachmentHandler creates a new attachment handler
-func NewAttachmentHandler(attachmentService *services.AttachmentService, aaaMiddleware *aaa.AAAMiddleware) *AttachmentHandler {
+func NewAttachmentHandler(attachmentService interfaces.AttachmentServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *AttachmentHandler {
 	return &AttachmentHandler{
 		attachmentService: attachmentService,
 		aaaMiddleware:     aaaMiddleware,
