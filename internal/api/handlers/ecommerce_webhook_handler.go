@@ -11,6 +11,7 @@ import (
 	"kisanlink-erp/internal/services"
 	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -40,6 +41,28 @@ func NewEcommerceWebhookHandler(
 		webhookRepo:     webhookRepo,
 		aaaMiddleware:   aaaMiddleware,
 	}
+}
+
+// ========================================
+// Helper Functions
+// ========================================
+
+// isUniqueConstraintError checks if the error is a UNIQUE constraint violation
+// Works with both SQLite and PostgreSQL error messages
+func isUniqueConstraintError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errMsg := err.Error()
+	// SQLite: "UNIQUE constraint failed: webhook_events.event_id"
+	if strings.Contains(errMsg, "UNIQUE constraint failed") {
+		return true
+	}
+	// PostgreSQL: "duplicate key value violates unique constraint"
+	if strings.Contains(errMsg, "duplicate key value violates unique constraint") {
+		return true
+	}
+	return false
 }
 
 // ========================================
@@ -109,6 +132,21 @@ func (h *EcommerceWebhookHandler) processWebhook(
 
 		// Record webhook in history
 		if err := h.historyService.RecordWebhook(c.Request.Context(), webhookEvent); err != nil {
+			// Check if error is UNIQUE constraint violation (race condition)
+			if isUniqueConstraintError(err) {
+				// Race condition: Another concurrent request already created this event
+				// Treat as idempotent - refetch the existing event and return success
+				existingEvent, fetchErr := h.webhookRepo.FindByEventID(c.Request.Context(), headers.EventID)
+				if fetchErr == nil && existingEvent != nil {
+					utils.OKResponse(c, "Webhook already processed", gin.H{
+						"event_id":     headers.EventID,
+						"status":       existingEvent.Status,
+						"processed_at": existingEvent.ProcessedAt,
+					})
+					return
+				}
+				// If refetch also fails, fall through to generic error
+			}
 			utils.InternalServerErrorResponse(c, "Failed to record webhook", err)
 			return
 		}
