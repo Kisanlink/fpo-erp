@@ -1,4 +1,4 @@
-.PHONY: build run test clean proto docs
+.PHONY: build run test test-all test-services test-handlers test-integration test-verbose test-clean clean proto docs
 
 # Build the application
 build:
@@ -11,6 +11,30 @@ run:
 # Run tests
 test:
 	go test ./...
+
+# Run all tests (no cache)
+test-all:
+	go test ./tests/... -count=1
+
+# Run service layer tests only
+test-services:
+	go test ./tests/services/... -count=1
+
+# Run handler tests only
+test-handlers:
+	go test ./tests/handlers/... -count=1
+
+# Run webhook integration tests only
+test-integration:
+	go test ./tests/integration/... -count=1
+
+# Run all tests with verbose output
+test-verbose:
+	go test ./tests/... -v -count=1
+
+# Run tests with clean output (using test-clean.sh script)
+test-clean:
+	bash scripts/test-clean.sh
 
 # Clean build artifacts
 clean:
@@ -75,6 +99,5 @@ vet:
 docs:
 	swag init --parseDependency --parseInternal -g cmd/server/main.go
 	swagger2openapi docs/swagger.json -o docs/swagger.json
-
 
 
