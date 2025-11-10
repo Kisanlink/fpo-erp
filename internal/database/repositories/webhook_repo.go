@@ -35,8 +35,19 @@ func (r *WebhookRepository) Create(ctx context.Context, event *models.WebhookEve
 }
 
 // Update updates an existing webhook event
+// Update updates an existing webhook event
 func (r *WebhookRepository) Update(ctx context.Context, event *models.WebhookEvent) error {
-	return r.db.WithContext(ctx).Save(event).Error
+	// Use explicit UPDATE with WHERE clause to avoid Save() issues with custom ID fields
+	return r.db.WithContext(ctx).Model(&models.WebhookEvent{}).
+		Where("id = ?", event.ID).
+		Updates(map[string]interface{}{
+			"status":            event.Status,
+			"processed_at":      event.ProcessedAt,
+			"error_message":     event.ErrorMessage,
+			"purchase_order_id": event.PurchaseOrderID,
+			"external_order_id": event.ExternalOrderID,
+			"updated_at":        event.UpdatedAt,
+		}).Error
 }
 
 // FindByExternalOrderID finds all webhook events for a specific external order ID
