@@ -26,7 +26,7 @@ func (r *InventoryRepository) CreateBatchWithTransaction(batch *models.Inventory
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		// Create the batch first
 		if err := tx.Create(batch).Error; err != nil {
-			return errors.NewInternalServerError("Failed to create inventory batch")
+			return errors.NewInternalServerError(fmt.Sprintf("Failed to create inventory batch: %v", err))
 		}
 
 		// Update the transaction with the created batch ID
@@ -34,7 +34,7 @@ func (r *InventoryRepository) CreateBatchWithTransaction(batch *models.Inventory
 
 		// Create the initial transaction
 		if err := tx.Create(transaction).Error; err != nil {
-			return errors.NewInternalServerError("Failed to create initial inventory transaction")
+			return errors.NewInternalServerError(fmt.Sprintf("Failed to create initial inventory transaction: %v", err))
 		}
 
 		return nil

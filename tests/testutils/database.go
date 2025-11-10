@@ -4,6 +4,7 @@ import (
 	"io"
 	"log"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/glebarez/sqlite"
@@ -164,7 +165,7 @@ func patchSchemaForJSON(db *gorm.DB) {
 		// Check if field is []string with type:json tag
 		if field.FieldType.Kind() == reflect.Slice &&
 			field.FieldType.Elem().Kind() == reflect.String &&
-			field.Tag.Get("gorm") == "type:json" {
+			strings.Contains(field.Tag.Get("gorm"), "type:json") {
 
 			// Set the serializer for this field
 			field.Serializer = JSONStringSliceSerializer{}

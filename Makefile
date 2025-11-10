@@ -34,7 +34,7 @@ test-verbose:
 
 # Run tests with clean output (using test-clean.sh script)
 test-clean:
-	bash scripts/test-clean.sh
+	bash scripts/test-clean.sh ./tests/... -count=1
 
 # Clean build artifacts
 clean:
