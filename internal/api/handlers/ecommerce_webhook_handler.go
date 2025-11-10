@@ -88,24 +88,30 @@ func (h *EcommerceWebhookHandler) processWebhook(
 	hash := sha256.Sum256(bodyBytes)
 	payloadHash := hex.EncodeToString(hash[:])
 
-	// Create webhook event record
+	// Create or reuse webhook event record
+	var webhookEvent *models.WebhookEvent
 	sourceIP := c.ClientIP()
 	userAgent := c.Request.UserAgent()
-	webhookEvent := &models.WebhookEvent{
-		EventID:        headers.EventID,
-		EventType:      eventType,
-		PayloadHash:    payloadHash,
-		RequestBody:    string(bodyBytes),
-		Status:         "processing",
-		SourceIP:       &sourceIP,
-		UserAgent:      &userAgent,
-		SignatureValid: true,
-	}
 
-	// Record webhook in history
-	if err := h.historyService.RecordWebhook(c.Request.Context(), webhookEvent); err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to record webhook", err)
-		return
+	if existingEvent != nil {
+		// Reuse existing event for retry (status is "failed")
+		// This prevents UNIQUE constraint violations on retry attempts
+		webhookEvent = existingEvent
+		webhookEvent.Status = "processing"
+		webhookEvent.ErrorMessage = nil
+		webhookEvent.ProcessedAt = nil
+	} else {
+		// Create new webhook event record using constructor
+		webhookEvent = models.NewWebhookEvent(headers.EventID, eventType, payloadHash, string(bodyBytes))
+		webhookEvent.SourceIP = &sourceIP
+		webhookEvent.UserAgent = &userAgent
+		webhookEvent.SignatureValid = true
+
+		// Record webhook in history
+		if err := h.historyService.RecordWebhook(c.Request.Context(), webhookEvent); err != nil {
+			utils.InternalServerErrorResponse(c, "Failed to record webhook", err)
+			return
+		}
 	}
 
 	// Parse webhook payload
