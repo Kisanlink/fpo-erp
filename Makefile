@@ -1,4 +1,4 @@
-.PHONY: build run test test-all test-services test-handlers test-integration test-verbose test-clean clean proto docs
+.PHONY: build run test test-all test-services test-handlers test-integration test-verbose test-clean clean proto docs install-hooks uninstall-hooks test-hooks update-hooks dev-setup
 
 # Build the application
 build:
@@ -99,4 +99,37 @@ vet:
 docs:
 	swag init --parseDependency --parseInternal -g cmd/server/main.go
 
+# Git hooks management
+install-hooks:
+	@echo "Installing pre-commit hooks..."
+	@command -v pre-commit >/dev/null 2>&1 || { \
+		echo "Error: pre-commit not found. Please install it first:"; \
+		echo "  pip install pre-commit"; \
+		echo "  or: brew install pre-commit (macOS)"; \
+		echo "  or: conda install -c conda-forge pre-commit"; \
+		exit 1; \
+	}
+	pre-commit install
+	pre-commit install --hook-type commit-msg
+	@echo "✅ Git hooks installed successfully"
+	@echo "Run 'make test-hooks' to verify installation"
 
+uninstall-hooks:
+	@echo "Uninstalling pre-commit hooks..."
+	pre-commit uninstall
+	pre-commit uninstall --hook-type commit-msg
+	@echo "✅ Git hooks uninstalled"
+
+test-hooks:
+	@echo "Testing pre-commit hooks..."
+	pre-commit run --all-files
+	@echo "✅ Hook tests complete"
+
+update-hooks:
+	@echo "Updating pre-commit hooks..."
+	pre-commit autoupdate
+	@echo "✅ Hooks updated"
+
+# Complete development setup
+dev-setup: deps install-hooks
+	@echo "✅ Development environment ready"

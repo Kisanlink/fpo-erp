@@ -321,13 +321,26 @@ For testing purposes, you can generate JWT tokens using the provided script:
    go mod download
    ```
 
-3. **Set up the database**
+3. **Set up pre-commit hooks** (required for code quality)
+   ```bash
+   # Install pre-commit (if not already installed)
+   # macOS: brew install pre-commit
+   # Linux: pip install pre-commit
+   # Windows: pip install pre-commit
+
+   # Install hooks
+   make install-hooks
+   ```
+
+   See [PRECOMMIT_HOOKS.md](PRECOMMIT_HOOKS.md) for detailed setup instructions.
+
+4. **Set up the database**
    ```bash
    # Create PostgreSQL database
    createdb erp_database
    ```
 
-4. **Run the application**
+5. **Run the application**
    ```bash
    go run cmd/server/main.go
    ```
