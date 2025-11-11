@@ -24,8 +24,10 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	_ "kisanlink-erp/docs" // Import docs for Swagger
+	"kisanlink-erp/internal/aaa"
 	api_server "kisanlink-erp/internal/api/server"
 	"kisanlink-erp/internal/config"
 	"kisanlink-erp/internal/constants"
@@ -66,6 +68,30 @@ func main() {
 
 	// Initialize hash counters from database
 	initializeHashCounters(pg)
+
+	// Seed AAA roles and permissions (non-fatal)
+	if cfg.AAA.Enabled && cfg.AAA.GRPCAddress != "" {
+		log.Println("Attempting to seed AAA roles and permissions...")
+
+		catalogClient, err := aaa.NewCatalogGRPCClient(cfg.AAA.GRPCAddress)
+		if err != nil {
+			log.Printf("Warning: AAA catalog client initialization failed: %v", err)
+		} else {
+			seedCtx, seedCancel := context.WithTimeout(context.Background(), 30*time.Second)
+			if err := catalogClient.SeedRolesAndPermissions(seedCtx); err != nil {
+				log.Printf("Warning: AAA role/permission seeding failed: %v", err)
+				log.Println("ERP will continue to start, but ensure AAA has required roles.")
+			} else {
+				log.Println("AAA roles and permissions seeded successfully.")
+			}
+			seedCancel()
+			if err := catalogClient.Close(); err != nil {
+				log.Printf("Warning: failed to close AAA catalog client: %v", err)
+			}
+		}
+	} else {
+		log.Println("Skipping AAA role/permission seeding (AAA disabled or gRPC address missing).")
+	}
 
 	// Initialize HTTP server with AAA middleware
 	httpServer := api_server.NewServer(pg, cfg)
