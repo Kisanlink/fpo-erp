@@ -1,6 +1,8 @@
 package server
 
 import (
+	"time"
+
 	_ "kisanlink-erp/docs"
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/api/middleware"
@@ -62,7 +64,7 @@ func (s *Server) setupMiddleware() {
 		middleware.LoggingMiddleware(),
 		middleware.RequestIDMiddleware(),
 		middleware.ErrorLoggingMiddleware(),
-		middleware.PerformanceMiddleware(5), // 5 second threshold
+		middleware.PerformanceMiddleware(5 * time.Second), // 5 second threshold
 		middleware.CORSMiddleware(s.config),
 		middleware.SecurityHeadersMiddleware(),
 		middleware.CreateRateLimitMiddleware(100, 60), // 100 requests per minute

@@ -887,6 +887,12 @@ definitions:
     x-enum-comments:
       DiscountTypeFlat: Fixed amount discount
       DiscountTypePercentage: Percentage discount
+    x-enum-descriptions:
+    - Fixed amount discount
+    - Percentage discount
+    - ""
+    - ""
+    - ""
     x-enum-varnames:
     - DiscountTypeFlat
     - DiscountTypePercentage
@@ -1676,6 +1682,10 @@ definitions:
       TaxCalculationFixed: Fixed amount per unit
       TaxCalculationPercentage: Percentage of base amount
       TaxCalculationTiered: Tiered calculation
+    x-enum-descriptions:
+    - Percentage of base amount
+    - Fixed amount per unit
+    - Tiered calculation
     x-enum-varnames:
     - TaxCalculationPercentage
     - TaxCalculationFixed
@@ -1857,6 +1867,19 @@ definitions:
       TaxTypeTCS: Tax Collected at Source
       TaxTypeTDS: Tax Deducted at Source
       TaxTypeVAT: Value Added Tax
+    x-enum-descriptions:
+    - Central Goods and Services Tax
+    - State Goods and Services Tax
+    - Integrated Goods and Services Tax
+    - Value Added Tax
+    - Securities Transaction Tax
+    - Tax Deducted at Source
+    - Tax Collected at Source
+    - Excise Duty
+    - Customs Duty
+    - Item-specific tax
+    - Category-based tax
+    - Flat tax amount
     x-enum-varnames:
     - TaxTypeCGST
     - TaxTypeSGST
