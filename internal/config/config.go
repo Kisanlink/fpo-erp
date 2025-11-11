@@ -46,6 +46,7 @@ type AWSConfig struct {
 	AccessKeyID     string `mapstructure:"access_key_id"`
 	SecretAccessKey string `mapstructure:"secret_access_key"`
 	S3Bucket        string `mapstructure:"s3_bucket"`
+	UsePathStyle    bool   `mapstructure:"use_path_style"` // Force path-style URLs for MinIO compatibility
 }
 
 type CORSConfig struct {
@@ -181,6 +182,7 @@ func Load() *Config {
 			AccessKeyID:     os.Getenv("AWS_ACCESS_KEY_ID"),
 			SecretAccessKey: os.Getenv("AWS_SECRET_ACCESS_KEY"),
 			S3Bucket:        os.Getenv("AWS_S3_BUCKET"),
+			UsePathStyle:    os.Getenv("AWS_USE_PATH_STYLE") == "true",
 		},
 		CORS: CORSConfig{
 			AllowedOrigins: os.Getenv("CORS_ALLOWED_ORIGINS"),

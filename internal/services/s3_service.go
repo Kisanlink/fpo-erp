@@ -43,8 +43,10 @@ func NewS3Service(cfg *config.Config) (*S3Service, error) {
 		return nil, fmt.Errorf("failed to load AWS config: %w", err)
 	}
 
-	// Create S3 client
-	client := s3.NewFromConfig(awsCfg)
+	// Create S3 client with path-style addressing support for MinIO
+	client := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
+		o.UsePathStyle = cfg.AWS.UsePathStyle
+	})
 
 	// Create uploader and downloader
 	uploader := manager.NewUploader(client)
