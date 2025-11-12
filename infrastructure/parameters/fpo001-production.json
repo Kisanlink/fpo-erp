@@ -1,0 +1,90 @@
+[
+  {
+    "ParameterKey": "FPOIdentifier",
+    "ParameterValue": "fpo001"
+  },
+  {
+    "ParameterKey": "Environment",
+    "ParameterValue": "production"
+  },
+  {
+    "ParameterKey": "VpcId",
+    "ParameterValue": "vpc-xxxxxxxxxxxxxxxxx"
+  },
+  {
+    "ParameterKey": "PublicSubnet1Id",
+    "ParameterValue": "subnet-xxxxxxxxxxxxxxxxx"
+  },
+  {
+    "ParameterKey": "PublicSubnet2Id",
+    "ParameterValue": "subnet-yyyyyyyyyyyyyyyyy"
+  },
+  {
+    "ParameterKey": "PrivateSubnet1Id",
+    "ParameterValue": "subnet-zzzzzzzzzzzzzzzzz"
+  },
+  {
+    "ParameterKey": "PrivateSubnet2Id",
+    "ParameterValue": "subnet-aaaaaaaaaaaaaaaaa"
+  },
+  {
+    "ParameterKey": "ECRImageUri",
+    "ParameterValue": "123456789012.dkr.ecr.us-west-2.amazonaws.com/kisanlink-erp:production-latest"
+  },
+  {
+    "ParameterKey": "ContainerPort",
+    "ParameterValue": "8080"
+  },
+  {
+    "ParameterKey": "DesiredCount",
+    "ParameterValue": "2"
+  },
+  {
+    "ParameterKey": "TaskCPU",
+    "ParameterValue": "1024"
+  },
+  {
+    "ParameterKey": "TaskMemory",
+    "ParameterValue": "2048"
+  },
+  {
+    "ParameterKey": "DBInstanceClass",
+    "ParameterValue": "db.t3.small"
+  },
+  {
+    "ParameterKey": "DBAllocatedStorage",
+    "ParameterValue": "50"
+  },
+  {
+    "ParameterKey": "DBUsername",
+    "ParameterValue": "erp_admin"
+  },
+  {
+    "ParameterKey": "DBPasswordSecretArn",
+    "ParameterValue": "arn:aws:secretsmanager:us-west-2:123456789012:secret:fpo001/production/erp/db-password-XXXXXX"
+  },
+  {
+    "ParameterKey": "AAAServiceURL",
+    "ParameterValue": "https://aaa.kisanlink.com"
+  },
+  {
+    "ParameterKey": "AAAGrpcAddress",
+    "ParameterValue": "aaa-grpc.kisanlink.com:9090"
+  },
+  {
+    "ParameterKey": "AAAJWTSecretArn",
+    "ParameterValue": "arn:aws:secretsmanager:us-west-2:123456789012:secret:fpo001/production/erp/aaa-jwt-secret-XXXXXX"
+  },
+  {
+    "ParameterKey": "JWTSecretArn",
+    "ParameterValue": "arn:aws:secretsmanager:us-west-2:123456789012:secret:fpo001/production/erp/jwt-secret-XXXXXX"
+  },
+  {
+    "ParameterKey": "AWSRegion",
+    "ParameterValue": "us-west-2"
+  },
+  {
+    "ParameterKey": "CertificateArn",
+    "ParameterValue": "arn:aws:acm:us-west-2:123456789012:certificate/xxxxx"
+  }
+]
