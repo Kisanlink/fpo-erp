@@ -13,8 +13,8 @@ type MockCollaboratorService struct {
 	mock.Mock
 }
 
-func (m *MockCollaboratorService) CreateCollaborator(ctx context.Context, request *models.CreateCollaboratorRequest, userID string, jwtToken string) (*models.CollaboratorResponse, error) {
-	args := m.Called(ctx, request, userID, jwtToken)
+func (m *MockCollaboratorService) CreateCollaborator(ctx context.Context, request *models.CreateCollaboratorRequest, organizationID string, userID string, jwtToken string) (*models.CollaboratorResponse, error) {
+	args := m.Called(ctx, request, organizationID, userID, jwtToken)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -45,16 +45,16 @@ func (m *MockCollaboratorService) GetActiveCollaborators(ctx context.Context, jw
 	return args.Get(0).([]models.CollaboratorResponse), args.Error(1)
 }
 
-func (m *MockCollaboratorService) UpdateCollaborator(ctx context.Context, id string, request *models.UpdateCollaboratorRequest, jwtToken string) (*models.CollaboratorResponse, error) {
-	args := m.Called(ctx, id, request, jwtToken)
+func (m *MockCollaboratorService) UpdateCollaborator(ctx context.Context, id string, request *models.UpdateCollaboratorRequest, organizationID string, userID string, jwtToken string) (*models.CollaboratorResponse, error) {
+	args := m.Called(ctx, id, request, organizationID, userID, jwtToken)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*models.CollaboratorResponse), args.Error(1)
 }
 
-func (m *MockCollaboratorService) DeleteCollaborator(ctx context.Context, id string, jwtToken string) error {
-	args := m.Called(ctx, id, jwtToken)
+func (m *MockCollaboratorService) DeleteCollaborator(ctx context.Context, id string, organizationID string, jwtToken string) error {
+	args := m.Called(ctx, id, organizationID, jwtToken)
 	return args.Error(0)
 }
 

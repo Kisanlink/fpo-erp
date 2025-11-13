@@ -70,7 +70,7 @@ func (h *CollaboratorHandler) CreateCollaborator(c *gin.Context) {
 	}
 
 	// Create collaborator
-	response, err := h.collaboratorService.CreateCollaborator(c.Request.Context(), &request, userID, jwtToken)
+	response, err := h.collaboratorService.CreateCollaborator(c.Request.Context(), &request, organizationID, userID, jwtToken)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "Failed to create collaborator", err)
 		return
@@ -235,7 +235,12 @@ func (h *CollaboratorHandler) UpdateCollaborator(c *gin.Context) {
 	}
 
 	// Update collaborator
-	response, err := h.collaboratorService.UpdateCollaborator(c.Request.Context(), id, &request, jwtToken)
+	userID := c.GetString("user_id")
+	if userID == "" {
+		userID = "system"
+	}
+
+	response, err := h.collaboratorService.UpdateCollaborator(c.Request.Context(), id, &request, organizationID, userID, jwtToken)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "Failed to update collaborator", err)
 		return
@@ -288,7 +293,13 @@ func (h *CollaboratorHandler) DeleteCollaborator(c *gin.Context) {
 	}
 
 	// Delete collaborator
-	if err := h.collaboratorService.DeleteCollaborator(c.Request.Context(), id, jwtToken); err != nil {
+	organizationID := c.GetString("organization_id")
+	if organizationID == "" {
+		utils.BadRequestResponse(c, "Organization context not found. Ensure you're authenticated.", nil)
+		return
+	}
+
+	if err := h.collaboratorService.DeleteCollaborator(c.Request.Context(), id, organizationID, jwtToken); err != nil {
 		utils.InternalServerErrorResponse(c, "Failed to delete collaborator", err)
 		return
 	}

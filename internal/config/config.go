@@ -12,13 +12,14 @@ import (
 )
 
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Database DatabaseConfig `mapstructure:"database"`
-	JWT      JWTConfig      `mapstructure:"jwt"`
-	AWS      AWSConfig      `mapstructure:"aws"`
-	CORS     CORSConfig     `mapstructure:"cors"`
-	AAA      AAAConfig      `mapstructure:"aaa"`
-	Webhook  WebhookConfig  `mapstructure:"webhook"`
+	Server    ServerConfig    `mapstructure:"server"`
+	Database  DatabaseConfig  `mapstructure:"database"`
+	JWT       JWTConfig       `mapstructure:"jwt"`
+	AWS       AWSConfig       `mapstructure:"aws"`
+	CORS      CORSConfig      `mapstructure:"cors"`
+	AAA       AAAConfig       `mapstructure:"aaa"`
+	Webhook   WebhookConfig   `mapstructure:"webhook"`
+	Ecommerce EcommerceConfig `mapstructure:"ecommerce"`
 }
 
 type ServerConfig struct {
@@ -67,6 +68,16 @@ type WebhookConfig struct {
 	Secret          string `mapstructure:"secret"`            // HMAC-SHA256 shared secret for signature verification
 	TimeoutSeconds  int    `mapstructure:"timeout_seconds"`   // Webhook processing timeout
 	MaxPayloadBytes int64  `mapstructure:"max_payload_bytes"` // Maximum request body size
+}
+
+type EcommerceConfig struct {
+	GRPCAddress    string `mapstructure:"grpc_address"`
+	TimeoutSeconds int    `mapstructure:"timeout_seconds"`
+	AuthToken      string `mapstructure:"auth_token"`
+	UseTLS         bool   `mapstructure:"use_tls"`
+	CACertPath     string `mapstructure:"ca_cert_path"`
+	ClientCertPath string `mapstructure:"client_cert_path"`
+	ClientKeyPath  string `mapstructure:"client_key_path"`
 }
 
 // GetAllowedOrigins returns the allowed origins as a slice
@@ -147,6 +158,26 @@ func Load() *Config {
 		_ = webhookMaxPayload // Prevent unused variable error
 	}
 
+	// Parse Ecommerce timeout (default: 5 seconds)
+	ecommerceTimeout := 5
+	if ecommerceTimeoutStr := os.Getenv("ECOMMERCE_GRPC_TIMEOUT_SECONDS"); ecommerceTimeoutStr != "" {
+		if parsed, err := strconv.Atoi(ecommerceTimeoutStr); err == nil && parsed > 0 {
+			ecommerceTimeout = parsed
+		} else if err != nil {
+			utils.Info("Invalid ECOMMERCE_GRPC_TIMEOUT_SECONDS value, defaulting to 5:", ecommerceTimeoutStr)
+		}
+	}
+
+	// Parse Ecommerce TLS flag
+	ecommerceUseTLS := false
+	if ecommerceUseTLSStr := os.Getenv("ECOMMERCE_GRPC_USE_TLS"); ecommerceUseTLSStr != "" {
+		if parsed, err := strconv.ParseBool(ecommerceUseTLSStr); err == nil {
+			ecommerceUseTLS = parsed
+		} else {
+			utils.Info("Invalid ECOMMERCE_GRPC_USE_TLS value, defaulting to false:", ecommerceUseTLSStr)
+		}
+	}
+
 	// Load all environment variables using os.Getenv directly
 	config := &Config{
 		Server: ServerConfig{
@@ -189,6 +220,15 @@ func Load() *Config {
 			Secret:          os.Getenv("WEBHOOK_SECRET"),
 			TimeoutSeconds:  webhookTimeout,
 			MaxPayloadBytes: webhookMaxPayload,
+		},
+		Ecommerce: EcommerceConfig{
+			GRPCAddress:    os.Getenv("ECOMMERCE_GRPC_ADDRESS"),
+			TimeoutSeconds: ecommerceTimeout,
+			AuthToken:      os.Getenv("ECOMMERCE_GRPC_AUTH_TOKEN"),
+			UseTLS:         ecommerceUseTLS,
+			CACertPath:     os.Getenv("ECOMMERCE_GRPC_CA_CERT"),
+			ClientCertPath: os.Getenv("ECOMMERCE_GRPC_CLIENT_CERT"),
+			ClientKeyPath:  os.Getenv("ECOMMERCE_GRPC_CLIENT_KEY"),
 		},
 	}
 

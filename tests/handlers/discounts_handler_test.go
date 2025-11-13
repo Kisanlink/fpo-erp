@@ -777,9 +777,9 @@ func TestDiscountsHandler_GetDiscountUsageStats_Success(t *testing.T) {
 
 	mockService.On("GetDiscountUsageStats", "DISC00000001").Return(expectedStats, nil)
 
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Params = gin.Params{{Key: "id", Value: "DISC00000001"}}
+w := httptest.NewRecorder()
+c, _ := gin.CreateTestContext(w)
+c.Params = gin.Params{{Key: "discountID", Value: "DISC00000001"}}
 	c.Request, _ = http.NewRequest("GET", "/api/v1/discounts/DISC00000001/stats", nil)
 
 	handler.GetDiscountUsageStats(c)
@@ -798,7 +798,7 @@ func TestDiscountsHandler_GetDiscountUsageStats_ServiceError(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	c.Params = gin.Params{{Key: "id", Value: "DISC00000001"}}
+	c.Params = gin.Params{{Key: "discountID", Value: "DISC00000001"}}
 	c.Request, _ = http.NewRequest("GET", "/api/v1/discounts/DISC00000001/stats", nil)
 
 	handler.GetDiscountUsageStats(c)
@@ -806,3 +806,4 @@ func TestDiscountsHandler_GetDiscountUsageStats_ServiceError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 	mockService.AssertExpectations(t)
 }
+

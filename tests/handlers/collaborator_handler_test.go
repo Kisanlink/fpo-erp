@@ -36,7 +36,14 @@ func TestCollaboratorHandler_CreateCollaborator_Success(t *testing.T) {
 		GSTNumber:     "22AAAAA0000A1Z5",
 		IsActive:      true,
 	}
-	mockService.On("CreateCollaborator", mock.Anything, mock.AnythingOfType("*models.CreateCollaboratorRequest"), mock.Anything, mock.Anything).
+	mockService.On(
+		"CreateCollaborator",
+		mock.Anything,
+		mock.AnythingOfType("*models.CreateCollaboratorRequest"),
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("string"),
+	).
 		Return(expectedResponse, nil)
 
 	// Create request
@@ -104,7 +111,14 @@ func TestCollaboratorHandler_CreateCollaborator_ServiceError(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
-	mockService.On("CreateCollaborator", mock.Anything, mock.AnythingOfType("*models.CreateCollaboratorRequest"), mock.Anything, mock.Anything).
+	mockService.On(
+		"CreateCollaborator",
+		mock.Anything,
+		mock.AnythingOfType("*models.CreateCollaboratorRequest"),
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("string"),
+	).
 		Return(nil, errors.New("database error"))
 
 	// Create request
@@ -350,7 +364,15 @@ func TestCollaboratorHandler_UpdateCollaborator_Success(t *testing.T) {
 		ContactPerson: "John Doe",
 		IsActive:      true,
 	}
-	mockService.On("UpdateCollaborator", mock.Anything, "CLAB00000001", mock.AnythingOfType("*models.UpdateCollaboratorRequest"), mock.Anything).
+	mockService.On(
+		"UpdateCollaborator",
+		mock.Anything,
+		"CLAB00000001",
+		mock.AnythingOfType("*models.UpdateCollaboratorRequest"),
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("string"),
+	).
 		Return(expectedResponse, nil)
 
 	// Create request
@@ -383,7 +405,15 @@ func TestCollaboratorHandler_UpdateCollaborator_NotFound(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
-	mockService.On("UpdateCollaborator", mock.Anything, "CLAB99999999", mock.AnythingOfType("*models.UpdateCollaboratorRequest"), mock.Anything).
+	mockService.On(
+		"UpdateCollaborator",
+		mock.Anything,
+		"CLAB99999999",
+		mock.AnythingOfType("*models.UpdateCollaboratorRequest"),
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("string"),
+	).
 		Return(nil, errors.New("collaborator not found"))
 
 	// Create request
@@ -431,7 +461,13 @@ func TestCollaboratorHandler_DeleteCollaborator_Success(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
-	mockService.On("DeleteCollaborator", mock.Anything, "CLAB00000001", mock.Anything).
+	mockService.On(
+		"DeleteCollaborator",
+		mock.Anything,
+		"CLAB00000001",
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("string"),
+	).
 		Return(nil)
 
 	// Create request
@@ -454,7 +490,13 @@ func TestCollaboratorHandler_DeleteCollaborator_NotFound(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
-	mockService.On("DeleteCollaborator", mock.Anything, "CLAB99999999", mock.Anything).
+	mockService.On(
+		"DeleteCollaborator",
+		mock.Anything,
+		"CLAB99999999",
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("string"),
+	).
 		Return(errors.New("collaborator not found"))
 
 	// Create request

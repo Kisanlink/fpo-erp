@@ -64,6 +64,8 @@ func (Collaborator) TableName() string {
 // CollaboratorResponse represents the API response for collaborator
 type CollaboratorResponse struct {
 	ID            string       `json:"id"`
+	ExternalID    *string      `json:"external_id,omitempty"`
+	AddressID     *string      `json:"address_id,omitempty"`
 	CompanyName   string       `json:"company_name"`
 	Logo          *string      `json:"logo"`
 	ContactPerson string       `json:"contact_person"`
