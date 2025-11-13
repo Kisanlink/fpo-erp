@@ -80,7 +80,6 @@ bash deploy-shared-vpc.sh staging
    - `DBPassword`: **Enter a strong password** (min 8 characters)
 
    **AAA Service:**
-   - `AAAServiceURL`: `https://aaa.kisanlink.com`
    - `AAAGrpcAddress`: `aaa-grpc.kisanlink.com:9090`
    - `AAAJWTSecret`: **Enter a random 32+ character string**
    - `JWTSecret`: **Enter a random 32+ character string**
@@ -176,10 +175,6 @@ For each FPO, create a parameter file: `infrastructure/parameters/{fpo-id}-{env}
   {
     "ParameterKey": "DBPassword",
     "ParameterValue": "YourStrongPassword123!"
-  },
-  {
-    "ParameterKey": "AAAServiceURL",
-    "ParameterValue": "https://aaa.kisanlink.com"
   },
   {
     "ParameterKey": "AAAGrpcAddress",

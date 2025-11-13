@@ -171,7 +171,6 @@ vi parameters/fpo001-staging.json
 - `TaskCPU`: CPU units (default: 512 for staging, 1024 for production)
 - `TaskMemory`: Memory in MB (default: 1024 for staging, 2048 for production)
 - `DBInstanceClass`: RDS instance size (default: db.t3.micro for staging, db.t3.small for production)
-- `AAAServiceURL`: AAA service HTTP URL
 - `AAAGrpcAddress`: AAA service gRPC address
 
 #### 4. Validate CloudFormation Template

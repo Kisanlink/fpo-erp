@@ -64,10 +64,6 @@
     "ParameterValue": "CHANGE_ME_STRONG_PASSWORD_123!"
   },
   {
-    "ParameterKey": "AAAServiceURL",
-    "ParameterValue": "https://aaa.kisanlink.com"
-  },
-  {
     "ParameterKey": "AAAGrpcAddress",
     "ParameterValue": "aaa-grpc.kisanlink.com:9090"
   },

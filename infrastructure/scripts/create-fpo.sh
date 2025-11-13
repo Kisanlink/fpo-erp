@@ -86,7 +86,6 @@ if [ -n "$STAGING_FILE" ]; then
         (.[] | select(.ParameterKey == "DBInstanceClass") | .ParameterValue) |= "db.t3.micro" |
         (.[] | select(.ParameterKey == "DBAllocatedStorage") | .ParameterValue) |= "20" |
         (.[] | select(.ParameterKey == "ECRImageUri") | .ParameterValue) |= "123456789012.dkr.ecr.us-west-2.amazonaws.com/kisanlink-erp:staging-latest" |
-        (.[] | select(.ParameterKey == "AAAServiceURL") | .ParameterValue) |= "https://aaa-staging.kisanlink.com" |
         (.[] | select(.ParameterKey == "AAAGrpcAddress") | .ParameterValue) |= "aaa-grpc-staging.kisanlink.com:9090" |
         (.[] | select(.ParameterKey == "CertificateArn") | .ParameterValue) |= ""' \
        "$TEMPLATE_FILE" > "$STAGING_FILE"
@@ -109,7 +108,6 @@ if [ -n "$PRODUCTION_FILE" ]; then
         (.[] | select(.ParameterKey == "DBInstanceClass") | .ParameterValue) |= "db.t3.small" |
         (.[] | select(.ParameterKey == "DBAllocatedStorage") | .ParameterValue) |= "50" |
         (.[] | select(.ParameterKey == "ECRImageUri") | .ParameterValue) |= "123456789012.dkr.ecr.us-west-2.amazonaws.com/kisanlink-erp:production-latest" |
-        (.[] | select(.ParameterKey == "AAAServiceURL") | .ParameterValue) |= "https://aaa.kisanlink.com" |
         (.[] | select(.ParameterKey == "AAAGrpcAddress") | .ParameterValue) |= "aaa-grpc.kisanlink.com:9090" |
         (.[] | select(.ParameterKey == "CertificateArn") | .ParameterValue) |= "arn:aws:acm:us-west-2:123456789012:certificate/xxxxx"' \
        "$TEMPLATE_FILE" > "$PRODUCTION_FILE"

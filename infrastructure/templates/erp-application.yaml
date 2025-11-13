@@ -103,11 +103,6 @@ Parameters:
     MinLength: 8
     Description: 'Database password (will be stored in Secrets Manager)'
 
-  AAAServiceURL:
-    Type: String
-    Description: 'AAA service HTTP URL'
-    Default: 'https://aaa.kisanlink.com'
-
   AAAGrpcAddress:
     Type: String
     Description: 'AAA service gRPC address'
@@ -782,8 +777,6 @@ Resources:
               Value: '100'
             - Name: POSTGRES_CONN_MAX_LIFETIME_SECONDS
               Value: '3600'
-            - Name: AAA_SERVICE_URL
-              Value: !Ref AAAServiceURL
             - Name: AAA_GRPC_ADDRESS
               Value: !Ref AAAGrpcAddress
             - Name: AAA_CACHE_TTL_MINUTES

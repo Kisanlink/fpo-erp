@@ -64,10 +64,6 @@
     "ParameterValue": "arn:aws:secretsmanager:us-west-2:123456789012:secret:fpo001/staging/erp/db-password-XXXXXX"
   },
   {
-    "ParameterKey": "AAAServiceURL",
-    "ParameterValue": "https://aaa-staging.kisanlink.com"
-  },
-  {
     "ParameterKey": "AAAGrpcAddress",
     "ParameterValue": "aaa-grpc-staging.kisanlink.com:9090"
   },

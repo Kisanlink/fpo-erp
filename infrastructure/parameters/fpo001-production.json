@@ -64,10 +64,6 @@
     "ParameterValue": "arn:aws:secretsmanager:us-west-2:123456789012:secret:fpo001/production/erp/db-password-XXXXXX"
   },
   {
-    "ParameterKey": "AAAServiceURL",
-    "ParameterValue": "https://aaa.kisanlink.com"
-  },
-  {
     "ParameterKey": "AAAGrpcAddress",
     "ParameterValue": "aaa-grpc.kisanlink.com:9090"
   },

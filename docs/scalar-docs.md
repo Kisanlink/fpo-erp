@@ -368,7 +368,6 @@ LOG_LEVEL=info
 #### AAA Service Configuration
 ```bash
 AAA_JWT_SECRET=your_jwt_secret
-AAA_SERVICE_URL=http://localhost:8081
 AAA_GRPC_ADDRESS=localhost:50051
 AAA_TIMEOUT_SECONDS=30
 AAA_CACHE_TTL=300

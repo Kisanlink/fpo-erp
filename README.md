@@ -256,7 +256,6 @@ Create a `.env` file in the project root:
 ```bash
 # Server Configuration
 SERVER_HTTP_PORT=8080
-AAA_SERVICE_URL=localhost:9091
 SERVER_MODE=release
 
 # Database Configuration
