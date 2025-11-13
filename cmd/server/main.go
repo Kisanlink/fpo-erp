@@ -69,24 +69,29 @@ func main() {
 	// Initialize hash counters from database
 	initializeHashCounters(pg)
 
-	// Seed AAA roles and permissions (non-fatal)
+	// Seed AAA roles and permissions for ERP module (non-fatal)
 	if cfg.AAA.Enabled && cfg.AAA.GRPCAddress != "" {
-		log.Println("Attempting to seed AAA roles and permissions...")
+		log.Println("Attempting to seed AAA roles and permissions for ERP module...")
 
-		catalogClient, err := aaa.NewCatalogGRPCClient(cfg.AAA.GRPCAddress)
+		catalogClient, err := aaa.NewCatalogGRPCClient(cfg.AAA.GRPCAddress, cfg.AAA.APIKey)
 		if err != nil {
 			log.Printf("Warning: AAA catalog client initialization failed: %v", err)
 		} else {
+			defer func() {
+				if err := catalogClient.Close(); err != nil {
+					log.Printf("Warning: failed to close AAA catalog client: %v", err)
+				}
+			}()
+
 			seedCtx, seedCancel := context.WithTimeout(context.Background(), 30*time.Second)
-			if err := catalogClient.SeedRolesAndPermissions(seedCtx); err != nil {
+			defer seedCancel()
+
+			// Pass "erp-module" as service_id to use ERP-specific seed provider
+			if err := catalogClient.SeedRolesAndPermissions(seedCtx, "erp-module", false); err != nil {
 				log.Printf("Warning: AAA role/permission seeding failed: %v", err)
 				log.Println("ERP will continue to start, but ensure AAA has required roles.")
 			} else {
-				log.Println("AAA roles and permissions seeded successfully.")
-			}
-			seedCancel()
-			if err := catalogClient.Close(); err != nil {
-				log.Printf("Warning: failed to close AAA catalog client: %v", err)
+				log.Println("AAA ERP roles and permissions seeded successfully.")
 			}
 		}
 	} else {

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"kisanlink-erp/pkg/proto"
+	pbv2 "github.com/Kisanlink/aaa-service/v2/pkg/proto/v2"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -15,7 +15,7 @@ import (
 // AddressGRPCClient wraps the gRPC address client
 type AddressGRPCClient struct {
 	conn   *grpc.ClientConn
-	client proto.AddressServiceClient
+	client pbv2.AddressServiceClient
 }
 
 // NewAddressGRPCClient creates a new address gRPC client
@@ -31,7 +31,7 @@ func NewAddressGRPCClient(aaaServiceAddr string) (*AddressGRPCClient, error) {
 		return nil, fmt.Errorf("failed to connect to AAA address service: %w", err)
 	}
 
-	client := proto.NewAddressServiceClient(conn)
+	client := pbv2.NewAddressServiceClient(conn)
 
 	return &AddressGRPCClient{
 		conn:   conn,
@@ -54,7 +54,7 @@ func (c *AddressGRPCClient) CreateAddress(ctx context.Context, req *CreateAddres
 	ctx = metadata.NewOutgoingContext(ctx, md)
 
 	// Convert request to proto format
-	protoReq := &proto.CreateAddressRequest{
+	protoReq := &pbv2.CreateAddressRequest{
 		UserId:    req.UserID,
 		Type:      req.Type,
 		IsPrimary: req.IsPrimary,
@@ -62,34 +62,42 @@ func (c *AddressGRPCClient) CreateAddress(ctx context.Context, req *CreateAddres
 
 	// Set optional fields
 	if req.House != nil {
-		protoReq.House = req.House
+		protoReq.House = *req.House
 	}
 	if req.Street != nil {
-		protoReq.Street = req.Street
+		protoReq.Street = *req.Street
 	}
 	if req.Landmark != nil {
-		protoReq.Landmark = req.Landmark
+		protoReq.Landmark = *req.Landmark
 	}
 	if req.PostOffice != nil {
-		protoReq.PostOffice = req.PostOffice
+		protoReq.PostOffice = *req.PostOffice
 	}
 	if req.Subdistrict != nil {
-		protoReq.Subdistrict = req.Subdistrict
+		protoReq.Subdistrict = *req.Subdistrict
 	}
 	if req.District != nil {
-		protoReq.District = req.District
+		protoReq.District = *req.District
 	}
 	if req.VTC != nil {
-		protoReq.Vtc = req.VTC
+		protoReq.Vtc = *req.VTC
 	}
 	if req.State != nil {
-		protoReq.State = req.State
+		protoReq.State = *req.State
 	}
 	if req.Country != nil {
-		protoReq.Country = req.Country
+		protoReq.Country = *req.Country
 	}
 	if req.Pincode != nil {
-		protoReq.Pincode = req.Pincode
+		protoReq.Pincode = *req.Pincode
+	}
+	if len(req.Metadata) > 0 {
+		protoReq.Metadata = make(map[string]string, len(req.Metadata))
+		for k, v := range req.Metadata {
+			if strVal, ok := v.(string); ok {
+				protoReq.Metadata[k] = strVal
+			}
+		}
 	}
 
 	// Call gRPC service
@@ -118,8 +126,8 @@ func (c *AddressGRPCClient) GetAddress(ctx context.Context, addressID string, jw
 	ctx = metadata.NewOutgoingContext(ctx, md)
 
 	// Call gRPC service
-	resp, err := c.client.GetAddress(ctx, &proto.GetAddressRequest{
-		AddressId: addressID,
+	resp, err := c.client.GetAddress(ctx, &pbv2.GetAddressRequest{
+		Id: addressID,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("gRPC GetAddress failed: %w", err)
@@ -144,7 +152,7 @@ func (c *AddressGRPCClient) UpdateAddress(ctx context.Context, req *UpdateAddres
 	ctx = metadata.NewOutgoingContext(ctx, md)
 
 	// Convert request to proto format
-	protoReq := &proto.UpdateAddressRequest{
+	protoReq := &pbv2.UpdateAddressRequest{
 		Id:        req.ID,
 		Type:      req.Type,
 		IsPrimary: req.IsPrimary,
@@ -153,34 +161,42 @@ func (c *AddressGRPCClient) UpdateAddress(ctx context.Context, req *UpdateAddres
 
 	// Set optional fields
 	if req.House != nil {
-		protoReq.House = req.House
+		protoReq.House = *req.House
 	}
 	if req.Street != nil {
-		protoReq.Street = req.Street
+		protoReq.Street = *req.Street
 	}
 	if req.Landmark != nil {
-		protoReq.Landmark = req.Landmark
+		protoReq.Landmark = *req.Landmark
 	}
 	if req.PostOffice != nil {
-		protoReq.PostOffice = req.PostOffice
+		protoReq.PostOffice = *req.PostOffice
 	}
 	if req.Subdistrict != nil {
-		protoReq.Subdistrict = req.Subdistrict
+		protoReq.Subdistrict = *req.Subdistrict
 	}
 	if req.District != nil {
-		protoReq.District = req.District
+		protoReq.District = *req.District
 	}
 	if req.VTC != nil {
-		protoReq.Vtc = req.VTC
+		protoReq.Vtc = *req.VTC
 	}
 	if req.State != nil {
-		protoReq.State = req.State
+		protoReq.State = *req.State
 	}
 	if req.Country != nil {
-		protoReq.Country = req.Country
+		protoReq.Country = *req.Country
 	}
 	if req.Pincode != nil {
-		protoReq.Pincode = req.Pincode
+		protoReq.Pincode = *req.Pincode
+	}
+	if len(req.Metadata) > 0 {
+		protoReq.Metadata = make(map[string]string, len(req.Metadata))
+		for k, v := range req.Metadata {
+			if strVal, ok := v.(string); ok {
+				protoReq.Metadata[k] = strVal
+			}
+		}
 	}
 
 	// Call gRPC service
@@ -208,8 +224,8 @@ func (c *AddressGRPCClient) DeleteAddress(ctx context.Context, addressID string,
 	ctx = metadata.NewOutgoingContext(ctx, md)
 
 	// Call gRPC service
-	resp, err := c.client.DeleteAddress(ctx, &proto.DeleteAddressRequest{
-		AddressId:  addressID,
+	resp, err := c.client.DeleteAddress(ctx, &pbv2.DeleteAddressRequest{
+		Id:         addressID,
 		SoftDelete: softDelete,
 	})
 	if err != nil {
@@ -230,11 +246,21 @@ func (c *AddressGRPCClient) SearchAddresses(ctx context.Context, query string, l
 	md := metadata.Pairs("authorization", "Bearer "+jwtToken)
 	ctx = metadata.NewOutgoingContext(ctx, md)
 
+	// Determine pagination parameters for AAA list API
+	pageSize := int32(limit)
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+	page := int32(1)
+	if offset > 0 && limit > 0 {
+		page = int32(offset/int(limit)) + 1
+	}
+
 	// Call gRPC service
-	resp, err := c.client.SearchAddresses(ctx, &proto.SearchAddressesRequest{
-		Query:  query,
-		Limit:  int32(limit),
-		Offset: int32(offset),
+	resp, err := c.client.ListAddresses(ctx, &pbv2.ListAddressesRequest{
+		Search:   query,
+		Page:     page,
+		PageSize: pageSize,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("gRPC SearchAddresses failed: %w", err)
@@ -264,60 +290,38 @@ func (c *AddressGRPCClient) SearchAddresses(ctx context.Context, query string, l
 // ========================================
 
 // protoAddressToAddress converts proto.Address to aaa.Address
-func protoAddressToAddress(protoAddr *proto.Address) *Address {
+func protoAddressToAddress(protoAddr *pbv2.Address) *Address {
 	if protoAddr == nil {
 		return nil
 	}
 
 	addr := &Address{
-		ID:        protoAddr.Id,
-		UserID:    protoAddr.UserId,
-		Type:      protoAddr.Type,
-		IsPrimary: protoAddr.IsPrimary,
-		IsActive:  protoAddr.IsActive,
+		ID:        protoAddr.GetId(),
+		UserID:    protoAddr.GetUserId(),
+		Type:      protoAddr.GetType(),
+		IsPrimary: protoAddr.GetIsPrimary(),
+		IsActive:  protoAddr.GetIsActive(),
 	}
 
 	// Convert optional fields
-	if protoAddr.House != nil {
-		addr.House = protoAddr.House
-	}
-	if protoAddr.Street != nil {
-		addr.Street = protoAddr.Street
-	}
-	if protoAddr.Landmark != nil {
-		addr.Landmark = protoAddr.Landmark
-	}
-	if protoAddr.PostOffice != nil {
-		addr.PostOffice = protoAddr.PostOffice
-	}
-	if protoAddr.Subdistrict != nil {
-		addr.Subdistrict = protoAddr.Subdistrict
-	}
-	if protoAddr.District != nil {
-		addr.District = protoAddr.District
-	}
-	if protoAddr.Vtc != nil {
-		addr.VTC = protoAddr.Vtc
-	}
-	if protoAddr.State != nil {
-		addr.State = protoAddr.State
-	}
-	if protoAddr.Country != nil {
-		addr.Country = protoAddr.Country
-	}
-	if protoAddr.Pincode != nil {
-		addr.Pincode = protoAddr.Pincode
-	}
-	if protoAddr.FullAddress != nil {
-		addr.FullAddress = protoAddr.FullAddress
-	}
+	addr.House = stringPtrIfNotEmpty(protoAddr.GetHouse())
+	addr.Street = stringPtrIfNotEmpty(protoAddr.GetStreet())
+	addr.Landmark = stringPtrIfNotEmpty(protoAddr.GetLandmark())
+	addr.PostOffice = stringPtrIfNotEmpty(protoAddr.GetPostOffice())
+	addr.Subdistrict = stringPtrIfNotEmpty(protoAddr.GetSubdistrict())
+	addr.District = stringPtrIfNotEmpty(protoAddr.GetDistrict())
+	addr.VTC = stringPtrIfNotEmpty(protoAddr.GetVtc())
+	addr.State = stringPtrIfNotEmpty(protoAddr.GetState())
+	addr.Country = stringPtrIfNotEmpty(protoAddr.GetCountry())
+	addr.Pincode = stringPtrIfNotEmpty(protoAddr.GetPincode())
+	addr.FullAddress = stringPtrIfNotEmpty(protoAddr.GetFullAddress())
 
 	// Convert timestamps
-	if protoAddr.CreatedAt != nil {
-		addr.CreatedAt = protoAddr.CreatedAt.AsTime()
+	if protoAddr.GetCreatedAt() != nil {
+		addr.CreatedAt = protoAddr.GetCreatedAt().AsTime()
 	}
-	if protoAddr.UpdatedAt != nil {
-		addr.UpdatedAt = protoAddr.UpdatedAt.AsTime()
+	if protoAddr.GetUpdatedAt() != nil {
+		addr.UpdatedAt = protoAddr.GetUpdatedAt().AsTime()
 	}
 
 	// Build full address if not provided
@@ -326,5 +330,22 @@ func protoAddressToAddress(protoAddr *proto.Address) *Address {
 		addr.FullAddress = &fullAddr
 	}
 
+	// Convert metadata
+	if meta := protoAddr.GetMetadata(); len(meta) > 0 {
+		addr.Metadata = make(map[string]interface{}, len(meta))
+		for k, v := range meta {
+			addr.Metadata[k] = v
+		}
+	}
+
 	return addr
+}
+
+// stringPtrIfNotEmpty returns a pointer to the string if it is not empty, otherwise nil
+func stringPtrIfNotEmpty(value string) *string {
+	if value == "" {
+		return nil
+	}
+	v := value
+	return &v
 }

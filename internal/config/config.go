@@ -57,6 +57,7 @@ type CORSConfig struct {
 type AAAConfig struct {
 	Enabled     bool   `mapstructure:"enabled"` // Enable/disable AAA authentication (default: true)
 	JWTSecret   string `mapstructure:"jwt_secret"`
+	APIKey      string `mapstructure:"api_key"` // API key for service-to-service authentication
 	CacheTTL    int    `mapstructure:"cache_ttl"`
 	ServiceURL  string `mapstructure:"service_url"`  // Legacy: kept for backward compatibility
 	BaseURL     string `mapstructure:"base_url"`     // HTTP REST API base URL (e.g., http://localhost:8080)
@@ -191,6 +192,7 @@ func Load() *Config {
 		AAA: AAAConfig{
 			Enabled:     aaaEnabled,
 			JWTSecret:   os.Getenv("AAA_JWT_SECRET"),
+			APIKey:      os.Getenv("AAA_API_KEY"), // API key for service-to-service authentication
 			CacheTTL:    aaaCacheTTL,
 			ServiceURL:  os.Getenv("AAA_SERVICE_URL"),
 			BaseURL:     getAAABaseURL(), // HTTP REST API base URL
