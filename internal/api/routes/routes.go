@@ -1,7 +1,6 @@
 package routes
 
 import (
-	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -177,15 +176,8 @@ func newEcommerceCollaboratorClient(cfg *config.EcommerceConfig) (pb.Collaborato
 		return nil, nil
 	}
 
-	timeout := time.Duration(cfg.TimeoutSeconds) * time.Second
-	if timeout <= 0 {
-		timeout = 5 * time.Second
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	dialOptions := []grpc.DialOption{grpc.WithBlock()}
+	// Non-blocking gRPC client - allows server to start even if e-commerce service is unavailable
+	dialOptions := []grpc.DialOption{}
 
 	if cfg.UseTLS {
 		tlsConfig := &tls.Config{}
@@ -217,10 +209,19 @@ func newEcommerceCollaboratorClient(cfg *config.EcommerceConfig) (pb.Collaborato
 		dialOptions = append(dialOptions, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
-	conn, err := grpc.DialContext(ctx, cfg.GRPCAddress, dialOptions...)
+	// Use modern grpc.NewClient() instead of deprecated grpc.DialContext()
+	// NewClient performs lazy connection - actual connection happens on first RPC call
+	conn, err := grpc.NewClient(cfg.GRPCAddress, dialOptions...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to dial ecommerce collaborator service: %w", err)
+		// This only fails if client creation fails (e.g., invalid options)
+		fmt.Printf("⚠️  Warning: Failed to create e-commerce gRPC client: %v\n", err)
+		fmt.Println("   E-commerce webhook routes will not be available")
+		return nil, nil
 	}
 
+	// Honest message - no false claims about connection status
+	// Connection will be established automatically on first RPC call
+	fmt.Printf("📡 E-commerce gRPC client initialized (target: %s)\n", cfg.GRPCAddress)
+	fmt.Println("   Connection will be established on first RPC call")
 	return pb.NewCollaboratorServiceClient(conn), nil
 }

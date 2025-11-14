@@ -3,7 +3,7 @@ module kisanlink-erp
 go 1.24.4
 
 require (
-	github.com/Kisanlink/aaa-service/v2 v2.1.4
+	github.com/Kisanlink/aaa-service/v2 v2.1.6
 	github.com/Kisanlink/kisanlink-db v0.3.0
 	github.com/MarceloPetrucio/go-scalar-api-reference v0.0.0-20240521013641-ce5d2efe0e06
 	github.com/aws/aws-sdk-go-v2 v1.39.0
@@ -122,7 +122,5 @@ require (
 	modernc.org/memory v1.5.0 // indirect
 	modernc.org/sqlite v1.23.1 // indirect
 )
-
-replace github.com/Kisanlink/aaa-service/v2 => ../../aaa-v2/aaa-service
 
 replace kisanlink-ecom => github.com/Kisanlink/kisanlink-ecom v0.1.0
