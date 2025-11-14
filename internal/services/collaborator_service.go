@@ -11,7 +11,7 @@ import (
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
 
-	pb "kisanlink-ecom/proto/gen/go/collaborator/v1"
+	pb "github.com/Kisanlink/kisanlink-ecom/proto/gen/go/collaborator/v1"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"

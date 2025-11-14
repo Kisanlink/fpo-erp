@@ -31,11 +31,14 @@ type RoleContext struct {
 
 // UserContextClaims represents user information in JWT
 type UserContextClaims struct {
-	ID          string `json:"id"`
-	Username    string `json:"username"`
-	PhoneNumber string `json:"phone_number"`
-	CountryCode string `json:"country_code"`
-	IsValidated bool   `json:"is_validated"`
+	ID            string                `json:"id"`
+	Username      string                `json:"username"`
+	PhoneNumber   string                `json:"phone_number"`
+	CountryCode   string                `json:"country_code"`
+	IsValidated   bool                  `json:"is_validated"`
+	Roles         []RoleContext         `json:"roles,omitempty"`
+	Organizations []OrganizationContext `json:"organizations,omitempty"`
+	Groups        []GroupContext        `json:"groups,omitempty"`
 }
 
 // CustomClaims extends JWT standard claims with AAA service context
@@ -59,15 +62,29 @@ type CustomClaims struct {
 func GetUserOrganizations(claims *CustomClaims) []string {
 	orgMap := make(map[string]bool)
 
-	// Get organization IDs from roles with organization scope
+	// Get organization IDs from roles with organization scope (top-level)
 	for _, role := range claims.Roles {
 		if role.OrganizationID != nil && *role.OrganizationID != "" {
 			orgMap[*role.OrganizationID] = true
 		}
 	}
 
-	// Get organization IDs from direct organization memberships
+	// Get organization IDs from roles with organization scope (user_context)
+	for _, role := range claims.UserContext.Roles {
+		if role.OrganizationID != nil && *role.OrganizationID != "" {
+			orgMap[*role.OrganizationID] = true
+		}
+	}
+
+	// Get organization IDs from direct organization memberships (top-level)
 	for _, org := range claims.Organizations {
+		if org.ID != "" {
+			orgMap[org.ID] = true
+		}
+	}
+
+	// Get organization IDs from direct organization memberships (user_context)
+	for _, org := range claims.UserContext.Organizations {
 		if org.ID != "" {
 			orgMap[org.ID] = true
 		}

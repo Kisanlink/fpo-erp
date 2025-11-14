@@ -169,6 +169,8 @@ definitions:
         allOf:
         - $ref: '#/definitions/models.AddressInfo'
         description: Embedded from AAA
+      address_id:
+        type: string
       bank_account_no:
         type: string
       bank_ifsc:
@@ -186,6 +188,8 @@ definitions:
       email:
         type: string
       experience:
+        type: string
+      external_id:
         type: string
       gst_number:
         type: string
