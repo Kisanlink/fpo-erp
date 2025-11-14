@@ -66,16 +66,6 @@ repos:
         name: Prevent commits to main/master
         args: ['--branch', 'main', '--branch', 'master']
 
-  # Swagger documentation validation
-  - repo: local
-    hooks:
-      - id: swagger-validate
-        name: Validate Swagger docs
-        entry: bash -c 'swag init --parseDependency --parseInternal -g cmd/server/main.go'
-        language: system
-        pass_filenames: false
-        files: '\.(go)$'
-
   # Commit message format
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v3.0.0

@@ -9811,6 +9811,9 @@ const docTemplate = `{
                         }
                     ]
                 },
+                "address_id": {
+                    "type": "string"
+                },
                 "bank_account_no": {
                     "type": "string"
                 },
@@ -9836,6 +9839,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "experience": {
+                    "type": "string"
+                },
+                "external_id": {
                     "type": "string"
                 },
                 "gst_number": {

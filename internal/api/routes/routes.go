@@ -13,7 +13,7 @@ import (
 	"kisanlink-erp/internal/database/repositories"
 	"kisanlink-erp/internal/services"
 
-	pb "kisanlink-ecom/proto/gen/go/collaborator/v1"
+	pb "github.com/Kisanlink/kisanlink-ecom/proto/gen/go/collaborator/v1"
 
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
