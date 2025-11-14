@@ -6,18 +6,18 @@ import (
 
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
-	"kisanlink-erp/internal/services"
+	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
 
 type SalesHandler struct {
-	salesService  *services.SalesService
+	salesService  interfaces.SalesServiceInterface
 	aaaMiddleware *aaa.AAAMiddleware
 }
 
-func NewSalesHandler(salesService *services.SalesService, aaaMiddleware *aaa.AAAMiddleware) *SalesHandler {
+func NewSalesHandler(salesService interfaces.SalesServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *SalesHandler {
 	return &SalesHandler{
 		salesService:  salesService,
 		aaaMiddleware: aaaMiddleware,
@@ -185,34 +185,6 @@ func (h *SalesHandler) DeleteSale(c *gin.Context) {
 	}
 
 	utils.OKResponse(c, "Sale deleted successfully", nil)
-}
-
-// GetSalesByCustomer handles GET /api/v1/sales/customer/:customerID
-// @Summary Get Sales by Customer
-// @Description Retrieve all sales for a specific customer
-// @Tags Sales
-// @Produce json
-// @Param customerID path string true "Customer ID" example(CUST_12345678)
-// @Success 200 {object} utils.Response{data=[]models.SaleResponse} "Sales retrieved successfully"
-// @Failure 400 {object} utils.ErrorResponseModel "Bad request"
-// @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
-// @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
-// @Security BearerAuth
-// @Router /api/v1/sales/customer/{customerID} [get]
-func (h *SalesHandler) GetSalesByCustomer(c *gin.Context) {
-	customerID := c.Param("customerID")
-	if customerID == "" {
-		utils.BadRequestResponse(c, "Customer ID is required", nil)
-		return
-	}
-
-	sales, err := h.salesService.GetSalesByCustomer(customerID)
-	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve sales", err)
-		return
-	}
-
-	utils.OKResponse(c, "Sales retrieved successfully", sales)
 }
 
 // GetSalesByDateRange handles GET /api/v1/sales/date-range
@@ -456,20 +428,19 @@ func (h *SalesHandler) RegisterRoutes(router *gin.RouterGroup) {
 		sales.Use(h.aaaMiddleware.Authenticate())
 
 		// Create/Update/Delete routes - CEO=CRUD, Store_Staff=CRUD, Tech_Support=R/W (temp)
-		sales.POST("", h.aaaMiddleware.RequirePermission("aaa/sale", "*", "create"), h.CreateSale)
-		sales.PUT("/:id", h.aaaMiddleware.RequirePermission("aaa/sale", "*", "update"), h.UpdateSale)
-		sales.PATCH("/:id/status", h.aaaMiddleware.RequirePermission("aaa/sale", "*", "update"), h.UpdateSaleStatus)
-		sales.DELETE("/:id", h.aaaMiddleware.RequirePermission("aaa/sale", "*", "delete"), h.DeleteSale)
+		sales.POST("", h.aaaMiddleware.RequireOrgPermission("sale", "create"), h.CreateSale)
+		sales.PUT("/:id", h.aaaMiddleware.RequireOrgPermission("sale", "update"), h.UpdateSale)
+		sales.PATCH("/:id/status", h.aaaMiddleware.RequireOrgPermission("sale", "update"), h.UpdateSaleStatus)
+		sales.DELETE("/:id", h.aaaMiddleware.RequireOrgPermission("sale", "delete"), h.DeleteSale)
 
 		// Read routes - Director=R, CEO=CRUD, Auditor=R, Accountant=R, Tech_Support=R/W (temp), Store_Manager=R, Store_Staff=CRUD
-		sales.GET("", h.aaaMiddleware.RequirePermission("aaa/sale", "*", "read"), h.GetAllSales)
-		sales.GET("/summary", h.aaaMiddleware.RequirePermission("aaa/sale_summary", "*", "read"), h.GetSalesSummary)
-		sales.GET("/:id", h.aaaMiddleware.RequirePermission("aaa/sale", "*", "read"), h.GetSale)
-		sales.GET("/:id/returns", h.aaaMiddleware.RequirePermission("aaa/sale", "*", "read"), h.GetReturnsForSale)
-		sales.GET("/customer/:customerID", h.aaaMiddleware.RequirePermission("aaa/sale", "*", "read"), h.GetSalesByCustomer)
-		sales.GET("/date-range", h.aaaMiddleware.RequirePermission("aaa/sale", "*", "read"), h.GetSalesByDateRange)
-		sales.GET("/status/:status", h.aaaMiddleware.RequirePermission("aaa/sale", "*", "read"), h.GetSalesByStatus)
-		sales.GET("/total-amount", h.aaaMiddleware.RequirePermission("aaa/sale", "*", "read"), h.GetTotalSalesAmount)
-		sales.GET("/top-selling", h.aaaMiddleware.RequirePermission("aaa/sale", "*", "read"), h.GetTopSellingProducts)
+		sales.GET("", h.aaaMiddleware.RequireOrgPermission("sale", "read"), h.GetAllSales)
+		sales.GET("/summary", h.aaaMiddleware.RequireOrgPermission("sale_summary", "read"), h.GetSalesSummary)
+		sales.GET("/:id", h.aaaMiddleware.RequireOrgPermission("sale", "read"), h.GetSale)
+		sales.GET("/:id/returns", h.aaaMiddleware.RequireOrgPermission("sale", "read"), h.GetReturnsForSale)
+		sales.GET("/date-range", h.aaaMiddleware.RequireOrgPermission("sale", "read"), h.GetSalesByDateRange)
+		sales.GET("/status/:status", h.aaaMiddleware.RequireOrgPermission("sale", "read"), h.GetSalesByStatus)
+		sales.GET("/total-amount", h.aaaMiddleware.RequireOrgPermission("sale", "read"), h.GetTotalSalesAmount)
+		sales.GET("/top-selling", h.aaaMiddleware.RequireOrgPermission("sale", "read"), h.GetTopSellingProducts)
 	}
 }

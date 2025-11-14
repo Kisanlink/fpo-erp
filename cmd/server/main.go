@@ -3,12 +3,13 @@
 // @description Comprehensive ERP system for agricultural cooperatives with multi-tenant architecture
 // @termsOfService http://swagger.io/terms/
 // @contact.name Kisanlink Support
-// @contact.url http://www.kisanlink.com/support
-// @contact.email support@kisanlink.com
+// @contact.url https://github.com/Kisanlink/fpo-erp
+// @contact.email info@kisanlink.in
 // @license.name MIT
 // @license.url https://opensource.org/licenses/MIT
 // @host localhost:3000
 // @BasePath /
+// @schemes http https
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
@@ -23,8 +24,10 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	_ "kisanlink-erp/docs" // Import docs for Swagger
+	"kisanlink-erp/internal/aaa"
 	api_server "kisanlink-erp/internal/api/server"
 	"kisanlink-erp/internal/config"
 	"kisanlink-erp/internal/constants"
@@ -65,6 +68,35 @@ func main() {
 
 	// Initialize hash counters from database
 	initializeHashCounters(pg)
+
+	// Seed AAA roles and permissions for ERP module (non-fatal)
+	if cfg.AAA.Enabled && cfg.AAA.GRPCAddress != "" {
+		log.Println("Attempting to seed AAA roles and permissions for ERP module...")
+
+		catalogClient, err := aaa.NewCatalogGRPCClient(cfg.AAA.GRPCAddress, cfg.AAA.APIKey)
+		if err != nil {
+			log.Printf("Warning: AAA catalog client initialization failed: %v", err)
+		} else {
+			defer func() {
+				if err := catalogClient.Close(); err != nil {
+					log.Printf("Warning: failed to close AAA catalog client: %v", err)
+				}
+			}()
+
+			seedCtx, seedCancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer seedCancel()
+
+			// Pass "erp-module" as service_id to use ERP-specific seed provider
+			if err := catalogClient.SeedRolesAndPermissions(seedCtx, "erp-module", false); err != nil {
+				log.Printf("Warning: AAA role/permission seeding failed: %v", err)
+				log.Println("ERP will continue to start, but ensure AAA has required roles.")
+			} else {
+				log.Println("AAA ERP roles and permissions seeded successfully.")
+			}
+		}
+	} else {
+		log.Println("Skipping AAA role/permission seeding (AAA disabled or gRPC address missing).")
+	}
 
 	// Initialize HTTP server with AAA middleware
 	httpServer := api_server.NewServer(pg, cfg)
@@ -120,6 +152,17 @@ func initializeHashCounters(db *gorm.DB) {
 		constants.TableRefundPolicy:  hash.Medium, // Refund Policies
 		constants.TableBankPayment:   hash.Medium, // Bank Payments
 		constants.TableAttachment:    hash.Medium, // Attachments
+		// Procurement Module
+		constants.TableCollaborator:        hash.Medium, // Collaborators/Vendors
+		constants.TableCollaboratorProduct: hash.Medium, // Collaborator-Product Junction
+		constants.TableProductVariant:      hash.Medium, // Product Variants
+		constants.TablePurchaseOrder:       hash.Medium, // Purchase Orders
+		constants.TablePurchaseOrderItem:   hash.Medium, // PO Items
+		constants.TableGRN:                 hash.Medium, // Goods Receipt Notes
+		constants.TableGRNItem:             hash.Medium, // GRN Items
+		// Webhook Integration
+		constants.TableWebhookEvent:           hash.Medium, // Webhook Events
+		constants.TableWebhookDeliveryAttempt: hash.Medium, // Webhook Delivery Attempts
 	}
 
 	// Initialize counters for each table
@@ -160,6 +203,17 @@ func getExistingIDs(db *gorm.DB, tableID string) []string {
 		constants.TableRefundPolicy:  "refund_policies",
 		constants.TableBankPayment:   "bank_payments",
 		constants.TableAttachment:    "attachments",
+		// Procurement Module
+		constants.TableCollaborator:        "collaborators",
+		constants.TableCollaboratorProduct: "collaborator_products",
+		constants.TableProductVariant:      "product_variants",
+		constants.TablePurchaseOrder:       "purchase_orders",
+		constants.TablePurchaseOrderItem:   "purchase_order_items",
+		constants.TableGRN:                 "goods_receipt_notes",
+		constants.TableGRNItem:             "grn_items",
+		// Webhook Integration
+		constants.TableWebhookEvent:           "webhook_events",
+		constants.TableWebhookDeliveryAttempt: "webhook_delivery_attempts",
 	}
 
 	tableName, exists := tableNameMap[tableID]

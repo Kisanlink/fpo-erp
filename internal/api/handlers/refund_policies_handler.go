@@ -3,18 +3,18 @@ package handlers
 import (
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
-	"kisanlink-erp/internal/services"
+	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
 
 type RefundPoliciesHandler struct {
-	refundPoliciesService *services.RefundPoliciesService
+	refundPoliciesService interfaces.RefundPoliciesServiceInterface
 	aaaMiddleware         *aaa.AAAMiddleware
 }
 
-func NewRefundPoliciesHandler(refundPoliciesService *services.RefundPoliciesService, aaaMiddleware *aaa.AAAMiddleware) *RefundPoliciesHandler {
+func NewRefundPoliciesHandler(refundPoliciesService interfaces.RefundPoliciesServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *RefundPoliciesHandler {
 	return &RefundPoliciesHandler{
 		refundPoliciesService: refundPoliciesService,
 		aaaMiddleware:         aaaMiddleware,
@@ -151,12 +151,11 @@ func (h *RefundPoliciesHandler) RegisterRoutes(router *gin.RouterGroup) {
 		policies.Use(h.aaaMiddleware.Authenticate())
 
 		// Read routes - Director=R, CEO=CRUD, Auditor=R, Accountant=CRUD, Tech_Support=R/W (temp), Store_Manager=–, Store_Staff=–
-		policies.GET("", h.aaaMiddleware.RequirePermission("aaa/refund_policy", "*", "read"), h.GetAllRefundPolicies)
-		policies.GET("/:id", h.aaaMiddleware.RequirePermission("aaa/refund_policy", "*", "read"), h.GetRefundPolicy)
+		policies.GET("", h.aaaMiddleware.RequireOrgPermission("refund_policy", "read"), h.GetAllRefundPolicies)
+		policies.GET("/:id", h.aaaMiddleware.RequireOrgPermission("refund_policy", "read"), h.GetRefundPolicy)
 
 		// Protected routes - CEO=CRUD, Accountant=CRUD, Tech_Support=R/W (temp)
-		policies.POST("", h.aaaMiddleware.RequirePermission("aaa/refund_policy", "*", "create"), h.CreateRefundPolicy)
-		policies.PATCH("/:id", h.aaaMiddleware.RequirePermission("aaa/refund_policy", "*", "update"), h.UpdateRefundPolicy)
+		policies.POST("", h.aaaMiddleware.RequireOrgPermission("refund_policy", "create"), h.CreateRefundPolicy)
+		policies.PATCH("/:id", h.aaaMiddleware.RequireOrgPermission("refund_policy", "update"), h.UpdateRefundPolicy)
 	}
 }
-

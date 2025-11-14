@@ -1,0 +1,86 @@
+[
+  {
+    "ParameterKey": "FPOIdentifier",
+    "ParameterValue": "fpo001"
+  },
+  {
+    "ParameterKey": "Environment",
+    "ParameterValue": "staging"
+  },
+  {
+    "ParameterKey": "VpcId",
+    "ParameterValue": "vpc-xxxxxxxxxxxxxxxxx"
+  },
+  {
+    "ParameterKey": "PublicSubnet1Id",
+    "ParameterValue": "subnet-xxxxxxxxxxxxxxxxx"
+  },
+  {
+    "ParameterKey": "PublicSubnet2Id",
+    "ParameterValue": "subnet-yyyyyyyyyyyyyyyyy"
+  },
+  {
+    "ParameterKey": "PrivateSubnet1Id",
+    "ParameterValue": "subnet-zzzzzzzzzzzzzzzzz"
+  },
+  {
+    "ParameterKey": "PrivateSubnet2Id",
+    "ParameterValue": "subnet-aaaaaaaaaaaaaaaaa"
+  },
+  {
+    "ParameterKey": "ECRImageUri",
+    "ParameterValue": "123456789012.dkr.ecr.us-west-2.amazonaws.com/kisanlink-erp:latest"
+  },
+  {
+    "ParameterKey": "ContainerPort",
+    "ParameterValue": "8080"
+  },
+  {
+    "ParameterKey": "DesiredCount",
+    "ParameterValue": "2"
+  },
+  {
+    "ParameterKey": "TaskCPU",
+    "ParameterValue": "512"
+  },
+  {
+    "ParameterKey": "TaskMemory",
+    "ParameterValue": "1024"
+  },
+  {
+    "ParameterKey": "DBInstanceClass",
+    "ParameterValue": "db.t3.micro"
+  },
+  {
+    "ParameterKey": "DBAllocatedStorage",
+    "ParameterValue": "20"
+  },
+  {
+    "ParameterKey": "DBUsername",
+    "ParameterValue": "erp_admin"
+  },
+  {
+    "ParameterKey": "DBPassword",
+    "ParameterValue": "CHANGE_ME_STRONG_PASSWORD_123!"
+  },
+  {
+    "ParameterKey": "AAAGrpcAddress",
+    "ParameterValue": "aaa-grpc.kisanlink.com:9090"
+  },
+  {
+    "ParameterKey": "AAAJWTSecret",
+    "ParameterValue": "CHANGE_ME_AAA_JWT_SECRET_32_CHARACTERS_MIN"
+  },
+  {
+    "ParameterKey": "JWTSecret",
+    "ParameterValue": "CHANGE_ME_JWT_SECRET_32_CHARACTERS_MIN"
+  },
+  {
+    "ParameterKey": "AWSRegion",
+    "ParameterValue": "us-west-2"
+  },
+  {
+    "ParameterKey": "CertificateArn",
+    "ParameterValue": ""
+  }
+]

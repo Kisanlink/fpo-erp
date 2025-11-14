@@ -24,40 +24,37 @@ func (r *AttachmentRepository) Create(attachment *models.Attachment) error {
 // GetByID retrieves an attachment by ID
 func (r *AttachmentRepository) GetByID(id string) (*models.Attachment, error) {
 	var attachment models.Attachment
-	err := r.db.Preload("Sale").Preload("Return").First(&attachment, "id = ?", id).Error
+	err := r.db.First(&attachment, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}
 	return &attachment, nil
 }
 
-// GetBySaleID retrieves all attachments for a sale
-func (r *AttachmentRepository) GetBySaleID(saleID string) ([]models.Attachment, error) {
+// GetByEntity retrieves all attachments for a specific entity
+func (r *AttachmentRepository) GetByEntity(entityType, entityID string) ([]models.Attachment, error) {
 	var attachments []models.Attachment
-	err := r.db.Where("sale_id = ?", saleID).Find(&attachments).Error
-	return attachments, err
-}
-
-// GetByReturnID retrieves all attachments for a return
-func (r *AttachmentRepository) GetByReturnID(returnID string) ([]models.Attachment, error) {
-	var attachments []models.Attachment
-	err := r.db.Where("return_id = ?", returnID).Find(&attachments).Error
+	err := r.db.Where("entity_type = ? AND entity_id = ?", entityType, entityID).
+		Order("uploaded_at DESC").
+		Find(&attachments).Error
 	return attachments, err
 }
 
 // GetAll retrieves all attachments with optional filters
-func (r *AttachmentRepository) GetAll(saleID, returnID *string, limit, offset int) ([]models.Attachment, error) {
+func (r *AttachmentRepository) GetAll(entityType, entityID *string, limit, offset int) ([]models.Attachment, error) {
 	var attachments []models.Attachment
-	query := r.db.Preload("Sale").Preload("Return")
+	query := r.db.Model(&models.Attachment{})
 
-	if saleID != nil {
-		query = query.Where("sale_id = ?", *saleID)
+	if entityType != nil && *entityType != "" {
+		query = query.Where("entity_type = ?", *entityType)
 	}
-	if returnID != nil {
-		query = query.Where("return_id = ?", *returnID)
+	if entityID != nil && *entityID != "" {
+		query = query.Where("entity_id = ?", *entityID)
 	}
 
-	err := query.Limit(limit).Offset(offset).Find(&attachments).Error
+	err := query.Order("uploaded_at DESC").
+		Limit(limit).Offset(offset).
+		Find(&attachments).Error
 	return attachments, err
 }
 
@@ -71,27 +68,17 @@ func (r *AttachmentRepository) Delete(id string) error {
 	return r.db.Delete(&models.Attachment{}, "id = ?", id).Error
 }
 
-// DeleteBySaleID deletes all attachments for a sale
-func (r *AttachmentRepository) DeleteBySaleID(saleID string) error {
-	return r.db.Where("sale_id = ?", saleID).Delete(&models.Attachment{}).Error
+// DeleteByEntity deletes all attachments for an entity
+func (r *AttachmentRepository) DeleteByEntity(entityType, entityID string) error {
+	return r.db.Where("entity_type = ? AND entity_id = ?", entityType, entityID).Delete(&models.Attachment{}).Error
 }
 
-// DeleteByReturnID deletes all attachments for a return
-func (r *AttachmentRepository) DeleteByReturnID(returnID string) error {
-	return r.db.Where("return_id = ?", returnID).Delete(&models.Attachment{}).Error
-}
-
-// CountBySaleID counts attachments for a sale
-func (r *AttachmentRepository) CountBySaleID(saleID string) (int64, error) {
+// CountByEntity counts attachments for a specific entity
+func (r *AttachmentRepository) CountByEntity(entityType, entityID string) (int64, error) {
 	var count int64
-	err := r.db.Model(&models.Attachment{}).Where("sale_id = ?", saleID).Count(&count).Error
-	return count, err
-}
-
-// CountByReturnID counts attachments for a return
-func (r *AttachmentRepository) CountByReturnID(returnID string) (int64, error) {
-	var count int64
-	err := r.db.Model(&models.Attachment{}).Where("return_id = ?", returnID).Count(&count).Error
+	err := r.db.Model(&models.Attachment{}).
+		Where("entity_type = ? AND entity_id = ?", entityType, entityID).
+		Count(&count).Error
 	return count, err
 }
 
@@ -99,7 +86,7 @@ func (r *AttachmentRepository) CountByReturnID(returnID string) (int64, error) {
 func (r *AttachmentRepository) GetByFileType(fileType string, limit, offset int) ([]models.Attachment, error) {
 	var attachments []models.Attachment
 	err := r.db.Where("file_type LIKE ?", "%"+fileType+"%").
-		Preload("Sale").Preload("Return").
+		Order("uploaded_at DESC").
 		Limit(limit).Offset(offset).
 		Find(&attachments).Error
 	return attachments, err
@@ -109,7 +96,7 @@ func (r *AttachmentRepository) GetByFileType(fileType string, limit, offset int)
 func (r *AttachmentRepository) GetByUploadedBy(uploadedBy string, limit, offset int) ([]models.Attachment, error) {
 	var attachments []models.Attachment
 	err := r.db.Where("uploaded_by = ?", uploadedBy).
-		Preload("Sale").Preload("Return").
+		Order("uploaded_at DESC").
 		Limit(limit).Offset(offset).
 		Find(&attachments).Error
 	return attachments, err
@@ -119,7 +106,6 @@ func (r *AttachmentRepository) GetByUploadedBy(uploadedBy string, limit, offset 
 func (r *AttachmentRepository) GetRecentAttachments(limit int) ([]models.Attachment, error) {
 	var attachments []models.Attachment
 	err := r.db.Order("uploaded_at DESC").
-		Preload("Sale").Preload("Return").
 		Limit(limit).
 		Find(&attachments).Error
 	return attachments, err
@@ -129,7 +115,6 @@ func (r *AttachmentRepository) GetRecentAttachments(limit int) ([]models.Attachm
 func (r *AttachmentRepository) GetAttachmentsByDateRange(startDate, endDate string, limit, offset int) ([]models.Attachment, error) {
 	var attachments []models.Attachment
 	err := r.db.Where("uploaded_at BETWEEN ? AND ?", startDate, endDate).
-		Preload("Sale").Preload("Return").
 		Order("uploaded_at DESC").
 		Limit(limit).Offset(offset).
 		Find(&attachments).Error

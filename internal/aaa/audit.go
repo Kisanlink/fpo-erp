@@ -35,7 +35,7 @@ func (a *AuditLogger) LogEvent(ctx context.Context, userID, action, resource, re
 
 	// For now, just log to console
 	// In production, this could send to AAA service or external audit system
-	// log.Printf("AUDIT: UserID: %s, Action: %s, Resource: %s, ResourceID: %s, Details: %s", 
+	// log.Printf("AUDIT: UserID: %s, Action: %s, Resource: %s, ResourceID: %s, Details: %s",
 	//     userID, action, resource, resourceID, details)
 
 	return nil

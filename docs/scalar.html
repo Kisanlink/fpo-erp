@@ -3,153 +3,435 @@
   <head>
     <title>Kisanlink ERP API Documentation</title>
     <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        background: #f8f9fa;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      .header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 40px 20px;
+        text-align: center;
+        margin-bottom: 30px;
+        border-radius: 10px;
+      }
+
+      .header h1 {
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+        font-weight: 600;
+      }
+
+      .header p {
+        font-size: 1.2rem;
+        opacity: 0.9;
+      }
+
+      .badge {
+        display: inline-block;
+        background: #28a745;
+        color: white;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin: 10px 5px;
+      }
+
+      .links {
+        text-align: center;
+        margin: 30px 0;
+      }
+
+      .links a {
+        display: inline-block;
+        padding: 12px 25px;
+        background: #007bff;
+        color: white;
+        text-decoration: none;
+        border-radius: 5px;
+        margin: 5px 10px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+      }
+
+      .links a:hover {
+        background: #0056b3;
+        transform: translateY(-2px);
+      }
+
+      .links a.swagger {
+        background: #85ea2d;
+      }
+
+      .links a.swagger:hover {
+        background: #6bb524;
+      }
+
+      .section {
+        background: white;
+        margin: 20px 0;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      }
+
+      .section h2 {
+        color: #2c3e50;
+        margin-bottom: 20px;
+        font-size: 1.8rem;
+        border-bottom: 3px solid #667eea;
+        padding-bottom: 10px;
+      }
+
+      .section h3 {
+        color: #34495e;
+        margin: 25px 0 15px 0;
+        font-size: 1.4rem;
+      }
+
+      .code-block {
+        background: #2d3748;
+        color: #e2e8f0;
+        padding: 20px;
+        border-radius: 8px;
+        overflow-x: auto;
+        margin: 15px 0;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9rem;
+        line-height: 1.5;
+      }
+
+      .code-block .comment {
+        color: #68d391;
+        font-style: italic;
+      }
+
+      .code-block .string {
+        color: #fbb6ce;
+      }
+
+      .code-block .number {
+        color: #90cdf4;
+      }
+
+      .code-block .keyword {
+        color: #f6e05e;
+        font-weight: bold;
+      }
+
+      .endpoint {
+        background: #f8f9fa;
+        border-left: 4px solid #667eea;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 0 5px 5px 0;
+      }
+
+      .method {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 3px;
+        color: white;
+        font-weight: bold;
+        font-size: 0.8rem;
+        margin-right: 10px;
+      }
+
+      .method.get { background: #28a745; }
+      .method.post { background: #007bff; }
+      .method.patch { background: #ffc107; color: #000; }
+      .method.delete { background: #dc3545; }
+
+      .features {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin: 20px 0;
+      }
+
+      .feature {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        border-left: 4px solid #28a745;
+      }
+
+      .feature h4 {
+        color: #2c3e50;
+        margin-bottom: 10px;
+        font-size: 1.2rem;
+      }
+
+      .feature p {
+        color: #6c757d;
+        font-size: 0.95rem;
+      }
+
+      .highlight {
+        background: linear-gradient(120deg, #a8edea 0%, #fed6e3 100%);
+        padding: 20px;
+        border-radius: 10px;
+        border-left: 5px solid #667eea;
+        margin: 20px 0;
+      }
+
+      .highlight h3 {
+        color: #2c3e50;
+        margin-bottom: 15px;
+      }
+
+      ul {
+        margin: 15px 0;
+        padding-left: 30px;
+      }
+
+      li {
+        margin: 8px 0;
+      }
+
+      .new-badge {
+        background: #ff6b6b;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: bold;
+        margin-left: 10px;
+      }
+
+      @media (max-width: 768px) {
+        .container {
+          padding: 10px;
+        }
+
+        .header h1 {
+          font-size: 2rem;
+        }
+
+        .links a {
+          display: block;
+          margin: 10px 0;
+        }
+
+        .code-block {
+          font-size: 0.8rem;
+          padding: 15px;
+        }
+      }
+    </style>
   </head>
 
   <body>
-    <div id="app"></div>
+    <div class="container">
+      <div class="header">
+        <h1>🌾 Kisanlink ERP API</h1>
+        <p>Comprehensive Enterprise Resource Planning System</p>
+        <div>
+          <span class="badge">✅ Production Ready</span>
+          <span class="badge">🏷️ Tax System Enabled</span>
+          <span class="badge">🔒 JWT Secured</span>
+        </div>
+      </div>
 
-    <!-- Load the Script -->
-    <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@latest/dist/browser/standalone.js"></script>
+      <div class="links">
+        <a href="/swagger/index.html" class="swagger" target="_blank">📖 Interactive Swagger UI</a>
+        <a href="/api-docs" target="_blank">📄 OpenAPI JSON Spec</a>
+      </div>
 
-    <!-- Initialize the Scalar API Reference -->
-    <script>
-      Scalar.createApiReference('#app', {
-        // The URL of your local OpenAPI/Swagger document
-        url: 'http://localhost:3000/api-docs',
-        // Avoid CORS issues
-        proxyUrl: 'https://proxy.scalar.com',
-        
-        // Configuration options based on Scalar documentation
-        configuration: {
-          // Theme configuration
-          theme: 'default',
-          layout: 'modern',
-          darkMode: false,
-          
-          // UI elements to show/hide
-          hideDownloadButton: false,
-          hideTryItPanel: false,
-          hideSearch: false,
-          hideInfo: false,
-          hideServers: false,
-          hideModels: false,
-          hideAuthentication: false,
-          hideSidebar: false,
-          hideTabs: false,
-          hideRequestSample: false,
-          hideResponseSample: false,
-          hideSchema: false,
-          hideSecurity: false,
-          hideParameters: false,
-          hideRequestBody: false,
-          hideResponseHeaders: false,
-          hideResponseBody: false,
-          hideStatusCode: false,
-          hideDescription: false,
-          hideSummary: false,
-          hideTags: false,
-          hideOperationId: false,
-          hideDeprecated: false,
-          hideExternalDocs: false,
-          hideContact: false,
-          hideLicense: false,
-          hideTermsOfService: false,
-          
-          // Custom styling
-          customCss: `
-            .scalar-card {
-              border-radius: 8px;
-              box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            }
-            .scalar-header {
-              background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-              color: white;
-            }
-            .scalar-sidebar {
-              background-color: #f8f9fa;
-            }
-            .scalar-content {
-              background-color: #ffffff;
-            }
-            .scalar-button {
-              background-color: #4CAF50;
-              border-color: #4CAF50;
-            }
-            .scalar-button:hover {
-              background-color: #45a049;
-              border-color: #45a049;
-            }
-          `,
-          
-          // Meta information
-          metaData: {
-            title: 'Kisanlink ERP API',
-            description: 'Comprehensive ERP system for agricultural cooperatives with multi-tenant architecture',
-            favicon: 'https://via.placeholder.com/32x32/4CAF50/FFFFFF?text=K',
-            logo: 'https://via.placeholder.com/200x60/4CAF50/FFFFFF?text=Kisanlink+ERP',
-          },
-          
-          // Authentication configuration
-          authentication: {
-            enabled: true,
-            showAuthentication: true,
-            showSecurity: true,
-            showBearerToken: true,
-            showApiKey: false,
-            showBasicAuth: false,
-            showOAuth2: false,
-          },
-          
-          // Request configuration
-          request: {
-            enabled: true,
-            showRequestSample: true,
-            showRequestBody: true,
-            showRequestHeaders: true,
-            showRequestParameters: true,
-            showRequestSecurity: true,
-          },
-          
-          // Response configuration
-          response: {
-            enabled: true,
-            showResponseSample: true,
-            showResponseBody: true,
-            showResponseHeaders: true,
-            showResponseStatus: true,
-            showResponseSchema: true,
-          },
-          
-          // Code generation
-          codeGeneration: {
-            enabled: true,
-            showCodeGeneration: true,
-            showCurl: true,
-            showJavaScript: true,
-            showPython: true,
-            showGo: true,
-            showJava: true,
-            showCSharp: true,
-            showPHP: true,
-            showRuby: true,
-          },
-          
-          // Advanced configuration
-          advanced: {
-            showAdvanced: true,
-            showSchema: true,
-            showExamples: true,
-            showDeprecated: true,
-            showExternalDocs: true,
-            showContact: true,
-            showLicense: true,
-            showTermsOfService: true,
-          }
-        }
-      })
-    </script>
+      <div class="highlight">
+        <h3>🎉 NEW: Inventory-Based Tax System <span class="new-badge">NEW</span></h3>
+        <p><strong>✅ Production Ready Tax Implementation</strong> - Automatic tax calculation with CGST, SGST, and custom taxes support!</p>
+      </div>
+
+      <div class="section">
+        <h2>🏷️ Tax System Overview</h2>
+
+        <div class="features">
+          <div class="feature">
+            <h4>✅ Automatic Tax Calculation</h4>
+            <p>Taxes are automatically calculated during sales transactions based on inventory batch configuration.</p>
+          </div>
+          <div class="feature">
+            <h4>🇮🇳 GST Compliant</h4>
+            <p>Proper CGST + SGST calculation with nearest paisa rounding for Indian GST compliance.</p>
+          </div>
+          <div class="feature">
+            <h4>🔧 Custom Tax Support</h4>
+            <p>Unlimited additional taxes via tax IDs - perfect for cess, fees, and special charges.</p>
+          </div>
+          <div class="feature">
+            <h4>🆓 Tax Exemption</h4>
+            <p>Full support for tax-free products and special exemption cases.</p>
+          </div>
+        </div>
+
+        <h3>Create Inventory Batch with Tax Configuration</h3>
+        <div class="code-block">
+<span class="keyword">POST</span> <span class="string">/api/v1/batches</span>
+{
+  <span class="string">"warehouse_id"</span>: <span class="string">"WH_BANGALORE_001"</span>,
+  <span class="string">"product_id"</span>: <span class="string">"PROD_RICE_BASMATI"</span>,
+  <span class="string">"cost_price"</span>: <span class="number">85.50</span>,
+  <span class="string">"expiry_date"</span>: <span class="string">"2025-12-31"</span>,
+  <span class="string">"quantity"</span>: <span class="number">1000</span>,
+
+  <span class="comment">// 🆕 NEW: Tax Configuration</span>
+  <span class="string">"cgst_rate"</span>: <span class="number">2.5</span>,           <span class="comment">// 2.5% CGST</span>
+  <span class="string">"sgst_rate"</span>: <span class="number">2.5</span>,           <span class="comment">// 2.5% SGST (Total GST = 5%)</span>
+  <span class="string">"custom_tax_ids"</span>: [         <span class="comment">// Optional: Additional custom taxes</span>
+    <span class="string">"TAX_CESS_ENV_001"</span>,
+    <span class="string">"TAX_MANDI_FEE_001"</span>
+  ],
+  <span class="string">"is_tax_exempt"</span>: <span class="keyword">false</span>      <span class="comment">// Whether this batch is tax-exempt</span>
+}
+        </div>
+
+        <h3>Sale Item Response (with Automatic Tax Calculation)</h3>
+        <div class="code-block">
+{
+  <span class="string">"id"</span>: <span class="string">"SITM_12345678"</span>,
+  <span class="string">"sale_id"</span>: <span class="string">"SALE_12345678"</span>,
+  <span class="string">"batch_id"</span>: <span class="string">"BTCH_12345678"</span>,
+  <span class="string">"quantity"</span>: <span class="number">10</span>,
+  <span class="string">"selling_price"</span>: <span class="number">100.00</span>,
+  <span class="string">"line_total"</span>: <span class="number">1000.00</span>,
+
+  <span class="comment">// 🆕 NEW: Calculated tax amounts</span>
+  <span class="string">"cgst_amount"</span>: <span class="number">25.00</span>,       <span class="comment">// 2.5% of 1000</span>
+  <span class="string">"sgst_amount"</span>: <span class="number">25.00</span>,       <span class="comment">// 2.5% of 1000</span>
+  <span class="string">"custom_tax_amount"</span>: <span class="number">10.00</span>, <span class="comment">// Custom taxes</span>
+  <span class="string">"total_tax_amount"</span>: <span class="number">60.00</span>   <span class="comment">// Total tax</span>
+}
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>📋 Key API Endpoints</h2>
+
+        <h3>Inventory Management</h3>
+        <div class="endpoint">
+          <span class="method get">GET</span>
+          <strong>/api/v1/batches</strong> - List all inventory batches
+        </div>
+        <div class="endpoint">
+          <span class="method post">POST</span>
+          <strong>/api/v1/batches</strong> - Create inventory batch with tax config <span class="new-badge">NEW</span>
+        </div>
+        <div class="endpoint">
+          <span class="method get">GET</span>
+          <strong>/api/v1/batches/{id}</strong> - Get specific batch by ID
+        </div>
+        <div class="endpoint">
+          <span class="method get">GET</span>
+          <strong>/api/v1/batches/expiring</strong> - Get batches expiring soon
+        </div>
+
+        <h3>Sales Management</h3>
+        <div class="endpoint">
+          <span class="method get">GET</span>
+          <strong>/api/v1/sales</strong> - List all sales
+        </div>
+        <div class="endpoint">
+          <span class="method post">POST</span>
+          <strong>/api/v1/sales</strong> - Create sale (auto tax calculation) <span class="new-badge">ENHANCED</span>
+        </div>
+        <div class="endpoint">
+          <span class="method get">GET</span>
+          <strong>/api/v1/sales/{id}</strong> - Get specific sale by ID
+        </div>
+
+        <h3>Tax Management</h3>
+        <div class="endpoint">
+          <span class="method get">GET</span>
+          <strong>/api/v1/taxes</strong> - List all taxes
+        </div>
+        <div class="endpoint">
+          <span class="method post">POST</span>
+          <strong>/api/v1/taxes</strong> - Create custom tax
+        </div>
+        <div class="endpoint">
+          <span class="method post">POST</span>
+          <strong>/api/v1/taxes/calculate</strong> - Calculate tax for items
+        </div>
+
+        <h3>Product & Warehouse Management</h3>
+        <div class="endpoint">
+          <span class="method get">GET</span>
+          <strong>/api/v1/products</strong> - List all products
+        </div>
+        <div class="endpoint">
+          <span class="method post">POST</span>
+          <strong>/api/v1/products</strong> - Create new product
+        </div>
+        <div class="endpoint">
+          <span class="method get">GET</span>
+          <strong>/api/v1/warehouses</strong> - List all warehouses
+        </div>
+        <div class="endpoint">
+          <span class="method post">POST</span>
+          <strong>/api/v1/warehouses</strong> - Create new warehouse
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>🔒 Authentication</h2>
+        <p>All API endpoints require JWT authentication. Include your token in the Authorization header:</p>
+        <div class="code-block">
+<span class="keyword">Authorization</span>: <span class="string">Bearer YOUR_JWT_TOKEN_HERE</span>
+        </div>
+
+        <h3>Example with curl:</h3>
+        <div class="code-block">
+curl -X POST http://localhost:3000/api/v1/batches \
+  -H <span class="string">"Authorization: Bearer YOUR_JWT_TOKEN"</span> \
+  -H <span class="string">"Content-Type: application/json"</span> \
+  -d <span class="string">'{
+    "warehouse_id": "WH_001",
+    "product_id": "PROD_001",
+    "cost_price": 100.00,
+    "expiry_date": "2025-12-31",
+    "quantity": 500,
+    "cgst_rate": 2.5,
+    "sgst_rate": 2.5,
+    "is_tax_exempt": false
+  }'</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>📚 Additional Resources</h2>
+        <ul>
+          <li><strong><a href="/swagger/index.html">Interactive Swagger UI</a></strong> - Full API explorer with try-it-out functionality</li>
+          <li><strong><a href="/api-docs">OpenAPI JSON Specification</a></strong> - Machine-readable API specification</li>
+          <li><strong>/health</strong> - Health check endpoint</li>
+          <li><strong>Tax Implementation Guide</strong> - See <code>implementation guides/TAX_IMPLEMENTATION_PLAN.md</code></li>
+        </ul>
+      </div>
+
+      <div style="text-align: center; margin: 40px 0; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+        <p style="color: #6c757d; margin: 0;">
+          <strong>Kisanlink ERP API v1.0</strong> - Production Ready Tax System<br>
+          Built with ❤️ for Agricultural Cooperatives
+        </p>
+      </div>
+    </div>
   </body>
 </html>

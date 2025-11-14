@@ -139,9 +139,9 @@ S3_REGION=us-east-1
 ### Permission Format
 - **Resource-based**: `{resource_type}:{action}`
 - **Examples**: 
-  - `aaa/warehouse:create`
-  - `aaa/product:read`
-  - `aaa/sale:update`
+  - `warehouse:create`
+  - `product:read`
+  - `sale:update`
 
 ## 📈 Performance
 
@@ -169,7 +169,7 @@ curl -H "Authorization: Bearer <token>" \
 
 ## 📞 Support
 
-- **Email**: support@kisanlink.com
+- **Email**: info@kisanlink.in
 - **Documentation**: [API Documentation](https://docs.kisanlink.com)
 - **Status Page**: [Status Dashboard](https://status.kisanlink.com)
 

@@ -1,0 +1,245 @@
+=== RUN   TestWebhookIntegration_OrderCreated_Success
+{"level":"info","msg":"⚠️  AAA middleware initialized in BYPASS mode (disabled)","time":"2025-11-10T04:24:40+05:30"}
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel github.com/Kisanlink/kisanlink-db/pkg/base.BaseModel don't match BeforeCreateInterface, should be `BeforeCreate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel github.com/Kisanlink/kisanlink-db/pkg/base.BaseModel don't match BeforeUpdateInterface, should be `BeforeUpdate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel github.com/Kisanlink/kisanlink-db/pkg/base.BaseModel don't match BeforeDeleteInterface, should be `BeforeDelete(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel kisanlink-erp/internal/database/models.WebhookEvent don't match BeforeCreateInterface, should be `BeforeCreate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel kisanlink-erp/internal/database/models.WebhookEvent don't match BeforeUpdateInterface, should be `BeforeUpdate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel kisanlink-erp/internal/database/models.WebhookEvent don't match BeforeDeleteInterface, should be `BeforeDelete(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+--- PASS: TestWebhookIntegration_OrderCreated_Success (0.02s)
+=== RUN   TestWebhookIntegration_OrderCreated_InvalidSignature
+{"level":"info","msg":"⚠️  AAA middleware initialized in BYPASS mode (disabled)","time":"2025-11-10T04:24:40+05:30"}
+--- PASS: TestWebhookIntegration_OrderCreated_InvalidSignature (0.01s)
+=== RUN   TestWebhookIntegration_OrderCreated_MissingHeaders
+{"level":"info","msg":"⚠️  AAA middleware initialized in BYPASS mode (disabled)","time":"2025-11-10T04:24:40+05:30"}
+--- PASS: TestWebhookIntegration_OrderCreated_MissingHeaders (0.01s)
+=== RUN   TestWebhookIntegration_OrderCreated_InvalidJSON
+{"level":"info","msg":"⚠️  AAA middleware initialized in BYPASS mode (disabled)","time":"2025-11-10T04:24:40+05:30"}
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel github.com/Kisanlink/kisanlink-db/pkg/base.BaseModel don't match BeforeCreateInterface, should be `BeforeCreate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel github.com/Kisanlink/kisanlink-db/pkg/base.BaseModel don't match BeforeUpdateInterface, should be `BeforeUpdate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel github.com/Kisanlink/kisanlink-db/pkg/base.BaseModel don't match BeforeDeleteInterface, should be `BeforeDelete(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel kisanlink-erp/internal/database/models.WebhookEvent don't match BeforeCreateInterface, should be `BeforeCreate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel kisanlink-erp/internal/database/models.WebhookEvent don't match BeforeUpdateInterface, should be `BeforeUpdate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel kisanlink-erp/internal/database/models.WebhookEvent don't match BeforeDeleteInterface, should be `BeforeDelete(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+--- PASS: TestWebhookIntegration_OrderCreated_InvalidJSON (0.01s)
+=== RUN   TestWebhookIntegration_OrderCreated_Idempotency
+{"level":"info","msg":"⚠️  AAA middleware initialized in BYPASS mode (disabled)","time":"2025-11-10T04:24:40+05:30"}
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel github.com/Kisanlink/kisanlink-db/pkg/base.BaseModel don't match BeforeCreateInterface, should be `BeforeCreate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel github.com/Kisanlink/kisanlink-db/pkg/base.BaseModel don't match BeforeUpdateInterface, should be `BeforeUpdate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel github.com/Kisanlink/kisanlink-db/pkg/base.BaseModel don't match BeforeDeleteInterface, should be `BeforeDelete(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel kisanlink-erp/internal/database/models.WebhookEvent don't match BeforeCreateInterface, should be `BeforeCreate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel kisanlink-erp/internal/database/models.WebhookEvent don't match BeforeUpdateInterface, should be `BeforeUpdate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel kisanlink-erp/internal/database/models.WebhookEvent don't match BeforeDeleteInterface, should be `BeforeDelete(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+--- PASS: TestWebhookIntegration_OrderCreated_Idempotency (0.01s)
+=== RUN   TestWebhookIntegration_OrderCreated_ServiceError
+{"level":"info","msg":"⚠️  AAA middleware initialized in BYPASS mode (disabled)","time":"2025-11-10T04:24:40+05:30"}
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel github.com/Kisanlink/kisanlink-db/pkg/base.BaseModel don't match BeforeCreateInterface, should be `BeforeCreate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel github.com/Kisanlink/kisanlink-db/pkg/base.BaseModel don't match BeforeUpdateInterface, should be `BeforeUpdate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel github.com/Kisanlink/kisanlink-db/pkg/base.BaseModel don't match BeforeDeleteInterface, should be `BeforeDelete(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel kisanlink-erp/internal/database/models.WebhookEvent don't match BeforeCreateInterface, should be `BeforeCreate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel kisanlink-erp/internal/database/models.WebhookEvent don't match BeforeUpdateInterface, should be `BeforeUpdate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel kisanlink-erp/internal/database/models.WebhookEvent don't match BeforeDeleteInterface, should be `BeforeDelete(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+--- PASS: TestWebhookIntegration_OrderCreated_ServiceError (0.01s)
+=== RUN   TestWebhookIntegration_OrderCreated_PayloadHashDeduplication
+{"level":"info","msg":"⚠️  AAA middleware initialized in BYPASS mode (disabled)","time":"2025-11-10T04:24:40+05:30"}
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel github.com/Kisanlink/kisanlink-db/pkg/base.BaseModel don't match BeforeCreateInterface, should be `BeforeCreate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel github.com/Kisanlink/kisanlink-db/pkg/base.BaseModel don't match BeforeUpdateInterface, should be `BeforeUpdate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel github.com/Kisanlink/kisanlink-db/pkg/base.BaseModel don't match BeforeDeleteInterface, should be `BeforeDelete(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel kisanlink-erp/internal/database/models.WebhookEvent don't match BeforeCreateInterface, should be `BeforeCreate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel kisanlink-erp/internal/database/models.WebhookEvent don't match BeforeUpdateInterface, should be `BeforeUpdate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel kisanlink-erp/internal/database/models.WebhookEvent don't match BeforeDeleteInterface, should be `BeforeDelete(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+    webhook_integration_test.go:311: Second request should also succeed (different event_id): got 500, want 200
+    webhook_integration_test.go:316: Should have two webhook events: got 1, want 2
+    webhook_integration_test.go:318: FAIL:	ProcessOrderCreated(string,mock.anythingOfTypeArgument)
+        		at: [C:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/tests/integration/webhook_integration_test.go:306]
+    webhook_integration_test.go:318: FAIL: 1 out of 2 expectation(s) were met.
+        	The code you are testing needs to make 1 more call(s).
+        	at: [C:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/tests/integration/webhook_integration_test.go:318]
+--- FAIL: TestWebhookIntegration_OrderCreated_PayloadHashDeduplication (0.01s)
+=== RUN   TestWebhookIntegration_OrderCreated_DatabaseEventRecording
+{"level":"info","msg":"⚠️  AAA middleware initialized in BYPASS mode (disabled)","time":"2025-11-10T04:24:40+05:30"}
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel github.com/Kisanlink/kisanlink-db/pkg/base.BaseModel don't match BeforeCreateInterface, should be `BeforeCreate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel github.com/Kisanlink/kisanlink-db/pkg/base.BaseModel don't match BeforeUpdateInterface, should be `BeforeUpdate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel github.com/Kisanlink/kisanlink-db/pkg/base.BaseModel don't match BeforeDeleteInterface, should be `BeforeDelete(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel kisanlink-erp/internal/database/models.WebhookEvent don't match BeforeCreateInterface, should be `BeforeCreate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel kisanlink-erp/internal/database/models.WebhookEvent don't match BeforeUpdateInterface, should be `BeforeUpdate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel kisanlink-erp/internal/database/models.WebhookEvent don't match BeforeDeleteInterface, should be `BeforeDelete(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+--- PASS: TestWebhookIntegration_OrderCreated_DatabaseEventRecording (0.01s)
+=== RUN   TestWebhookIntegration_OrderConfirmed_Success
+{"level":"info","msg":"⚠️  AAA middleware initialized in BYPASS mode (disabled)","time":"2025-11-10T04:24:40+05:30"}
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel github.com/Kisanlink/kisanlink-db/pkg/base.BaseModel don't match BeforeCreateInterface, should be `BeforeCreate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel github.com/Kisanlink/kisanlink-db/pkg/base.BaseModel don't match BeforeUpdateInterface, should be `BeforeUpdate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel github.com/Kisanlink/kisanlink-db/pkg/base.BaseModel don't match BeforeDeleteInterface, should be `BeforeDelete(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel kisanlink-erp/internal/database/models.WebhookEvent don't match BeforeCreateInterface, should be `BeforeCreate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel kisanlink-erp/internal/database/models.WebhookEvent don't match BeforeUpdateInterface, should be `BeforeUpdate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel kisanlink-erp/internal/database/models.WebhookEvent don't match BeforeDeleteInterface, should be `BeforeDelete(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+--- PASS: TestWebhookIntegration_OrderConfirmed_Success (0.01s)
+=== RUN   TestWebhookIntegration_OrderConfirmed_InvalidSignature
+{"level":"info","msg":"⚠️  AAA middleware initialized in BYPASS mode (disabled)","time":"2025-11-10T04:24:40+05:30"}
+--- PASS: TestWebhookIntegration_OrderConfirmed_InvalidSignature (0.01s)
+=== RUN   TestWebhookIntegration_OrderConfirmed_Idempotency
+{"level":"info","msg":"⚠️  AAA middleware initialized in BYPASS mode (disabled)","time":"2025-11-10T04:24:40+05:30"}
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel github.com/Kisanlink/kisanlink-db/pkg/base.BaseModel don't match BeforeCreateInterface, should be `BeforeCreate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel github.com/Kisanlink/kisanlink-db/pkg/base.BaseModel don't match BeforeUpdateInterface, should be `BeforeUpdate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel github.com/Kisanlink/kisanlink-db/pkg/base.BaseModel don't match BeforeDeleteInterface, should be `BeforeDelete(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel kisanlink-erp/internal/database/models.WebhookEvent don't match BeforeCreateInterface, should be `BeforeCreate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel kisanlink-erp/internal/database/models.WebhookEvent don't match BeforeUpdateInterface, should be `BeforeUpdate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel kisanlink-erp/internal/database/models.WebhookEvent don't match BeforeDeleteInterface, should be `BeforeDelete(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+--- PASS: TestWebhookIntegration_OrderConfirmed_Idempotency (0.01s)
+=== RUN   TestWebhookIntegration_OrderConfirmed_InvalidPayload
+{"level":"info","msg":"⚠️  AAA middleware initialized in BYPASS mode (disabled)","time":"2025-11-10T04:24:40+05:30"}
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel github.com/Kisanlink/kisanlink-db/pkg/base.BaseModel don't match BeforeCreateInterface, should be `BeforeCreate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel github.com/Kisanlink/kisanlink-db/pkg/base.BaseModel don't match BeforeUpdateInterface, should be `BeforeUpdate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel github.com/Kisanlink/kisanlink-db/pkg/base.BaseModel don't match BeforeDeleteInterface, should be `BeforeDelete(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel kisanlink-erp/internal/database/models.WebhookEvent don't match BeforeCreateInterface, should be `BeforeCreate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel kisanlink-erp/internal/database/models.WebhookEvent don't match BeforeUpdateInterface, should be `BeforeUpdate(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+
+2025/11/10 04:24:40 [34;1mC:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/database/repositories/webhook_repo.go:23
+[0m[35m[warn] [0mModel kisanlink-erp/internal/database/models.WebhookEvent don't match BeforeDeleteInterface, should be `BeforeDelete(*gorm.DB) error`. Please see https://gorm.io/docs/hooks.html
+--- FAIL: TestWebhookIntegration_OrderConfirmed_InvalidPayload (0.01s)
+panic: assert: arguments: Error(0) failed because object wasn't correct type:  [recovered]
+	panic: assert: arguments: Error(0) failed because object wasn't correct type: 
+
+goroutine 64 [running]:
+testing.tRunner.func1.2({0x140c360, 0xc00036c610})
+	C:/Program Files/Go/src/testing/testing.go:1734 +0x219
+testing.tRunner.func1()
+	C:/Program Files/Go/src/testing/testing.go:1737 +0x359
+panic({0x140c360?, 0xc00036c610?})
+	C:/Program Files/Go/src/runtime/panic.go:792 +0x132
+github.com/stretchr/testify/mock.Arguments.Error({0xc00029ca80?, 0xc00029d540?, 0x2?}, 0x2?)
+	C:/Users/Karthikeya Akhandam/go/pkg/mod/github.com/stretchr/testify@v1.11.1/mock/mock.go:1128 +0x12e
+kisanlink-erp/tests/mocks/services.(*MockEcommerceWebhookService).ProcessOrderConfirmed(0xc0004b5680, {0x17dd8e8, 0x2134f20}, 0xc0004b5900)
+	C:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/tests/mocks/services/mock_ecommerce_webhook_service.go:23 +0xac
+kisanlink-erp/internal/api/handlers.(*EcommerceWebhookHandler).HandleOrderConfirmed.func2({0x17dd8e8?, 0x2134f20?}, {0x13e7720?, 0xc0004b5900?})
+	C:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/api/handlers/ecommerce_webhook_handler.go:213 +0x48
+kisanlink-erp/internal/api/handlers.(*EcommerceWebhookHandler).processWebhook(0xc000296cc0, 0xc0001c7200, {0x159bbbf, 0xf}, 0x15f0dc8, 0xc000435bb8)
+	C:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/api/handlers/ecommerce_webhook_handler.go:121 +0x7f6
+kisanlink-erp/internal/api/handlers.(*EcommerceWebhookHandler).HandleOrderConfirmed(0x5?, 0xc000435c08?)
+	C:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/internal/api/handlers/ecommerce_webhook_handler.go:201 +0x3c
+github.com/gin-gonic/gin.(*Context).Next(0xc0001c7200)
+	C:/Users/Karthikeya Akhandam/go/pkg/mod/github.com/gin-gonic/gin@v1.10.1/context.go:185 +0x2b
+kisanlink-erp/tests/testutils.SetupTestRouter.MockAAAMiddleware.func1(0xc0001c7200)
+	C:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/tests/testutils/mock_aaa.go:35 +0x236
+github.com/gin-gonic/gin.(*Context).Next(...)
+	C:/Users/Karthikeya Akhandam/go/pkg/mod/github.com/gin-gonic/gin@v1.10.1/context.go:185
+github.com/gin-gonic/gin.(*Engine).handleHTTPRequest(0xc0001d5380, 0xc0001c7200)
+	C:/Users/Karthikeya Akhandam/go/pkg/mod/github.com/gin-gonic/gin@v1.10.1/gin.go:644 +0x872
+github.com/gin-gonic/gin.(*Engine).ServeHTTP(0xc0001d5380, {0x17dbd10, 0xc000296dc0}, 0xc0001d9400)
+	C:/Users/Karthikeya Akhandam/go/pkg/mod/github.com/gin-gonic/gin@v1.10.1/gin.go:600 +0x1aa
+kisanlink-erp/tests/integration_test.sendWebhookRequest(0xc0001d5380, {0x1589992, 0x4}, {0x15bcf1f, 0x2a}, {0xc0001bb0e0, 0x21, 0x21}, 0xc00043ef30)
+	C:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/tests/integration/webhook_integration_test.go:110 +0x505
+kisanlink-erp/tests/integration_test.TestWebhookIntegration_OrderConfirmed_InvalidPayload(0xc000106540)
+	C:/Users/Karthikeya Akhandam/documents/kisanlink/erp-v1/fpo-erp/tests/integration/webhook_integration_test.go:431 +0x213
+testing.tRunner(0xc000106540, 0x15effd8)
+	C:/Program Files/Go/src/testing/testing.go:1792 +0xcb
+created by testing.(*T).Run in goroutine 1
+	C:/Program Files/Go/src/testing/testing.go:1851 +0x3f6
+exit status 2
+FAIL	kisanlink-erp/tests/integration	0.450s

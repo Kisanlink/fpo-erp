@@ -1,0 +1,1561 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Kisanlink ERP Application Infrastructure - Multi-tenant deployment for FPO organizations'
+
+Parameters:
+  FPOIdentifier:
+    Type: String
+    Description: 'Unique FPO identifier (e.g., fpo001, fpo002)'
+    AllowedPattern: '^fpo[0-9]{3}$'
+    ConstraintDescription: 'Must be in format fpo### (e.g., fpo001)'
+
+  Environment:
+    Type: String
+    Description: 'Environment name'
+    AllowedValues:
+      - staging
+      - production
+    Default: staging
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: 'Shared VPC ID for ERP deployments'
+
+  PublicSubnet1Id:
+    Type: AWS::EC2::Subnet::Id
+    Description: 'Public subnet 1 ID for ALB'
+
+  PublicSubnet2Id:
+    Type: AWS::EC2::Subnet::Id
+    Description: 'Public subnet 2 ID for ALB'
+
+  PrivateSubnet1Id:
+    Type: AWS::EC2::Subnet::Id
+    Description: 'Private subnet 1 ID for ECS tasks and RDS'
+
+  PrivateSubnet2Id:
+    Type: AWS::EC2::Subnet::Id
+    Description: 'Private subnet 2 ID for ECS tasks and RDS'
+
+  ECRImageUri:
+    Type: String
+    Description: 'ECR image URI for ERP container (e.g., 123456789012.dkr.ecr.us-west-2.amazonaws.com/kisanlink-erp:latest)'
+
+  ContainerPort:
+    Type: Number
+    Description: 'Port the ERP container listens on'
+    Default: 8080
+
+  DesiredCount:
+    Type: Number
+    Description: 'Number of ECS tasks to run'
+    Default: 2
+    MinValue: 1
+    MaxValue: 10
+
+  TaskCPU:
+    Type: String
+    Description: 'CPU units for Fargate task (256, 512, 1024, 2048, 4096)'
+    Default: '512'
+    AllowedValues:
+      - '256'
+      - '512'
+      - '1024'
+      - '2048'
+      - '4096'
+
+  TaskMemory:
+    Type: String
+    Description: 'Memory for Fargate task in MB'
+    Default: '1024'
+    AllowedValues:
+      - '512'
+      - '1024'
+      - '2048'
+      - '4096'
+      - '8192'
+
+  DBInstanceClass:
+    Type: String
+    Description: 'RDS instance class'
+    Default: 'db.t3.micro'
+    AllowedValues:
+      - db.t3.micro
+      - db.t3.small
+      - db.t3.medium
+      - db.r5.large
+
+  DBAllocatedStorage:
+    Type: Number
+    Description: 'RDS allocated storage in GB'
+    Default: 20
+    MinValue: 20
+    MaxValue: 1000
+
+  DBUsername:
+    Type: String
+    Description: 'Database master username'
+    Default: 'erp_admin'
+    NoEcho: true
+
+  DBPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+    Description: 'Database password (will be stored in Secrets Manager)'
+
+  AAAGrpcAddress:
+    Type: String
+    Description: 'AAA service gRPC address'
+    Default: 'aaa-grpc.kisanlink.com:9090'
+
+  AAAJWTSecret:
+    Type: String
+    NoEcho: true
+    MinLength: 32
+    Description: 'AAA JWT secret key (will be stored in Secrets Manager)'
+
+  JWTSecret:
+    Type: String
+    NoEcho: true
+    MinLength: 32
+    Description: 'JWT secret key (will be stored in Secrets Manager)'
+
+  AWSRegion:
+    Type: String
+    Description: 'AWS region for S3 and other services'
+    Default: 'us-west-2'
+
+  CertificateArn:
+    Type: String
+    Description: 'ACM certificate ARN for HTTPS (optional, leave empty for HTTP only)'
+    Default: ''
+
+  EcommerceGrpcAddress:
+    Type: String
+    Description: 'E-commerce service gRPC address (host:port) for webhook integration'
+    Default: ''
+
+  DBSSLMode:
+    Type: String
+    Description: 'PostgreSQL SSL mode (disable, require, verify-ca, verify-full)'
+    AllowedValues:
+      - disable
+      - require
+      - verify-ca
+      - verify-full
+    Default: disable
+
+  AAAAPIKey:
+    Type: String
+    NoEcho: true
+    MinLength: 32
+    Description: 'AAA API key for service-to-service authentication between ERP and AAA service'
+
+  CORSAllowedHeaders:
+    Type: String
+    Description: 'Comma-separated list of allowed CORS headers'
+    Default: 'Content-Type,Authorization'
+
+Conditions:
+  IsProduction: !Equals [!Ref Environment, 'production']
+  HasCertificate: !Not [!Equals [!Ref CertificateArn, '']]
+
+Resources:
+  # ========================================
+  # S3 Bucket for File Storage
+  # ========================================
+  AttachmentsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${FPOIdentifier}-${Environment}-erp-attachments'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: !If [IsProduction, 'Enabled', 'Suspended']
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldVersions
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 30
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${FPOIdentifier}-${Environment}-erp-attachments'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: FPO
+          Value: !Ref FPOIdentifier
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # ========================================
+  # ECS Cluster (Per-FPO Isolation)
+  # ========================================
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub '${FPOIdentifier}-${Environment}-erp-cluster'
+      CapacityProviders:
+        - FARGATE
+        - FARGATE_SPOT
+      DefaultCapacityProviderStrategy:
+        - CapacityProvider: FARGATE
+          Weight: 1
+          Base: 1
+      ClusterSettings:
+        - Name: containerInsights
+          Value: enabled
+      Tags:
+        - Key: Name
+          Value: !Sub '${FPOIdentifier}-${Environment}-erp-cluster'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: FPO
+          Value: !Ref FPOIdentifier
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # ========================================
+  # RDS PostgreSQL Database
+  # ========================================
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupName: !Sub '${FPOIdentifier}-${Environment}-erp-db-subnet'
+      DBSubnetGroupDescription: !Sub 'Subnet group for ${FPOIdentifier} ${Environment} ERP database'
+      SubnetIds:
+        - !Ref PrivateSubnet1Id
+        - !Ref PrivateSubnet2Id
+      Tags:
+        - Key: Name
+          Value: !Sub '${FPOIdentifier}-${Environment}-erp-db-subnet'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: FPO
+          Value: !Ref FPOIdentifier
+
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${FPOIdentifier}-${Environment}-erp-db-sg'
+      GroupDescription: !Sub 'Security group for ${FPOIdentifier} ${Environment} ERP database'
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref ECSTaskSecurityGroup
+          Description: 'Allow PostgreSQL from ECS tasks'
+      Tags:
+        - Key: Name
+          Value: !Sub '${FPOIdentifier}-${Environment}-erp-db-sg'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: FPO
+          Value: !Ref FPOIdentifier
+
+  DBInstance:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: !Sub '${FPOIdentifier}-${Environment}-erp-db'
+      DBName: !Sub '${FPOIdentifier}_erp'
+      Engine: postgres
+      EngineVersion: '14.10'
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: !Ref DBAllocatedStorage
+      StorageType: gp3
+      StorageEncrypted: true
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VPCSecurityGroups:
+        - !Ref DBSecurityGroup
+      BackupRetentionPeriod: !If [IsProduction, 7, 1]
+      PreferredBackupWindow: '03:00-04:00'
+      PreferredMaintenanceWindow: 'sun:04:00-sun:05:00'
+      MultiAZ: !If [IsProduction, true, false]
+      EnableCloudwatchLogsExports:
+        - postgresql
+      Tags:
+        - Key: Name
+          Value: !Sub '${FPOIdentifier}-${Environment}-erp-db'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: FPO
+          Value: !Ref FPOIdentifier
+
+  DBReadReplica:
+    Type: AWS::RDS::DBInstance
+    Condition: IsProduction
+    DependsOn: DBInstance
+    Properties:
+      SourceDBInstanceIdentifier: !Ref DBInstance
+      DBInstanceIdentifier: !Sub '${FPOIdentifier}-${Environment}-erp-db-replica'
+      DBInstanceClass: !Ref DBInstanceClass
+      PubliclyAccessible: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${FPOIdentifier}-${Environment}-erp-db-replica'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: FPO
+          Value: !Ref FPOIdentifier
+
+  # ========================================
+  # AWS Backup Configuration
+  # ========================================
+  BackupVaultKey:
+    Type: AWS::KMS::Key
+    Condition: IsProduction
+    Properties:
+      Description: !Sub 'Encryption key for ${FPOIdentifier} ${Environment} ERP backups'
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow AWS Backup to use the key
+            Effect: Allow
+            Principal:
+              Service: backup.amazonaws.com
+            Action:
+              - 'kms:CreateGrant'
+              - 'kms:DescribeKey'
+              - 'kms:Decrypt'
+              - 'kms:GenerateDataKey'
+            Resource: '*'
+
+  BackupVault:
+    Type: AWS::Backup::BackupVault
+    Condition: IsProduction
+    Properties:
+      BackupVaultName: !Sub '${FPOIdentifier}-${Environment}-erp-vault'
+      EncryptionKeyArn: !GetAtt BackupVaultKey.Arn
+
+  BackupPlan:
+    Type: AWS::Backup::BackupPlan
+    Condition: IsProduction
+    Properties:
+      BackupPlan:
+        BackupPlanName: !Sub '${FPOIdentifier}-${Environment}-erp-backup-plan'
+        BackupPlanRule:
+          - RuleName: DailyBackups
+            TargetBackupVault: !Ref BackupVault
+            ScheduleExpression: 'cron(0 5 * * ? *)'
+            StartWindowMinutes: 60
+            CompletionWindowMinutes: 120
+            Lifecycle:
+              DeleteAfterDays: 35
+              MoveToColdStorageAfterDays: 7
+            RecoveryPointTags:
+              BackupType: Daily
+              FPO: !Ref FPOIdentifier
+              Environment: !Ref Environment
+
+  BackupSelection:
+    Type: AWS::Backup::BackupSelection
+    Condition: IsProduction
+    Properties:
+      BackupPlanId: !Ref BackupPlan
+      BackupSelection:
+        SelectionName: !Sub '${FPOIdentifier}-${Environment}-rds-backup'
+        IamRoleArn: !Sub 'arn:aws:iam::${AWS::AccountId}:role/service-role/AWSBackupDefaultServiceRole'
+        Resources:
+          - !Sub 'arn:aws:rds:${AWS::Region}:${AWS::AccountId}:db:${DBInstance}'
+
+  # ========================================
+  # Secrets Manager
+  # ========================================
+  DBPasswordSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${FPOIdentifier}/${Environment}/erp/db-password'
+      Description: RDS PostgreSQL Password
+      SecretString: !Ref DBPassword
+      Tags:
+        - Key: Name
+          Value: !Sub '${FPOIdentifier}-${Environment}-erp-db-password'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: FPO
+          Value: !Ref FPOIdentifier
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  JWTSecretParameter:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${FPOIdentifier}/${Environment}/erp/jwt-secret'
+      Description: JWT Secret Key
+      SecretString: !Ref JWTSecret
+      Tags:
+        - Key: Name
+          Value: !Sub '${FPOIdentifier}-${Environment}-erp-jwt-secret'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: FPO
+          Value: !Ref FPOIdentifier
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  AAAJWTSecretParameter:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${FPOIdentifier}/${Environment}/erp/aaa-jwt-secret'
+      Description: AAA JWT Secret Key
+      SecretString: !Ref AAAJWTSecret
+      Tags:
+        - Key: Name
+          Value: !Sub '${FPOIdentifier}-${Environment}-erp-aaa-jwt-secret'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: FPO
+          Value: !Ref FPOIdentifier
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  WebhookSecretParameter:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${FPOIdentifier}/${Environment}/erp/webhook-secret'
+      Description: Webhook HMAC secret for signature verification
+      GenerateSecretString:
+        SecretStringTemplate: '{}'
+        GenerateStringKey: 'secret'
+        PasswordLength: 64
+      Tags:
+        - Key: Name
+          Value: !Sub '${FPOIdentifier}-${Environment}-erp-webhook-secret'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: FPO
+          Value: !Ref FPOIdentifier
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  EcommerceAuthTokenParameter:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${FPOIdentifier}/${Environment}/erp/ecommerce-auth-token'
+      Description: E-commerce service gRPC authentication token
+      GenerateSecretString:
+        SecretStringTemplate: '{}'
+        GenerateStringKey: 'token'
+        PasswordLength: 64
+      Tags:
+        - Key: Name
+          Value: !Sub '${FPOIdentifier}-${Environment}-erp-ecommerce-auth-token'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: FPO
+          Value: !Ref FPOIdentifier
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  AAAAPIKeyParameter:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${FPOIdentifier}/${Environment}/erp/aaa-api-key'
+      Description: AAA API Key for service-to-service authentication
+      SecretString: !Ref AAAAPIKey
+      Tags:
+        - Key: Name
+          Value: !Sub '${FPOIdentifier}-${Environment}-erp-aaa-api-key'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: FPO
+          Value: !Ref FPOIdentifier
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # Note: VPC Flow Logs are managed in a separate shared infrastructure stack
+  # See: infrastructure/templates/shared-vpc-flow-logs.yaml
+  # This ensures only one flow log exists per VPC for all FPOs
+
+  # ========================================
+  # SNS Topic for CloudWatch Alerts
+  # ========================================
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${FPOIdentifier}-${Environment}-erp-alerts'
+      DisplayName: !Sub 'Kisanlink ERP Alerts - ${FPOIdentifier} ${Environment}'
+      Subscription:
+        - Endpoint: devops@kisanlink.com
+          Protocol: email
+      Tags:
+        - Key: Name
+          Value: !Sub '${FPOIdentifier}-${Environment}-erp-alerts'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: FPO
+          Value: !Ref FPOIdentifier
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # ========================================
+  # CloudTrail Audit Logging
+  # ========================================
+  # COST OPTIMIZATION: Per-FPO CloudTrail removed
+  # Now using shared CloudTrail in shared-vpc.yaml (saves ~$48/month)
+  # Shared trail logs all FPO activity to: kisanlink-erp-shared-audit-logs-${Environment}
+  # ========================================
+  # AuditLogsBucket:
+  #   Type: AWS::S3::Bucket
+  #   Properties:
+  #     BucketName: !Sub '${FPOIdentifier}-${Environment}-erp-audit-logs'
+  #     BucketEncryption:
+  #       ServerSideEncryptionConfiguration:
+  #         - ServerSideEncryptionByDefault:
+  #             SSEAlgorithm: AES256
+  #     VersioningConfiguration:
+  #       Status: Enabled
+  #     LifecycleConfiguration:
+  #       Rules:
+  #         - Id: DeleteOldAuditLogs
+  #           Status: Enabled
+  #           ExpirationInDays: !If [IsProduction, 2555, 90]  # 7 years for production, 90 days for staging
+  #           NoncurrentVersionExpirationInDays: 30
+  #     PublicAccessBlockConfiguration:
+  #       BlockPublicAcls: true
+  #       BlockPublicPolicy: true
+  #       IgnorePublicAcls: true
+  #       RestrictPublicBuckets: true
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Sub '${FPOIdentifier}-${Environment}-erp-audit-logs'
+  #       - Key: Environment
+  #         Value: !Ref Environment
+  #       - Key: FPO
+  #         Value: !Ref FPOIdentifier
+  #       - Key: Purpose
+  #         Value: CloudTrailAuditLogs
+  #       - Key: ManagedBy
+  #         Value: CloudFormation
+
+  # AuditLogsBucketPolicy:
+  #   Type: AWS::S3::BucketPolicy
+  #   Properties:
+  #     Bucket: !Ref AuditLogsBucket
+  #     PolicyDocument:
+  #       Version: '2012-10-17'
+  #       Statement:
+  #         - Sid: AWSCloudTrailAclCheck
+  #           Effect: Allow
+  #           Principal:
+  #             Service: cloudtrail.amazonaws.com
+  #           Action: 's3:GetBucketAcl'
+  #           Resource: !GetAtt AuditLogsBucket.Arn
+  #         - Sid: AWSCloudTrailWrite
+  #           Effect: Allow
+  #           Principal:
+  #             Service: cloudtrail.amazonaws.com
+  #           Action: 's3:PutObject'
+  #           Resource: !Sub '${AuditLogsBucket.Arn}/*'
+  #           Condition:
+  #             StringEquals:
+  #               's3:x-amz-acl': 'bucket-owner-full-control'
+
+  # AuditTrail:
+  #   Type: AWS::CloudTrail::Trail
+  #   DependsOn: AuditLogsBucketPolicy
+  #   Properties:
+  #     TrailName: !Sub '${FPOIdentifier}-${Environment}-erp-audit'
+  #     S3BucketName: !Ref AuditLogsBucket
+  #     IncludeGlobalServiceEvents: true
+  #     IsLogging: true
+  #     IsMultiRegionTrail: false
+  #     EnableLogFileValidation: true
+  #     EventSelectors:
+  #       - ReadWriteType: WriteOnly
+  #         IncludeManagementEvents: true
+  #         DataResources:
+  #           - Type: 'AWS::S3::Object'
+  #             Values:
+  #               - !Sub '${AttachmentsBucket.Arn}/*'
+  #           - Type: 'AWS::SecretsManager::Secret'
+  #             Values:
+  #               - !GetAtt DBPasswordSecret.Arn
+  #               - !GetAtt JWTSecretParameter.Arn
+  #               - !GetAtt AAAJWTSecretParameter.Arn
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Sub '${FPOIdentifier}-${Environment}-erp-audit'
+  #       - Key: Environment
+  #         Value: !Ref Environment
+  #       - Key: FPO
+  #         Value: !Ref FPOIdentifier
+  #       - Key: ManagedBy
+  #         Value: CloudFormation
+
+  # ========================================
+  # Application Load Balancer
+  # ========================================
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${FPOIdentifier}-${Environment}-erp-alb-sg'
+      GroupDescription: !Sub 'Security group for ${FPOIdentifier} ${Environment} ERP ALB'
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: 'Allow HTTP from anywhere'
+        - !If
+          - HasCertificate
+          - IpProtocol: tcp
+            FromPort: 443
+            ToPort: 443
+            CidrIp: 0.0.0.0/0
+            Description: 'Allow HTTPS from anywhere'
+          - !Ref AWS::NoValue
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: 'Allow all outbound traffic'
+      Tags:
+        - Key: Name
+          Value: !Sub '${FPOIdentifier}-${Environment}-erp-alb-sg'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: FPO
+          Value: !Ref FPOIdentifier
+
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub '${FPOIdentifier}-${Environment}-erp-alb'
+      Type: application
+      Scheme: internet-facing
+      IpAddressType: ipv4
+      Subnets:
+        - !Ref PublicSubnet1Id
+        - !Ref PublicSubnet2Id
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${FPOIdentifier}-${Environment}-erp-alb'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: FPO
+          Value: !Ref FPOIdentifier
+
+  ALBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub '${FPOIdentifier}-${Environment}-erp-tg'
+      Port: !Ref ContainerPort
+      Protocol: HTTP
+      TargetType: ip
+      VpcId: !Ref VpcId
+      HealthCheckEnabled: true
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: /health
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Matcher:
+        HttpCode: '200'
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: '30'
+      Tags:
+        - Key: Name
+          Value: !Sub '${FPOIdentifier}-${Environment}-erp-tg'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: FPO
+          Value: !Ref FPOIdentifier
+
+  ALBListenerHTTP:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - !If
+          - HasCertificate
+          - Type: redirect
+            RedirectConfig:
+              Protocol: HTTPS
+              Port: '443'
+              StatusCode: HTTP_301
+          - Type: forward
+            TargetGroupArn: !Ref ALBTargetGroup
+
+  ALBListenerHTTPS:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Condition: HasCertificate
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref CertificateArn
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ALBTargetGroup
+
+  # ========================================
+  # ECS Task Definition and Service
+  # ========================================
+  ECSTaskSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${FPOIdentifier}-${Environment}-erp-task-sg'
+      GroupDescription: !Sub 'Security group for ${FPOIdentifier} ${Environment} ERP ECS tasks'
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: !Ref ContainerPort
+          ToPort: !Ref ContainerPort
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+          Description: 'Allow traffic from ALB'
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: 'Allow all outbound traffic'
+      Tags:
+        - Key: Name
+          Value: !Sub '${FPOIdentifier}-${Environment}-erp-task-sg'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: FPO
+          Value: !Ref FPOIdentifier
+
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${FPOIdentifier}-${Environment}-erp-exec-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
+      Policies:
+        - PolicyName: SecretsManagerAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'secretsmanager:GetSecretValue'
+                  - 'kms:Decrypt'
+                Resource:
+                  - !GetAtt DBPasswordSecret.Arn
+                  - !GetAtt JWTSecretParameter.Arn
+                  - !GetAtt AAAJWTSecretParameter.Arn
+      Tags:
+        - Key: Name
+          Value: !Sub '${FPOIdentifier}-${Environment}-erp-exec-role'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: FPO
+          Value: !Ref FPOIdentifier
+
+  ECSTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${FPOIdentifier}-${Environment}-erp-task-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                  - 's3:DeleteObject'
+                  - 's3:ListBucket'
+                Resource:
+                  - !GetAtt AttachmentsBucket.Arn
+                  - !Sub '${AttachmentsBucket.Arn}/*'
+        - PolicyName: CloudWatchLogs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: '*'
+      Tags:
+        - Key: Name
+          Value: !Sub '${FPOIdentifier}-${Environment}-erp-task-role'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: FPO
+          Value: !Ref FPOIdentifier
+
+  ECSLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/ecs/${FPOIdentifier}-${Environment}-erp'
+      RetentionInDays: !If [IsProduction, 30, 7]
+
+  ECSTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub '${FPOIdentifier}-${Environment}-erp'
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: !Ref TaskCPU
+      Memory: !Ref TaskMemory
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt ECSTaskRole.Arn
+      ContainerDefinitions:
+        - Name: erp-container
+          Image: !Ref ECRImageUri
+          PortMappings:
+            - ContainerPort: !Ref ContainerPort
+              Protocol: tcp
+          Environment:
+            - Name: SERVER_HTTP_PORT
+              Value: !Ref ContainerPort
+            - Name: SERVER_MODE
+              Value: !If [IsProduction, 'release', 'debug']
+            - Name: SERVER_PUBLIC_URL
+              Value: !Sub 'http://${ApplicationLoadBalancer.DNSName}'
+            - Name: POSTGRES_HOST
+              Value: !GetAtt DBInstance.Endpoint.Address
+            - Name: POSTGRES_PORT
+              Value: !GetAtt DBInstance.Endpoint.Port
+            - Name: POSTGRES_DB
+              Value: !Sub '${FPOIdentifier}_erp'
+            - Name: POSTGRES_USER
+              Value: !Ref DBUsername
+            - Name: POSTGRES_MAX_IDLE_CONNS
+              Value: '10'
+            - Name: POSTGRES_MAX_OPEN_CONNS
+              Value: '100'
+            - Name: POSTGRES_CONN_MAX_LIFETIME_SECONDS
+              Value: '3600'
+            - Name: AAA_GRPC_ADDRESS
+              Value: !Ref AAAGrpcAddress
+            - Name: AAA_CACHE_TTL
+              Value: '3600'
+            - Name: AAA_TIMEOUT_SECONDS
+              Value: '30'
+            - Name: AAA_ENABLED
+              Value: 'true'
+            - Name: AWS_REGION
+              Value: !Ref AWSRegion
+            - Name: AWS_S3_BUCKET
+              Value: !Ref AttachmentsBucket
+            - Name: CORS_ALLOWED_ORIGINS
+              Value: !If
+                - IsProduction
+                - 'https://erp.kisanlink.com,https://app.kisanlink.com'
+                - 'http://localhost:3000,http://localhost:3001,https://staging.kisanlink.com'
+            - Name: CORS_ALLOWED_HEADERS
+              Value: !Ref CORSAllowedHeaders
+            - Name: JWT_EXPIRY_HOURS
+              Value: '24'
+            - Name: DB_POSTGRES_SSLMODE
+              Value: !Ref DBSSLMode
+            - Name: WEBHOOK_TIMEOUT_SECONDS
+              Value: '30'
+            - Name: WEBHOOK_MAX_PAYLOAD_BYTES
+              Value: '10485760'
+            - Name: ECOMMERCE_GRPC_ADDRESS
+              Value: !Ref EcommerceGrpcAddress
+            - Name: ECOMMERCE_GRPC_TIMEOUT_SECONDS
+              Value: '5'
+            - Name: ECOMMERCE_GRPC_USE_TLS
+              Value: 'false'
+            - Name: AWS_USE_PATH_STYLE
+              Value: 'false'
+          Secrets:
+            - Name: POSTGRES_PASSWORD
+              ValueFrom: !GetAtt DBPasswordSecret.Arn
+            - Name: JWT_SECRET
+              ValueFrom: !GetAtt JWTSecretParameter.Arn
+            - Name: AAA_JWT_SECRET
+              ValueFrom: !GetAtt AAAJWTSecretParameter.Arn
+            - Name: WEBHOOK_SECRET
+              ValueFrom: !GetAtt WebhookSecretParameter.Arn
+            - Name: ECOMMERCE_GRPC_AUTH_TOKEN
+              ValueFrom: !GetAtt EcommerceAuthTokenParameter.Arn
+            - Name: AAA_API_KEY
+              ValueFrom: !GetAtt AAAAPIKeyParameter.Arn
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref ECSLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: erp
+          HealthCheck:
+            Command:
+              - CMD-SHELL
+              - !Sub 'curl -f http://localhost:${ContainerPort}/health || exit 1'
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 60
+      Tags:
+        - Key: Name
+          Value: !Sub '${FPOIdentifier}-${Environment}-erp-task'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: FPO
+          Value: !Ref FPOIdentifier
+
+  ECSService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - ALBListenerHTTP
+    Properties:
+      ServiceName: !Sub '${FPOIdentifier}-${Environment}-erp-service'
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref ECSTaskDefinition
+      DesiredCount: !Ref DesiredCount
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets:
+            - !Ref PrivateSubnet1Id
+            - !Ref PrivateSubnet2Id
+          SecurityGroups:
+            - !Ref ECSTaskSecurityGroup
+      LoadBalancers:
+        - ContainerName: erp-container
+          ContainerPort: !Ref ContainerPort
+          TargetGroupArn: !Ref ALBTargetGroup
+      HealthCheckGracePeriodSeconds: 120
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${FPOIdentifier}-${Environment}-erp-service'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: FPO
+          Value: !Ref FPOIdentifier
+
+  # ========================================
+  # ECS Autoscaling
+  # ========================================
+  ECSScalableTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Properties:
+      ServiceNamespace: ecs
+      ResourceId: !Sub 'service/${ECSCluster}/${ECSService.Name}'
+      ScalableDimension: ecs:service:DesiredCount
+      MinCapacity: !If [IsProduction, 2, 1]
+      MaxCapacity: !If [IsProduction, 10, 4]
+      RoleARN: !Sub 'arn:aws:iam::${AWS::AccountId}:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService'
+
+  # CPU-based Scaling Policy
+  ECSCPUScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: !Sub '${FPOIdentifier}-${Environment}-cpu-scaling'
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref ECSScalableTarget
+      TargetTrackingScalingPolicyConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ECSServiceAverageCPUUtilization
+        TargetValue: 70.0
+        ScaleInCooldown: 300
+        ScaleOutCooldown: 60
+
+  # Memory-based Scaling Policy
+  ECSMemoryScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: !Sub '${FPOIdentifier}-${Environment}-memory-scaling'
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref ECSScalableTarget
+      TargetTrackingScalingPolicyConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ECSServiceAverageMemoryUtilization
+        TargetValue: 80.0
+        ScaleInCooldown: 300
+        ScaleOutCooldown: 60
+
+  # ========================================
+  # CloudWatch Alarms
+  # ========================================
+  HighCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${FPOIdentifier}-${Environment}-erp-high-cpu'
+      AlarmDescription: !Sub 'High CPU utilization for ${FPOIdentifier} ${Environment} ERP service'
+      MetricName: CPUUtilization
+      Namespace: AWS/ECS
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      Dimensions:
+        - Name: ServiceName
+          Value: !GetAtt ECSService.Name
+        - Name: ClusterName
+          Value: !Ref ECSCluster
+
+  HighMemoryAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${FPOIdentifier}-${Environment}-erp-high-memory'
+      AlarmDescription: !Sub 'High memory utilization for ${FPOIdentifier} ${Environment} ERP service'
+      MetricName: MemoryUtilization
+      Namespace: AWS/ECS
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      Dimensions:
+        - Name: ServiceName
+          Value: !GetAtt ECSService.Name
+        - Name: ClusterName
+          Value: !Ref ECSCluster
+
+  DatabaseConnectionsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${FPOIdentifier}-${Environment}-erp-db-connections'
+      AlarmDescription: !Sub 'High database connections for ${FPOIdentifier} ${Environment} ERP database'
+      MetricName: DatabaseConnections
+      Namespace: AWS/RDS
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Ref DBInstance
+
+  # ALB 5xx Error Alarm
+  ALBTarget5XXAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${FPOIdentifier}-${Environment}-erp-alb-5xx-errors'
+      AlarmDescription: 'Alert when ALB target 5xx errors exceed threshold'
+      MetricName: HTTPCode_Target_5XX_Count
+      Namespace: AWS/ApplicationELB
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !GetAtt ApplicationLoadBalancer.LoadBalancerFullName
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      TreatMissingData: notBreaching
+
+  # ALB High Latency Alarm
+  ALBHighLatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${FPOIdentifier}-${Environment}-erp-alb-high-latency'
+      AlarmDescription: 'Alert when ALB response time exceeds 2 seconds'
+      MetricName: TargetResponseTime
+      Namespace: AWS/ApplicationELB
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 2.0
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !GetAtt ApplicationLoadBalancer.LoadBalancerFullName
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      TreatMissingData: notBreaching
+
+  # ALB Unhealthy Host Alarm
+  ALBUnhealthyHostAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${FPOIdentifier}-${Environment}-erp-alb-unhealthy-hosts'
+      AlarmDescription: 'Alert when there are unhealthy targets'
+      MetricName: UnHealthyHostCount
+      Namespace: AWS/ApplicationELB
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: TargetGroup
+          Value: !GetAtt ALBTargetGroup.TargetGroupFullName
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      TreatMissingData: notBreaching
+
+  # ALB Request Count Anomaly
+  ALBRequestCountAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${FPOIdentifier}-${Environment}-erp-alb-request-spike'
+      AlarmDescription: 'Alert on unusual request volume'
+      MetricName: RequestCount
+      Namespace: AWS/ApplicationELB
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: !If [IsProduction, 10000, 5000]
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !GetAtt ApplicationLoadBalancer.LoadBalancerFullName
+      AlarmActions:
+        - !Ref AlertTopic
+      TreatMissingData: notBreaching
+
+  # ========================================
+  # Cost Monitoring Alarms
+  # ========================================
+  # High ECS Task Count Alarm (Cost Indicator)
+  HighECSTaskCountAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: IsProduction
+    Properties:
+      AlarmName: !Sub '${FPOIdentifier}-${Environment}-erp-high-task-count'
+      AlarmDescription: 'Alert when ECS task count is high (cost indicator)'
+      MetricName: RunningTaskCount
+      Namespace: AWS/ECS
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 8
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: ServiceName
+          Value: !GetAtt ECSService.Name
+        - Name: ClusterName
+          Value: !Ref ECSCluster
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      TreatMissingData: notBreaching
+
+  # RDS Storage Cost Alarm
+  RDSStorageCostAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: IsProduction
+    Properties:
+      AlarmName: !Sub '${FPOIdentifier}-${Environment}-erp-rds-storage-high'
+      AlarmDescription: 'Alert when RDS storage usage is high (cost indicator)'
+      MetricName: FreeStorageSpace
+      Namespace: AWS/RDS
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 5000000000
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Ref DBInstance
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      TreatMissingData: notBreaching
+
+  # ========================================
+  # CloudWatch Dashboard
+  # ========================================
+  ERPDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub '${FPOIdentifier}-${Environment}-ERP-Dashboard'
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/ECS", "CPUUtilization", { "stat": "Average", "label": "CPU Average" } ],
+                  [ "...", { "stat": "Maximum", "label": "CPU Maximum" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "ECS CPU Utilization",
+                "period": 300,
+                "yAxis": {
+                  "left": {
+                    "min": 0,
+                    "max": 100
+                  }
+                },
+                "annotations": {
+                  "horizontal": [
+                    {
+                      "label": "High CPU Threshold",
+                      "value": 80,
+                      "fill": "above"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/ECS", "MemoryUtilization", { "stat": "Average", "label": "Memory Average" } ],
+                  [ "...", { "stat": "Maximum", "label": "Memory Maximum" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "ECS Memory Utilization",
+                "period": 300,
+                "yAxis": {
+                  "left": {
+                    "min": 0,
+                    "max": 100
+                  }
+                },
+                "annotations": {
+                  "horizontal": [
+                    {
+                      "label": "High Memory Threshold",
+                      "value": 80,
+                      "fill": "above"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 6,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/ApplicationELB", "TargetResponseTime", { "stat": "Average", "label": "Response Time (avg)" } ],
+                  [ "...", { "stat": "p99", "label": "Response Time (p99)" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "ALB Response Time",
+                "period": 300,
+                "yAxis": {
+                  "left": {
+                    "min": 0
+                  }
+                }
+              }
+            },
+            {
+              "type": "metric",
+              "x": 8,
+              "y": 6,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/ApplicationELB", "RequestCount", { "stat": "Sum", "label": "Total Requests" } ],
+                  [ ".", "HTTPCode_Target_2XX_Count", { "stat": "Sum", "label": "2XX Success" } ],
+                  [ ".", "HTTPCode_Target_4XX_Count", { "stat": "Sum", "label": "4XX Client Errors" } ],
+                  [ ".", "HTTPCode_Target_5XX_Count", { "stat": "Sum", "label": "5XX Server Errors" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "ALB Request Count & Status Codes",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 16,
+              "y": 6,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/ApplicationELB", "HealthyHostCount", { "stat": "Average", "label": "Healthy Targets" } ],
+                  [ ".", "UnHealthyHostCount", { "stat": "Average", "label": "Unhealthy Targets" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "ALB Target Health",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 12,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/RDS", "CPUUtilization", { "stat": "Average" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "RDS CPU Utilization",
+                "period": 300,
+                "yAxis": {
+                  "left": {
+                    "min": 0,
+                    "max": 100
+                  }
+                }
+              }
+            },
+            {
+              "type": "metric",
+              "x": 8,
+              "y": 12,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/RDS", "DatabaseConnections", { "stat": "Average", "label": "Active Connections" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "RDS Database Connections",
+                "period": 300,
+                "annotations": {
+                  "horizontal": [
+                    {
+                      "label": "High Connection Threshold",
+                      "value": 80,
+                      "fill": "above"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "metric",
+              "x": 16,
+              "y": 12,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/RDS", "FreeStorageSpace", { "stat": "Average" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "RDS Free Storage Space",
+                "period": 300
+              }
+            },
+            {
+              "type": "log",
+              "x": 0,
+              "y": 18,
+              "width": 24,
+              "height": 6,
+              "properties": {
+                "query": "SOURCE '/ecs/${FPOIdentifier}-${Environment}-erp'\n| fields @timestamp, @message\n| filter @message like /ERROR/\n| sort @timestamp desc\n| limit 20",
+                "region": "${AWS::Region}",
+                "stacked": false,
+                "title": "Recent Application Errors",
+                "view": "table"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 24,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/ECS", "ServiceRunningTaskCount", { "stat": "Average", "label": "Running Tasks" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "ECS Running Task Count",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 24,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/RDS", "ReadLatency", { "stat": "Average", "label": "Read Latency" } ],
+                  [ ".", "WriteLatency", { "stat": "Average", "label": "Write Latency" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "RDS Read/Write Latency",
+                "period": 300
+              }
+            }
+          ]
+        }
+
+Outputs:
+  LoadBalancerURL:
+    Description: 'Application Load Balancer URL'
+    Value: !Sub 'http://${ApplicationLoadBalancer.DNSName}'
+    Export:
+      Name: !Sub '${AWS::StackName}-LoadBalancerURL'
+
+  LoadBalancerDNSName:
+    Description: 'Application Load Balancer DNS Name'
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+    Export:
+      Name: !Sub '${AWS::StackName}-LoadBalancerDNS'
+
+  DatabaseEndpoint:
+    Description: 'RDS database endpoint'
+    Value: !GetAtt DBInstance.Endpoint.Address
+    Export:
+      Name: !Sub '${AWS::StackName}-DatabaseEndpoint'
+
+  DatabasePort:
+    Description: 'RDS database port'
+    Value: !GetAtt DBInstance.Endpoint.Port
+    Export:
+      Name: !Sub '${AWS::StackName}-DatabasePort'
+
+  DBReadReplicaEndpoint:
+    Condition: IsProduction
+    Description: 'RDS read replica endpoint (production only)'
+    Value: !GetAtt DBReadReplica.Endpoint.Address
+    Export:
+      Name: !Sub '${AWS::StackName}-DBReadReplicaEndpoint'
+
+  DatabaseName:
+    Description: 'RDS database name'
+    Value: !Sub '${FPOIdentifier}_erp'
+    Export:
+      Name: !Sub '${AWS::StackName}-DatabaseName'
+
+  S3BucketName:
+    Description: 'S3 bucket for attachments'
+    Value: !Ref AttachmentsBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-S3Bucket'
+
+  ECSServiceName:
+    Description: 'ECS service name'
+    Value: !GetAtt ECSService.Name
+    Export:
+      Name: !Sub '${AWS::StackName}-ECSService'
+
+  ECSClusterName:
+    Description: 'ECS cluster name'
+    Value: !Ref ECSCluster
+    Export:
+      Name: !Sub '${AWS::StackName}-ECSCluster'
+
+  ECSClusterArn:
+    Description: 'ECS cluster ARN'
+    Value: !GetAtt ECSCluster.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-ECSClusterArn'
+
+  LogGroupName:
+    Description: 'CloudWatch log group name'
+    Value: !Ref ECSLogGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-LogGroup'
+
+  AlertTopicArn:
+    Description: 'SNS topic ARN for CloudWatch alerts'
+    Value: !Ref AlertTopic
+    Export:
+      Name: !Sub '${AWS::StackName}-AlertTopicArn'
+
+  AuditLogsBucketName:
+    Description: 'S3 bucket for CloudTrail audit logs'
+    Value: !Ref AuditLogsBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-AuditLogsBucket'
+
+  AuditTrailArn:
+    Description: 'CloudTrail ARN for audit logging'
+    Value: !GetAtt AuditTrail.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-AuditTrailArn'
+
+  DashboardURL:
+    Description: 'CloudWatch Dashboard URL'
+    Value: !Sub 'https://console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${FPOIdentifier}-${Environment}-ERP-Dashboard'
+    Export:
+      Name: !Sub '${AWS::StackName}-DashboardURL'

@@ -12,17 +12,35 @@ func AutoMigrate(db *gorm.DB) error {
 
 	// List all models for auto-migration
 	models := []interface{}{
+		// Core entities
 		&models.Warehouse{},
 		&models.Product{},
 		&models.ProductPrice{},
+
+		// Procurement entities
+		&models.Collaborator{},
+		// Note: CollaboratorProduct removed - deprecated in favor of ProductVariant with collaborator_id
+		&models.ProductVariant{},
+		&models.PurchaseOrder{},
+		&models.PurchaseOrderItem{},
+		&models.GRN{},
+		&models.GRNItem{},
+
+		// Inventory entities
 		&models.InventoryBatch{},
 		&models.InventoryTransaction{},
+
+		// Sales entities
 		&models.Sale{},
 		&models.SaleItem{},
 		&models.SaleSummary{},
+
+		// Returns entities
 		&models.Return{},
 		&models.ReturnItem{},
 		&models.ReturnSummary{},
+
+		// Supporting entities
 		&models.RefundPolicy{},
 		&models.BankPayment{},
 		&models.Attachment{},
@@ -32,6 +50,10 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.TaxTier{},
 		&models.TaxApplication{},
 		&models.TaxSummary{},
+
+		// Webhook integration
+		&models.WebhookEvent{},
+		&models.WebhookDeliveryAttempt{},
 	}
 
 	// Perform auto-migration

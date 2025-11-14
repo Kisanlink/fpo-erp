@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -20,12 +21,40 @@ func NewInventoryRepository(db *gorm.DB) *InventoryRepository {
 	return &InventoryRepository{db: db}
 }
 
+// CreateBatchWithTransaction creates a batch and initial transaction atomically
+func (r *InventoryRepository) CreateBatchWithTransaction(batch *models.InventoryBatch, transaction *models.InventoryTransaction) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		// Create the batch first
+		if err := tx.Create(batch).Error; err != nil {
+			return errors.NewInternalServerError(fmt.Sprintf("Failed to create inventory batch: %v", err))
+		}
+
+		// Update the transaction with the created batch ID
+		transaction.BatchID = batch.ID
+
+		// Create the initial transaction
+		if err := tx.Create(transaction).Error; err != nil {
+			return errors.NewInternalServerError(fmt.Sprintf("Failed to create initial inventory transaction: %v", err))
+		}
+
+		return nil
+	})
+}
+
 // Batch operations
 
 // CreateBatch creates a new inventory batch
 func (r *InventoryRepository) CreateBatch(batch *models.InventoryBatch) error {
 	if err := r.db.Create(batch).Error; err != nil {
-		return errors.NewInternalServerError("Failed to create inventory batch")
+		return errors.NewInternalServerError(fmt.Sprintf("Failed to create inventory batch: %v", err))
+	}
+	return nil
+}
+
+// CreateBatchWithTx creates a new inventory batch within a transaction
+func (r *InventoryRepository) CreateBatchWithTx(tx *gorm.DB, batch *models.InventoryBatch) error {
+	if err := tx.Create(batch).Error; err != nil {
+		return errors.NewInternalServerError(fmt.Sprintf("Failed to create inventory batch: %v", err))
 	}
 	return nil
 }
@@ -33,7 +62,7 @@ func (r *InventoryRepository) CreateBatch(batch *models.InventoryBatch) error {
 // GetBatchByID retrieves an inventory batch by ID
 func (r *InventoryRepository) GetBatchByID(id string) (*models.InventoryBatch, error) {
 	var batch models.InventoryBatch
-	if err := r.db.Preload("Warehouse").Preload("Product").Where("id = ?", id).First(&batch).Error; err != nil {
+	if err := r.db.Preload("Warehouse").Preload("Variant").Where("id = ?", id).First(&batch).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, errors.NewNotFoundError("Inventory batch")
 		}
@@ -45,43 +74,43 @@ func (r *InventoryRepository) GetBatchByID(id string) (*models.InventoryBatch, e
 // GetBatchesByWarehouse retrieves all batches for a warehouse
 func (r *InventoryRepository) GetBatchesByWarehouse(warehouseID string) ([]models.InventoryBatch, error) {
 	var batches []models.InventoryBatch
-	if err := r.db.Preload("Product").Where("warehouse_id = ?", warehouseID).Find(&batches).Error; err != nil {
+	if err := r.db.Preload("Variant").Where("warehouse_id = ?", warehouseID).Find(&batches).Error; err != nil {
 		return nil, errors.NewInternalServerError("Failed to retrieve warehouse batches")
 	}
 	return batches, nil
 }
 
-// GetBatchesByProduct retrieves all batches for a product
-func (r *InventoryRepository) GetBatchesByProduct(productID string) ([]models.InventoryBatch, error) {
+// GetBatchesByVariant retrieves all batches for a product variant
+func (r *InventoryRepository) GetBatchesByVariant(variantID string) ([]models.InventoryBatch, error) {
 	var batches []models.InventoryBatch
-	if err := r.db.Preload("Warehouse").Where("product_id = ?", productID).Find(&batches).Error; err != nil {
-		return nil, errors.NewInternalServerError("Failed to retrieve product batches")
+	if err := r.db.Preload("Warehouse").Where("variant_id = ?", variantID).Find(&batches).Error; err != nil {
+		return nil, errors.NewInternalServerError("Failed to retrieve variant batches")
 	}
 	return batches, nil
 }
 
-// GetBatchesByProductOrderedByExpiry retrieves batches for a product ordered by expiry date (FEFO)
-func (r *InventoryRepository) GetBatchesByProductOrderedByExpiry(productID string) ([]models.InventoryBatch, error) {
+// GetBatchesByVariantOrderedByExpiry retrieves batches for a variant ordered by expiry date (FEFO)
+func (r *InventoryRepository) GetBatchesByVariantOrderedByExpiry(variantID string) ([]models.InventoryBatch, error) {
 	var batches []models.InventoryBatch
-	if err := r.db.Preload("Warehouse").Where("product_id = ? AND total_quantity > 0", productID).Order("expiry_date ASC").Find(&batches).Error; err != nil {
-		return nil, errors.NewInternalServerError("Failed to retrieve product batches ordered by expiry")
+	if err := r.db.Preload("Warehouse").Where("variant_id = ? AND total_quantity > 0", variantID).Order("expiry_date ASC").Find(&batches).Error; err != nil {
+		return nil, errors.NewInternalServerError("Failed to retrieve variant batches ordered by expiry")
 	}
 	return batches, nil
 }
 
-// GetBatchesByProductAndWarehouseOrderedByExpiry retrieves batches for a product in a specific warehouse ordered by expiry date (FEFO)
-func (r *InventoryRepository) GetBatchesByProductAndWarehouseOrderedByExpiry(productID, warehouseID string) ([]models.InventoryBatch, error) {
+// GetBatchesByVariantAndWarehouseOrderedByExpiry retrieves batches for a variant in a specific warehouse ordered by expiry date (FEFO)
+func (r *InventoryRepository) GetBatchesByVariantAndWarehouseOrderedByExpiry(variantID, warehouseID string) ([]models.InventoryBatch, error) {
 	var batches []models.InventoryBatch
-	if err := r.db.Preload("Warehouse").Where("product_id = ? AND warehouse_id = ? AND total_quantity > 0", productID, warehouseID).Order("expiry_date ASC").Find(&batches).Error; err != nil {
-		return nil, errors.NewInternalServerError("Failed to retrieve product batches in warehouse ordered by expiry")
+	if err := r.db.Preload("Warehouse").Where("variant_id = ? AND warehouse_id = ? AND total_quantity > 0", variantID, warehouseID).Order("expiry_date ASC").Find(&batches).Error; err != nil {
+		return nil, errors.NewInternalServerError("Failed to retrieve variant batches in warehouse ordered by expiry")
 	}
 	return batches, nil
 }
 
-// GetAllBatches retrieves all inventory batches with warehouse and product details
+// GetAllBatches retrieves all inventory batches with warehouse and variant details
 func (r *InventoryRepository) GetAllBatches() ([]models.InventoryBatch, error) {
 	var batches []models.InventoryBatch
-	if err := r.db.Preload("Warehouse").Preload("Product").Find(&batches).Error; err != nil {
+	if err := r.db.Preload("Warehouse").Preload("Variant").Find(&batches).Error; err != nil {
 		return nil, errors.NewInternalServerError("Failed to retrieve all batches")
 	}
 	return batches, nil
@@ -107,7 +136,7 @@ func (r *InventoryRepository) DeleteBatch(id string) error {
 func (r *InventoryRepository) GetExpiringBatches(days int) ([]models.InventoryBatch, error) {
 	var batches []models.InventoryBatch
 	expiryDate := time.Now().AddDate(0, 0, days)
-	if err := r.db.Preload("Warehouse").Preload("Product").Where("expiry_date <= ?", expiryDate).Find(&batches).Error; err != nil {
+	if err := r.db.Preload("Warehouse").Preload("Variant").Where("expiry_date <= ?", expiryDate).Find(&batches).Error; err != nil {
 		return nil, errors.NewInternalServerError("Failed to retrieve expiring batches")
 	}
 	return batches, nil
@@ -116,7 +145,7 @@ func (r *InventoryRepository) GetExpiringBatches(days int) ([]models.InventoryBa
 // GetLowStockBatches retrieves batches with low stock (below threshold)
 func (r *InventoryRepository) GetLowStockBatches(threshold int64) ([]models.InventoryBatch, error) {
 	var batches []models.InventoryBatch
-	if err := r.db.Preload("Warehouse").Preload("Product").Where("total_quantity <= ?", threshold).Find(&batches).Error; err != nil {
+	if err := r.db.Preload("Warehouse").Preload("Variant").Where("total_quantity <= ?", threshold).Find(&batches).Error; err != nil {
 		return nil, errors.NewInternalServerError("Failed to retrieve low stock batches")
 	}
 	return batches, nil
@@ -174,6 +203,37 @@ func (r *InventoryRepository) UpdateBatchStock(batchID string, quantityChange in
 	if err := r.db.Model(&models.InventoryBatch{}).Where("id = ?", batchID).Update("total_quantity", gorm.Expr("total_quantity + ?", quantityChange)).Error; err != nil {
 		log.Printf("[ERROR] Database error updating batch stock: %v", err)
 		return errors.NewInternalServerError("Failed to update batch stock")
+	}
+	return nil
+}
+
+// UpdateBatchStockWithTx updates the stock level for a batch within a transaction with row lock
+func (r *InventoryRepository) UpdateBatchStockWithTx(tx *gorm.DB, batchID string, quantityChange int64) error {
+	// Use FOR UPDATE to lock the row and prevent race conditions
+	var batch models.InventoryBatch
+	if err := tx.Set("gorm:query_option", "FOR UPDATE").Where("id = ?", batchID).First(&batch).Error; err != nil {
+		log.Printf("[ERROR] Failed to lock batch for update: %v", err)
+		return errors.NewInternalServerError("Failed to lock batch for stock update")
+	}
+
+	// Check for sufficient stock before update
+	if batch.TotalQuantity+quantityChange < 0 {
+		log.Printf("[ERROR] Insufficient stock: current=%d, requested=%d", batch.TotalQuantity, -quantityChange)
+		return errors.NewBadRequestError("Insufficient stock available")
+	}
+
+	if err := tx.Model(&models.InventoryBatch{}).Where("id = ?", batchID).Update("total_quantity", gorm.Expr("total_quantity + ?", quantityChange)).Error; err != nil {
+		log.Printf("[ERROR] Database error updating batch stock: %v", err)
+		return errors.NewInternalServerError("Failed to update batch stock")
+	}
+	return nil
+}
+
+// CreateTransactionWithTx creates an inventory transaction within a transaction
+func (r *InventoryRepository) CreateTransactionWithTx(tx *gorm.DB, transaction *models.InventoryTransaction) error {
+	if err := tx.Create(transaction).Error; err != nil {
+		log.Printf("[ERROR] Database error creating inventory transaction: %v", err)
+		return errors.NewInternalServerError("Failed to create inventory transaction")
 	}
 	return nil
 }

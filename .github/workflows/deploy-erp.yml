@@ -1,0 +1,303 @@
+name: Deploy ERP to AWS
+
+on:
+  workflow_dispatch:
+    inputs:
+      fpo_id:
+        description: 'FPO ID (e.g., fpo001, fpo002)'
+        required: true
+        type: string
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      image_tag:
+        description: 'Docker image tag to deploy (default: {environment}-latest)'
+        required: false
+        type: string
+
+env:
+  AWS_REGION: us-west-2
+  ECR_REPOSITORY: kisanlink-erp
+
+jobs:
+  validate-inputs:
+    name: Validate Deployment Inputs
+    runs-on: ubuntu-latest
+    outputs:
+      fpo_id: ${{ steps.validate.outputs.fpo_id }}
+      environment: ${{ steps.validate.outputs.environment }}
+      image_tag: ${{ steps.validate.outputs.image_tag }}
+    steps:
+      - name: Validate FPO ID format
+        id: validate
+        run: |
+          FPO_ID="${{ github.event.inputs.fpo_id }}"
+          if [[ ! $FPO_ID =~ ^fpo[0-9]{3}$ ]]; then
+            echo "Error: Invalid FPO ID format. Must be fpo### (e.g., fpo001)"
+            exit 1
+          fi
+
+          echo "fpo_id=$FPO_ID" >> $GITHUB_OUTPUT
+          echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+
+          # Use provided image tag or default to {environment}-latest
+          if [ -n "${{ github.event.inputs.image_tag }}" ]; then
+            echo "image_tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "image_tag=${{ github.event.inputs.environment }}-latest" >> $GITHUB_OUTPUT
+          fi
+
+  deploy-cloudformation:
+    name: Deploy CloudFormation Stack
+    runs-on: ubuntu-latest
+    needs: validate-inputs
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: ${{ github.event.inputs.environment }}
+      url: ${{ steps.get-outputs.outputs.url }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Get ECR image URI
+        id: get-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${{ needs.validate-inputs.outputs.image_tag }}"
+          echo "image_uri=$IMAGE_URI" >> $GITHUB_OUTPUT
+          echo "Deploying image: $IMAGE_URI"
+
+      - name: Update parameter file with image URI
+        run: |
+          PARAM_FILE="infrastructure/parameters/${{ needs.validate-inputs.outputs.fpo_id }}-${{ needs.validate-inputs.outputs.environment }}.json"
+
+          if [ ! -f "$PARAM_FILE" ]; then
+            echo "Error: Parameter file not found: $PARAM_FILE"
+            exit 1
+          fi
+
+          # Update ECRImageUri in parameter file
+          jq --arg image "${{ steps.get-image.outputs.image_uri }}" \
+            '(.[] | select(.ParameterKey == "ECRImageUri") | .ParameterValue) |= $image' \
+            "$PARAM_FILE" > "$PARAM_FILE.tmp"
+
+          mv "$PARAM_FILE.tmp" "$PARAM_FILE"
+
+          echo "Updated parameter file with image: ${{ steps.get-image.outputs.image_uri }}"
+
+      - name: Validate CloudFormation template
+        run: |
+          aws cloudformation validate-template \
+            --template-body file://infrastructure/templates/erp-application.yaml
+
+      - name: Scan CloudFormation for security issues
+        uses: bridgecrewio/checkov-action@master
+        with:
+          framework: cloudformation
+          directory: infrastructure/templates/
+          soft_fail: false
+          output_format: sarif
+          output_file_path: checkov-results.sarif
+
+      - name: Upload Checkov results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: checkov-results.sarif
+
+      - name: Deploy CloudFormation stack
+        id: deploy
+        run: |
+          cd infrastructure
+          bash scripts/deploy.sh \
+            ${{ needs.validate-inputs.outputs.fpo_id }} \
+            ${{ needs.validate-inputs.outputs.environment }} \
+            --no-confirm
+
+      - name: Get stack outputs
+        id: get-outputs
+        run: |
+          STACK_NAME="kisanlink-erp-${{ needs.validate-inputs.outputs.fpo_id }}-${{ needs.validate-inputs.outputs.environment }}"
+
+          # Get Load Balancer URL
+          LB_URL=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+            --query 'Stacks[0].Outputs[?OutputKey==`LoadBalancerURL`].OutputValue' \
+            --output text)
+
+          echo "url=$LB_URL" >> $GITHUB_OUTPUT
+          echo "Load Balancer URL: $LB_URL"
+
+      - name: Wait for ECS service to stabilize
+        run: |
+          STACK_NAME="kisanlink-erp-${{ needs.validate-inputs.outputs.fpo_id }}-${{ needs.validate-inputs.outputs.environment }}"
+
+          # Get ECS cluster and service names from stack
+          CLUSTER_NAME=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+            --query 'Stacks[0].Outputs[?OutputKey==`ECSClusterName`].OutputValue' \
+            --output text)
+
+          SERVICE_NAME=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+            --query 'Stacks[0].Outputs[?OutputKey==`ECSServiceName`].OutputValue' \
+            --output text)
+
+          echo "Waiting for ECS service to stabilize..."
+          aws ecs wait services-stable \
+            --cluster "$CLUSTER_NAME" \
+            --services "$SERVICE_NAME"
+
+      - name: Health check
+        id: health-check
+        run: |
+          LB_URL="${{ steps.get-outputs.outputs.url }}"
+
+          echo "Performing health check on $LB_URL/health"
+
+          # Wait for health check to pass (max 5 minutes)
+          for i in {1..30}; do
+            if curl -f -s "$LB_URL/health" > /dev/null 2>&1; then
+              echo "Health check passed!"
+              exit 0
+            fi
+            echo "Health check attempt $i/30 failed. Waiting 10 seconds..."
+            sleep 10
+          done
+
+          echo "Health check failed after 5 minutes"
+          exit 1
+
+      - name: Get Load Balancer URL
+        id: get-lb-url
+        run: |
+          LB_URL="${{ steps.get-outputs.outputs.url }}"
+          echo "lb_url=$LB_URL" >> $GITHUB_OUTPUT
+
+      - name: Run smoke tests
+        id: smoke-tests
+        run: |
+          echo "Running smoke tests against ${{ steps.get-lb-url.outputs.lb_url }}"
+
+          # Test 1: Health endpoint (already done above)
+          echo "✅ Health check passed"
+
+          # Test 2: Products endpoint (without auth - should return 401 or work with AAA bypass)
+          echo "Testing products endpoint..."
+          PRODUCTS_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "${{ steps.get-lb-url.outputs.lb_url }}/api/v1/products")
+
+          if [[ "$PRODUCTS_STATUS" == "200" || "$PRODUCTS_STATUS" == "401" ]]; then
+            echo "✅ Products endpoint responding (status: $PRODUCTS_STATUS)"
+          else
+            echo "❌ Products endpoint failed (status: $PRODUCTS_STATUS)"
+            exit 1
+          fi
+
+          # Test 3: Warehouses endpoint
+          echo "Testing warehouses endpoint..."
+          WAREHOUSES_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "${{ steps.get-lb-url.outputs.lb_url }}/api/v1/warehouses")
+
+          if [[ "$WAREHOUSES_STATUS" == "200" || "$WAREHOUSES_STATUS" == "401" ]]; then
+            echo "✅ Warehouses endpoint responding (status: $WAREHOUSES_STATUS)"
+          else
+            echo "❌ Warehouses endpoint failed (status: $WAREHOUSES_STATUS)"
+            exit 1
+          fi
+
+          # Test 4: Database connectivity test (via API)
+          echo "Testing database connectivity..."
+          DB_TEST=$(curl -s "${{ steps.get-lb-url.outputs.lb_url }}/health" | jq -r '.database // "unknown"')
+
+          if [[ "$DB_TEST" != "unknown" ]]; then
+            echo "✅ Database connectivity confirmed"
+          else
+            echo "⚠️  Database status unknown (health endpoint may not include DB check)"
+          fi
+
+          # Test 5: Response time check
+          echo "Testing response time..."
+          RESPONSE_TIME=$(curl -s -o /dev/null -w "%{time_total}" \
+            "${{ steps.get-lb-url.outputs.lb_url }}/health")
+
+          if (( $(echo "$RESPONSE_TIME < 2.0" | bc -l) )); then
+            echo "✅ Response time acceptable: ${RESPONSE_TIME}s"
+          else
+            echo "⚠️  Response time high: ${RESPONSE_TIME}s"
+          fi
+
+          echo "🎉 All smoke tests passed!"
+
+      - name: Deployment summary
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**FPO ID:** ${{ needs.validate-inputs.outputs.fpo_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ needs.validate-inputs.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Tag:** ${{ needs.validate-inputs.outputs.image_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Stack Name:** kisanlink-erp-${{ needs.validate-inputs.outputs.fpo_id }}-${{ needs.validate-inputs.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Application URL:** ${{ steps.get-outputs.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Health Check:** ${{ steps.get-outputs.outputs.url }}/health" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Deployment completed successfully!" >> $GITHUB_STEP_SUMMARY
+
+  rollback:
+    name: Rollback Deployment
+    runs-on: ubuntu-latest
+    needs: [validate-inputs, deploy-cloudformation]
+    if: failure()
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Trigger automatic rollback
+        run: |
+          STACK_NAME="kisanlink-erp-${{ needs.validate-inputs.outputs.fpo_id }}-${{ needs.validate-inputs.outputs.environment }}"
+
+          echo "Deployment failed. Checking if rollback is needed..."
+
+          # Check if stack is in ROLLBACK_IN_PROGRESS or UPDATE_ROLLBACK_IN_PROGRESS
+          STACK_STATUS=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+            --query 'Stacks[0].StackStatus' --output text || echo "UNKNOWN")
+
+          if [[ "$STACK_STATUS" == *"ROLLBACK"* ]]; then
+            echo "Stack is already rolling back. Waiting for completion..."
+            aws cloudformation wait stack-rollback-complete --stack-name "$STACK_NAME" || true
+          fi
+
+          echo "Rollback process completed"
+
+      - name: Rollback summary
+        run: |
+          echo "## Deployment Failed - Rollback Initiated" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**FPO ID:** ${{ needs.validate-inputs.outputs.fpo_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ needs.validate-inputs.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ Deployment failed and automatic rollback was initiated." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Please check the CloudFormation events for details on the failure." >> $GITHUB_STEP_SUMMARY

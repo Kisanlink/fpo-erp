@@ -3,7 +3,7 @@ package handlers
 import (
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
-	"kisanlink-erp/internal/services"
+	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
@@ -11,12 +11,12 @@ import (
 
 // ProductPriceHandler handles product price HTTP requests
 type ProductPriceHandler struct {
-	priceService  *services.ProductPriceService
+	priceService  interfaces.ProductPriceServiceInterface
 	aaaMiddleware *aaa.AAAMiddleware
 }
 
 // NewProductPriceHandler creates a new product price handler
-func NewProductPriceHandler(priceService *services.ProductPriceService, aaaMiddleware *aaa.AAAMiddleware) *ProductPriceHandler {
+func NewProductPriceHandler(priceService interfaces.ProductPriceServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *ProductPriceHandler {
 	return &ProductPriceHandler{
 		priceService:  priceService,
 		aaaMiddleware: aaaMiddleware,
@@ -85,34 +85,34 @@ func (h *ProductPriceHandler) GetProductPrice(c *gin.Context) {
 	utils.OKResponse(c, "Product price retrieved successfully", response)
 }
 
-// GetProductPrices handles GET /api/v1/products/:id/prices
-// @Summary Get Product Prices
-// @Description Retrieve all prices for a specific product
+// GetVariantPrices handles GET /api/v1/variants/:id/prices
+// @Summary Get Variant Prices
+// @Description Retrieve all prices for a specific product variant
 // @Tags Product Prices
 // @Produce json
-// @Param id path string true "Product ID" example(PROD_12345678)
-// @Success 200 {object} utils.Response{data=[]models.ProductPriceResponse} "Product prices retrieved successfully"
+// @Param id path string true "Variant ID" example(PVAR_12345678)
+// @Success 200 {object} utils.Response{data=[]models.ProductPriceResponse} "Variant prices retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
-// @Router /api/v1/products/{id}/prices [get]
-func (h *ProductPriceHandler) GetProductPrices(c *gin.Context) {
-	// Get product ID from URL
-	productID := c.Param("id")
-	if productID == "" {
-		utils.BadRequestResponse(c, "Product ID is required", nil)
+// @Router /api/v1/variants/{id}/prices [get]
+func (h *ProductPriceHandler) GetVariantPrices(c *gin.Context) {
+	// Get variant ID from URL
+	variantID := c.Param("id")
+	if variantID == "" {
+		utils.BadRequestResponse(c, "Variant ID is required", nil)
 		return
 	}
 
-	// Get product prices
-	response, err := h.priceService.GetProductPrices(productID)
+	// Get variant prices
+	response, err := h.priceService.GetVariantPrices(variantID)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve product prices", err)
+		utils.InternalServerErrorResponse(c, "Failed to retrieve variant prices", err)
 		return
 	}
 
-	utils.OKResponse(c, "Product prices retrieved successfully", response)
+	utils.OKResponse(c, "Variant prices retrieved successfully", response)
 }
 
 // GetCurrentPrice handles GET /api/v1/products/:id/prices/current
@@ -250,29 +250,37 @@ func (h *ProductPriceHandler) GetExpiredPrices(c *gin.Context) {
 // @Tags Product Prices
 // @Accept json
 // @Produce json
-// @Param id path string true "Product ID" example(PROD_12345678)
+// @Param id path string true "Variant ID" example(PVAR_12345678)
 // @Param request body models.CreateProductPriceRequest true "Product price data"
 // @Success 201 {object} utils.Response{data=models.ProductPriceResponse} "Product price created successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
-// @Router /api/v1/products/{id}/prices [post]
-func (h *ProductPriceHandler) CreateProductPriceForProduct(c *gin.Context) {
-	// Get product ID from URL
-	productID := c.Param("id")
-	if productID == "" {
-		utils.BadRequestResponse(c, "Product ID is required", nil)
+// @Router /api/v1/variants/{id}/prices [post]
+func (h *ProductPriceHandler) CreateProductPriceForVariant(c *gin.Context) {
+	// Get variant ID from URL
+	variantID := c.Param("id")
+	if variantID == "" {
+		utils.BadRequestResponse(c, "Variant ID is required", nil)
 		return
 	}
 
 	var request models.CreateProductPriceRequest
 
-	// Set the product ID from URL parameter first
-	request.ProductID = productID
-
-	// Validate request
-	if err := utils.ValidateRequest(c, &request); err != nil {
+	// Bind first
+	if err := c.ShouldBindJSON(&request); err != nil {
+		utils.BadRequestResponse(c, "Invalid request data", err)
+		return
+	}
+	// Reject mismatching body variant_id, then force path precedence
+	if request.VariantID != "" && request.VariantID != variantID {
+		utils.BadRequestResponse(c, "variant_id in body does not match path", nil)
+		return
+	}
+	request.VariantID = variantID
+	// Validate after setting authoritative fields
+	if err := utils.ValidateStruct(&request); err != nil {
 		utils.BadRequestResponse(c, "Invalid request data", err)
 		return
 	}
@@ -295,21 +303,21 @@ func (h *ProductPriceHandler) RegisterRoutes(router *gin.RouterGroup) {
 		prices.Use(h.aaaMiddleware.Authenticate())
 
 		// Create/Update/Delete routes - CEO=CRUD, Store_Manager=CRUD, Tech_Support=R/W (temp)
-		prices.POST("", h.aaaMiddleware.RequirePermission("aaa/product_price", "*", "create"), h.CreateProductPrice)
-		prices.PATCH("/:id", h.aaaMiddleware.RequirePermission("aaa/product_price", "*", "update"), h.UpdateProductPrice)
-		prices.DELETE("/:id", h.aaaMiddleware.RequirePermission("aaa/product_price", "*", "delete"), h.DeleteProductPrice)
+		prices.POST("", h.aaaMiddleware.RequireOrgPermission("product_price", "create"), h.CreateProductPrice)
+		prices.PATCH("/:id", h.aaaMiddleware.RequireOrgPermission("product_price", "update"), h.UpdateProductPrice)
+		prices.DELETE("/:id", h.aaaMiddleware.RequireOrgPermission("product_price", "delete"), h.DeleteProductPrice)
 
 		// Read routes - Director=R, CEO=CRUD, Auditor=R, Accountant=–, Tech_Support=R/W (temp), Store_Manager=CRUD, Store_Staff=R
-		prices.GET("/:id", h.aaaMiddleware.RequirePermission("aaa/product_price", "*", "read"), h.GetProductPrice)
-		prices.GET("/expired", h.aaaMiddleware.RequirePermission("aaa/product_price", "*", "read"), h.GetExpiredPrices)
+		prices.GET("/:id", h.aaaMiddleware.RequireOrgPermission("product_price", "read"), h.GetProductPrice)
+		prices.GET("/expired", h.aaaMiddleware.RequireOrgPermission("product_price", "read"), h.GetExpiredPrices)
 	}
 
-	// Product-specific price routes
-	products := router.Group("/products")
+	// Variant-specific price routes
+	variants := router.Group("/variants")
 	{
-		products.Use(h.aaaMiddleware.Authenticate())
-		products.GET("/:id/prices", h.aaaMiddleware.RequirePermission("aaa/product_price", "*", "read"), h.GetProductPrices)
-		products.GET("/:id/prices/current", h.aaaMiddleware.RequirePermission("aaa/product_price", "*", "read"), h.GetCurrentPrice)
-		products.POST("/:id/prices", h.aaaMiddleware.RequirePermission("aaa/product_price", "*", "create"), h.CreateProductPriceForProduct)
+		variants.Use(h.aaaMiddleware.Authenticate())
+		variants.GET("/:id/prices", h.aaaMiddleware.RequireOrgPermission("product_price", "read"), h.GetVariantPrices)
+		variants.GET("/:id/prices/current", h.aaaMiddleware.RequireOrgPermission("product_price", "read"), h.GetCurrentPrice)
+		variants.POST("/:id/prices", h.aaaMiddleware.RequireOrgPermission("product_price", "create"), h.CreateProductPriceForVariant)
 	}
 }

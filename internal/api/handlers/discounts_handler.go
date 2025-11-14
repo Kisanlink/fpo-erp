@@ -6,18 +6,18 @@ import (
 
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
-	"kisanlink-erp/internal/services"
+	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
 
 type DiscountsHandler struct {
-	discountsService *services.DiscountsService
+	discountsService interfaces.DiscountsServiceInterface
 	aaaMiddleware    *aaa.AAAMiddleware
 }
 
-func NewDiscountsHandler(discountsService *services.DiscountsService, aaaMiddleware *aaa.AAAMiddleware) *DiscountsHandler {
+func NewDiscountsHandler(discountsService interfaces.DiscountsServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *DiscountsHandler {
 	return &DiscountsHandler{
 		discountsService: discountsService,
 		aaaMiddleware:    aaaMiddleware,
@@ -322,6 +322,123 @@ func (h *DiscountsHandler) GetDiscountUsageBySale(c *gin.Context) {
 	utils.OKResponse(c, "Discount usage retrieved successfully", usages)
 }
 
+// GetApplicableDiscounts handles GET /api/v1/discounts/applicable
+// @Summary Get Applicable Discounts
+// @Description Retrieve all discounts applicable for an order with given criteria
+// @Tags Discounts
+// @Produce json
+// @Param order_value query number true "Order value" example(1000.00)
+// @Param product_ids query string false "Comma-separated product IDs" example("PROD_1,PROD_2")
+// @Param category_ids query string false "Comma-separated category IDs" example("CAT_1,CAT_2")
+// @Param warehouse_id query string true "Warehouse ID" example("WH_123")
+// @Success 200 {object} utils.Response{data=[]models.DiscountResponse} "Applicable discounts retrieved successfully"
+// @Failure 400 {object} utils.ErrorResponseModel "Bad request"
+// @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
+// @Security BearerAuth
+// @Router /api/v1/discounts/applicable [get]
+func (h *DiscountsHandler) GetApplicableDiscounts(c *gin.Context) {
+	orderValueStr := c.Query("order_value")
+	if orderValueStr == "" {
+		utils.BadRequestResponse(c, "Order value is required", nil)
+		return
+	}
+
+	orderValue, err := strconv.ParseFloat(orderValueStr, 64)
+	if err != nil || orderValue <= 0 {
+		utils.BadRequestResponse(c, "Invalid order value", err)
+		return
+	}
+
+	warehouseID := c.Query("warehouse_id")
+	if warehouseID == "" {
+		utils.BadRequestResponse(c, "Warehouse ID is required", nil)
+		return
+	}
+
+	// Parse optional parameters
+	var productIDs []string
+	if productIDsStr := c.Query("product_ids"); productIDsStr != "" {
+		productIDs = utils.ParseCommaSeparatedString(productIDsStr)
+	}
+
+	var categoryIDs []string
+	if categoryIDsStr := c.Query("category_ids"); categoryIDsStr != "" {
+		categoryIDs = utils.ParseCommaSeparatedString(categoryIDsStr)
+	}
+
+	discounts, err := h.discountsService.GetApplicableDiscountsForOrder(orderValue, productIDs, categoryIDs, warehouseID)
+	if err != nil {
+		utils.InternalServerErrorResponse(c, "Failed to retrieve applicable discounts", err)
+		return
+	}
+
+	utils.OKResponse(c, "Applicable discounts retrieved successfully", discounts)
+}
+
+// CalculateOptimalDiscounts handles POST /api/v1/discounts/calculate-optimal
+// @Summary Calculate Optimal Discounts
+// @Description Calculate the optimal combination of discounts for an order
+// @Tags Discounts
+// @Accept json
+// @Produce json
+// @Param request body models.ValidateDiscountRequest true "Order details for optimization"
+// @Success 200 {object} utils.Response{data=[]models.DiscountResponse} "Optimal discounts calculated successfully"
+// @Failure 400 {object} utils.ErrorResponseModel "Bad request"
+// @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
+// @Security BearerAuth
+// @Router /api/v1/discounts/calculate-optimal [post]
+func (h *DiscountsHandler) CalculateOptimalDiscounts(c *gin.Context) {
+	var req models.ValidateDiscountRequest
+
+	// Validate request
+	if err := utils.ValidateRequest(c, &req); err != nil {
+		utils.BadRequestResponse(c, "Invalid request data", err)
+		return
+	}
+
+	optimalDiscounts, totalDiscount, err := h.discountsService.CalculateOptimalDiscounts(req.OrderValue, req.ProductIDs, req.CategoryIDs, req.WarehouseID)
+	if err != nil {
+		utils.InternalServerErrorResponse(c, "Failed to calculate optimal discounts", err)
+		return
+	}
+
+	utils.OKResponse(c, "Optimal discounts calculated successfully", gin.H{
+		"discounts":      optimalDiscounts,
+		"total_discount": totalDiscount,
+	})
+}
+
+// GetDiscountUsageStats handles GET /api/v1/discounts/usage/stats/:discountID
+// @Summary Get Discount Usage Statistics
+// @Description Retrieve usage statistics for a specific discount
+// @Tags Discounts
+// @Produce json
+// @Param discountID path string true "Discount ID" example(DISC_12345678)
+// @Success 200 {object} utils.Response{data=map[string]interface{}} "Discount usage statistics retrieved successfully"
+// @Failure 400 {object} utils.ErrorResponseModel "Bad request"
+// @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 404 {object} utils.ErrorResponseModel "Discount not found"
+// @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
+// @Security BearerAuth
+// @Router /api/v1/discounts/usage/stats/{discountID} [get]
+func (h *DiscountsHandler) GetDiscountUsageStats(c *gin.Context) {
+	discountID := c.Param("discountID")
+	if discountID == "" {
+		utils.BadRequestResponse(c, "Discount ID is required", nil)
+		return
+	}
+
+	stats, err := h.discountsService.GetDiscountUsageStats(discountID)
+	if err != nil {
+		utils.InternalServerErrorResponse(c, "Failed to retrieve discount usage statistics", err)
+		return
+	}
+
+	utils.OKResponse(c, "Discount usage statistics retrieved successfully", stats)
+}
+
 // RegisterRoutes registers all discount routes
 func (h *DiscountsHandler) RegisterRoutes(router *gin.RouterGroup) {
 	discounts := router.Group("/discounts")
@@ -330,19 +447,22 @@ func (h *DiscountsHandler) RegisterRoutes(router *gin.RouterGroup) {
 		discounts.Use(h.aaaMiddleware.Authenticate())
 
 		// Create/Update/Delete routes - CEO=CRUD, Store_Staff=CRUD, Tech_Support=R/W (temp)
-		discounts.POST("", h.aaaMiddleware.RequirePermission("aaa/discount", "*", "create"), h.CreateDiscount)
-		discounts.PUT("/:id", h.aaaMiddleware.RequirePermission("aaa/discount", "*", "update"), h.UpdateDiscount)
-		discounts.DELETE("/:id", h.aaaMiddleware.RequirePermission("aaa/discount", "*", "delete"), h.DeleteDiscount)
+		discounts.POST("", h.aaaMiddleware.RequireOrgPermission("discount", "create"), h.CreateDiscount)
+		discounts.PUT("/:id", h.aaaMiddleware.RequireOrgPermission("discount", "update"), h.UpdateDiscount)
+		discounts.DELETE("/:id", h.aaaMiddleware.RequireOrgPermission("discount", "delete"), h.DeleteDiscount)
 
 		// Read routes - Director=R, CEO=CRUD, Auditor=R, Accountant=R, Tech_Support=R/W (temp), Store_Manager=R, Store_Staff=CRUD
-		discounts.GET("", h.aaaMiddleware.RequirePermission("aaa/discount", "*", "read"), h.GetAllDiscounts)
-		discounts.GET("/active", h.aaaMiddleware.RequirePermission("aaa/discount", "*", "read"), h.GetActiveDiscounts)
-		discounts.GET("/:id", h.aaaMiddleware.RequirePermission("aaa/discount", "*", "read"), h.GetDiscount)
-		discounts.GET("/type/:type", h.aaaMiddleware.RequirePermission("aaa/discount", "*", "read"), h.GetDiscountsByType)
-		discounts.GET("/status/:status", h.aaaMiddleware.RequirePermission("aaa/discount", "*", "read"), h.GetDiscountsByStatus)
-		discounts.GET("/usage/sale/:saleID", h.aaaMiddleware.RequirePermission("aaa/discount", "*", "read"), h.GetDiscountUsageBySale)
+		discounts.GET("", h.aaaMiddleware.RequireOrgPermission("discount", "read"), h.GetAllDiscounts)
+		discounts.GET("/active", h.aaaMiddleware.RequireOrgPermission("discount", "read"), h.GetActiveDiscounts)
+		discounts.GET("/applicable", h.aaaMiddleware.RequireOrgPermission("discount", "read"), h.GetApplicableDiscounts)
+		discounts.GET("/:id", h.aaaMiddleware.RequireOrgPermission("discount", "read"), h.GetDiscount)
+		discounts.GET("/type/:type", h.aaaMiddleware.RequireOrgPermission("discount", "read"), h.GetDiscountsByType)
+		discounts.GET("/status/:status", h.aaaMiddleware.RequireOrgPermission("discount", "read"), h.GetDiscountsByStatus)
+		discounts.GET("/usage/sale/:saleID", h.aaaMiddleware.RequireOrgPermission("discount", "read"), h.GetDiscountUsageBySale)
+		discounts.GET("/usage/stats/:discountID", h.aaaMiddleware.RequireOrgPermission("discount", "read"), h.GetDiscountUsageStats)
 
-		// Validation route - accessible to all authenticated users
-		discounts.POST("/validate", h.aaaMiddleware.RequirePermission("aaa/discount", "*", "read"), h.ValidateDiscount)
+		// Validation and calculation routes - accessible to all authenticated users
+		discounts.POST("/validate", h.aaaMiddleware.RequireOrgPermission("discount", "read"), h.ValidateDiscount)
+		discounts.POST("/calculate-optimal", h.aaaMiddleware.RequireOrgPermission("discount", "read"), h.CalculateOptimalDiscounts)
 	}
 }

@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 
@@ -84,7 +85,13 @@ func ValidatePartialRequest(c *gin.Context, request interface{}) error {
 	}
 
 	// For partial updates, only validate non-zero fields
-	v := reflect.ValueOf(request).Elem()
+	v := reflect.ValueOf(request)
+	if v.Kind() == reflect.Pointer {
+		v = v.Elem()
+	}
+	if v.Kind() != reflect.Struct {
+		return fmt.Errorf("ValidatePartialRequest: expected pointer to struct")
+	}
 	t := v.Type()
 
 	for i := 0; i < v.NumField(); i++ {
@@ -113,5 +120,28 @@ func IsValidEmail(email string) bool {
 	return ValidateVar(email, "email") == nil
 }
 
+// ParseCommaSeparatedString splits a comma-separated string into a slice of trimmed strings
+func ParseCommaSeparatedString(input string) []string {
+	if input == "" {
+		return []string{}
+	}
 
+	parts := strings.Split(input, ",")
+	result := make([]string, 0, len(parts))
 
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+
+	return result
+}
+
+// ParseInt parses a string to int with error handling
+func ParseInt(s string) (int, error) {
+	var result int
+	_, err := fmt.Sscanf(s, "%d", &result)
+	return result, err
+}

@@ -6,18 +6,18 @@ import (
 
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
-	"kisanlink-erp/internal/services"
+	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
 
 type ReturnsHandler struct {
-	returnsService *services.ReturnsService
+	returnsService interfaces.ReturnsServiceInterface
 	aaaMiddleware  *aaa.AAAMiddleware
 }
 
-func NewReturnsHandler(returnsService *services.ReturnsService, aaaMiddleware *aaa.AAAMiddleware) *ReturnsHandler {
+func NewReturnsHandler(returnsService interfaces.ReturnsServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *ReturnsHandler {
 	return &ReturnsHandler{
 		returnsService: returnsService,
 		aaaMiddleware:  aaaMiddleware,
@@ -496,21 +496,20 @@ func (h *ReturnsHandler) RegisterRoutes(router *gin.RouterGroup) {
 		returns.Use(h.aaaMiddleware.Authenticate())
 
 		// Create/Update/Delete routes - CEO=CRUD, Store_Staff=CRUD, Tech_Support=R/W (temp)
-		returns.POST("", h.aaaMiddleware.RequirePermission("aaa/return", "*", "create"), h.CreateReturn)
-		returns.PUT("/:id", h.aaaMiddleware.RequirePermission("aaa/return", "*", "update"), h.UpdateReturn)
-		returns.PATCH("/:id/status", h.aaaMiddleware.RequirePermission("aaa/return", "*", "update"), h.UpdateReturnStatus)
-		returns.DELETE("/:id", h.aaaMiddleware.RequirePermission("aaa/return", "*", "delete"), h.DeleteReturn)
+		returns.POST("", h.aaaMiddleware.RequireOrgPermission("return", "create"), h.CreateReturn)
+		returns.PUT("/:id", h.aaaMiddleware.RequireOrgPermission("return", "update"), h.UpdateReturn)
+		returns.PATCH("/:id/status", h.aaaMiddleware.RequireOrgPermission("return", "update"), h.UpdateReturnStatus)
+		returns.DELETE("/:id", h.aaaMiddleware.RequireOrgPermission("return", "delete"), h.DeleteReturn)
 
 		// Read routes - Director=R, CEO=CRUD, Auditor=R, Accountant=R, Tech_Support=R/W (temp), Store_Manager=R, Store_Staff=CRUD
-		returns.GET("", h.aaaMiddleware.RequirePermission("aaa/return", "*", "read"), h.GetAllReturns)
-		returns.GET("/:id", h.aaaMiddleware.RequirePermission("aaa/return", "*", "read"), h.GetReturn)
-		returns.GET("/customer/:customerID", h.aaaMiddleware.RequirePermission("aaa/return", "*", "read"), h.GetReturnsByCustomer)
-		returns.GET("/sale/:saleID", h.aaaMiddleware.RequirePermission("aaa/return", "*", "read"), h.GetReturnsBySaleID)
-		returns.GET("/date-range", h.aaaMiddleware.RequirePermission("aaa/return", "*", "read"), h.GetReturnsByDateRange)
-		returns.GET("/status/:status", h.aaaMiddleware.RequirePermission("aaa/return", "*", "read"), h.GetReturnsByStatus)
-		returns.GET("/total-amount", h.aaaMiddleware.RequirePermission("aaa/return", "*", "read"), h.GetTotalReturnsAmount)
-		returns.GET("/return-rate/:productID", h.aaaMiddleware.RequirePermission("aaa/return", "*", "read"), h.GetReturnRateByProduct)
-		returns.GET("/most-returned", h.aaaMiddleware.RequirePermission("aaa/return", "*", "read"), h.GetMostReturnedProducts)
+		returns.GET("", h.aaaMiddleware.RequireOrgPermission("return", "read"), h.GetAllReturns)
+		returns.GET("/:id", h.aaaMiddleware.RequireOrgPermission("return", "read"), h.GetReturn)
+		returns.GET("/customer/:customerID", h.aaaMiddleware.RequireOrgPermission("return", "read"), h.GetReturnsByCustomer)
+		returns.GET("/sale/:saleID", h.aaaMiddleware.RequireOrgPermission("return", "read"), h.GetReturnsBySaleID)
+		returns.GET("/date-range", h.aaaMiddleware.RequireOrgPermission("return", "read"), h.GetReturnsByDateRange)
+		returns.GET("/status/:status", h.aaaMiddleware.RequireOrgPermission("return", "read"), h.GetReturnsByStatus)
+		returns.GET("/total-amount", h.aaaMiddleware.RequireOrgPermission("return", "read"), h.GetTotalReturnsAmount)
+		returns.GET("/return-rate/:productID", h.aaaMiddleware.RequireOrgPermission("return", "read"), h.GetReturnRateByProduct)
+		returns.GET("/most-returned", h.aaaMiddleware.RequireOrgPermission("return", "read"), h.GetMostReturnedProducts)
 	}
 }
-

@@ -137,7 +137,10 @@ __debug_bin
 local/
 dev/
 development/
-
+generate_token.go
+validate_token.go
+test_docs.js
+implementation guides/
 # Test coverage
 coverage/
 *.cover
@@ -191,7 +194,6 @@ scripts/local/
 local-scripts/
 
 # Test scripts with sensitive data
-tests/
 scripts/test-kisanlink-api.ps1
 scripts/test-kisanlink-erp-api.ps1
 
@@ -244,7 +246,6 @@ local-test-data/
 testenv.go
 
 # Local mock files
-mocks/
 local-mocks/
 
 # Local fixtures

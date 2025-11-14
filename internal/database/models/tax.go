@@ -275,8 +275,8 @@ type UpdateTaxRequest struct {
 }
 
 type TaxCalculationRequest struct {
-	CustomerID     string               `json:"customer_id" binding:"required"`
-	CustomerState  string               `json:"customer_state" binding:"required"`
+	CustomerID     *string              `json:"customer_id"`    // Optional - not required when no customer management
+	CustomerState  *string              `json:"customer_state"` // Optional - not required when no customer management
 	CustomerGSTIN  *string              `json:"customer_gstin"`
 	CustomerPAN    *string              `json:"customer_pan"`
 	WarehouseID    string               `json:"warehouse_id" binding:"required"`
@@ -299,6 +299,16 @@ type TaxCalculationResponse struct {
 	TotalTaxAmount float64        `json:"total_tax_amount"`
 	GrandTotal     float64        `json:"grand_total"`
 	AppliedTaxes   []AppliedTax   `json:"applied_taxes"`
+}
+
+// BatchTaxCalculation represents tax calculation for a specific inventory batch
+type BatchTaxCalculation struct {
+	BatchID         string  `json:"batch_id"`
+	LineTotal       float64 `json:"line_total"`
+	CGSTAmount      float64 `json:"cgst_amount"`
+	SGSTAmount      float64 `json:"sgst_amount"`
+	CustomTaxAmount float64 `json:"custom_tax_amount"`
+	TotalTaxAmount  float64 `json:"total_tax_amount"`
 }
 
 type TaxBreakdown struct {
@@ -349,48 +359,48 @@ func NewTaxApplication() *TaxApplication {
 
 // TaxApplicationResponse represents the API response for tax application
 type TaxApplicationResponse struct {
-	ID                string  `json:"id"`
-	SaleID            string  `json:"sale_id"`
-	TaxID             string  `json:"tax_id"`
-	BaseAmount        float64 `json:"base_amount"`
-	TaxableAmount     float64 `json:"taxable_amount"`
-	TaxRate           float64 `json:"tax_rate"`
-	TaxAmount         float64 `json:"tax_amount"`
-	CGSTAmount        float64 `json:"cgst_amount"`
-	SGSTAmount        float64 `json:"sgst_amount"`
-	IGSTAmount        float64 `json:"igst_amount"`
-	VATAmount         float64 `json:"vat_amount"`
-	STTAmount         float64 `json:"stt_amount"`
-	TDSAmount         float64 `json:"tds_amount"`
-	TCSAmount         float64 `json:"tcs_amount"`
-	ExciseAmount      float64 `json:"excise_amount"`
-	CustomsAmount     float64 `json:"customs_amount"`
-	OtherTaxAmount    float64 `json:"other_tax_amount"`
-	TotalTaxAmount    float64 `json:"total_tax_amount"`
-	SubTotal          float64 `json:"sub_total"`
-	GrandTotal        float64 `json:"grand_total"`
-	CreatedAt         string  `json:"created_at"`
-	UpdatedAt         string  `json:"updated_at"`
+	ID             string  `json:"id"`
+	SaleID         string  `json:"sale_id"`
+	TaxID          string  `json:"tax_id"`
+	BaseAmount     float64 `json:"base_amount"`
+	TaxableAmount  float64 `json:"taxable_amount"`
+	TaxRate        float64 `json:"tax_rate"`
+	TaxAmount      float64 `json:"tax_amount"`
+	CGSTAmount     float64 `json:"cgst_amount"`
+	SGSTAmount     float64 `json:"sgst_amount"`
+	IGSTAmount     float64 `json:"igst_amount"`
+	VATAmount      float64 `json:"vat_amount"`
+	STTAmount      float64 `json:"stt_amount"`
+	TDSAmount      float64 `json:"tds_amount"`
+	TCSAmount      float64 `json:"tcs_amount"`
+	ExciseAmount   float64 `json:"excise_amount"`
+	CustomsAmount  float64 `json:"customs_amount"`
+	OtherTaxAmount float64 `json:"other_tax_amount"`
+	TotalTaxAmount float64 `json:"total_tax_amount"`
+	SubTotal       float64 `json:"sub_total"`
+	GrandTotal     float64 `json:"grand_total"`
+	CreatedAt      string  `json:"created_at"`
+	UpdatedAt      string  `json:"updated_at"`
 }
 
 // TaxSummaryResponse represents the API response for tax summary
 type TaxSummaryResponse struct {
-	ID              string  `json:"id"`
-	SummaryDate     string  `json:"summary_date"`
-	WarehouseID     string  `json:"warehouse_id"`
-	TotalTax        float64 `json:"total_tax"`
-	TotalCGST       float64 `json:"total_cgst"`
-	TotalSGST       float64 `json:"total_sgst"`
-	TotalIGST       float64 `json:"total_igst"`
-	TotalVAT        float64 `json:"total_vat"`
-	TotalSTT        float64 `json:"total_stt"`
-	TotalTDS        float64 `json:"total_tds"`
-	TotalTCS        float64 `json:"total_tcs"`
-	TotalExcise     float64 `json:"total_excise"`
-	TotalCustoms    float64 `json:"total_customs"`
-	TotalOtherTax   float64 `json:"total_other_tax"`
-	CreatedAt       string  `json:"created_at"`
-	UpdatedAt       string  `json:"updated_at"`
+	ID            string  `json:"id"`
+	SummaryDate   string  `json:"summary_date"`
+	WarehouseID   string  `json:"warehouse_id"`
+	TotalTax      float64 `json:"total_tax"`
+	TotalCGST     float64 `json:"total_cgst"`
+	TotalSGST     float64 `json:"total_sgst"`
+	TotalIGST     float64 `json:"total_igst"`
+	TotalVAT      float64 `json:"total_vat"`
+	TotalSTT      float64 `json:"total_stt"`
+	TotalTDS      float64 `json:"total_tds"`
+	TotalTCS      float64 `json:"total_tcs"`
+	TotalExcise   float64 `json:"total_excise"`
+	TotalCustoms  float64 `json:"total_customs"`
+	TotalOtherTax float64 `json:"total_other_tax"`
+	CreatedAt     string  `json:"created_at"`
+	UpdatedAt     string  `json:"updated_at"`
 }
 
 func NewTaxSummary() *TaxSummary {

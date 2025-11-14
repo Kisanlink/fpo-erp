@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"fmt"
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/errors"
 	"time"
@@ -21,7 +22,7 @@ func NewProductPriceRepository(db *gorm.DB) *ProductPriceRepository {
 // Create creates a new product price
 func (r *ProductPriceRepository) Create(price *models.ProductPrice) error {
 	if err := r.db.Create(price).Error; err != nil {
-		return errors.NewInternalServerError("Failed to create product price")
+		return errors.NewInternalServerError(fmt.Sprintf("Failed to create product price: %v", err))
 	}
 	return nil
 }
@@ -38,47 +39,47 @@ func (r *ProductPriceRepository) GetByID(id string) (*models.ProductPrice, error
 	return &price, nil
 }
 
-// GetByProductID retrieves all prices for a product
-func (r *ProductPriceRepository) GetByProductID(productID string) ([]models.ProductPrice, error) {
+// GetByVariantID retrieves all prices for a variant
+func (r *ProductPriceRepository) GetByVariantID(variantID string) ([]models.ProductPrice, error) {
 	var prices []models.ProductPrice
-	if err := r.db.Where("product_id = ?", productID).Find(&prices).Error; err != nil {
-		return nil, errors.NewInternalServerError("Failed to retrieve product prices")
+	if err := r.db.Where("variant_id = ?", variantID).Find(&prices).Error; err != nil {
+		return nil, errors.NewInternalServerError("Failed to retrieve variant prices")
 	}
 	return prices, nil
 }
 
-// GetActiveByProductID retrieves active prices for a product
-func (r *ProductPriceRepository) GetActiveByProductID(productID string) ([]models.ProductPrice, error) {
+// GetActiveByVariantID retrieves active prices for a variant
+func (r *ProductPriceRepository) GetActiveByVariantID(variantID string) ([]models.ProductPrice, error) {
 	var prices []models.ProductPrice
 	now := time.Now()
 
-	if err := r.db.Where("product_id = ? AND is_active = ? AND (effective_to IS NULL OR effective_to > ?)",
-		productID, true, now).Find(&prices).Error; err != nil {
-		return nil, errors.NewInternalServerError("Failed to retrieve active product prices")
+	if err := r.db.Where("variant_id = ? AND is_active = ? AND (effective_to IS NULL OR effective_to > ?)",
+		variantID, true, now).Find(&prices).Error; err != nil {
+		return nil, errors.NewInternalServerError("Failed to retrieve active variant prices")
 	}
 	return prices, nil
 }
 
-// GetByProductIDAndType retrieves prices for a product by type
-func (r *ProductPriceRepository) GetByProductIDAndType(productID, priceType string) ([]models.ProductPrice, error) {
+// GetByVariantIDAndType retrieves prices for a variant by type
+func (r *ProductPriceRepository) GetByVariantIDAndType(variantID, priceType string) ([]models.ProductPrice, error) {
 	var prices []models.ProductPrice
-	if err := r.db.Where("product_id = ? AND price_type = ?", productID, priceType).Find(&prices).Error; err != nil {
-		return nil, errors.NewInternalServerError("Failed to retrieve product prices by type")
+	if err := r.db.Where("variant_id = ? AND price_type = ?", variantID, priceType).Find(&prices).Error; err != nil {
+		return nil, errors.NewInternalServerError("Failed to retrieve variant prices by type")
 	}
 	return prices, nil
 }
 
-// GetCurrentPrice retrieves the current active price for a product and type
-func (r *ProductPriceRepository) GetCurrentPrice(productID, priceType string) (*models.ProductPrice, error) {
+// GetCurrentPrice retrieves the current active price for a variant and type
+func (r *ProductPriceRepository) GetCurrentPrice(variantID, priceType string) (*models.ProductPrice, error) {
 	var price models.ProductPrice
 	now := time.Now()
 
-	if err := r.db.Where("product_id = ? AND price_type = ? AND is_active = ? AND (effective_to IS NULL OR effective_to > ?)",
-		productID, priceType, true, now).Order("effective_from DESC").First(&price).Error; err != nil {
+	if err := r.db.Where("variant_id = ? AND price_type = ? AND is_active = ? AND effective_from <= ? AND (effective_to IS NULL OR effective_to > ?)",
+		variantID, priceType, true, now, now).Order("effective_from DESC").First(&price).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, errors.NewNotFoundError("ProductPrice")
 		}
-		return nil, errors.NewInternalServerError("Failed to retrieve current product price")
+		return nil, errors.NewInternalServerError("Failed to retrieve current variant price")
 	}
 	return &price, nil
 }

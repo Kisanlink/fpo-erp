@@ -6,7 +6,7 @@ import (
 
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
-	"kisanlink-erp/internal/services"
+	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
@@ -14,12 +14,12 @@ import (
 
 // InventoryHandler handles inventory HTTP requests
 type InventoryHandler struct {
-	inventoryService *services.InventoryService
+	inventoryService interfaces.InventoryServiceInterface
 	aaaMiddleware    *aaa.AAAMiddleware
 }
 
 // NewInventoryHandler creates a new inventory handler
-func NewInventoryHandler(inventoryService *services.InventoryService, aaaMiddleware *aaa.AAAMiddleware) *InventoryHandler {
+func NewInventoryHandler(inventoryService interfaces.InventoryServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *InventoryHandler {
 	return &InventoryHandler{
 		inventoryService: inventoryService,
 		aaaMiddleware:    aaaMiddleware,
@@ -40,30 +40,11 @@ func NewInventoryHandler(inventoryService *services.InventoryService, aaaMiddlew
 // @Security BearerAuth
 // @Router /api/v1/batches [post]
 func (h *InventoryHandler) CreateBatch(c *gin.Context) {
-	var request struct {
-		WarehouseID string  `json:"warehouse_id" binding:"required"`
-		ProductID   string  `json:"product_id" binding:"required"`
-		CostPrice   float64 `json:"cost_price" binding:"required,gt=0"`
-		ExpiryDate  string  `json:"expiry_date" binding:"required"`
-		Quantity    int64   `json:"quantity" binding:"required,gt=0"`
-	}
+	var request models.CreateInventoryBatchRequest
 
 	// Validate request
 	if err := utils.ValidateRequest(c, &request); err != nil {
 		utils.BadRequestResponse(c, "Invalid request data", err)
-		return
-	}
-
-	// Parse UUIDs
-	warehouseID := request.WarehouseID
-	if warehouseID == "" {
-		utils.BadRequestResponse(c, "Warehouse ID is required", nil)
-		return
-	}
-
-	productID := request.ProductID
-	if productID == "" {
-		utils.BadRequestResponse(c, "Product ID is required", nil)
 		return
 	}
 
@@ -74,8 +55,18 @@ func (h *InventoryHandler) CreateBatch(c *gin.Context) {
 		return
 	}
 
-	// Create batch
-	response, err := h.inventoryService.CreateBatch(warehouseID, productID, request.CostPrice, expiryDate, request.Quantity)
+	// Create batch with tax configuration
+	response, err := h.inventoryService.CreateBatch(
+		request.WarehouseID,
+		request.VariantID,
+		request.CostPrice,
+		expiryDate,
+		request.Quantity,
+		request.CGSTRate,
+		request.SGSTRate,
+		request.CustomTaxIDs,
+		request.IsTaxExempt,
+	)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "Failed to create batch", err)
 		return
@@ -144,28 +135,28 @@ func (h *InventoryHandler) GetBatchesByWarehouse(c *gin.Context) {
 	utils.OKResponse(c, "Batches retrieved successfully", response)
 }
 
-// GetBatchesByProduct handles GET /api/v1/products/:id/batches
-// @Summary Get Batches by Product
-// @Description Retrieve all inventory batches for a specific product
+// GetBatchesByVariant handles GET /api/v1/variants/:id/batches
+// @Summary Get Batches by Variant
+// @Description Retrieve all inventory batches for a specific product variant
 // @Tags Inventory
 // @Produce json
-// @Param id path string true "Product ID" example(PROD_12345678)
+// @Param id path string true "Variant ID" example(PVAR_12345678)
 // @Success 200 {object} utils.Response{data=[]models.InventoryBatchResponse} "Batches retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
-// @Router /api/v1/products/{id}/batches [get]
-func (h *InventoryHandler) GetBatchesByProduct(c *gin.Context) {
-	// Get product ID from URL
-	productID := c.Param("id")
-	if productID == "" {
-		utils.BadRequestResponse(c, "Product ID is required", nil)
+// @Router /api/v1/variants/{id}/batches [get]
+func (h *InventoryHandler) GetBatchesByVariant(c *gin.Context) {
+	// Get variant ID from URL
+	variantID := c.Param("id")
+	if variantID == "" {
+		utils.BadRequestResponse(c, "Variant ID is required", nil)
 		return
 	}
 
-	// Get batches by product
-	response, err := h.inventoryService.GetBatchesByProduct(productID)
+	// Get batches by variant
+	response, err := h.inventoryService.GetBatchesByVariant(variantID)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "Failed to retrieve batches", err)
 		return
@@ -317,8 +308,15 @@ func (h *InventoryHandler) GetLowStockBatches(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/products/availability [get]
 func (h *InventoryHandler) GetAllProductsAvailability(c *gin.Context) {
+	// Extract JWT token for AAA service calls
+	jwtToken := c.GetString("jwt_token")
+	if jwtToken == "" {
+		utils.UnauthorizedResponse(c, "Missing authentication token")
+		return
+	}
+
 	// Get all products availability across warehouses
-	response, err := h.inventoryService.GetAllProductsAvailability(c.Request.Context())
+	response, err := h.inventoryService.GetAllProductsAvailability(c.Request.Context(), jwtToken)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "Failed to retrieve products availability", err)
 		return
@@ -336,32 +334,36 @@ func (h *InventoryHandler) RegisterRoutes(router *gin.RouterGroup) {
 		batches.Use(h.aaaMiddleware.Authenticate())
 
 		// Create routes - CEO=CRUD, Store_Manager=CRUD, Tech_Support=R/W (temp)
-		batches.POST("", h.aaaMiddleware.RequirePermission("aaa/inventory_batch", "*", "create"), h.CreateBatch)
-		batches.POST("/:id/transactions", h.aaaMiddleware.RequirePermission("aaa/inventory_transaction", "*", "create"), h.CreateTransaction)
+		batches.POST("", h.aaaMiddleware.RequireOrgPermission("inventory_batch", "create"), h.CreateBatch)
+		batches.POST("/:id/transactions", h.aaaMiddleware.RequireOrgPermission("inventory_transaction", "create"), h.CreateTransaction)
 
 		// Read routes - Director=R, CEO=CRUD, Auditor=R, Accountant=–, Tech_Support=R/W (temp), Store_Manager=CRUD, Store_Staff=R
-		batches.GET("/expiring", h.aaaMiddleware.RequirePermission("aaa/inventory_batch", "*", "read"), h.GetExpiringBatches)
-		batches.GET("/low-stock", h.aaaMiddleware.RequirePermission("aaa/inventory_batch", "*", "read"), h.GetLowStockBatches)
-		batches.GET("/:id", h.aaaMiddleware.RequirePermission("aaa/inventory_batch", "*", "read"), h.GetBatch)
-		batches.GET("/:id/transactions", h.aaaMiddleware.RequirePermission("aaa/inventory_transaction", "*", "read"), h.GetTransactionsByBatch)
+		batches.GET("/expiring", h.aaaMiddleware.RequireOrgPermission("inventory_batch", "read"), h.GetExpiringBatches)
+		batches.GET("/low-stock", h.aaaMiddleware.RequireOrgPermission("inventory_batch", "read"), h.GetLowStockBatches)
+		batches.GET("/:id", h.aaaMiddleware.RequireOrgPermission("inventory_batch", "read"), h.GetBatch)
+		batches.GET("/:id/transactions", h.aaaMiddleware.RequireOrgPermission("inventory_transaction", "read"), h.GetTransactionsByBatch)
 	}
 
 	// Warehouse batch routes
 	warehouses := router.Group("/warehouses")
 	{
 		warehouses.Use(h.aaaMiddleware.Authenticate())
-		warehouses.GET("/:id/batches", h.aaaMiddleware.RequirePermission("aaa/inventory_batch", "*", "read"), h.GetBatchesByWarehouse)
+		warehouses.GET("/:id/batches", h.aaaMiddleware.RequireOrgPermission("inventory_batch", "read"), h.GetBatchesByWarehouse)
 	}
 
 	// Product batch routes
-	products := router.Group("/products")
+	// Variant-specific batch routes
+	variants := router.Group("/variants")
 	{
-		products.Use(h.aaaMiddleware.Authenticate())
-		products.GET("/:id/batches", h.aaaMiddleware.RequirePermission("aaa/inventory_batch", "*", "read"), h.GetBatchesByProduct)
+		variants.Use(h.aaaMiddleware.Authenticate())
+		variants.GET("/:id/batches", h.aaaMiddleware.RequireOrgPermission("inventory_batch", "read"), h.GetBatchesByVariant)
 	}
+
 	// Protected product availability route
-	protected := products.Group("")
+	// AAA HTTP service will validate addresses permissions internally
+	products := router.Group("/products")
+	products.Use(h.aaaMiddleware.Authenticate())
 	{
-		protected.GET("/availability", h.aaaMiddleware.RequirePermission("aaa/inventory_batch", "*", "read"), h.GetAllProductsAvailability)
+		products.GET("/availability", h.aaaMiddleware.RequireOrgPermission("inventory_batch", "read"), h.GetAllProductsAvailability)
 	}
 }

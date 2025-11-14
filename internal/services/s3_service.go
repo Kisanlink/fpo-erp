@@ -29,22 +29,21 @@ type S3Service struct {
 
 // NewS3Service creates a new S3 service instance
 func NewS3Service(cfg *config.Config) (*S3Service, error) {
-	// Load AWS configuration
+	// Load AWS configuration with automatic credential discovery
+	// In production (ECS): Uses IAM task role credentials automatically
+	// In local dev: Falls back to AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY from environment
+	// This eliminates the need to hardcode credentials while supporting both environments
 	awsCfg, err := awsconfig.LoadDefaultConfig(context.TODO(),
 		awsconfig.WithRegion(cfg.AWS.Region),
-		awsconfig.WithCredentialsProvider(aws.CredentialsProviderFunc(func(ctx context.Context) (aws.Credentials, error) {
-			return aws.Credentials{
-				AccessKeyID:     cfg.AWS.AccessKeyID,
-				SecretAccessKey: cfg.AWS.SecretAccessKey,
-			}, nil
-		})),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load AWS config: %w", err)
 	}
 
-	// Create S3 client
-	client := s3.NewFromConfig(awsCfg)
+	// Create S3 client with path-style addressing support for MinIO
+	client := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
+		o.UsePathStyle = cfg.AWS.UsePathStyle
+	})
 
 	// Create uploader and downloader
 	uploader := manager.NewUploader(client)
@@ -59,8 +58,8 @@ func NewS3Service(cfg *config.Config) (*S3Service, error) {
 	}, nil
 }
 
-// UploadFile uploads a file to S3
-func (s *S3Service) UploadFile(ctx context.Context, file *multipart.FileHeader, saleID, returnID *string) (string, error) {
+// UploadFile uploads a file to S3 with entity-based folder structure
+func (s *S3Service) UploadFile(ctx context.Context, file *multipart.FileHeader, entityType, entityID string) (string, error) {
 	// Open the uploaded file
 	src, err := file.Open()
 	if err != nil {
@@ -72,13 +71,16 @@ func (s *S3Service) UploadFile(ctx context.Context, file *multipart.FileHeader, 
 	ext := filepath.Ext(file.Filename)
 	filename := fmt.Sprintf("%s%s", uuid.New().String(), ext)
 
-	// Determine folder based on context
+	// Determine folder based on entity type
 	var folder string
-	if saleID != nil {
-		folder = fmt.Sprintf("sales/%s", *saleID)
-	} else if returnID != nil {
-		folder = fmt.Sprintf("returns/%s", *returnID)
-	} else {
+	switch entityType {
+	case "logo":
+		folder = "logos"
+	case "po":
+		folder = fmt.Sprintf("purchase-orders/%s", entityID)
+	case "grn":
+		folder = fmt.Sprintf("grns/%s", entityID)
+	default:
 		folder = "misc"
 	}
 
@@ -93,15 +95,16 @@ func (s *S3Service) UploadFile(ctx context.Context, file *multipart.FileHeader, 
 		Metadata: map[string]string{
 			"original-filename": file.Filename,
 			"uploaded-at":       time.Now().UTC().Format(time.RFC3339),
+			"entity-type":       entityType,
+			"entity-id":         entityID,
 		},
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to upload file to S3: %w", err)
 	}
 
-	// Return the S3 URL
-	s3URL := fmt.Sprintf("s3://%s/%s", s.bucket, key)
-	return s3URL, nil
+	// Return the S3 key/path (not full URL)
+	return key, nil
 }
 
 // DownloadFile downloads a file from S3

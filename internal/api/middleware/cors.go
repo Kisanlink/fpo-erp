@@ -77,8 +77,15 @@ func SecurityHeadersMiddleware() gin.HandlerFunc {
 		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
 
 		// Relaxed CSP for docs route to allow Scalar documentation
-		if c.Request.URL.Path == "/docs" {
-			c.Header("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'")
+		if c.Request.URL.Path == "/docs" || c.Request.URL.Path == "/api-docs" {
+			c.Header("Content-Security-Policy",
+				"default-src 'self'; "+
+					"script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; "+
+					"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "+
+					"font-src 'self' https://cdn.jsdelivr.net data:; "+
+					"connect-src 'self' https://cdn.jsdelivr.net; "+
+					"img-src 'self' data: https:; "+
+					"worker-src 'self' blob:")
 		} else {
 			c.Header("Content-Security-Policy", "default-src 'self'")
 		}

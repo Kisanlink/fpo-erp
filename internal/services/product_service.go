@@ -11,29 +11,22 @@ import (
 type ProductService struct {
 	productRepo *repositories.ProductRepository
 	priceRepo   *repositories.ProductPriceRepository
+	variantRepo *repositories.ProductVariantRepository
 }
 
 // NewProductService creates a new product service
-func NewProductService(productRepo *repositories.ProductRepository, priceRepo *repositories.ProductPriceRepository) *ProductService {
+func NewProductService(productRepo *repositories.ProductRepository, priceRepo *repositories.ProductPriceRepository, variantRepo *repositories.ProductVariantRepository) *ProductService {
 	return &ProductService{
 		productRepo: productRepo,
 		priceRepo:   priceRepo,
+		variantRepo: variantRepo,
 	}
 }
 
-// CreateProduct creates a new product
+// CreateProduct creates a new product (generic product category)
 func (s *ProductService) CreateProduct(request *models.CreateProductRequest) (*models.ProductResponse, error) {
-	// Check if SKU already exists
-	exists, err := s.productRepo.SKUExists(request.SKU)
-	if err != nil {
-		return nil, err
-	}
-	if exists {
-		return nil, errors.NewConflictError("Product with this SKU already exists")
-	}
-
 	// Create product model using the proper constructor
-	product := models.NewProduct(request.SKU, request.Name, request.Description)
+	product := models.NewProduct(request.Name, request.Description)
 
 	// Save to database
 	if err := s.productRepo.Create(product); err != nil {
@@ -45,7 +38,6 @@ func (s *ProductService) CreateProduct(request *models.CreateProductRequest) (*m
 	// Convert to response
 	response := &models.ProductResponse{
 		ID:          product.ID,
-		SKU:         product.SKU,
 		Name:        product.Name,
 		Description: product.Description,
 		CreatedAt:   product.CreatedAt.Format("2006-01-02T15:04:05Z"),
@@ -64,26 +56,6 @@ func (s *ProductService) GetProduct(id string) (*models.ProductResponse, error) 
 
 	response := &models.ProductResponse{
 		ID:          product.ID,
-		SKU:         product.SKU,
-		Name:        product.Name,
-		Description: product.Description,
-		CreatedAt:   product.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt:   product.UpdatedAt.Format("2006-01-02T15:04:05Z"),
-	}
-
-	return response, nil
-}
-
-// GetProductBySKU retrieves a product by SKU
-func (s *ProductService) GetProductBySKU(sku string) (*models.ProductResponse, error) {
-	product, err := s.productRepo.GetBySKU(sku)
-	if err != nil {
-		return nil, err
-	}
-
-	response := &models.ProductResponse{
-		ID:          product.ID,
-		SKU:         product.SKU,
 		Name:        product.Name,
 		Description: product.Description,
 		CreatedAt:   product.CreatedAt.Format("2006-01-02T15:04:05Z"),
@@ -104,7 +76,6 @@ func (s *ProductService) GetAllProducts() ([]models.ProductResponse, error) {
 	for _, product := range products {
 		response := models.ProductResponse{
 			ID:          product.ID,
-			SKU:         product.SKU,
 			Name:        product.Name,
 			Description: product.Description,
 			CreatedAt:   product.CreatedAt.Format("2006-01-02T15:04:05Z"),
@@ -139,7 +110,6 @@ func (s *ProductService) UpdateProduct(id string, request *models.UpdateProductR
 
 	response := &models.ProductResponse{
 		ID:          product.ID,
-		SKU:         product.SKU,
 		Name:        product.Name,
 		Description: product.Description,
 		CreatedAt:   product.CreatedAt.Format("2006-01-02T15:04:05Z"),
@@ -174,7 +144,6 @@ func (s *ProductService) SearchProducts(query string) ([]models.ProductResponse,
 	for _, product := range products {
 		response := models.ProductResponse{
 			ID:          product.ID,
-			SKU:         product.SKU,
 			Name:        product.Name,
 			Description: product.Description,
 			CreatedAt:   product.CreatedAt.Format("2006-01-02T15:04:05Z"),
@@ -195,11 +164,24 @@ func (s *ProductService) GetProductWithPrices(id string) (*models.ProductWithPri
 	}
 
 	// Get product prices (if priceRepo is available)
+	// NOTE: Prices are now variant-specific, not product-specific
+	// Query all variants of the product and aggregate their prices
 	var prices []models.ProductPrice
-	if s.priceRepo != nil {
-		prices, err = s.priceRepo.GetByProductID(id)
+	if s.priceRepo != nil && s.variantRepo != nil {
+		// Get all variants for this product
+		variants, err := s.variantRepo.GetByProductID(id)
 		if err != nil {
 			return nil, err
+		}
+
+		// Get prices for each variant
+		for _, variant := range variants {
+			variantPrices, err := s.priceRepo.GetByVariantID(variant.ID)
+			if err != nil {
+				// Continue to next variant if price query fails
+				continue
+			}
+			prices = append(prices, variantPrices...)
 		}
 	}
 
@@ -211,15 +193,20 @@ func (s *ProductService) GetProductWithPrices(id string) (*models.ProductWithPri
 			effectiveTo = price.EffectiveTo.Format("2006-01-02T15:04:05Z")
 		}
 
+		isActiveValue := false
+		if price.IsActive != nil {
+			isActiveValue = *price.IsActive
+		}
+
 		priceResponse := models.ProductPriceResponse{
 			ID:            price.ID,
-			ProductID:     price.ProductID,
+			VariantID:     price.VariantID,
 			PriceType:     price.PriceType,
 			Price:         price.Price,
 			Currency:      price.Currency,
 			EffectiveFrom: price.EffectiveFrom.Format("2006-01-02T15:04:05Z"),
 			EffectiveTo:   &effectiveTo,
-			IsActive:      price.IsActive,
+			IsActive:      isActiveValue,
 			CreatedAt:     price.CreatedAt.Format("2006-01-02T15:04:05Z"),
 			UpdatedAt:     price.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 		}
@@ -229,7 +216,6 @@ func (s *ProductService) GetProductWithPrices(id string) (*models.ProductWithPri
 	// Create response
 	response := &models.ProductWithPricesResponse{
 		ID:          product.ID,
-		SKU:         product.SKU,
 		Name:        product.Name,
 		Description: product.Description,
 		Prices:      priceResponses,

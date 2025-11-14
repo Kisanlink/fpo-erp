@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"kisanlink-erp/internal/database/models"
+
 	"gorm.io/gorm"
 )
 

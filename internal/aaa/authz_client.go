@@ -5,16 +5,17 @@ import (
 	"fmt"
 	"time"
 
-	"kisanlink-erp/pkg/proto"
+	pb "github.com/Kisanlink/aaa-service/v2/pkg/proto"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 )
 
 // AuthzClient wraps the gRPC authorization client
 type AuthzClient struct {
 	conn   *grpc.ClientConn
-	client proto.AuthorizationServiceClient
+	client pb.AuthorizationServiceClient
 }
 
 // NewAuthzClient creates a new authorization client
@@ -30,7 +31,7 @@ func NewAuthzClient(aaaServiceAddr string) (*AuthzClient, error) {
 		return nil, fmt.Errorf("failed to connect to AAA service: %w", err)
 	}
 
-	client := proto.NewAuthorizationServiceClient(conn)
+	client := pb.NewAuthorizationServiceClient(conn)
 
 	return &AuthzClient{
 		conn:   conn,
@@ -45,12 +46,22 @@ func (c *AuthzClient) Close() error {
 
 // CheckPermission checks if a user has permission to perform an action on a resource
 func (c *AuthzClient) CheckPermission(ctx context.Context, userID, resourceType, resourceID, action string) (bool, error) {
+	return c.CheckPermissionWithToken(ctx, userID, resourceType, resourceID, action, "")
+}
+
+// CheckPermissionWithToken checks if a user has permission to perform an action on a resource with JWT token
+func (c *AuthzClient) CheckPermissionWithToken(ctx context.Context, userID, resourceType, resourceID, action, jwtToken string) (bool, error) {
 	// Create the permission check request
-	req := &proto.CheckRequest{
+	req := &pb.CheckRequest{
 		PrincipalId:  userID,       // The user asking for permission
-		ResourceType: resourceType, // What type of resource (e.g., "aaa/user")
+		ResourceType: resourceType, // What type of resource (e.g., "user")
 		ResourceId:   resourceID,   // Which specific resource (e.g., "USER_123" or "*")
 		Action:       action,       // What action (e.g., "read", "create", "delete")
+	}
+
+	// Add authorization token to context if provided
+	if jwtToken != "" {
+		ctx = c.addAuthTokenToContext(ctx, jwtToken)
 	}
 
 	// Send request to AAA service
@@ -65,11 +76,16 @@ func (c *AuthzClient) CheckPermission(ctx context.Context, userID, resourceType,
 
 // CheckMultiplePermissions checks multiple permissions in a single request
 func (c *AuthzClient) CheckMultiplePermissions(ctx context.Context, userID string, permissions []Permission) (map[string]bool, error) {
-	var items []*proto.CheckItem
+	return c.CheckMultiplePermissionsWithToken(ctx, userID, permissions, "")
+}
+
+// CheckMultiplePermissionsWithToken checks multiple permissions in a single request with JWT token
+func (c *AuthzClient) CheckMultiplePermissionsWithToken(ctx context.Context, userID string, permissions []Permission, jwtToken string) (map[string]bool, error) {
+	var items []*pb.CheckItem
 
 	// Convert our permissions to gRPC format
 	for i, perm := range permissions {
-		item := &proto.CheckItem{
+		item := &pb.CheckItem{
 			RequestId:    fmt.Sprintf("req_%d", i),
 			PrincipalId:  userID,
 			ResourceType: perm.ResourceType,
@@ -79,8 +95,13 @@ func (c *AuthzClient) CheckMultiplePermissions(ctx context.Context, userID strin
 		items = append(items, item)
 	}
 
-	req := &proto.BatchCheckRequest{
+	req := &pb.BatchCheckRequest{
 		Items: items,
+	}
+
+	// Add authorization token to context if provided
+	if jwtToken != "" {
+		ctx = c.addAuthTokenToContext(ctx, jwtToken)
 	}
 
 	resp, err := c.client.BatchCheck(ctx, req)
@@ -98,37 +119,27 @@ func (c *AuthzClient) CheckMultiplePermissions(ctx context.Context, userID strin
 	return results, nil
 }
 
-// GetUserPermissions gets all permissions for a user
-func (c *AuthzClient) GetUserPermissions(ctx context.Context, userID string) ([]string, error) {
-	req := &proto.GetUserPermissionsRequest{
-		UserId: userID,
-	}
+// addAuthTokenToContext adds the JWT token to gRPC metadata
+func (c *AuthzClient) addAuthTokenToContext(ctx context.Context, jwtToken string) context.Context {
+	// Create metadata with authorization header
+	md := metadata.New(map[string]string{
+		"authorization": "Bearer " + jwtToken,
+	})
 
-	resp, err := c.client.GetUserPermissions(ctx, req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get user permissions: %w", err)
-	}
-
-	return resp.Permissions, nil
-}
-
-// GetUserRoles gets all roles for a user
-func (c *AuthzClient) GetUserRoles(ctx context.Context, userID string) ([]string, error) {
-	req := &proto.GetUserRolesRequest{
-		UserId: userID,
-	}
-
-	resp, err := c.client.GetUserRoles(ctx, req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get user roles: %w", err)
-	}
-
-	return resp.Roles, nil
+	// Add metadata to context
+	return metadata.NewOutgoingContext(ctx, md)
 }
 
 // Permission represents a permission to check
 type Permission struct {
-	ResourceType string // e.g., "aaa/user"
+	ResourceType string // e.g., "user"
 	ResourceID   string // e.g., "USER_123" or "*"
 	Action       string // e.g., "read", "create", "delete"
+}
+
+// ResourceAction represents a resource type and action pair for permission checking
+// Used for building organization-scoped permissions dynamically
+type ResourceAction struct {
+	ResourceType string // e.g., "collaborator", "address"
+	Action       string // e.g., "create", "read", "update", "delete"
 }
