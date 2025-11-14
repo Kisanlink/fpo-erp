@@ -130,6 +130,32 @@ Parameters:
     Description: 'ACM certificate ARN for HTTPS (optional, leave empty for HTTP only)'
     Default: ''
 
+  EcommerceGrpcAddress:
+    Type: String
+    Description: 'E-commerce service gRPC address (host:port) for webhook integration'
+    Default: ''
+
+  DBSSLMode:
+    Type: String
+    Description: 'PostgreSQL SSL mode (disable, require, verify-ca, verify-full)'
+    AllowedValues:
+      - disable
+      - require
+      - verify-ca
+      - verify-full
+    Default: disable
+
+  AAAAPIKey:
+    Type: String
+    NoEcho: true
+    MinLength: 32
+    Description: 'AAA API key for service-to-service authentication between ERP and AAA service'
+
+  CORSAllowedHeaders:
+    Type: String
+    Description: 'Comma-separated list of allowed CORS headers'
+    Default: 'Content-Type,Authorization'
+
 Conditions:
   IsProduction: !Equals [!Ref Environment, 'production']
   HasCertificate: !Not [!Equals [!Ref CertificateArn, '']]
@@ -400,6 +426,60 @@ Resources:
         - Key: ManagedBy
           Value: CloudFormation
 
+  WebhookSecretParameter:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${FPOIdentifier}/${Environment}/erp/webhook-secret'
+      Description: Webhook HMAC secret for signature verification
+      GenerateSecretString:
+        SecretStringTemplate: '{}'
+        GenerateStringKey: 'secret'
+        PasswordLength: 64
+      Tags:
+        - Key: Name
+          Value: !Sub '${FPOIdentifier}-${Environment}-erp-webhook-secret'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: FPO
+          Value: !Ref FPOIdentifier
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  EcommerceAuthTokenParameter:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${FPOIdentifier}/${Environment}/erp/ecommerce-auth-token'
+      Description: E-commerce service gRPC authentication token
+      GenerateSecretString:
+        SecretStringTemplate: '{}'
+        GenerateStringKey: 'token'
+        PasswordLength: 64
+      Tags:
+        - Key: Name
+          Value: !Sub '${FPOIdentifier}-${Environment}-erp-ecommerce-auth-token'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: FPO
+          Value: !Ref FPOIdentifier
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  AAAAPIKeyParameter:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${FPOIdentifier}/${Environment}/erp/aaa-api-key'
+      Description: AAA API Key for service-to-service authentication
+      SecretString: !Ref AAAAPIKey
+      Tags:
+        - Key: Name
+          Value: !Sub '${FPOIdentifier}-${Environment}-erp-aaa-api-key'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: FPO
+          Value: !Ref FPOIdentifier
+        - Key: ManagedBy
+          Value: CloudFormation
+
   # Note: VPC Flow Logs are managed in a separate shared infrastructure stack
   # See: infrastructure/templates/shared-vpc-flow-logs.yaml
   # This ensures only one flow log exists per VPC for all FPOs
@@ -428,93 +508,97 @@ Resources:
   # ========================================
   # CloudTrail Audit Logging
   # ========================================
-  AuditLogsBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub '${FPOIdentifier}-${Environment}-erp-audit-logs'
-      BucketEncryption:
-        ServerSideEncryptionConfiguration:
-          - ServerSideEncryptionByDefault:
-              SSEAlgorithm: AES256
-      VersioningConfiguration:
-        Status: Enabled
-      LifecycleConfiguration:
-        Rules:
-          - Id: DeleteOldAuditLogs
-            Status: Enabled
-            ExpirationInDays: !If [IsProduction, 2555, 90]  # 7 years for production, 90 days for staging
-            NoncurrentVersionExpirationInDays: 30
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
-      Tags:
-        - Key: Name
-          Value: !Sub '${FPOIdentifier}-${Environment}-erp-audit-logs'
-        - Key: Environment
-          Value: !Ref Environment
-        - Key: FPO
-          Value: !Ref FPOIdentifier
-        - Key: Purpose
-          Value: CloudTrailAuditLogs
-        - Key: ManagedBy
-          Value: CloudFormation
+  # COST OPTIMIZATION: Per-FPO CloudTrail removed
+  # Now using shared CloudTrail in shared-vpc.yaml (saves ~$48/month)
+  # Shared trail logs all FPO activity to: kisanlink-erp-shared-audit-logs-${Environment}
+  # ========================================
+  # AuditLogsBucket:
+  #   Type: AWS::S3::Bucket
+  #   Properties:
+  #     BucketName: !Sub '${FPOIdentifier}-${Environment}-erp-audit-logs'
+  #     BucketEncryption:
+  #       ServerSideEncryptionConfiguration:
+  #         - ServerSideEncryptionByDefault:
+  #             SSEAlgorithm: AES256
+  #     VersioningConfiguration:
+  #       Status: Enabled
+  #     LifecycleConfiguration:
+  #       Rules:
+  #         - Id: DeleteOldAuditLogs
+  #           Status: Enabled
+  #           ExpirationInDays: !If [IsProduction, 2555, 90]  # 7 years for production, 90 days for staging
+  #           NoncurrentVersionExpirationInDays: 30
+  #     PublicAccessBlockConfiguration:
+  #       BlockPublicAcls: true
+  #       BlockPublicPolicy: true
+  #       IgnorePublicAcls: true
+  #       RestrictPublicBuckets: true
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Sub '${FPOIdentifier}-${Environment}-erp-audit-logs'
+  #       - Key: Environment
+  #         Value: !Ref Environment
+  #       - Key: FPO
+  #         Value: !Ref FPOIdentifier
+  #       - Key: Purpose
+  #         Value: CloudTrailAuditLogs
+  #       - Key: ManagedBy
+  #         Value: CloudFormation
 
-  AuditLogsBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref AuditLogsBucket
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Sid: AWSCloudTrailAclCheck
-            Effect: Allow
-            Principal:
-              Service: cloudtrail.amazonaws.com
-            Action: 's3:GetBucketAcl'
-            Resource: !GetAtt AuditLogsBucket.Arn
-          - Sid: AWSCloudTrailWrite
-            Effect: Allow
-            Principal:
-              Service: cloudtrail.amazonaws.com
-            Action: 's3:PutObject'
-            Resource: !Sub '${AuditLogsBucket.Arn}/*'
-            Condition:
-              StringEquals:
-                's3:x-amz-acl': 'bucket-owner-full-control'
+  # AuditLogsBucketPolicy:
+  #   Type: AWS::S3::BucketPolicy
+  #   Properties:
+  #     Bucket: !Ref AuditLogsBucket
+  #     PolicyDocument:
+  #       Version: '2012-10-17'
+  #       Statement:
+  #         - Sid: AWSCloudTrailAclCheck
+  #           Effect: Allow
+  #           Principal:
+  #             Service: cloudtrail.amazonaws.com
+  #           Action: 's3:GetBucketAcl'
+  #           Resource: !GetAtt AuditLogsBucket.Arn
+  #         - Sid: AWSCloudTrailWrite
+  #           Effect: Allow
+  #           Principal:
+  #             Service: cloudtrail.amazonaws.com
+  #           Action: 's3:PutObject'
+  #           Resource: !Sub '${AuditLogsBucket.Arn}/*'
+  #           Condition:
+  #             StringEquals:
+  #               's3:x-amz-acl': 'bucket-owner-full-control'
 
-  AuditTrail:
-    Type: AWS::CloudTrail::Trail
-    DependsOn: AuditLogsBucketPolicy
-    Properties:
-      TrailName: !Sub '${FPOIdentifier}-${Environment}-erp-audit'
-      S3BucketName: !Ref AuditLogsBucket
-      IncludeGlobalServiceEvents: true
-      IsLogging: true
-      IsMultiRegionTrail: false
-      EnableLogFileValidation: true
-      EventSelectors:
-        - ReadWriteType: WriteOnly
-          IncludeManagementEvents: true
-          DataResources:
-            - Type: 'AWS::S3::Object'
-              Values:
-                - !Sub '${AttachmentsBucket.Arn}/*'
-            - Type: 'AWS::SecretsManager::Secret'
-              Values:
-                - !GetAtt DBPasswordSecret.Arn
-                - !GetAtt JWTSecretParameter.Arn
-                - !GetAtt AAAJWTSecretParameter.Arn
-      Tags:
-        - Key: Name
-          Value: !Sub '${FPOIdentifier}-${Environment}-erp-audit'
-        - Key: Environment
-          Value: !Ref Environment
-        - Key: FPO
-          Value: !Ref FPOIdentifier
-        - Key: ManagedBy
-          Value: CloudFormation
+  # AuditTrail:
+  #   Type: AWS::CloudTrail::Trail
+  #   DependsOn: AuditLogsBucketPolicy
+  #   Properties:
+  #     TrailName: !Sub '${FPOIdentifier}-${Environment}-erp-audit'
+  #     S3BucketName: !Ref AuditLogsBucket
+  #     IncludeGlobalServiceEvents: true
+  #     IsLogging: true
+  #     IsMultiRegionTrail: false
+  #     EnableLogFileValidation: true
+  #     EventSelectors:
+  #       - ReadWriteType: WriteOnly
+  #         IncludeManagementEvents: true
+  #         DataResources:
+  #           - Type: 'AWS::S3::Object'
+  #             Values:
+  #               - !Sub '${AttachmentsBucket.Arn}/*'
+  #           - Type: 'AWS::SecretsManager::Secret'
+  #             Values:
+  #               - !GetAtt DBPasswordSecret.Arn
+  #               - !GetAtt JWTSecretParameter.Arn
+  #               - !GetAtt AAAJWTSecretParameter.Arn
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Sub '${FPOIdentifier}-${Environment}-erp-audit'
+  #       - Key: Environment
+  #         Value: !Ref Environment
+  #       - Key: FPO
+  #         Value: !Ref FPOIdentifier
+  #       - Key: ManagedBy
+  #         Value: CloudFormation
 
   # ========================================
   # Application Load Balancer
@@ -779,8 +863,8 @@ Resources:
               Value: '3600'
             - Name: AAA_GRPC_ADDRESS
               Value: !Ref AAAGrpcAddress
-            - Name: AAA_CACHE_TTL_MINUTES
-              Value: '60'
+            - Name: AAA_CACHE_TTL
+              Value: '3600'
             - Name: AAA_TIMEOUT_SECONDS
               Value: '30'
             - Name: AAA_ENABLED
@@ -795,7 +879,23 @@ Resources:
                 - 'https://erp.kisanlink.com,https://app.kisanlink.com'
                 - 'http://localhost:3000,http://localhost:3001,https://staging.kisanlink.com'
             - Name: CORS_ALLOWED_HEADERS
-              Value: 'Content-Type,Authorization'
+              Value: !Ref CORSAllowedHeaders
+            - Name: JWT_EXPIRY_HOURS
+              Value: '24'
+            - Name: DB_POSTGRES_SSLMODE
+              Value: !Ref DBSSLMode
+            - Name: WEBHOOK_TIMEOUT_SECONDS
+              Value: '30'
+            - Name: WEBHOOK_MAX_PAYLOAD_BYTES
+              Value: '10485760'
+            - Name: ECOMMERCE_GRPC_ADDRESS
+              Value: !Ref EcommerceGrpcAddress
+            - Name: ECOMMERCE_GRPC_TIMEOUT_SECONDS
+              Value: '5'
+            - Name: ECOMMERCE_GRPC_USE_TLS
+              Value: 'false'
+            - Name: AWS_USE_PATH_STYLE
+              Value: 'false'
           Secrets:
             - Name: POSTGRES_PASSWORD
               ValueFrom: !GetAtt DBPasswordSecret.Arn
@@ -803,6 +903,12 @@ Resources:
               ValueFrom: !GetAtt JWTSecretParameter.Arn
             - Name: AAA_JWT_SECRET
               ValueFrom: !GetAtt AAAJWTSecretParameter.Arn
+            - Name: WEBHOOK_SECRET
+              ValueFrom: !GetAtt WebhookSecretParameter.Arn
+            - Name: ECOMMERCE_GRPC_AUTH_TOKEN
+              ValueFrom: !GetAtt EcommerceAuthTokenParameter.Arn
+            - Name: AAA_API_KEY
+              ValueFrom: !GetAtt AAAAPIKeyParameter.Arn
           LogConfiguration:
             LogDriver: awslogs
             Options:

@@ -29,15 +29,12 @@ type S3Service struct {
 
 // NewS3Service creates a new S3 service instance
 func NewS3Service(cfg *config.Config) (*S3Service, error) {
-	// Load AWS configuration
+	// Load AWS configuration with automatic credential discovery
+	// In production (ECS): Uses IAM task role credentials automatically
+	// In local dev: Falls back to AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY from environment
+	// This eliminates the need to hardcode credentials while supporting both environments
 	awsCfg, err := awsconfig.LoadDefaultConfig(context.TODO(),
 		awsconfig.WithRegion(cfg.AWS.Region),
-		awsconfig.WithCredentialsProvider(aws.CredentialsProviderFunc(func(ctx context.Context) (aws.Credentials, error) {
-			return aws.Credentials{
-				AccessKeyID:     cfg.AWS.AccessKeyID,
-				SecretAccessKey: cfg.AWS.SecretAccessKey,
-			}, nil
-		})),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load AWS config: %w", err)
