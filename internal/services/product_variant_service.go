@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"kisanlink-erp/internal/database/models"
@@ -61,6 +62,16 @@ func (s *ProductVariantService) CreateProductVariant(ctx context.Context, produc
 	variant.Description = request.Description
 	variant.SKU = request.SKU
 	variant.Barcode = request.Barcode
+
+	// Marshal attachment IDs to JSON
+	if len(request.Images) > 0 {
+		imagesBytes, err := json.Marshal(request.Images)
+		if err != nil {
+			return nil, errors.NewValidationError("Invalid images format")
+		}
+		imagesStr := string(imagesBytes)
+		variant.Images = &imagesStr
+	}
 
 	// Save to database
 	if err := s.variantRepo.Create(variant); err != nil {
@@ -202,6 +213,15 @@ func (s *ProductVariantService) UpdateProductVariant(ctx context.Context, id str
 	if request.IsActive != nil {
 		variant.IsActive = *request.IsActive
 	}
+	if request.Images != nil {
+		// Marshal attachment IDs to JSON
+		imagesBytes, err := json.Marshal(*request.Images)
+		if err != nil {
+			return nil, errors.NewValidationError("Invalid images format")
+		}
+		imagesStr := string(imagesBytes)
+		variant.Images = &imagesStr
+	}
 
 	// Save to database
 	if err := s.variantRepo.Update(variant); err != nil {
@@ -230,6 +250,14 @@ func (s *ProductVariantService) DeleteProductVariant(ctx context.Context, id str
 
 // buildProductVariantResponse builds a response with product details
 func (s *ProductVariantService) buildProductVariantResponse(variant *models.ProductVariant, product *models.Product) (*models.ProductVariantResponse, error) {
+	// Unmarshal attachment IDs from JSON
+	var images []string
+	if variant.Images != nil && *variant.Images != "" {
+		if err := json.Unmarshal([]byte(*variant.Images), &images); err == nil {
+			// Successfully unmarshaled
+		}
+	}
+
 	return &models.ProductVariantResponse{
 		ID:          variant.ID,
 		ProductID:   variant.ProductID,
@@ -239,6 +267,7 @@ func (s *ProductVariantService) buildProductVariantResponse(variant *models.Prod
 		PackSize:    variant.PackSize,
 		SKU:         variant.SKU,
 		Barcode:     variant.Barcode,
+		Images:      images,
 		IsActive:    variant.IsActive,
 		CreatedAt:   variant.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:   variant.UpdatedAt.UTC().Format(time.RFC3339),

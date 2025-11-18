@@ -81,6 +81,8 @@ func (s *S3Service) UploadFile(ctx context.Context, file *multipart.FileHeader, 
 		folder = fmt.Sprintf("purchase-orders/%s", entityID)
 	case "grn":
 		folder = fmt.Sprintf("grns/%s", entityID)
+	case "variant":
+		folder = fmt.Sprintf("product-variants/%s", entityID)
 	default:
 		folder = "misc"
 	}
