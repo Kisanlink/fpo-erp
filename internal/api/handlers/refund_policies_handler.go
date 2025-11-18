@@ -45,7 +45,7 @@ func (h *RefundPoliciesHandler) CreateRefundPolicy(c *gin.Context) {
 
 	policy, err := h.refundPoliciesService.CreateRefundPolicy(&req)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to create refund policy", err)
+		utils.HandleServiceError(c, "Failed to create refund policy", err)
 		return
 	}
 
@@ -69,7 +69,7 @@ func (h *RefundPoliciesHandler) GetAllRefundPolicies(c *gin.Context) {
 
 	policies, err := h.refundPoliciesService.GetAllRefundPolicies(limit, offset)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve refund policies", err)
+		utils.HandleServiceError(c, "Failed to retrieve refund policies", err)
 		return
 	}
 
@@ -136,7 +136,7 @@ func (h *RefundPoliciesHandler) UpdateRefundPolicy(c *gin.Context) {
 
 	policy, err := h.refundPoliciesService.UpdateRefundPolicy(id, &req)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to update refund policy", err)
+		utils.HandleServiceError(c, "Failed to update refund policy", err)
 		return
 	}
 

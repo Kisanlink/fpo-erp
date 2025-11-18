@@ -61,7 +61,7 @@ func (h *WarehouseHandler) CreateWarehouse(c *gin.Context) {
 	// Create warehouse
 	response, err := h.warehouseService.CreateWarehouse(c.Request.Context(), &request, userID, jwtToken)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to create warehouse", err)
+		utils.HandleServiceError(c, "Failed to create warehouse", err)
 		return
 	}
 
@@ -125,7 +125,7 @@ func (h *WarehouseHandler) GetAllWarehouses(c *gin.Context) {
 	// Get all warehouses
 	response, err := h.warehouseService.GetAllWarehouses(c.Request.Context(), jwtToken)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve warehouses", err)
+		utils.HandleServiceError(c, "Failed to retrieve warehouses", err)
 		return
 	}
 
@@ -173,7 +173,7 @@ func (h *WarehouseHandler) UpdateWarehouse(c *gin.Context) {
 	// Update warehouse
 	response, err := h.warehouseService.UpdateWarehouse(c.Request.Context(), id, &request, jwtToken)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to update warehouse", err)
+		utils.HandleServiceError(c, "Failed to update warehouse", err)
 		return
 	}
 
@@ -211,7 +211,7 @@ func (h *WarehouseHandler) DeleteWarehouse(c *gin.Context) {
 	// Delete warehouse
 	err := h.warehouseService.DeleteWarehouse(c.Request.Context(), id, jwtToken)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to delete warehouse", err)
+		utils.HandleServiceError(c, "Failed to delete warehouse", err)
 		return
 	}
 
@@ -248,7 +248,7 @@ func (h *WarehouseHandler) SearchWarehouses(c *gin.Context) {
 	// Search warehouses
 	response, err := h.warehouseService.SearchWarehouses(c.Request.Context(), query, jwtToken)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to search warehouses", err)
+		utils.HandleServiceError(c, "Failed to search warehouses", err)
 		return
 	}
 

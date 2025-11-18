@@ -48,7 +48,7 @@ func (h *ReturnsHandler) CreateReturn(c *gin.Context) {
 
 	ret, err := h.returnsService.CreateReturn(&req)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to create return", err)
+		utils.HandleServiceError(c, "Failed to create return", err)
 		return
 	}
 
@@ -114,7 +114,7 @@ func (h *ReturnsHandler) GetAllReturns(c *gin.Context) {
 
 	returns, err := h.returnsService.GetAllReturns(limit, offset)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve returns", err)
+		utils.HandleServiceError(c, "Failed to retrieve returns", err)
 		return
 	}
 
@@ -151,7 +151,7 @@ func (h *ReturnsHandler) UpdateReturn(c *gin.Context) {
 
 	ret, err := h.returnsService.UpdateReturn(id, &req)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to update return", err)
+		utils.HandleServiceError(c, "Failed to update return", err)
 		return
 	}
 
@@ -180,7 +180,7 @@ func (h *ReturnsHandler) DeleteReturn(c *gin.Context) {
 
 	err := h.returnsService.DeleteReturn(id)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to delete return", err)
+		utils.HandleServiceError(c, "Failed to delete return", err)
 		return
 	}
 
@@ -208,7 +208,7 @@ func (h *ReturnsHandler) GetReturnsByCustomer(c *gin.Context) {
 
 	returns, err := h.returnsService.GetReturnsByCustomer(customerID)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve returns", err)
+		utils.HandleServiceError(c, "Failed to retrieve returns", err)
 		return
 	}
 
@@ -236,7 +236,7 @@ func (h *ReturnsHandler) GetReturnsBySaleID(c *gin.Context) {
 
 	returns, err := h.returnsService.GetReturnsBySaleID(saleID)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve returns", err)
+		utils.HandleServiceError(c, "Failed to retrieve returns", err)
 		return
 	}
 
@@ -279,7 +279,7 @@ func (h *ReturnsHandler) GetReturnsByDateRange(c *gin.Context) {
 
 	returns, err := h.returnsService.GetReturnsByDateRange(startDate, endDate)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve returns", err)
+		utils.HandleServiceError(c, "Failed to retrieve returns", err)
 		return
 	}
 
@@ -307,7 +307,7 @@ func (h *ReturnsHandler) GetReturnsByStatus(c *gin.Context) {
 
 	returns, err := h.returnsService.GetReturnsByStatus(status)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve returns", err)
+		utils.HandleServiceError(c, "Failed to retrieve returns", err)
 		return
 	}
 
@@ -350,7 +350,7 @@ func (h *ReturnsHandler) GetTotalReturnsAmount(c *gin.Context) {
 
 	totalAmount, err := h.returnsService.GetTotalReturnsAmount(startDate, endDate)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to calculate total amount", err)
+		utils.HandleServiceError(c, "Failed to calculate total amount", err)
 		return
 	}
 
@@ -404,7 +404,7 @@ func (h *ReturnsHandler) GetReturnRateByProduct(c *gin.Context) {
 
 	returnRate, err := h.returnsService.GetReturnRateByProduct(productID, startDate, endDate)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to calculate return rate", err)
+		utils.HandleServiceError(c, "Failed to calculate return rate", err)
 		return
 	}
 
@@ -438,7 +438,7 @@ func (h *ReturnsHandler) GetMostReturnedProducts(c *gin.Context) {
 
 	products, err := h.returnsService.GetMostReturnedProducts(limit)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve most returned products", err)
+		utils.HandleServiceError(c, "Failed to retrieve most returned products", err)
 		return
 	}
 
@@ -481,7 +481,7 @@ func (h *ReturnsHandler) UpdateReturnStatus(c *gin.Context) {
 
 	ret, err := h.returnsService.UpdateReturn(id, &updateReq)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to update return status", err)
+		utils.HandleServiceError(c, "Failed to update return status", err)
 		return
 	}
 

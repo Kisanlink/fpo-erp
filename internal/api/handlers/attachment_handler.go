@@ -97,7 +97,7 @@ func (h *AttachmentHandler) UploadAttachment(c *gin.Context) {
 	// Upload attachment
 	attachment, err := h.attachmentService.UploadAttachment(c.Request.Context(), file, entityType, entityID, userIDStr.(string))
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to upload attachment", err)
+		utils.HandleServiceError(c, "Failed to upload attachment", err)
 		return
 	}
 
@@ -121,7 +121,7 @@ func (h *AttachmentHandler) GetAttachment(c *gin.Context) {
 
 	attachment, err := h.attachmentService.GetAttachment(id)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve attachment", err)
+		utils.HandleServiceError(c, "Failed to retrieve attachment", err)
 		return
 	}
 
@@ -176,7 +176,7 @@ func (h *AttachmentHandler) GetAttachments(c *gin.Context) {
 	// Get attachments
 	attachments, err := h.attachmentService.GetAttachments(entityTypePtr, entityIDPtr, limit, offset)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve attachments", err)
+		utils.HandleServiceError(c, "Failed to retrieve attachments", err)
 		return
 	}
 
@@ -201,7 +201,7 @@ func (h *AttachmentHandler) DownloadAttachment(c *gin.Context) {
 	// Download file
 	fileReader, contentType, err := h.attachmentService.DownloadAttachment(c.Request.Context(), id)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to download attachment", err)
+		utils.HandleServiceError(c, "Failed to download attachment", err)
 		return
 	}
 	defer func() {
@@ -217,7 +217,7 @@ func (h *AttachmentHandler) DownloadAttachment(c *gin.Context) {
 	// Stream the file
 	r, ok := fileReader.(io.Reader)
 	if !ok {
-		utils.InternalServerErrorResponse(c, "Attachment stream is not readable", nil)
+		utils.HandleServiceError(c, "Attachment stream is not readable", nil)
 		return
 	}
 	c.DataFromReader(http.StatusOK, -1, contentType, r, nil)
@@ -254,7 +254,7 @@ func (h *AttachmentHandler) GenerateDownloadURL(c *gin.Context) {
 	// Generate URL
 	url, err := h.attachmentService.GenerateDownloadURL(c.Request.Context(), id, expiration)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to generate download URL", err)
+		utils.HandleServiceError(c, "Failed to generate download URL", err)
 		return
 	}
 
@@ -281,7 +281,7 @@ func (h *AttachmentHandler) GetAttachmentInfo(c *gin.Context) {
 
 	info, err := h.attachmentService.GetAttachmentInfo(c.Request.Context(), id)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve attachment info", err)
+		utils.HandleServiceError(c, "Failed to retrieve attachment info", err)
 		return
 	}
 
@@ -312,7 +312,7 @@ func (h *AttachmentHandler) GetAttachmentsByEntity(c *gin.Context) {
 
 	attachments, err := h.attachmentService.GetAttachmentsByEntity(entityType, entityID)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve entity attachments", err)
+		utils.HandleServiceError(c, "Failed to retrieve entity attachments", err)
 		return
 	}
 
@@ -337,7 +337,7 @@ func (h *AttachmentHandler) DeleteAttachment(c *gin.Context) {
 
 	err := h.attachmentService.DeleteAttachment(c.Request.Context(), id)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to delete attachment", err)
+		utils.HandleServiceError(c, "Failed to delete attachment", err)
 		return
 	}
 

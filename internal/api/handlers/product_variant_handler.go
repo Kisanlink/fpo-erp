@@ -56,7 +56,7 @@ func (h *ProductVariantHandler) CreateProductVariant(c *gin.Context) {
 	// Create variant
 	response, err := h.variantService.CreateProductVariant(c.Request.Context(), productID, &request)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to create variant", err)
+		utils.HandleServiceError(c, "Failed to create variant", err)
 		return
 	}
 
@@ -114,7 +114,7 @@ func (h *ProductVariantHandler) GetVariantsByProduct(c *gin.Context) {
 	// Get variants
 	response, err := h.variantService.GetVariantsByProduct(c.Request.Context(), productID)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve variants", err)
+		utils.HandleServiceError(c, "Failed to retrieve variants", err)
 		return
 	}
 
@@ -213,7 +213,7 @@ func (h *ProductVariantHandler) UpdateProductVariant(c *gin.Context) {
 	// Update variant
 	response, err := h.variantService.UpdateProductVariant(c.Request.Context(), id, &request)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to update variant", err)
+		utils.HandleServiceError(c, "Failed to update variant", err)
 		return
 	}
 
@@ -243,7 +243,7 @@ func (h *ProductVariantHandler) DeleteProductVariant(c *gin.Context) {
 
 	// Delete variant
 	if err := h.variantService.DeleteProductVariant(c.Request.Context(), id); err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to delete variant", err)
+		utils.HandleServiceError(c, "Failed to delete variant", err)
 		return
 	}
 

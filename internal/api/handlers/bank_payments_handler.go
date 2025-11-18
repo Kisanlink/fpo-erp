@@ -47,7 +47,7 @@ func (h *BankPaymentsHandler) CreateBankPayment(c *gin.Context) {
 
 	payment, err := h.bankPaymentsService.CreateBankPayment(&req)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to create bank payment", err)
+		utils.HandleServiceError(c, "Failed to create bank payment", err)
 		return
 	}
 
@@ -85,7 +85,7 @@ func (h *BankPaymentsHandler) GetAllBankPayments(c *gin.Context) {
 
 	payments, err := h.bankPaymentsService.GetAllBankPayments(limit, offset)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve bank payments", err)
+		utils.HandleServiceError(c, "Failed to retrieve bank payments", err)
 		return
 	}
 
@@ -141,7 +141,7 @@ func (h *BankPaymentsHandler) GetBankPaymentsBySale(c *gin.Context) {
 
 	payments, err := h.bankPaymentsService.GetBankPaymentsBySaleID(saleID)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve bank payments for sale", err)
+		utils.HandleServiceError(c, "Failed to retrieve bank payments for sale", err)
 		return
 	}
 
@@ -169,7 +169,7 @@ func (h *BankPaymentsHandler) GetBankPaymentsByReturn(c *gin.Context) {
 
 	payments, err := h.bankPaymentsService.GetBankPaymentsByReturnID(returnID)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve bank payments for return", err)
+		utils.HandleServiceError(c, "Failed to retrieve bank payments for return", err)
 		return
 	}
 

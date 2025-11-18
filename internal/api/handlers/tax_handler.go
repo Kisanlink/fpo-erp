@@ -81,7 +81,7 @@ func (h *TaxHandler) CreateTax(c *gin.Context) {
 
 	tax, err := h.taxService.CreateTax(&req, userID)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to create tax", err)
+		utils.HandleServiceError(c, "Failed to create tax", err)
 		return
 	}
 
@@ -145,7 +145,7 @@ func (h *TaxHandler) GetAllTaxes(c *gin.Context) {
 
 	taxes, err := h.taxService.GetAllTaxes(limit, offset)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve taxes", err)
+		utils.HandleServiceError(c, "Failed to retrieve taxes", err)
 		return
 	}
 
@@ -165,7 +165,7 @@ func (h *TaxHandler) GetAllTaxes(c *gin.Context) {
 func (h *TaxHandler) GetActiveTaxes(c *gin.Context) {
 	taxes, err := h.taxService.GetActiveTaxes()
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve active taxes", err)
+		utils.HandleServiceError(c, "Failed to retrieve active taxes", err)
 		return
 	}
 
@@ -214,7 +214,7 @@ func (h *TaxHandler) GetTaxesByType(c *gin.Context) {
 
 	taxes, err := h.taxService.GetTaxesByType(taxType)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve taxes by type", err)
+		utils.HandleServiceError(c, "Failed to retrieve taxes by type", err)
 		return
 	}
 
@@ -257,7 +257,7 @@ func (h *TaxHandler) GetTaxesByStatus(c *gin.Context) {
 
 	taxes, err := h.taxService.GetTaxesByStatus(status)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve taxes by status", err)
+		utils.HandleServiceError(c, "Failed to retrieve taxes by status", err)
 		return
 	}
 
@@ -301,7 +301,7 @@ func (h *TaxHandler) UpdateTax(c *gin.Context) {
 
 	tax, err := h.taxService.UpdateTax(id, &req, userID)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to update tax", err)
+		utils.HandleServiceError(c, "Failed to update tax", err)
 		return
 	}
 
@@ -330,7 +330,7 @@ func (h *TaxHandler) DeleteTax(c *gin.Context) {
 
 	err := h.taxService.DeleteTax(id)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to delete tax", err)
+		utils.HandleServiceError(c, "Failed to delete tax", err)
 		return
 	}
 
@@ -391,7 +391,7 @@ func (h *TaxHandler) CalculateTax(c *gin.Context) {
 
 	taxCalculation, err := h.taxService.CalculateTax(&req)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to calculate taxes", err)
+		utils.HandleServiceError(c, "Failed to calculate taxes", err)
 		return
 	}
 
@@ -419,7 +419,7 @@ func (h *TaxHandler) GetTaxApplicationsBySale(c *gin.Context) {
 
 	taxApps, err := h.taxService.GetTaxApplicationsBySale(saleID)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve tax applications", err)
+		utils.HandleServiceError(c, "Failed to retrieve tax applications", err)
 		return
 	}
 
@@ -447,7 +447,7 @@ func (h *TaxHandler) GetTaxApplicationsByReturn(c *gin.Context) {
 
 	taxApps, err := h.taxService.GetTaxApplicationsByReturn(returnID)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve tax applications", err)
+		utils.HandleServiceError(c, "Failed to retrieve tax applications", err)
 		return
 	}
 

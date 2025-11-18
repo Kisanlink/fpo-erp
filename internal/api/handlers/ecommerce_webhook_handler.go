@@ -93,7 +93,7 @@ func (h *EcommerceWebhookHandler) processWebhook(
 	// Check idempotency (duplicate event detection)
 	alreadyProcessed, existingEvent, err := h.historyService.CheckIdempotency(c.Request.Context(), headers.EventID)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to check webhook idempotency", err)
+		utils.HandleServiceError(c, "Failed to check webhook idempotency", err)
 		return
 	}
 
@@ -147,7 +147,7 @@ func (h *EcommerceWebhookHandler) processWebhook(
 				}
 				// If refetch also fails, fall through to generic error
 			}
-			utils.InternalServerErrorResponse(c, "Failed to record webhook", err)
+			utils.HandleServiceError(c, "Failed to record webhook", err)
 			return
 		}
 	}
@@ -166,7 +166,7 @@ func (h *EcommerceWebhookHandler) processWebhook(
 	if err != nil {
 		// Mark webhook as failed
 		h.historyService.MarkFailed(c.Request.Context(), headers.EventID, err)
-		utils.InternalServerErrorResponse(c, "Failed to process webhook", err)
+		utils.HandleServiceError(c, "Failed to process webhook", err)
 		return
 	}
 
@@ -414,7 +414,7 @@ func (h *EcommerceWebhookHandler) GetWebhookHistory(c *gin.Context) {
 	}
 
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve webhook history", err)
+		utils.HandleServiceError(c, "Failed to retrieve webhook history", err)
 		return
 	}
 
@@ -433,7 +433,7 @@ func (h *EcommerceWebhookHandler) GetWebhookHistory(c *gin.Context) {
 func (h *EcommerceWebhookHandler) GetWebhookStats(c *gin.Context) {
 	stats, err := h.historyService.GetWebhookStats(c.Request.Context())
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve webhook stats", err)
+		utils.HandleServiceError(c, "Failed to retrieve webhook stats", err)
 		return
 	}
 

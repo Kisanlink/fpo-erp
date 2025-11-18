@@ -48,7 +48,7 @@ func (h *SalesHandler) CreateSale(c *gin.Context) {
 
 	sale, err := h.salesService.CreateSale(&req)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to create sale", err)
+		utils.HandleServiceError(c, "Failed to create sale", err)
 		return
 	}
 
@@ -114,7 +114,7 @@ func (h *SalesHandler) GetAllSales(c *gin.Context) {
 
 	sales, err := h.salesService.GetAllSales(limit, offset)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve sales", err)
+		utils.HandleServiceError(c, "Failed to retrieve sales", err)
 		return
 	}
 
@@ -151,7 +151,7 @@ func (h *SalesHandler) UpdateSale(c *gin.Context) {
 
 	sale, err := h.salesService.UpdateSale(id, &req)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to update sale", err)
+		utils.HandleServiceError(c, "Failed to update sale", err)
 		return
 	}
 
@@ -180,7 +180,7 @@ func (h *SalesHandler) DeleteSale(c *gin.Context) {
 
 	err := h.salesService.DeleteSale(id)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to delete sale", err)
+		utils.HandleServiceError(c, "Failed to delete sale", err)
 		return
 	}
 
@@ -223,7 +223,7 @@ func (h *SalesHandler) GetSalesByDateRange(c *gin.Context) {
 
 	sales, err := h.salesService.GetSalesByDateRange(startDate, endDate)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve sales", err)
+		utils.HandleServiceError(c, "Failed to retrieve sales", err)
 		return
 	}
 
@@ -251,7 +251,7 @@ func (h *SalesHandler) GetSalesByStatus(c *gin.Context) {
 
 	sales, err := h.salesService.GetSalesByStatus(status)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve sales", err)
+		utils.HandleServiceError(c, "Failed to retrieve sales", err)
 		return
 	}
 
@@ -294,7 +294,7 @@ func (h *SalesHandler) GetTotalSalesAmount(c *gin.Context) {
 
 	totalAmount, err := h.salesService.GetTotalSalesAmount(startDate, endDate)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to calculate total amount", err)
+		utils.HandleServiceError(c, "Failed to calculate total amount", err)
 		return
 	}
 
@@ -327,7 +327,7 @@ func (h *SalesHandler) GetTopSellingProducts(c *gin.Context) {
 
 	products, err := h.salesService.GetTopSellingProducts(limit)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve top selling products", err)
+		utils.HandleServiceError(c, "Failed to retrieve top selling products", err)
 		return
 	}
 
@@ -389,7 +389,7 @@ func (h *SalesHandler) UpdateSaleStatus(c *gin.Context) {
 
 	sale, err := h.salesService.UpdateSale(id, &updateReq)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to update sale status", err)
+		utils.HandleServiceError(c, "Failed to update sale status", err)
 		return
 	}
 

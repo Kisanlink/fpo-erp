@@ -48,7 +48,7 @@ func (h *ProductHandler) CreateProduct(c *gin.Context) {
 	// Create product
 	response, err := h.productService.CreateProduct(&request)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to create product", err)
+		utils.HandleServiceError(c, "Failed to create product", err)
 		return
 	}
 
@@ -99,7 +99,7 @@ func (h *ProductHandler) GetAllProducts(c *gin.Context) {
 	// Get all products
 	response, err := h.productService.GetAllProducts()
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve products", err)
+		utils.HandleServiceError(c, "Failed to retrieve products", err)
 		return
 	}
 
@@ -140,7 +140,7 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	// Update product
 	response, err := h.productService.UpdateProduct(id, &request)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to update product", err)
+		utils.HandleServiceError(c, "Failed to update product", err)
 		return
 	}
 
@@ -170,7 +170,7 @@ func (h *ProductHandler) DeleteProduct(c *gin.Context) {
 
 	// Delete product
 	if err := h.productService.DeleteProduct(id); err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to delete product", err)
+		utils.HandleServiceError(c, "Failed to delete product", err)
 		return
 	}
 
@@ -200,7 +200,7 @@ func (h *ProductHandler) SearchProducts(c *gin.Context) {
 	// Search products
 	response, err := h.productService.SearchProducts(query)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to search products", err)
+		utils.HandleServiceError(c, "Failed to search products", err)
 		return
 	}
 

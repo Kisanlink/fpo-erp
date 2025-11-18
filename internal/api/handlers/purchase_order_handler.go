@@ -48,7 +48,7 @@ func (h *PurchaseOrderHandler) CreatePurchaseOrder(c *gin.Context) {
 	// Create purchase order
 	response, err := h.poService.CreatePurchaseOrder(c.Request.Context(), &request)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to create purchase order", err)
+		utils.HandleServiceError(c, "Failed to create purchase order", err)
 		return
 	}
 
@@ -98,7 +98,7 @@ func (h *PurchaseOrderHandler) GetAllPurchaseOrders(c *gin.Context) {
 	// Get all purchase orders
 	response, err := h.poService.GetAllPurchaseOrders(c.Request.Context())
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve purchase orders", err)
+		utils.HandleServiceError(c, "Failed to retrieve purchase orders", err)
 		return
 	}
 
@@ -127,7 +127,7 @@ func (h *PurchaseOrderHandler) GetPurchaseOrdersByCollaborator(c *gin.Context) {
 	// Get purchase orders
 	response, err := h.poService.GetPurchaseOrdersByCollaborator(c.Request.Context(), collaboratorID)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve purchase orders", err)
+		utils.HandleServiceError(c, "Failed to retrieve purchase orders", err)
 		return
 	}
 
@@ -155,7 +155,7 @@ func (h *PurchaseOrderHandler) GetPurchaseOrdersByStatus(c *gin.Context) {
 	// Get purchase orders
 	response, err := h.poService.GetPurchaseOrdersByStatus(c.Request.Context(), status)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve purchase orders", err)
+		utils.HandleServiceError(c, "Failed to retrieve purchase orders", err)
 		return
 	}
 
@@ -174,7 +174,7 @@ func (h *PurchaseOrderHandler) GetPendingDeliveries(c *gin.Context) {
 	// Get pending deliveries
 	response, err := h.poService.GetPendingDeliveries(c.Request.Context())
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve pending deliveries", err)
+		utils.HandleServiceError(c, "Failed to retrieve pending deliveries", err)
 		return
 	}
 
@@ -221,7 +221,7 @@ func (h *PurchaseOrderHandler) UpdatePurchaseOrderStatus(c *gin.Context) {
 	// Update status
 	response, err := h.poService.UpdatePurchaseOrderStatus(c.Request.Context(), id, &request, userID)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to update status", err)
+		utils.HandleServiceError(c, "Failed to update status", err)
 		return
 	}
 
@@ -262,7 +262,7 @@ func (h *PurchaseOrderHandler) UpdatePaymentStatus(c *gin.Context) {
 	// Update payment status
 	response, err := h.poService.UpdatePaymentStatus(c.Request.Context(), id, &request)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to update payment status", err)
+		utils.HandleServiceError(c, "Failed to update payment status", err)
 		return
 	}
 

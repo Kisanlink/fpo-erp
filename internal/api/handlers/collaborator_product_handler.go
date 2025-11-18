@@ -56,7 +56,7 @@ func (h *CollaboratorProductHandler) AddProductToCollaborator(c *gin.Context) {
 	// Add product to collaborator
 	response, err := h.collabProductService.AddProductToCollaborator(c.Request.Context(), collaboratorID, &request)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to add product to collaborator", err)
+		utils.HandleServiceError(c, "Failed to add product to collaborator", err)
 		return
 	}
 
@@ -85,7 +85,7 @@ func (h *CollaboratorProductHandler) GetProductsByCollaborator(c *gin.Context) {
 	// Get products
 	response, err := h.collabProductService.GetProductsByCollaborator(c.Request.Context(), collaboratorID)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve products", err)
+		utils.HandleServiceError(c, "Failed to retrieve products", err)
 		return
 	}
 
@@ -114,7 +114,7 @@ func (h *CollaboratorProductHandler) GetCollaboratorsByProduct(c *gin.Context) {
 	// Get collaborators
 	response, err := h.collabProductService.GetCollaboratorsByProduct(c.Request.Context(), productID)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve collaborators", err)
+		utils.HandleServiceError(c, "Failed to retrieve collaborators", err)
 		return
 	}
 
@@ -184,7 +184,7 @@ func (h *CollaboratorProductHandler) UpdateCollaboratorProduct(c *gin.Context) {
 	// Update association
 	response, err := h.collabProductService.UpdateCollaboratorProduct(c.Request.Context(), id, &request)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to update association", err)
+		utils.HandleServiceError(c, "Failed to update association", err)
 		return
 	}
 
@@ -217,7 +217,7 @@ func (h *CollaboratorProductHandler) RemoveProductFromCollaborator(c *gin.Contex
 
 	// Remove association
 	if err := h.collabProductService.RemoveProductFromCollaborator(c.Request.Context(), collaboratorID, productID); err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to remove product from collaborator", err)
+		utils.HandleServiceError(c, "Failed to remove product from collaborator", err)
 		return
 	}
 
@@ -247,7 +247,7 @@ func (h *CollaboratorProductHandler) DeleteCollaboratorProduct(c *gin.Context) {
 
 	// Delete association
 	if err := h.collabProductService.DeleteCollaboratorProduct(c.Request.Context(), id); err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to delete association", err)
+		utils.HandleServiceError(c, "Failed to delete association", err)
 		return
 	}
 

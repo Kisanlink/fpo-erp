@@ -48,7 +48,7 @@ func (h *ProductPriceHandler) CreateProductPrice(c *gin.Context) {
 	// Create product price
 	response, err := h.priceService.CreateProductPrice(&request)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to create product price", err)
+		utils.HandleServiceError(c, "Failed to create product price", err)
 		return
 	}
 
@@ -108,7 +108,7 @@ func (h *ProductPriceHandler) GetVariantPrices(c *gin.Context) {
 	// Get variant prices
 	response, err := h.priceService.GetVariantPrices(variantID)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve variant prices", err)
+		utils.HandleServiceError(c, "Failed to retrieve variant prices", err)
 		return
 	}
 
@@ -186,7 +186,7 @@ func (h *ProductPriceHandler) UpdateProductPrice(c *gin.Context) {
 	// Update product price
 	response, err := h.priceService.UpdateProductPrice(id, &request)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to update product price", err)
+		utils.HandleServiceError(c, "Failed to update product price", err)
 		return
 	}
 
@@ -216,7 +216,7 @@ func (h *ProductPriceHandler) DeleteProductPrice(c *gin.Context) {
 
 	// Delete product price
 	if err := h.priceService.DeleteProductPrice(id); err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to delete product price", err)
+		utils.HandleServiceError(c, "Failed to delete product price", err)
 		return
 	}
 
@@ -237,7 +237,7 @@ func (h *ProductPriceHandler) GetExpiredPrices(c *gin.Context) {
 	// Get expired prices
 	response, err := h.priceService.GetExpiredPrices()
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve expired prices", err)
+		utils.HandleServiceError(c, "Failed to retrieve expired prices", err)
 		return
 	}
 
@@ -288,7 +288,7 @@ func (h *ProductPriceHandler) CreateProductPriceForVariant(c *gin.Context) {
 	// Create product price
 	response, err := h.priceService.CreateProductPrice(&request)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to create product price", err)
+		utils.HandleServiceError(c, "Failed to create product price", err)
 		return
 	}
 

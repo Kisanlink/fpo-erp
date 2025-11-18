@@ -68,7 +68,7 @@ func (h *InventoryHandler) CreateBatch(c *gin.Context) {
 		request.IsTaxExempt,
 	)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to create batch", err)
+		utils.HandleServiceError(c, "Failed to create batch", err)
 		return
 	}
 
@@ -128,7 +128,7 @@ func (h *InventoryHandler) GetBatchesByWarehouse(c *gin.Context) {
 	// Get batches by warehouse
 	response, err := h.inventoryService.GetBatchesByWarehouse(warehouseID)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve batches", err)
+		utils.HandleServiceError(c, "Failed to retrieve batches", err)
 		return
 	}
 
@@ -158,7 +158,7 @@ func (h *InventoryHandler) GetBatchesByVariant(c *gin.Context) {
 	// Get batches by variant
 	response, err := h.inventoryService.GetBatchesByVariant(variantID)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve batches", err)
+		utils.HandleServiceError(c, "Failed to retrieve batches", err)
 		return
 	}
 
@@ -198,7 +198,7 @@ func (h *InventoryHandler) CreateTransaction(c *gin.Context) {
 	// Create transaction
 	response, err := h.inventoryService.CreateTransaction(batchID, &request)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to create transaction", err)
+		utils.HandleServiceError(c, "Failed to create transaction", err)
 		return
 	}
 
@@ -228,7 +228,7 @@ func (h *InventoryHandler) GetTransactionsByBatch(c *gin.Context) {
 	// Get transactions by batch
 	response, err := h.inventoryService.GetTransactionsByBatch(batchID)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve transactions", err)
+		utils.HandleServiceError(c, "Failed to retrieve transactions", err)
 		return
 	}
 
@@ -259,7 +259,7 @@ func (h *InventoryHandler) GetExpiringBatches(c *gin.Context) {
 	// Get expiring batches
 	response, err := h.inventoryService.GetExpiringBatches(days)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve expiring batches", err)
+		utils.HandleServiceError(c, "Failed to retrieve expiring batches", err)
 		return
 	}
 
@@ -290,7 +290,7 @@ func (h *InventoryHandler) GetLowStockBatches(c *gin.Context) {
 	// Get low stock batches
 	response, err := h.inventoryService.GetLowStockBatches(threshold)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve low stock batches", err)
+		utils.HandleServiceError(c, "Failed to retrieve low stock batches", err)
 		return
 	}
 
@@ -318,7 +318,7 @@ func (h *InventoryHandler) GetAllProductsAvailability(c *gin.Context) {
 	// Get all products availability across warehouses
 	response, err := h.inventoryService.GetAllProductsAvailability(c.Request.Context(), jwtToken)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve products availability", err)
+		utils.HandleServiceError(c, "Failed to retrieve products availability", err)
 		return
 	}
 

@@ -48,7 +48,7 @@ func (h *DiscountsHandler) CreateDiscount(c *gin.Context) {
 
 	discount, err := h.discountsService.CreateDiscount(&req)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to create discount", err)
+		utils.HandleServiceError(c, "Failed to create discount", err)
 		return
 	}
 
@@ -114,7 +114,7 @@ func (h *DiscountsHandler) GetAllDiscounts(c *gin.Context) {
 
 	discounts, err := h.discountsService.GetAllDiscounts(limit, offset)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve discounts", err)
+		utils.HandleServiceError(c, "Failed to retrieve discounts", err)
 		return
 	}
 
@@ -134,7 +134,7 @@ func (h *DiscountsHandler) GetAllDiscounts(c *gin.Context) {
 func (h *DiscountsHandler) GetActiveDiscounts(c *gin.Context) {
 	discounts, err := h.discountsService.GetActiveDiscounts()
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve active discounts", err)
+		utils.HandleServiceError(c, "Failed to retrieve active discounts", err)
 		return
 	}
 
@@ -171,7 +171,7 @@ func (h *DiscountsHandler) UpdateDiscount(c *gin.Context) {
 
 	discount, err := h.discountsService.UpdateDiscount(id, &req)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to update discount", err)
+		utils.HandleServiceError(c, "Failed to update discount", err)
 		return
 	}
 
@@ -200,7 +200,7 @@ func (h *DiscountsHandler) DeleteDiscount(c *gin.Context) {
 
 	err := h.discountsService.DeleteDiscount(id)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to delete discount", err)
+		utils.HandleServiceError(c, "Failed to delete discount", err)
 		return
 	}
 
@@ -228,7 +228,7 @@ func (h *DiscountsHandler) GetDiscountsByType(c *gin.Context) {
 
 	discounts, err := h.discountsService.GetDiscountsByType(models.DiscountType(discountType))
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve discounts by type", err)
+		utils.HandleServiceError(c, "Failed to retrieve discounts by type", err)
 		return
 	}
 
@@ -256,7 +256,7 @@ func (h *DiscountsHandler) GetDiscountsByStatus(c *gin.Context) {
 
 	discounts, err := h.discountsService.GetDiscountsByStatus(status)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve discounts by status", err)
+		utils.HandleServiceError(c, "Failed to retrieve discounts by status", err)
 		return
 	}
 
@@ -287,7 +287,7 @@ func (h *DiscountsHandler) ValidateDiscount(c *gin.Context) {
 
 	validation, err := h.discountsService.ValidateDiscount(&req)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to validate discount", err)
+		utils.HandleServiceError(c, "Failed to validate discount", err)
 		return
 	}
 
@@ -315,7 +315,7 @@ func (h *DiscountsHandler) GetDiscountUsageBySale(c *gin.Context) {
 
 	usages, err := h.discountsService.GetDiscountUsageBySale(saleID)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve discount usage", err)
+		utils.HandleServiceError(c, "Failed to retrieve discount usage", err)
 		return
 	}
 
@@ -369,7 +369,7 @@ func (h *DiscountsHandler) GetApplicableDiscounts(c *gin.Context) {
 
 	discounts, err := h.discountsService.GetApplicableDiscountsForOrder(orderValue, productIDs, categoryIDs, warehouseID)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve applicable discounts", err)
+		utils.HandleServiceError(c, "Failed to retrieve applicable discounts", err)
 		return
 	}
 
@@ -400,7 +400,7 @@ func (h *DiscountsHandler) CalculateOptimalDiscounts(c *gin.Context) {
 
 	optimalDiscounts, totalDiscount, err := h.discountsService.CalculateOptimalDiscounts(req.OrderValue, req.ProductIDs, req.CategoryIDs, req.WarehouseID)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to calculate optimal discounts", err)
+		utils.HandleServiceError(c, "Failed to calculate optimal discounts", err)
 		return
 	}
 
@@ -432,7 +432,7 @@ func (h *DiscountsHandler) GetDiscountUsageStats(c *gin.Context) {
 
 	stats, err := h.discountsService.GetDiscountUsageStats(discountID)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve discount usage statistics", err)
+		utils.HandleServiceError(c, "Failed to retrieve discount usage statistics", err)
 		return
 	}
 

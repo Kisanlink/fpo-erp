@@ -72,7 +72,7 @@ func (h *CollaboratorHandler) CreateCollaborator(c *gin.Context) {
 	// Create collaborator
 	response, err := h.collaboratorService.CreateCollaborator(c.Request.Context(), &request, organizationID, userID, jwtToken)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to create collaborator", err)
+		utils.HandleServiceError(c, "Failed to create collaborator", err)
 		return
 	}
 
@@ -151,7 +151,7 @@ func (h *CollaboratorHandler) GetAllCollaborators(c *gin.Context) {
 	// Get all collaborators
 	response, err := h.collaboratorService.GetAllCollaborators(c.Request.Context(), jwtToken)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve collaborators", err)
+		utils.HandleServiceError(c, "Failed to retrieve collaborators", err)
 		return
 	}
 
@@ -179,7 +179,7 @@ func (h *CollaboratorHandler) GetActiveCollaborators(c *gin.Context) {
 	// Get active collaborators
 	response, err := h.collaboratorService.GetActiveCollaborators(c.Request.Context(), jwtToken)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve active collaborators", err)
+		utils.HandleServiceError(c, "Failed to retrieve active collaborators", err)
 		return
 	}
 
@@ -242,7 +242,7 @@ func (h *CollaboratorHandler) UpdateCollaborator(c *gin.Context) {
 
 	response, err := h.collaboratorService.UpdateCollaborator(c.Request.Context(), id, &request, organizationID, userID, jwtToken)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to update collaborator", err)
+		utils.HandleServiceError(c, "Failed to update collaborator", err)
 		return
 	}
 
@@ -300,7 +300,7 @@ func (h *CollaboratorHandler) DeleteCollaborator(c *gin.Context) {
 	}
 
 	if err := h.collaboratorService.DeleteCollaborator(c.Request.Context(), id, organizationID, jwtToken); err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to delete collaborator", err)
+		utils.HandleServiceError(c, "Failed to delete collaborator", err)
 		return
 	}
 
@@ -337,7 +337,7 @@ func (h *CollaboratorHandler) SearchCollaborators(c *gin.Context) {
 	// Search collaborators
 	response, err := h.collaboratorService.SearchCollaborators(c.Request.Context(), query, jwtToken)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to search collaborators", err)
+		utils.HandleServiceError(c, "Failed to search collaborators", err)
 		return
 	}
 

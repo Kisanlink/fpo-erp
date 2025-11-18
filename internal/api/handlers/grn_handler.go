@@ -48,7 +48,7 @@ func (h *GRNHandler) CreateGRN(c *gin.Context) {
 	// Create GRN
 	response, err := h.grnService.CreateGRN(c.Request.Context(), &request)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to create GRN", err)
+		utils.HandleServiceError(c, "Failed to create GRN", err)
 		return
 	}
 
@@ -98,7 +98,7 @@ func (h *GRNHandler) GetAllGRNs(c *gin.Context) {
 	// Get all GRNs
 	response, err := h.grnService.GetAllGRNs(c.Request.Context())
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve GRNs", err)
+		utils.HandleServiceError(c, "Failed to retrieve GRNs", err)
 		return
 	}
 
@@ -127,7 +127,7 @@ func (h *GRNHandler) GetGRNsByWarehouse(c *gin.Context) {
 	// Get GRNs
 	response, err := h.grnService.GetGRNsByWarehouse(c.Request.Context(), warehouseID)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to retrieve GRNs", err)
+		utils.HandleServiceError(c, "Failed to retrieve GRNs", err)
 		return
 	}
 
@@ -195,7 +195,7 @@ func (h *GRNHandler) UpdateGRN(c *gin.Context) {
 	// Update GRN
 	response, err := h.grnService.UpdateGRN(c.Request.Context(), id, &request)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "Failed to update GRN", err)
+		utils.HandleServiceError(c, "Failed to update GRN", err)
 		return
 	}
 
