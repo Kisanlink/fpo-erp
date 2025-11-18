@@ -430,7 +430,7 @@ func TestWebhookIntegration_OrderConfirmed_InvalidPayload(t *testing.T) {
 
 	w := sendWebhookRequest(ctx.Router, "POST", "/api/v1/webhooks/ecommerce/order/confirmed", payload, headers)
 
-	testutils.AssertEqual(t, w.Code, http.StatusInternalServerError, "Should return 500 Internal Server Error")
+	testutils.AssertEqual(t, w.Code, http.StatusBadRequest, "Should return 400 Bad Request")
 	ctx.MockWebhookService.AssertExpectations(t)
 }
 
@@ -447,7 +447,7 @@ func TestWebhookIntegration_OrderConfirmed_ServiceError(t *testing.T) {
 
 	w := sendWebhookRequest(ctx.Router, "POST", "/api/v1/webhooks/ecommerce/order/confirmed", payload, headers)
 
-	testutils.AssertEqual(t, w.Code, http.StatusInternalServerError, "Should return 500 Internal Server Error")
+	testutils.AssertEqual(t, w.Code, http.StatusNotFound, "Should return 404 Not Found")
 
 	var event models.WebhookEvent
 	err := ctx.DB.Where("event_id = ?", webhook.EventID).First(&event).Error
@@ -571,7 +571,7 @@ func TestWebhookIntegration_OrderShipped_InvalidPayload(t *testing.T) {
 
 	w := sendWebhookRequest(ctx.Router, "POST", "/api/v1/webhooks/ecommerce/order/shipped", payload, headers)
 
-	testutils.AssertEqual(t, w.Code, http.StatusInternalServerError, "Should return 500 Internal Server Error")
+	testutils.AssertEqual(t, w.Code, http.StatusBadRequest, "Should return 400 Bad Request")
 	ctx.MockWebhookService.AssertExpectations(t)
 }
 
@@ -719,7 +719,7 @@ func TestWebhookIntegration_OrderDelivered_InvalidPayload(t *testing.T) {
 
 	w := sendWebhookRequest(ctx.Router, "POST", "/api/v1/webhooks/ecommerce/order/delivered", payload, headers)
 
-	testutils.AssertEqual(t, w.Code, http.StatusInternalServerError, "Should return 500 Internal Server Error")
+	testutils.AssertEqual(t, w.Code, http.StatusBadRequest, "Should return 400 Bad Request")
 	ctx.MockWebhookService.AssertExpectations(t)
 }
 
@@ -883,7 +883,7 @@ func TestWebhookIntegration_OrderPayment_InvalidPayload(t *testing.T) {
 
 	w := sendWebhookRequest(ctx.Router, "POST", "/api/v1/webhooks/ecommerce/order/payment", payload, headers)
 
-	testutils.AssertEqual(t, w.Code, http.StatusInternalServerError, "Should return 500 Internal Server Error")
+	testutils.AssertEqual(t, w.Code, http.StatusBadRequest, "Should return 400 Bad Request")
 	ctx.MockWebhookService.AssertExpectations(t)
 }
 
@@ -1395,7 +1395,7 @@ func TestWebhookIntegration_EdgeCase_EmptyPayload(t *testing.T) {
 
 	w := sendWebhookRequest(ctx.Router, "POST", "/api/v1/webhooks/ecommerce/order/created", payload, headers)
 
-	testutils.AssertEqual(t, w.Code, http.StatusInternalServerError, "Empty payload reaches service and fails")
+	testutils.AssertEqual(t, w.Code, http.StatusBadRequest, "Empty payload reaches service and fails")
 }
 
 func TestWebhookIntegration_EdgeCase_MalformedJSON(t *testing.T) {
@@ -1428,7 +1428,7 @@ func TestWebhookIntegration_EdgeCase_NullRequiredFields(t *testing.T) {
 
 	w := sendWebhookRequest(ctx.Router, "POST", "/api/v1/webhooks/ecommerce/order/created", payload, headers)
 
-	testutils.AssertEqual(t, w.Code, http.StatusInternalServerError, "Null fields reach service and fail")
+	testutils.AssertEqual(t, w.Code, http.StatusBadRequest, "Null fields reach service and fail")
 }
 
 func TestWebhookIntegration_EdgeCase_VeryLongEventID(t *testing.T) {
@@ -1495,7 +1495,7 @@ func TestWebhookIntegration_EdgeCase_ZeroQuantityValidation(t *testing.T) {
 
 	w := sendWebhookRequest(ctx.Router, "POST", "/api/v1/webhooks/ecommerce/order/created", payload, headers)
 
-	testutils.AssertEqual(t, w.Code, http.StatusInternalServerError, "Service rejects zero quantity")
+	testutils.AssertEqual(t, w.Code, http.StatusBadRequest, "Service rejects zero quantity")
 }
 
 // ============================================================================

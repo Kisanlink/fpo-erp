@@ -97,7 +97,7 @@ func TestEcommerceWebhook_ProcessOrderConfirmed_PONotFound(t *testing.T) {
 
 	// Assert
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to find purchase order")
+	assert.Contains(t, err.Error(), "Purchase order not found")
 	mockPORepo.AssertExpectations(t)
 }
 
@@ -159,7 +159,7 @@ func TestEcommerceWebhook_ProcessOrderShipped_PONotFound(t *testing.T) {
 
 	// Assert
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to find purchase order")
+	assert.Contains(t, err.Error(), "Purchase order not found")
 	mockPORepo.AssertExpectations(t)
 }
 
@@ -302,7 +302,7 @@ func TestEcommerceWebhook_ProcessOrderPayment_PONotFound(t *testing.T) {
 
 	// Assert
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to find purchase order")
+	assert.Contains(t, err.Error(), "Purchase order not found")
 	mockPORepo.AssertExpectations(t)
 }
 

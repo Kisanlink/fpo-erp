@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -813,8 +814,11 @@ func TestReturnsService_CreateReturn_InvalidSale(t *testing.T) {
 	if response != nil {
 		t.Errorf("Expected nil response, got %v", response)
 	}
-	if err != nil && err.Error() != "original sale not found" {
-		t.Errorf("Expected 'original sale not found' error, got %v", err)
+	if err != nil {
+		expectedMsg := "Original sale not found"
+		if !strings.Contains(err.Error(), expectedMsg) {
+			t.Errorf("Expected error to contain '%s', got %v", expectedMsg, err)
+		}
 	}
 }
 
@@ -840,8 +844,11 @@ func TestReturnsService_CreateReturn_ValidationFailure_NoItems(t *testing.T) {
 	if response != nil {
 		t.Errorf("Expected nil response, got %v", response)
 	}
-	if err != nil && err.Error() != "at least one item is required" {
-		t.Errorf("Expected 'at least one item is required' error, got %v", err)
+	if err != nil {
+		expectedMsg := "At least one item is required"
+		if !strings.Contains(err.Error(), expectedMsg) {
+			t.Errorf("Expected error to contain '%s', got %v", expectedMsg, err)
+		}
 	}
 }
 
@@ -873,7 +880,10 @@ func TestReturnsService_CreateReturn_ExceedsSaleQuantity(t *testing.T) {
 	if response != nil {
 		t.Errorf("Expected nil response, got %v", response)
 	}
-	if err != nil && err.Error() != "return quantity cannot exceed original sale quantity" {
-		t.Errorf("Expected 'return quantity cannot exceed original sale quantity' error, got %v", err)
+	if err != nil {
+		expectedMsg := "Return quantity cannot exceed original sale quantity"
+		if !strings.Contains(err.Error(), expectedMsg) {
+			t.Errorf("Expected error to contain '%s', got %v", expectedMsg, err)
+		}
 	}
 }

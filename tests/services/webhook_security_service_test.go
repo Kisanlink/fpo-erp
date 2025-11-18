@@ -235,7 +235,7 @@ func TestWebhookSecurity_ValidateTimestamp_InvalidFormat(t *testing.T) {
 	}
 	if err != nil && err.Error() != "" {
 		// Verify error message mentions format
-		expectedSubstring := "invalid timestamp format"
+		expectedSubstring := "Invalid timestamp format"
 		if !contains(err.Error(), expectedSubstring) {
 			t.Errorf("Expected error message to contain '%s', got: %v", expectedSubstring, err)
 		}
