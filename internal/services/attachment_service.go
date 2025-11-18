@@ -43,7 +43,7 @@ func (s *AttachmentService) UploadAttachment(ctx context.Context, file *multipar
 	// Upload file to S3 with entity-based folder structure
 	s3Key, err := s.s3Service.UploadFile(ctx, file, entityType, entityID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to upload file: %w", err)
+		return nil, errors.NewInternalServerError("failed to upload file")
 	}
 
 	// Create attachment record using the proper constructor
@@ -60,7 +60,7 @@ func (s *AttachmentService) UploadAttachment(ctx context.Context, file *multipar
 			// Log the deletion error but return the original error
 			fmt.Printf("Failed to delete S3 file after database error: %v", deleteErr)
 		}
-		return nil, fmt.Errorf("failed to create attachment record: %w", err)
+		return nil, errors.NewInternalServerError("failed to create attachment record")
 	}
 
 	// Build response
@@ -91,7 +91,7 @@ func (s *AttachmentService) GetAttachment(id string) (*models.Attachment, error)
 func (s *AttachmentService) GetAttachments(entityType, entityID *string, limit, offset int) ([]models.AttachmentResponse, error) {
 	attachments, err := s.attachmentRepo.GetAll(entityType, entityID, limit, offset)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve attachments: %w", err)
+		return nil, errors.NewInternalServerError("failed to retrieve attachments")
 	}
 
 	// Build response
@@ -117,7 +117,7 @@ func (s *AttachmentService) GetAttachments(entityType, entityID *string, limit, 
 func (s *AttachmentService) GetAttachmentsByEntity(entityType, entityID string) ([]models.AttachmentResponse, error) {
 	attachments, err := s.attachmentRepo.GetByEntity(entityType, entityID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve attachments: %w", err)
+		return nil, errors.NewInternalServerError("failed to retrieve attachments")
 	}
 
 	// Build response
@@ -149,12 +149,12 @@ func (s *AttachmentService) DeleteAttachment(ctx context.Context, id string) err
 
 	// Delete file from S3
 	if err := s.s3Service.DeleteFile(ctx, attachment.FilePath); err != nil {
-		return fmt.Errorf("failed to delete file from S3: %w", err)
+		return errors.NewInternalServerError("failed to delete file from S3")
 	}
 
 	// Delete attachment record
 	if err := s.attachmentRepo.Delete(id); err != nil {
-		return fmt.Errorf("failed to delete attachment record: %w", err)
+		return errors.NewInternalServerError("failed to delete attachment record")
 	}
 
 	return nil
@@ -171,7 +171,7 @@ func (s *AttachmentService) DownloadAttachment(ctx context.Context, id string) (
 	// Download file from S3
 	fileReader, contentType, err := s.s3Service.DownloadFile(ctx, attachment.FilePath)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to download file: %w", err)
+		return nil, "", errors.NewInternalServerError("failed to download file")
 	}
 
 	return fileReader, contentType, nil
@@ -188,7 +188,7 @@ func (s *AttachmentService) GenerateDownloadURL(ctx context.Context, id string, 
 	// Generate presigned URL
 	url, err := s.s3Service.GeneratePresignedURL(ctx, attachment.FilePath, expiration)
 	if err != nil {
-		return "", fmt.Errorf("failed to generate download URL: %w", err)
+		return "", errors.NewInternalServerError("failed to generate download URL")
 	}
 
 	return url, nil
@@ -205,7 +205,7 @@ func (s *AttachmentService) GetAttachmentInfo(ctx context.Context, id string) (*
 	// Get file info from S3
 	fileInfo, err := s.s3Service.GetFileInfo(ctx, attachment.FilePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get file info: %w", err)
+		return nil, errors.NewInternalServerError("failed to get file info")
 	}
 
 	return &models.AttachmentInfoResponse{

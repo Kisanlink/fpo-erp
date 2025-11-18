@@ -7,6 +7,7 @@ import (
 
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
+	"kisanlink-erp/internal/errors"
 
 	"gorm.io/gorm"
 )
@@ -47,7 +48,7 @@ func (s *GRNService) CreateGRN(ctx context.Context, request *models.CreateGRNReq
 
 	// Validate PO status is delivered
 	if po.Status != "delivered" {
-		return nil, fmt.Errorf("purchase order must be in 'delivered' status to create GRN")
+		return nil, errors.NewBadRequestError("Purchase order must be in 'delivered' status to create GRN")
 	}
 
 	// Check if GRN already exists for this PO
@@ -56,7 +57,7 @@ func (s *GRNService) CreateGRN(ctx context.Context, request *models.CreateGRNReq
 		return nil, err
 	}
 	if exists {
-		return nil, fmt.Errorf("GRN already exists for this purchase order")
+		return nil, errors.NewConflictError("GRN already exists for this purchase order")
 	}
 
 	// Validate warehouse exists
@@ -67,7 +68,7 @@ func (s *GRNService) CreateGRN(ctx context.Context, request *models.CreateGRNReq
 
 	// Validate quality status
 	if !isValidQualityStatus(request.QualityStatus) {
-		return nil, fmt.Errorf("invalid quality status: %s", request.QualityStatus)
+		return nil, errors.NewValidationError(fmt.Sprintf("Invalid quality status: %s", request.QualityStatus))
 	}
 
 	// Parse received date
@@ -75,7 +76,7 @@ func (s *GRNService) CreateGRN(ctx context.Context, request *models.CreateGRNReq
 	if request.ReceivedDate != nil {
 		receivedDate, err = time.Parse("2006-01-02", *request.ReceivedDate)
 		if err != nil {
-			return nil, fmt.Errorf("invalid received_date format: %w", err)
+			return nil, errors.NewValidationError(fmt.Sprintf("Invalid received_date format: %v", err))
 		}
 	} else {
 		receivedDate = time.Now().UTC()
@@ -83,7 +84,7 @@ func (s *GRNService) CreateGRN(ctx context.Context, request *models.CreateGRNReq
 
 	// Validate items and map to PO items
 	if len(request.Items) == 0 {
-		return nil, fmt.Errorf("GRN must have at least one item")
+		return nil, errors.NewValidationError("GRN must have at least one item")
 	}
 
 	poItemMap := make(map[string]*models.PurchaseOrderItem)
@@ -94,18 +95,18 @@ func (s *GRNService) CreateGRN(ctx context.Context, request *models.CreateGRNReq
 	// Validate all GRN items reference valid PO items
 	for _, grnItem := range request.Items {
 		if _, exists := poItemMap[grnItem.POItemID]; !exists {
-			return nil, fmt.Errorf("invalid PO item ID: %s", grnItem.POItemID)
+			return nil, errors.NewValidationError(fmt.Sprintf("Invalid PO item ID: %s", grnItem.POItemID))
 		}
 
 		// Validate quantities
 		if grnItem.ReceivedQuantity <= 0 {
-			return nil, fmt.Errorf("received quantity must be greater than 0")
+			return nil, errors.NewValidationError("Received quantity must be greater than 0")
 		}
 		if grnItem.AcceptedQuantity < 0 {
-			return nil, fmt.Errorf("accepted quantity cannot be negative")
+			return nil, errors.NewValidationError("Accepted quantity cannot be negative")
 		}
 		if grnItem.AcceptedQuantity > grnItem.ReceivedQuantity {
-			return nil, fmt.Errorf("accepted quantity cannot exceed received quantity")
+			return nil, errors.NewValidationError("Accepted quantity cannot exceed received quantity")
 		}
 	}
 
@@ -118,7 +119,7 @@ func (s *GRNService) CreateGRN(ctx context.Context, request *models.CreateGRNReq
 		return nil, err
 	}
 	if exists {
-		return nil, fmt.Errorf("GRN number '%s' already exists", grnNumber)
+		return nil, errors.NewConflictError(fmt.Sprintf("GRN number '%s' already exists", grnNumber))
 	}
 
 	// Create GRN, items, and inventory batches in a transaction
@@ -146,7 +147,7 @@ func (s *GRNService) CreateGRN(ctx context.Context, request *models.CreateGRNReq
 			// Parse expiry date
 			expiryDate, err := time.Parse("2006-01-02", itemReq.ExpiryDate)
 			if err != nil {
-				return fmt.Errorf("invalid expiry_date format for item %s: %w", itemReq.POItemID, err)
+				return errors.NewValidationError(fmt.Sprintf("Invalid expiry_date format for item %s: %v", itemReq.POItemID, err))
 			}
 
 			// Create GRN item
@@ -327,7 +328,7 @@ func (s *GRNService) UpdateGRN(ctx context.Context, id string, request *models.U
 	}
 	if request.QualityStatus != nil {
 		if !isValidQualityStatus(*request.QualityStatus) {
-			return nil, fmt.Errorf("invalid quality status: %s", *request.QualityStatus)
+			return nil, errors.NewValidationError(fmt.Sprintf("Invalid quality status: %s", *request.QualityStatus))
 		}
 		updates["quality_status"] = *request.QualityStatus
 	}

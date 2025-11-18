@@ -5,9 +5,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"time"
+
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
-	"time"
+	"kisanlink-erp/internal/errors"
 )
 
 // WebhookHistoryService handles webhook event tracking for idempotency and audit
@@ -27,7 +29,7 @@ func NewWebhookHistoryService(repo *repositories.WebhookRepository) *WebhookHist
 func (s *WebhookHistoryService) CheckIdempotency(ctx context.Context, eventID string) (bool, *models.WebhookEvent, error) {
 	event, err := s.repo.FindByEventID(ctx, eventID)
 	if err != nil {
-		return false, nil, fmt.Errorf("failed to check idempotency: %w", err)
+		return false, nil, errors.NewInternalServerError(fmt.Sprintf("Failed to check idempotency: %v", err))
 	}
 
 	if event == nil {
@@ -59,11 +61,11 @@ func (s *WebhookHistoryService) RecordWebhook(ctx context.Context, event *models
 func (s *WebhookHistoryService) MarkProcessed(ctx context.Context, eventID, purchaseOrderID string) error {
 	event, err := s.repo.FindByEventID(ctx, eventID)
 	if err != nil {
-		return fmt.Errorf("failed to find webhook event: %w", err)
+		return errors.NewInternalServerError(fmt.Sprintf("Failed to find webhook event: %v", err))
 	}
 
 	if event == nil {
-		return fmt.Errorf("webhook event not found: %s", eventID)
+		return errors.NewNotFoundError(fmt.Sprintf("Webhook event not found: %s", eventID))
 	}
 
 	now := time.Now()
@@ -81,11 +83,11 @@ func (s *WebhookHistoryService) MarkProcessed(ctx context.Context, eventID, purc
 func (s *WebhookHistoryService) MarkFailed(ctx context.Context, eventID string, err error) error {
 	event, errFind := s.repo.FindByEventID(ctx, eventID)
 	if errFind != nil {
-		return fmt.Errorf("failed to find webhook event: %w", errFind)
+		return errors.NewInternalServerError(fmt.Sprintf("Failed to find webhook event: %v", errFind))
 	}
 
 	if event == nil {
-		return fmt.Errorf("webhook event not found: %s", eventID)
+		return errors.NewNotFoundError(fmt.Sprintf("Webhook event not found: %s", eventID))
 	}
 
 	now := time.Now()
@@ -158,17 +160,17 @@ func (s *WebhookHistoryService) GetWebhookStats(ctx context.Context) (map[string
 	for _, eventType := range eventTypes {
 		total, err := s.repo.CountByEventType(ctx, eventType)
 		if err != nil {
-			return nil, fmt.Errorf("failed to count events for %s: %w", eventType, err)
+			return nil, errors.NewInternalServerError(fmt.Sprintf("Failed to count events for %s: %v", eventType, err))
 		}
 
 		success, err := s.repo.CountByStatusAndEventType(ctx, "success", eventType)
 		if err != nil {
-			return nil, fmt.Errorf("failed to count success for %s: %w", eventType, err)
+			return nil, errors.NewInternalServerError(fmt.Sprintf("Failed to count success for %s: %v", eventType, err))
 		}
 
 		failed, err := s.repo.CountByStatusAndEventType(ctx, "failed", eventType)
 		if err != nil {
-			return nil, fmt.Errorf("failed to count failed for %s: %w", eventType, err)
+			return nil, errors.NewInternalServerError(fmt.Sprintf("Failed to count failed for %s: %v", eventType, err))
 		}
 
 		stats[eventType] = map[string]interface{}{

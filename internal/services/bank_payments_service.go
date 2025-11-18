@@ -54,7 +54,7 @@ func (s *BankPaymentsService) CreateBankPayment(req *models.CreateBankPaymentReq
 func (s *BankPaymentsService) GetBankPayment(id string) (*models.BankPaymentResponse, error) {
 	payment, err := s.bankPaymentsRepo.GetBankPaymentByID(id)
 	if err != nil {
-		return nil, errors.NewNotFoundError("Bank payment not found")
+		return nil, errors.NewNotFoundError("Bank payment")
 	}
 	return s.mapBankPaymentToResponse(payment), nil
 }
@@ -108,7 +108,7 @@ func (s *BankPaymentsService) GetBankPaymentsByReturnID(returnID string) ([]mode
 func (s *BankPaymentsService) UpdateBankPayment(id string, req *models.UpdateBankPaymentRequest) (*models.BankPaymentResponse, error) {
 	payment, err := s.bankPaymentsRepo.GetBankPaymentByID(id)
 	if err != nil {
-		return nil, errors.NewNotFoundError("Bank payment not found")
+		return nil, errors.NewNotFoundError("Bank payment")
 	}
 
 	// Update fields
@@ -134,23 +134,23 @@ func (s *BankPaymentsService) DeleteBankPayment(id string) error {
 // Helper methods
 func (s *BankPaymentsService) validateBankPaymentRequest(req *models.CreateBankPaymentRequest) error {
 	if req.Amount <= 0 {
-		return errors.NewNotFoundError("amount must be greater than 0")
+		return errors.NewValidationError("Amount must be greater than 0")
 	}
 	if req.PaymentMethod == "" {
-		return errors.NewNotFoundError("payment method is required")
+		return errors.NewValidationError("Payment method is required")
 	}
 	if req.SaleID == nil && req.ReturnID == nil {
-		return errors.NewNotFoundError("either sale ID or return ID is required")
+		return errors.NewValidationError("Either sale ID or return ID is required")
 	}
 	if req.SaleID != nil && req.ReturnID != nil {
-		return errors.NewNotFoundError("cannot have both sale ID and return ID")
+		return errors.NewValidationError("Cannot have both sale ID and return ID")
 	}
 
 	// Validate sale exists if provided
 	if req.SaleID != nil {
 		_, err := s.salesRepo.GetSaleByID(*req.SaleID)
 		if err != nil {
-			return errors.NewNotFoundError("sale not found")
+			return errors.NewNotFoundError("Sale")
 		}
 	}
 
@@ -158,7 +158,7 @@ func (s *BankPaymentsService) validateBankPaymentRequest(req *models.CreateBankP
 	if req.ReturnID != nil {
 		_, err := s.returnsRepo.GetReturnByID(*req.ReturnID)
 		if err != nil {
-			return errors.NewNotFoundError("return not found")
+			return errors.NewNotFoundError("Return")
 		}
 	}
 

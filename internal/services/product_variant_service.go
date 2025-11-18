@@ -2,11 +2,11 @@ package services
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
+	"kisanlink-erp/internal/errors"
 )
 
 // ProductVariantService handles product variant business logic
@@ -41,7 +41,7 @@ func (s *ProductVariantService) CreateProductVariant(ctx context.Context, produc
 			return nil, err
 		}
 		if exists {
-			return nil, fmt.Errorf("variant with SKU %s already exists", *request.SKU)
+			return nil, errors.NewConflictError("variant with SKU " + *request.SKU + " already exists")
 		}
 	}
 
@@ -52,7 +52,7 @@ func (s *ProductVariantService) CreateProductVariant(ctx context.Context, produc
 			return nil, err
 		}
 		if exists {
-			return nil, fmt.Errorf("variant with barcode %s already exists", *request.Barcode)
+			return nil, errors.NewConflictError("variant with barcode " + *request.Barcode + " already exists")
 		}
 	}
 
@@ -161,7 +161,7 @@ func (s *ProductVariantService) UpdateProductVariant(ctx context.Context, id str
 				return nil, err
 			}
 			if exists {
-				return nil, fmt.Errorf("variant with SKU %s already exists", *request.SKU)
+				return nil, errors.NewConflictError("variant with SKU " + *request.SKU + " already exists")
 			}
 		}
 	}
@@ -175,7 +175,7 @@ func (s *ProductVariantService) UpdateProductVariant(ctx context.Context, id str
 				return nil, err
 			}
 			if exists {
-				return nil, fmt.Errorf("variant with barcode %s already exists", *request.Barcode)
+				return nil, errors.NewConflictError("variant with barcode " + *request.Barcode + " already exists")
 			}
 		}
 	}

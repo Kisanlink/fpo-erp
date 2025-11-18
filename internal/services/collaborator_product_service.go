@@ -8,6 +8,7 @@ import (
 
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
+	"kisanlink-erp/internal/errors"
 )
 
 // CollaboratorProductService handles collaborator-product association business logic
@@ -42,7 +43,7 @@ func (s *CollaboratorProductService) AddProductToCollaborator(ctx context.Contex
 		return nil, err
 	}
 	if collaborator.IsActive != nil && !*collaborator.IsActive {
-		return nil, fmt.Errorf("collaborator is not active")
+		return nil, errors.NewBadRequestError("collaborator is not active")
 	}
 
 	// Validate product exists
@@ -59,7 +60,7 @@ func (s *CollaboratorProductService) AddProductToCollaborator(ctx context.Contex
 	}
 	for _, variant := range existingVariants {
 		if variant.CollaboratorID != nil && *variant.CollaboratorID == collaboratorID {
-			return nil, fmt.Errorf("product already associated with this collaborator")
+			return nil, errors.NewConflictError("product already associated with this collaborator")
 		}
 	}
 
@@ -73,7 +74,7 @@ func (s *CollaboratorProductService) AddProductToCollaborator(ctx context.Contex
 	if len(request.Images) > 0 {
 		imagesBytes, err := json.Marshal(request.Images)
 		if err != nil {
-			return nil, fmt.Errorf("failed to serialize images: %w", err)
+			return nil, errors.NewInternalServerError(fmt.Sprintf("failed to serialize images: %v", err))
 		}
 		imagesStr := string(imagesBytes)
 		imagesJSON = &imagesStr
@@ -219,7 +220,7 @@ func (s *CollaboratorProductService) UpdateCollaboratorProduct(ctx context.Conte
 		// Serialize images to JSON
 		imagesBytes, err := json.Marshal(*request.Images)
 		if err != nil {
-			return nil, fmt.Errorf("failed to serialize images: %w", err)
+			return nil, errors.NewInternalServerError(fmt.Sprintf("failed to serialize images: %v", err))
 		}
 		imagesStr := string(imagesBytes)
 		collabProduct.Images = &imagesStr
@@ -252,7 +253,7 @@ func (s *CollaboratorProductService) RemoveProductFromCollaborator(ctx context.C
 		return err
 	}
 	if !exists {
-		return fmt.Errorf("product not associated with this collaborator")
+		return errors.NewNotFoundError("product association with this collaborator")
 	}
 
 	return s.collabProductRepo.DeleteByCollaboratorAndProduct(collaboratorID, productID)

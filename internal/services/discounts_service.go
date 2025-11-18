@@ -3,7 +3,6 @@ package services
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"kisanlink-erp/internal/database/models"
@@ -404,7 +403,7 @@ func (s *DiscountsService) validateJSONFields(req *models.CreateDiscountRequest)
 	if req.ApplicableProducts != nil && *req.ApplicableProducts != "" {
 		var products []string
 		if err := json.Unmarshal([]byte(*req.ApplicableProducts), &products); err != nil {
-			return fmt.Errorf("applicable_products must be a valid JSON array: %v", err)
+			return apperrors.NewValidationError("applicable_products must be a valid JSON array")
 		}
 		if len(products) == 0 {
 			return apperrors.NewBadRequestError("applicable_products cannot be an empty array")
@@ -414,28 +413,28 @@ func (s *DiscountsService) validateJSONFields(req *models.CreateDiscountRequest)
 	if req.ExcludedProducts != nil && *req.ExcludedProducts != "" {
 		var products []string
 		if err := json.Unmarshal([]byte(*req.ExcludedProducts), &products); err != nil {
-			return fmt.Errorf("excluded_products must be a valid JSON array: %v", err)
+			return apperrors.NewValidationError("excluded_products must be a valid JSON array")
 		}
 	}
 
 	if req.ApplicableCategories != nil && *req.ApplicableCategories != "" {
 		var categories []string
 		if err := json.Unmarshal([]byte(*req.ApplicableCategories), &categories); err != nil {
-			return fmt.Errorf("applicable_categories must be a valid JSON array: %v", err)
+			return apperrors.NewValidationError("applicable_categories must be a valid JSON array")
 		}
 	}
 
 	if req.ExcludedCategories != nil && *req.ExcludedCategories != "" {
 		var categories []string
 		if err := json.Unmarshal([]byte(*req.ExcludedCategories), &categories); err != nil {
-			return fmt.Errorf("excluded_categories must be a valid JSON array: %v", err)
+			return apperrors.NewValidationError("excluded_categories must be a valid JSON array")
 		}
 	}
 
 	if req.ApplicableWarehouses != nil && *req.ApplicableWarehouses != "" {
 		var warehouses []string
 		if err := json.Unmarshal([]byte(*req.ApplicableWarehouses), &warehouses); err != nil {
-			return fmt.Errorf("applicable_warehouses must be a valid JSON array: %v", err)
+			return apperrors.NewValidationError("applicable_warehouses must be a valid JSON array")
 		}
 	}
 
@@ -448,11 +447,11 @@ func (s *DiscountsService) validateReferencedEntities(req *models.CreateDiscount
 	if req.ApplicableProducts != nil && *req.ApplicableProducts != "" {
 		var productIDs []string
 		if err := json.Unmarshal([]byte(*req.ApplicableProducts), &productIDs); err != nil {
-			return fmt.Errorf("invalid applicable_products JSON: %v", err)
+			return apperrors.NewValidationError("invalid applicable_products JSON")
 		}
 		for _, productID := range productIDs {
 			if _, err := s.productRepo.GetByID(productID); err != nil {
-				return fmt.Errorf("product %s not found in applicable_products", productID)
+				return apperrors.NewNotFoundError("Product")
 			}
 		}
 	}
@@ -461,11 +460,11 @@ func (s *DiscountsService) validateReferencedEntities(req *models.CreateDiscount
 	if req.ExcludedProducts != nil && *req.ExcludedProducts != "" {
 		var productIDs []string
 		if err := json.Unmarshal([]byte(*req.ExcludedProducts), &productIDs); err != nil {
-			return fmt.Errorf("invalid excluded_products JSON: %v", err)
+			return apperrors.NewValidationError("invalid excluded_products JSON")
 		}
 		for _, productID := range productIDs {
 			if _, err := s.productRepo.GetByID(productID); err != nil {
-				return fmt.Errorf("product %s not found in excluded_products", productID)
+				return apperrors.NewNotFoundError("Product")
 			}
 		}
 	}
@@ -474,11 +473,11 @@ func (s *DiscountsService) validateReferencedEntities(req *models.CreateDiscount
 	if req.ApplicableWarehouses != nil && *req.ApplicableWarehouses != "" {
 		var warehouseIDs []string
 		if err := json.Unmarshal([]byte(*req.ApplicableWarehouses), &warehouseIDs); err != nil {
-			return fmt.Errorf("invalid applicable_warehouses JSON: %v", err)
+			return apperrors.NewValidationError("invalid applicable_warehouses JSON")
 		}
 		for _, warehouseID := range warehouseIDs {
 			if _, err := s.warehouseRepo.GetByID(warehouseID); err != nil {
-				return fmt.Errorf("warehouse %s not found in applicable_warehouses", warehouseID)
+				return apperrors.NewNotFoundError("Warehouse")
 			}
 		}
 	}

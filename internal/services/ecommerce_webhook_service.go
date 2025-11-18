@@ -7,6 +7,7 @@ import (
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories/interfaces"
+	"kisanlink-erp/internal/errors"
 	"kisanlink-erp/internal/utils"
 	"time"
 )
@@ -60,13 +61,13 @@ func (s *EcommerceWebhookService) ProcessOrderCreated(ctx context.Context, webho
 	// 1. Resolve warehouse from delivery address
 	warehouse, err := s.resolveWarehouse(ctx, webhook.FPO.DeliveryAddress.AddressID)
 	if err != nil {
-		return "", fmt.Errorf("failed to resolve warehouse: %w", err)
+		return "", err
 	}
 
 	// 2. Find or create collaborator
 	collaborator, err := s.findOrCreateCollaborator(ctx, &webhook.Collaborator)
 	if err != nil {
-		return "", fmt.Errorf("failed to find/create collaborator: %w", err)
+		return "", err
 	}
 
 	// 3. Process order items (find or create products and variants)
@@ -77,13 +78,13 @@ func (s *EcommerceWebhookService) ProcessOrderCreated(ctx context.Context, webho
 		// Find or create product
 		product, err := s.findOrCreateProduct(ctx, &item.Product)
 		if err != nil {
-			return "", fmt.Errorf("failed to find/create product %s: %w", item.Product.ExternalID, err)
+			return "", err
 		}
 
 		// Find or create variant with smart matching
 		variant, err := s.findOrCreateVariant(ctx, product.ID, &item.Variant, collaborator.ID)
 		if err != nil {
-			return "", fmt.Errorf("failed to find/create variant %s: %w", item.Variant.ExternalID, err)
+			return "", err
 		}
 
 		// Create PO item (will be added after PO creation)
@@ -113,13 +114,13 @@ func (s *EcommerceWebhookService) ProcessOrderCreated(ctx context.Context, webho
 
 	expectedDelivery, err := models.ParseTimestamp(webhook.Order.ExpectedDeliveryDate)
 	if err != nil {
-		return "", fmt.Errorf("invalid expected_delivery_date format: %w", err)
+		return "", errors.NewValidationError("invalid expected_delivery_date format")
 	}
 
 	// 5. Generate PO Number
 	poNumber, err := s.generatePONumber(ctx)
 	if err != nil {
-		return "", fmt.Errorf("failed to generate PO number: %w", err)
+		return "", errors.NewInternalServerError("failed to generate PO number")
 	}
 
 	// 6. Create Purchase Order
@@ -131,7 +132,7 @@ func (s *EcommerceWebhookService) ProcessOrderCreated(ctx context.Context, webho
 	po.PaymentStatus = "unpaid"
 
 	if err := s.poRepo.Create(po); err != nil {
-		return "", fmt.Errorf("failed to create purchase order: %w", err)
+		return "", errors.NewInternalServerError("failed to create purchase order")
 	}
 
 	// 7. Create PO Items
@@ -143,7 +144,7 @@ func (s *EcommerceWebhookService) ProcessOrderCreated(ctx context.Context, webho
 		poItemModel.ProductSKU = poItem.ProductSKU
 
 		if err := s.poRepo.CreateItem(poItemModel); err != nil {
-			return "", fmt.Errorf("failed to create PO item: %w", err)
+			return "", errors.NewInternalServerError("failed to create PO item")
 		}
 	}
 
@@ -160,7 +161,7 @@ func (s *EcommerceWebhookService) resolveWarehouse(ctx context.Context, addressI
 	// Find warehouse with this address_id
 	warehouses, err := s.warehouseRepo.GetAll()
 	if err != nil {
-		return nil, fmt.Errorf("failed to query warehouses: %w", err)
+		return nil, errors.NewInternalServerError("failed to query warehouses")
 	}
 
 	for _, wh := range warehouses {
@@ -169,7 +170,7 @@ func (s *EcommerceWebhookService) resolveWarehouse(ctx context.Context, addressI
 		}
 	}
 
-	return nil, fmt.Errorf("no warehouse found with address_id: %s", addressID)
+	return nil, errors.NewNotFoundError("Warehouse")
 }
 
 // findOrCreateCollaborator finds existing collaborator by external_id or creates new one
@@ -177,7 +178,7 @@ func (s *EcommerceWebhookService) findOrCreateCollaborator(ctx context.Context, 
 	// Try to find by external_id
 	existing, err := s.collaboratorRepo.FindByExternalID(webhookCollab.ExternalID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to search collaborator: %w", err)
+		return nil, errors.NewInternalServerError("failed to search collaborator")
 	}
 
 	if existing != nil {
@@ -211,7 +212,7 @@ func (s *EcommerceWebhookService) findOrCreateCollaborator(ctx context.Context, 
 	collaborator.Experience = webhookCollab.Experience
 
 	if err := s.collaboratorRepo.Create(collaborator); err != nil {
-		return nil, fmt.Errorf("failed to create collaborator: %w", err)
+		return nil, errors.NewInternalServerError("failed to create collaborator")
 	}
 
 	utils.Info("Successfully created collaborator:", collaborator.ID)
@@ -223,7 +224,7 @@ func (s *EcommerceWebhookService) findOrCreateProduct(ctx context.Context, webho
 	// Try to find by external_id
 	existing, err := s.productRepo.FindByExternalID(webhookProduct.ExternalID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to search product: %w", err)
+		return nil, errors.NewInternalServerError("failed to search product")
 	}
 
 	if existing != nil {
@@ -239,7 +240,7 @@ func (s *EcommerceWebhookService) findOrCreateProduct(ctx context.Context, webho
 	product.ExternalID = &externalID
 
 	if err := s.productRepo.Create(product); err != nil {
-		return nil, fmt.Errorf("failed to create product: %w", err)
+		return nil, errors.NewInternalServerError("failed to create product")
 	}
 
 	utils.Info("Successfully created product:", product.ID)
@@ -257,7 +258,7 @@ func (s *EcommerceWebhookService) findOrCreateVariant(
 	// Tier 1: Try to find by external_id
 	existing, err := s.productVariantRepo.FindByExternalID(webhookVariant.ExternalID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to search variant by external_id: %w", err)
+		return nil, errors.NewInternalServerError("failed to search variant by external_id")
 	}
 
 	if existing != nil {
@@ -268,7 +269,7 @@ func (s *EcommerceWebhookService) findOrCreateVariant(
 	// Tier 2: Try to find by SKU
 	existing, err = s.productVariantRepo.FindBySKU(webhookVariant.SKU)
 	if err != nil {
-		return nil, fmt.Errorf("failed to search variant by SKU: %w", err)
+		return nil, errors.NewInternalServerError("failed to search variant by SKU")
 	}
 
 	if existing != nil {
@@ -305,7 +306,7 @@ func (s *EcommerceWebhookService) findOrCreateVariant(
 	}
 
 	if err := s.productVariantRepo.Create(variant); err != nil {
-		return nil, fmt.Errorf("failed to create variant: %w", err)
+		return nil, errors.NewInternalServerError("failed to create variant")
 	}
 
 	utils.Info("Successfully created variant:", variant.ID)
@@ -350,7 +351,7 @@ func (s *EcommerceWebhookService) ProcessOrderConfirmed(ctx context.Context, web
 	// Find PO by external_order_id
 	po, err := s.poRepo.FindByExternalOrderID(webhook.ExternalOrderID)
 	if err != nil {
-		return fmt.Errorf("failed to find purchase order: %w", err)
+		return errors.NewNotFoundError("Purchase order")
 	}
 
 	// Update PO status to confirmed
@@ -360,7 +361,7 @@ func (s *EcommerceWebhookService) ProcessOrderConfirmed(ctx context.Context, web
 	// If needed, can be stored in a separate status_history table
 
 	if err := s.poRepo.Update(po); err != nil {
-		return fmt.Errorf("failed to update purchase order status: %w", err)
+		return errors.NewInternalServerError("failed to update purchase order status")
 	}
 
 	utils.Info("Successfully confirmed purchase order:", po.PONumber)
@@ -378,7 +379,7 @@ func (s *EcommerceWebhookService) ProcessOrderShipped(ctx context.Context, webho
 	// Find PO by external_order_id
 	po, err := s.poRepo.FindByExternalOrderID(webhook.ExternalOrderID)
 	if err != nil {
-		return fmt.Errorf("failed to find purchase order: %w", err)
+		return errors.NewNotFoundError("Purchase order")
 	}
 
 	// Update PO status to out_for_delivery
@@ -389,7 +390,7 @@ func (s *EcommerceWebhookService) ProcessOrderShipped(ctx context.Context, webho
 	// For now, status tracking is sufficient.
 
 	if err := s.poRepo.Update(po); err != nil {
-		return fmt.Errorf("failed to update purchase order with shipping info: %w", err)
+		return errors.NewInternalServerError("failed to update purchase order with shipping info")
 	}
 
 	utils.Info("Successfully updated shipping status for PO:", po.PONumber)
@@ -408,7 +409,7 @@ func (s *EcommerceWebhookService) ProcessOrderDelivered(ctx context.Context, web
 	// Find PO by external_order_id
 	po, err := s.poRepo.FindByExternalOrderID(webhook.ExternalOrderID)
 	if err != nil {
-		return fmt.Errorf("failed to find purchase order: %w", err)
+		return errors.NewNotFoundError("Purchase order")
 	}
 
 	// Verify PO has items loaded
@@ -416,7 +417,7 @@ func (s *EcommerceWebhookService) ProcessOrderDelivered(ctx context.Context, web
 		// Reload PO with items if not preloaded
 		po, err = s.poRepo.GetByIDWithItems(po.ID)
 		if err != nil {
-			return fmt.Errorf("failed to reload purchase order with items: %w", err)
+			return errors.NewInternalServerError("failed to reload purchase order with items")
 		}
 	}
 
@@ -439,7 +440,7 @@ func (s *EcommerceWebhookService) ProcessOrderDelivered(ctx context.Context, web
 	grn := models.NewGRN(grnNumber, po.ID, po.WarehouseID, "webhook-system", deliveryDate, qualityStatus)
 
 	if err := s.grnRepo.Create(grn); err != nil {
-		return fmt.Errorf("failed to create GRN: %w", err)
+		return errors.NewInternalServerError("failed to create GRN")
 	}
 
 	// Track overall quality status
@@ -475,7 +476,7 @@ func (s *EcommerceWebhookService) ProcessOrderDelivered(ctx context.Context, web
 		// Parse expiry date for GRNItem (required)
 		expiryDate, err := models.ParseTimestamp(deliveryItem.ExpiryDate)
 		if err != nil {
-			return fmt.Errorf("failed to parse expiry date: %w", err)
+			return errors.NewValidationError("invalid expiry date format")
 		}
 
 		// Create GRN item with correct parameters
@@ -499,7 +500,7 @@ func (s *EcommerceWebhookService) ProcessOrderDelivered(ctx context.Context, web
 		}
 
 		if err := s.grnRepo.CreateItem(grnItem); err != nil {
-			return fmt.Errorf("failed to create GRN item: %w", err)
+			return errors.NewInternalServerError("failed to create GRN item")
 		}
 
 		// Note: Inventory batch creation is handled by the GRN service when processing
@@ -508,7 +509,7 @@ func (s *EcommerceWebhookService) ProcessOrderDelivered(ctx context.Context, web
 
 		// Update PO item received quantity
 		if err := s.poRepo.UpdateItemReceivedQuantity(matchingPOItem.ID, deliveryItem.ReceivedQuantity); err != nil {
-			return fmt.Errorf("failed to update PO item received quantity: %w", err)
+			return errors.NewInternalServerError("failed to update PO item received quantity")
 		}
 	}
 
@@ -529,7 +530,7 @@ func (s *EcommerceWebhookService) ProcessOrderDelivered(ctx context.Context, web
 	po.ActualDelivery = &deliveryDate
 
 	if err := s.poRepo.Update(po); err != nil {
-		return fmt.Errorf("failed to update purchase order to delivered: %w", err)
+		return errors.NewInternalServerError("failed to update purchase order to delivered")
 	}
 
 	utils.Info("Successfully processed delivery for PO:", po.PONumber, "GRN:", grn.GRNNumber)
@@ -547,7 +548,7 @@ func (s *EcommerceWebhookService) ProcessOrderPayment(ctx context.Context, webho
 	// Find PO by external_order_id
 	po, err := s.poRepo.FindByExternalOrderID(webhook.ExternalOrderID)
 	if err != nil {
-		return fmt.Errorf("failed to find purchase order: %w", err)
+		return errors.NewNotFoundError("Purchase order")
 	}
 
 	// Update payment information
@@ -567,7 +568,7 @@ func (s *EcommerceWebhookService) ProcessOrderPayment(ctx context.Context, webho
 	// only tracks the amount and status.
 
 	if err := s.poRepo.Update(po); err != nil {
-		return fmt.Errorf("failed to update purchase order payment: %w", err)
+		return errors.NewInternalServerError("failed to update purchase order payment")
 	}
 
 	utils.Info("Successfully processed payment for PO:", po.PONumber, "Amount:", webhook.PaidAmount)

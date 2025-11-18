@@ -4,11 +4,12 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
+
+	"kisanlink-erp/internal/errors"
 
 	"github.com/gin-gonic/gin"
 )
@@ -52,7 +53,7 @@ func (s *WebhookSecurityService) ValidateTimestamp(timestamp string) error {
 	// Parse timestamp as Unix timestamp (seconds)
 	ts, err := strconv.ParseInt(timestamp, 10, 64)
 	if err != nil {
-		return fmt.Errorf("invalid timestamp format: %w", err)
+		return errors.NewValidationError(fmt.Sprintf("Invalid timestamp format: %v", err))
 	}
 
 	// Convert to time.Time
@@ -64,12 +65,12 @@ func (s *WebhookSecurityService) ValidateTimestamp(timestamp string) error {
 	age := now.Sub(webhookTime)
 
 	if age > maxAge {
-		return fmt.Errorf("webhook timestamp too old: %v (max age: %v)", age, maxAge)
+		return errors.NewBadRequestError(fmt.Sprintf("Webhook timestamp too old: %v (max age: %v)", age, maxAge))
 	}
 
 	// Check if webhook is from the future (clock skew tolerance: 1 minute)
 	if webhookTime.After(now.Add(1 * time.Minute)) {
-		return errors.New("webhook timestamp is in the future")
+		return errors.NewBadRequestError("Webhook timestamp is in the future")
 	}
 
 	return nil
@@ -79,17 +80,17 @@ func (s *WebhookSecurityService) ValidateTimestamp(timestamp string) error {
 func (s *WebhookSecurityService) ExtractHeaders(c *gin.Context) (*WebhookHeaders, error) {
 	signature := c.GetHeader("X-Webhook-Signature")
 	if signature == "" {
-		return nil, errors.New("missing X-Webhook-Signature header")
+		return nil, errors.NewBadRequestError("Missing X-Webhook-Signature header")
 	}
 
 	eventID := c.GetHeader("X-Event-ID")
 	if eventID == "" {
-		return nil, errors.New("missing X-Event-ID header")
+		return nil, errors.NewBadRequestError("Missing X-Event-ID header")
 	}
 
 	timestamp := c.GetHeader("X-Timestamp")
 	if timestamp == "" {
-		return nil, errors.New("missing X-Timestamp header")
+		return nil, errors.NewBadRequestError("Missing X-Timestamp header")
 	}
 
 	return &WebhookHeaders{
@@ -104,17 +105,17 @@ func (s *WebhookSecurityService) ValidateWebhook(c *gin.Context, payload []byte)
 	// Extract headers
 	headers, err := s.ExtractHeaders(c)
 	if err != nil {
-		return nil, fmt.Errorf("header validation failed: %w", err)
+		return nil, errors.NewBadRequestError(fmt.Sprintf("Header validation failed: %v", err))
 	}
 
 	// Validate timestamp
 	if err := s.ValidateTimestamp(headers.Timestamp); err != nil {
-		return nil, fmt.Errorf("timestamp validation failed: %w", err)
+		return nil, errors.NewBadRequestError(fmt.Sprintf("Timestamp validation failed: %v", err))
 	}
 
 	// Verify HMAC signature
 	if !s.VerifyHMACSignature(payload, headers.Signature) {
-		return nil, errors.New("HMAC signature verification failed")
+		return nil, errors.NewUnauthorizedError("HMAC signature verification failed")
 	}
 
 	return headers, nil

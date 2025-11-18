@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -10,6 +9,7 @@ import (
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
+	"kisanlink-erp/internal/errors"
 
 	pb "github.com/Kisanlink/kisanlink-ecom/proto/gen/go/collaborator/v1"
 
@@ -150,12 +150,12 @@ func (s *CollaboratorService) SearchCollaborators(ctx context.Context, query str
 // createCollaboratorViaEcommerce syncs collaborator creation with the e-commerce service
 func (s *CollaboratorService) createCollaboratorViaEcommerce(ctx context.Context, request *models.CreateCollaboratorRequest, organizationID string, userID string, jwtToken string) (*models.CollaboratorResponse, error) {
 	if request == nil {
-		return nil, errors.New("collaborator request cannot be nil")
+		return nil, errors.NewValidationError("collaborator request cannot be nil")
 	}
 
 	email := stringValue(request.Email)
 	if email == "" {
-		return nil, errors.New("email is required for collaborator creation")
+		return nil, errors.NewValidationError("email is required for collaborator creation")
 	}
 
 	pbReq, err := buildCreateCollaboratorRequest(request, organizationID, userID, email)
@@ -168,17 +168,17 @@ func (s *CollaboratorService) createCollaboratorViaEcommerce(ctx context.Context
 
 	resp, err := s.ecomClient.CreateCollaborator(ecomCtx, pbReq)
 	if err != nil {
-		return nil, fmt.Errorf("failed to sync collaborator to e-commerce: %s", grpcErrorMessage(err))
+		return nil, errors.NewInternalServerError(fmt.Sprintf("failed to sync collaborator to e-commerce: %s", grpcErrorMessage(err)))
 	}
 
 	remote := resp.GetCollaborator()
 	if remote == nil {
-		return nil, errors.New("e-commerce collaborator response missing payload")
+		return nil, errors.NewInternalServerError("e-commerce collaborator response missing payload")
 	}
 
 	externalID := remote.GetId()
 	if externalID == "" {
-		return nil, errors.New("e-commerce collaborator response missing id")
+		return nil, errors.NewInternalServerError("e-commerce collaborator response missing id")
 	}
 
 	addressID := extractAddressID(remote)
@@ -250,7 +250,7 @@ func (s *CollaboratorService) createCollaboratorLegacy(ctx context.Context, requ
 			IsPrimary:   request.Address.IsPrimary,
 		}, jwtToken)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create address: %w", err)
+			return nil, errors.NewInternalServerError("failed to create address")
 		}
 		addressID = &address.ID
 	}
@@ -264,7 +264,7 @@ func (s *CollaboratorService) createCollaboratorLegacy(ctx context.Context, requ
 			if addressID != nil {
 				_ = s.addressClient.DeleteAddress(ctx, *addressID, true, jwtToken)
 			}
-			return nil, fmt.Errorf("collaborator with GST number %s already exists", request.GSTNumber)
+			return nil, errors.NewConflictError(fmt.Sprintf("collaborator with GST number %s already exists", request.GSTNumber))
 		}
 	}
 
@@ -296,7 +296,7 @@ func (s *CollaboratorService) createCollaboratorLegacy(ctx context.Context, requ
 
 func (s *CollaboratorService) updateCollaboratorViaEcommerce(ctx context.Context, id string, request *models.UpdateCollaboratorRequest, organizationID string, userID string, jwtToken string) (*models.CollaboratorResponse, error) {
 	if request == nil {
-		return nil, errors.New("update request cannot be nil")
+		return nil, errors.NewValidationError("update request cannot be nil")
 	}
 
 	collaborator, err := s.collaboratorRepo.GetByID(id)
@@ -319,7 +319,7 @@ func (s *CollaboratorService) updateCollaboratorViaEcommerce(ctx context.Context
 
 		resp, err := s.ecomClient.UpdateCollaborator(ecomCtx, pbReq)
 		if err != nil {
-			return nil, fmt.Errorf("failed to update collaborator in e-commerce: %s", grpcErrorMessage(err))
+			return nil, errors.NewInternalServerError(fmt.Sprintf("failed to update collaborator in e-commerce: %s", grpcErrorMessage(err)))
 		}
 		if resp != nil && resp.Collaborator != nil {
 			if addrID := extractAddressID(resp.Collaborator); addrID != nil {
@@ -367,7 +367,7 @@ func (s *CollaboratorService) updateCollaboratorLegacy(ctx context.Context, id s
 
 	if request.Address != nil && collaborator.AddressID != nil {
 		if request.Address.ID == "" || *collaborator.AddressID != request.Address.ID {
-			return nil, fmt.Errorf("address mismatch: update not permitted")
+			return nil, errors.NewBadRequestError("address mismatch: update not permitted")
 		}
 		address, err := s.addressClient.UpdateAddress(ctx, &aaa.UpdateAddressRequest{
 			ID:          request.Address.ID,
@@ -386,7 +386,7 @@ func (s *CollaboratorService) updateCollaboratorLegacy(ctx context.Context, id s
 			IsActive:    true,
 		}, jwtToken)
 		if err != nil {
-			return nil, fmt.Errorf("failed to update address: %w", err)
+			return nil, errors.NewInternalServerError("failed to update address")
 		}
 		collaborator.AddressID = &address.ID
 	}
@@ -536,10 +536,10 @@ func (s *CollaboratorService) applyUpdateRequestToModel(collaborator *models.Col
 
 func (s *CollaboratorService) updateCollaboratorAddress(ctx context.Context, collaborator *models.Collaborator, req *models.UpdateAddressRequest, jwtToken string) error {
 	if collaborator.AddressID == nil {
-		return errors.New("address update requested but collaborator has no address")
+		return errors.NewBadRequestError("address update requested but collaborator has no address")
 	}
 	if req.ID == "" || *collaborator.AddressID != req.ID {
-		return errors.New("address mismatch: update not permitted")
+		return errors.NewBadRequestError("address mismatch: update not permitted")
 	}
 	_, err := s.addressClient.UpdateAddress(ctx, &aaa.UpdateAddressRequest{
 		ID:          req.ID,
@@ -571,7 +571,7 @@ func (s *CollaboratorService) syncCollaboratorStatus(ctx context.Context, extern
 
 	_, err := s.ecomClient.DeactivateCollaborator(ecomCtx, req)
 	if err != nil {
-		return fmt.Errorf("failed to update collaborator status in e-commerce: %s", grpcErrorMessage(err))
+		return errors.NewInternalServerError(fmt.Sprintf("failed to update collaborator status in e-commerce: %s", grpcErrorMessage(err)))
 	}
 	return nil
 }
@@ -661,7 +661,7 @@ func buildCreateCollaboratorRequest(req *models.CreateCollaboratorRequest, organ
 
 func buildUpdateCollaboratorRequest(existing *models.Collaborator, req *models.UpdateCollaboratorRequest, organizationID string, userID string) (*pb.UpdateCollaboratorRequest, error) {
 	if existing.ExternalID == nil || *existing.ExternalID == "" {
-		return nil, errors.New("collaborator missing external id")
+		return nil, errors.NewValidationError("collaborator missing external id")
 	}
 
 	updateReq := &pb.UpdateCollaboratorRequest{
@@ -745,11 +745,11 @@ func buildCreateAddressRequest(req *models.CreateAddressRequest) (*pb.CreateAddr
 
 	city := firstNonEmpty(req.VTC, req.District, req.Subdistrict)
 	if city == "" {
-		return nil, errors.New("city (vtc/district/subdistrict) is required for address")
+		return nil, errors.NewValidationError("city (vtc/district/subdistrict) is required for address")
 	}
 	state := firstNonEmpty(req.State)
 	if state == "" {
-		return nil, errors.New("state is required for address")
+		return nil, errors.NewValidationError("state is required for address")
 	}
 	country := firstNonEmpty(req.Country)
 	if country == "" {
@@ -757,7 +757,7 @@ func buildCreateAddressRequest(req *models.CreateAddressRequest) (*pb.CreateAddr
 	}
 	pincode := firstNonEmpty(req.Pincode)
 	if pincode == "" {
-		return nil, errors.New("pincode is required for address")
+		return nil, errors.NewValidationError("pincode is required for address")
 	}
 
 	address := &pb.CreateAddressRequest{

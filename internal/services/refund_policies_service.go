@@ -90,13 +90,13 @@ func (s *RefundPoliciesService) DeleteRefundPolicy(id string) error {
 // Helper methods
 func (s *RefundPoliciesService) validateRefundPolicyRequest(req *models.CreateRefundPolicyRequest) error {
 	if req.PolicyName == "" {
-		return errors.NewNotFoundError("policy name is required")
+		return errors.NewValidationError("policy name is required")
 	}
 	if req.MaxDays <= 0 {
-		return errors.NewNotFoundError("max days must be greater than 0")
+		return errors.NewValidationError("max days must be greater than 0")
 	}
 	if req.RestockingFee < 0 {
-		return errors.NewNotFoundError("restocking fee cannot be negative")
+		return errors.NewValidationError("restocking fee cannot be negative")
 	}
 	return nil
 }

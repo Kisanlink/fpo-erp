@@ -3,10 +3,12 @@ package services
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
-	"time"
+	"kisanlink-erp/internal/errors"
 )
 
 // WarehouseService handles warehouse business logic
@@ -113,7 +115,7 @@ func (s *WarehouseService) UpdateWarehouse(ctx context.Context, id string, reque
 	if request.Address != nil {
 		// Validate ownership/association before update
 		if warehouse.AddressID == nil || request.Address.ID == "" || *warehouse.AddressID != request.Address.ID {
-			return nil, fmt.Errorf("address mismatch: update not permitted")
+			return nil, errors.NewBadRequestError("address mismatch: update not permitted")
 		}
 		// Update address via AAA service
 		address, err := s.addressClient.UpdateAddress(ctx, &aaa.UpdateAddressRequest{

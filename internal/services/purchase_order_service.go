@@ -7,6 +7,7 @@ import (
 
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
+	"kisanlink-erp/internal/errors"
 
 	"gorm.io/gorm"
 )
@@ -51,7 +52,7 @@ func (s *PurchaseOrderService) CreatePurchaseOrder(ctx context.Context, request 
 		return nil, err
 	}
 	if collaborator.IsActive != nil && !*collaborator.IsActive {
-		return nil, fmt.Errorf("collaborator is not active")
+		return nil, errors.NewBadRequestError("collaborator is not active")
 	}
 
 	// Validate warehouse exists
@@ -65,7 +66,7 @@ func (s *PurchaseOrderService) CreatePurchaseOrder(ctx context.Context, request 
 	if request.OrderDate != nil {
 		orderDate, err = time.Parse("2006-01-02", *request.OrderDate)
 		if err != nil {
-			return nil, fmt.Errorf("invalid order_date format: %w", err)
+			return nil, errors.NewValidationError("invalid order_date format")
 		}
 	} else {
 		orderDate = time.Now().UTC()
@@ -73,17 +74,17 @@ func (s *PurchaseOrderService) CreatePurchaseOrder(ctx context.Context, request 
 
 	expectedDelivery, err := time.Parse("2006-01-02", request.ExpectedDelivery)
 	if err != nil {
-		return nil, fmt.Errorf("invalid expected_delivery_date format: %w", err)
+		return nil, errors.NewValidationError("invalid expected_delivery_date format")
 	}
 
 	// Validate expected delivery is after order date
 	if expectedDelivery.Before(orderDate) {
-		return nil, fmt.Errorf("expected delivery date must be after order date")
+		return nil, errors.NewValidationError("expected delivery date must be after order date")
 	}
 
 	// Validate items and calculate total
 	if len(request.Items) == 0 {
-		return nil, fmt.Errorf("purchase order must have at least one item")
+		return nil, errors.NewValidationError("purchase order must have at least one item")
 	}
 
 	var totalAmount float64
@@ -93,7 +94,7 @@ func (s *PurchaseOrderService) CreatePurchaseOrder(ctx context.Context, request 
 		// Validate variant exists
 		variant, err := s.variantRepo.GetByID(item.VariantID)
 		if err != nil {
-			return nil, fmt.Errorf("invalid variant %s: %w", item.VariantID, err)
+			return nil, errors.NewNotFoundError("Product variant")
 		}
 		variantDetails[item.VariantID] = variant
 
@@ -222,7 +223,7 @@ func (s *PurchaseOrderService) GetPurchaseOrdersByCollaborator(ctx context.Conte
 func (s *PurchaseOrderService) GetPurchaseOrdersByStatus(ctx context.Context, status string) ([]models.PurchaseOrderResponse, error) {
 	// Validate status
 	if !isValidPOStatus(status) {
-		return nil, fmt.Errorf("invalid status: %s", status)
+		return nil, errors.NewValidationError(fmt.Sprintf("invalid status: %s", status))
 	}
 
 	pos, err := s.poRepo.GetByStatus(status)
@@ -276,7 +277,7 @@ func (s *PurchaseOrderService) GetPendingDeliveries(ctx context.Context) ([]mode
 func (s *PurchaseOrderService) UpdatePurchaseOrderStatus(ctx context.Context, id string, request *models.UpdatePOStatusRequest, userID string) (*models.PurchaseOrderResponse, error) {
 	// Validate status
 	if !isValidPOStatus(request.Status) {
-		return nil, fmt.Errorf("invalid status: %s", request.Status)
+		return nil, errors.NewValidationError(fmt.Sprintf("invalid status: %s", request.Status))
 	}
 
 	// Get existing PO with items
@@ -287,7 +288,7 @@ func (s *PurchaseOrderService) UpdatePurchaseOrderStatus(ctx context.Context, id
 
 	// Validate status transition
 	if !isValidPOStatusTransition(po.Status, request.Status) {
-		return nil, fmt.Errorf("invalid status transition from %s to %s", po.Status, request.Status)
+		return nil, errors.NewBadRequestError(fmt.Sprintf("invalid status transition from %s to %s", po.Status, request.Status))
 	}
 
 	// Set actual delivery date if status is delivered
@@ -308,18 +309,18 @@ func (s *PurchaseOrderService) UpdatePurchaseOrderStatus(ctx context.Context, id
 			return nil, err
 		}
 		if grnExists {
-			return nil, fmt.Errorf("GRN already exists for this purchase order")
+			return nil, errors.NewConflictError("GRN already exists for this purchase order")
 		}
 
 		// Pattern 1: Accept All
 		if request.AcceptAll != nil && *request.AcceptAll {
 			if err := s.processAcceptAll(ctx, po, actualDelivery, request.DefaultExpiryDate, userID); err != nil {
-				return nil, fmt.Errorf("failed to process accept all: %w", err)
+				return nil, err
 			}
 		} else if len(request.Items) > 0 {
 			// Pattern 2 & 3: Per-item details
 			if err := s.processDeliveryItems(ctx, po, actualDelivery, request.Items, userID); err != nil {
-				return nil, fmt.Errorf("failed to process delivery items: %w", err)
+				return nil, err
 			}
 		}
 
@@ -345,7 +346,7 @@ func (s *PurchaseOrderService) UpdatePurchaseOrderStatus(ctx context.Context, id
 func (s *PurchaseOrderService) UpdatePaymentStatus(ctx context.Context, id string, request *models.UpdatePOPaymentRequest) (*models.PurchaseOrderResponse, error) {
 	// Validate payment status
 	if !isValidPaymentStatus(request.PaymentStatus) {
-		return nil, fmt.Errorf("invalid payment status: %s", request.PaymentStatus)
+		return nil, errors.NewValidationError(fmt.Sprintf("invalid payment status: %s", request.PaymentStatus))
 	}
 
 	// Get existing PO
@@ -356,7 +357,7 @@ func (s *PurchaseOrderService) UpdatePaymentStatus(ctx context.Context, id strin
 
 	// Validate paid amount doesn't exceed total
 	if request.PaidAmount > po.TotalAmount {
-		return nil, fmt.Errorf("paid amount cannot exceed total amount")
+		return nil, errors.NewValidationError("paid amount cannot exceed total amount")
 	}
 
 	// Update payment fields
@@ -383,12 +384,12 @@ func (s *PurchaseOrderService) UpdatePaymentStatus(ctx context.Context, id strin
 func (s *PurchaseOrderService) processAcceptAll(ctx context.Context, po *models.PurchaseOrder, actualDelivery time.Time, defaultExpiryDate *string, userID string) error {
 	// Validate default expiry date
 	if defaultExpiryDate == nil || *defaultExpiryDate == "" {
-		return fmt.Errorf("default_expiry_date is required when accept_all is true")
+		return errors.NewValidationError("default_expiry_date is required when accept_all is true")
 	}
 
 	_, err := time.Parse("2006-01-02", *defaultExpiryDate)
 	if err != nil {
-		return fmt.Errorf("invalid default_expiry_date format: %w", err)
+		return errors.NewValidationError("invalid default_expiry_date format")
 	}
 
 	// Build delivery items from all PO items
@@ -447,7 +448,7 @@ func (s *PurchaseOrderService) processDeliveryItems(ctx context.Context, po *mod
 				}
 			}
 			if poItem == nil {
-				return fmt.Errorf("PO item %s not found", itemReq.POItemID)
+				return errors.NewNotFoundError("Purchase order item")
 			}
 
 			// Determine quantities based on pattern
@@ -465,13 +466,13 @@ func (s *PurchaseOrderService) processDeliveryItems(ctx context.Context, po *mod
 				receivedQty = *itemReq.ReceivedQuantity
 				acceptedQty = *itemReq.AcceptedQuantity
 			} else {
-				return fmt.Errorf("item %s must have either accept field or quantity fields", itemReq.POItemID)
+				return errors.NewValidationError(fmt.Sprintf("item %s must have either accept field or quantity fields", itemReq.POItemID))
 			}
 
 			// Parse expiry date
 			expiryDate, err := time.Parse("2006-01-02", itemReq.ExpiryDate)
 			if err != nil {
-				return fmt.Errorf("invalid expiry_date for item %s: %w", itemReq.POItemID, err)
+				return errors.NewValidationError(fmt.Sprintf("invalid expiry_date for item %s", itemReq.POItemID))
 			}
 
 			// Create GRN item
@@ -568,14 +569,14 @@ func (s *PurchaseOrderService) validateDeliveryItems(po *models.PurchaseOrder, i
 	for _, item := range items {
 		// Check duplicate
 		if seenItems[item.POItemID] {
-			return fmt.Errorf("duplicate po_item_id: %s", item.POItemID)
+			return errors.NewValidationError(fmt.Sprintf("duplicate po_item_id: %s", item.POItemID))
 		}
 		seenItems[item.POItemID] = true
 
 		// Validate item belongs to this PO
 		poItem, exists := poItemMap[item.POItemID]
 		if !exists {
-			return fmt.Errorf("po_item_id %s does not belong to this purchase order", item.POItemID)
+			return errors.NewValidationError(fmt.Sprintf("po_item_id %s does not belong to this purchase order", item.POItemID))
 		}
 
 		// Validate pattern usage
@@ -583,33 +584,33 @@ func (s *PurchaseOrderService) validateDeliveryItems(po *models.PurchaseOrder, i
 		hasQuantities := item.ReceivedQuantity != nil && item.AcceptedQuantity != nil
 
 		if !hasAccept && !hasQuantities {
-			return fmt.Errorf("item %s must have either accept field or quantity fields", item.POItemID)
+			return errors.NewValidationError(fmt.Sprintf("item %s must have either accept field or quantity fields", item.POItemID))
 		}
 
 		if hasAccept && hasQuantities {
-			return fmt.Errorf("item %s cannot have both accept field and quantity fields", item.POItemID)
+			return errors.NewValidationError(fmt.Sprintf("item %s cannot have both accept field and quantity fields", item.POItemID))
 		}
 
 		// Validate quantities if using Pattern 3
 		if hasQuantities {
 			if *item.ReceivedQuantity <= 0 {
-				return fmt.Errorf("received_quantity must be greater than 0 for item %s", item.POItemID)
+				return errors.NewValidationError(fmt.Sprintf("received_quantity must be greater than 0 for item %s", item.POItemID))
 			}
 			if *item.AcceptedQuantity < 0 {
-				return fmt.Errorf("accepted_quantity cannot be negative for item %s", item.POItemID)
+				return errors.NewValidationError(fmt.Sprintf("accepted_quantity cannot be negative for item %s", item.POItemID))
 			}
 			if *item.AcceptedQuantity > *item.ReceivedQuantity {
-				return fmt.Errorf("accepted_quantity cannot exceed received_quantity for item %s", item.POItemID)
+				return errors.NewValidationError(fmt.Sprintf("accepted_quantity cannot exceed received_quantity for item %s", item.POItemID))
 			}
 			if *item.ReceivedQuantity > poItem.Quantity {
-				return fmt.Errorf("received_quantity (%d) cannot exceed ordered quantity (%d) for item %s", *item.ReceivedQuantity, poItem.Quantity, item.POItemID)
+				return errors.NewValidationError(fmt.Sprintf("received_quantity (%d) cannot exceed ordered quantity (%d) for item %s", *item.ReceivedQuantity, poItem.Quantity, item.POItemID))
 			}
 		}
 
 		// Validate expiry date format
 		if item.ExpiryDate != "" {
 			if _, err := time.Parse("2006-01-02", item.ExpiryDate); err != nil {
-				return fmt.Errorf("invalid expiry_date format for item %s: must be YYYY-MM-DD", item.POItemID)
+				return errors.NewValidationError(fmt.Sprintf("invalid expiry_date format for item %s: must be YYYY-MM-DD", item.POItemID))
 			}
 		}
 	}
@@ -664,7 +665,7 @@ func (s *PurchaseOrderService) generateGRNNumber() (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("failed to generate unique GRN number")
+	return "", errors.NewInternalServerError("failed to generate unique GRN number")
 }
 
 // generatePONumber generates a unique PO number in format: PO-YYYY-NNNN
@@ -683,7 +684,7 @@ func (s *PurchaseOrderService) generatePONumber() (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("failed to generate unique PO number")
+	return "", errors.NewInternalServerError("failed to generate unique PO number")
 }
 
 // buildPurchaseOrderResponse builds a response with related entity details

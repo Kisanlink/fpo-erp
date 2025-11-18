@@ -1,12 +1,12 @@
 package services
 
 import (
-	"errors"
 	"log"
 	"time"
 
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
+	"kisanlink-erp/internal/errors"
 
 	"gorm.io/gorm"
 )
@@ -65,7 +65,7 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 		sellingPrice, err := s.getSellingPrice(itemReq.VariantID)
 		if err != nil {
 			log.Printf("[ERROR] Failed to get selling price: %v", err)
-			return nil, errors.New("selling price not found for product")
+			return nil, errors.NewNotFoundError("selling price not found for product")
 		}
 		log.Printf("[DEBUG] Selling price retrieved: %.2f", sellingPrice)
 
@@ -74,12 +74,12 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 		batches, err := s.inventoryRepo.GetBatchesByVariantAndWarehouseOrderedByExpiry(itemReq.VariantID, req.WarehouseID)
 		if err != nil {
 			log.Printf("[ERROR] Failed to get batches for variant: %v", err)
-			return nil, errors.New("failed to retrieve variant batches")
+			return nil, errors.NewInternalServerError("failed to retrieve variant batches")
 		}
 
 		if len(batches) == 0 {
 			log.Printf("[ERROR] No batches found for variant: %s in warehouse: %s", itemReq.VariantID, req.WarehouseID)
-			return nil, errors.New("no inventory available for variant in this warehouse")
+			return nil, errors.NewNotFoundError("no inventory available for variant in this warehouse")
 		}
 
 		log.Printf("[DEBUG] Found %d batches for product", len(batches))
@@ -92,7 +92,7 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 
 		if totalAvailable < itemReq.Quantity {
 			log.Printf("[ERROR] Insufficient stock: available %d, requested %d", totalAvailable, itemReq.Quantity)
-			return nil, errors.New("insufficient stock for product")
+			return nil, errors.NewBadRequestError("insufficient stock for product")
 		}
 
 		log.Printf("[DEBUG] Stock validation passed - available: %d, requested: %d", totalAvailable, itemReq.Quantity)
@@ -470,10 +470,10 @@ func (s *SalesService) getSellingPrice(variantID string) (float64, error) {
 		// Try to get any active price if retail price is not found
 		prices, err2 := s.priceRepo.GetActiveByVariantID(variantID)
 		if err2 != nil {
-			return 0, errors.New("no pricing information found for variant")
+			return 0, errors.NewNotFoundError("no pricing information found for variant")
 		}
 		if len(prices) == 0 {
-			return 0, errors.New("no active prices found for variant")
+			return 0, errors.NewNotFoundError("no active prices found for variant")
 		}
 		// Use the first active price as fallback
 		return prices[0].Price, nil
@@ -509,21 +509,21 @@ func (s *SalesService) validateSaleRequest(req *models.CreateSaleRequest) error 
 
 	if req.WarehouseID == "" {
 		log.Printf("[ERROR] Validation failed: warehouse ID is empty")
-		return errors.New("warehouse ID is required")
+		return errors.NewValidationError("warehouse ID is required")
 	}
 	if len(req.Items) == 0 {
 		log.Printf("[ERROR] Validation failed: no items provided")
-		return errors.New("at least one item is required")
+		return errors.NewValidationError("at least one item is required")
 	}
 
 	// BRD Requirements: Validate payment_mode and sale_type
 	if !isValidPaymentMode(req.PaymentMode) {
 		log.Printf("[ERROR] Validation failed: invalid payment mode: %s", req.PaymentMode)
-		return errors.New("payment_mode must be one of: cash, upi, online")
+		return errors.NewValidationError("payment_mode must be one of: cash, upi, online")
 	}
 	if !isValidSaleType(req.SaleType) {
 		log.Printf("[ERROR] Validation failed: invalid sale type: %s", req.SaleType)
-		return errors.New("sale_type must be one of: in_store, delivery")
+		return errors.NewValidationError("sale_type must be one of: in_store, delivery")
 	}
 
 	for i, item := range req.Items {
@@ -531,11 +531,11 @@ func (s *SalesService) validateSaleRequest(req *models.CreateSaleRequest) error 
 
 		if item.VariantID == "" {
 			log.Printf("[ERROR] Validation failed: variant ID is empty for item %d", i+1)
-			return errors.New("variant ID is required for all items")
+			return errors.NewValidationError("variant ID is required for all items")
 		}
 		if item.Quantity <= 0 {
 			log.Printf("[ERROR] Validation failed: quantity <= 0 for item %d", i+1)
-			return errors.New("quantity must be greater than 0")
+			return errors.NewValidationError("quantity must be greater than 0")
 		}
 		// Remove selling price validation since it will be calculated automatically from product_prices table
 	}
@@ -593,28 +593,28 @@ func (s *SalesService) applyDiscountToSale(discountID string, saleID string, ord
 
 	// Basic discount validation (no customer-specific validation)
 	if !discount.IsActive {
-		return 0, errors.New("discount is not active")
+		return 0, errors.NewBadRequestError("discount is not active")
 	}
 
 	// Check usage limits
 	if discount.UsageLimit != nil && discount.CurrentUsage >= *discount.UsageLimit {
-		return 0, errors.New("discount usage limit reached")
+		return 0, errors.NewBadRequestError("discount usage limit reached")
 	}
 
 	// Check date validity
 	now := time.Now()
 	if now.Before(discount.ValidFrom) || now.After(discount.ValidUntil) {
-		return 0, errors.New("discount is not valid for the current date")
+		return 0, errors.NewBadRequestError("discount is not valid for the current date")
 	}
 
 	// Check minimum order value
 	if discount.MinOrderValue != nil && orderValue < *discount.MinOrderValue {
-		return 0, errors.New("order value does not meet minimum requirement")
+		return 0, errors.NewBadRequestError("order value does not meet minimum requirement")
 	}
 
 	// Check maximum order value
 	if discount.MaxOrderValue != nil && orderValue > *discount.MaxOrderValue {
-		return 0, errors.New("order value exceeds maximum limit")
+		return 0, errors.NewBadRequestError("order value exceeds maximum limit")
 	}
 
 	// Calculate discount amount

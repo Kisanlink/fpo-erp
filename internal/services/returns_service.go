@@ -1,11 +1,11 @@
 package services
 
 import (
-	"errors"
 	"time"
 
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
+	"kisanlink-erp/internal/errors"
 )
 
 // Helper function to convert string to pointer (local to this package)
@@ -37,7 +37,7 @@ func (s *ReturnsService) CreateReturn(req *models.CreateReturnRequest) (*models.
 	// Validate original sale exists
 	_, err := s.salesRepo.GetSaleByID(req.SaleID)
 	if err != nil {
-		return nil, errors.New("original sale not found")
+		return nil, errors.NewNotFoundError("Original sale")
 	}
 
 	// Parse return date or use current time
@@ -80,11 +80,11 @@ func (s *ReturnsService) CreateReturn(req *models.CreateReturnRequest) (*models.
 		}
 
 		if matchingSaleItem == nil {
-			return nil, errors.New("sale item not found for batch")
+			return nil, errors.NewNotFoundError("Sale item for batch")
 		}
 
 		if itemReq.Quantity > matchingSaleItem.Quantity {
-			return nil, errors.New("return quantity cannot exceed original sale quantity")
+			return nil, errors.NewBadRequestError("Return quantity cannot exceed original sale quantity")
 		}
 
 		// Calculate item total
@@ -268,18 +268,18 @@ func (s *ReturnsService) GetMostReturnedProducts(limit int) ([]models.MostReturn
 // Helper methods
 func (s *ReturnsService) validateReturnRequest(req *models.CreateReturnRequest) error {
 	if req.SaleID == "" {
-		return errors.New("sale ID is required")
+		return errors.NewValidationError("Sale ID is required")
 	}
 	if len(req.Items) == 0 {
-		return errors.New("at least one item is required")
+		return errors.NewValidationError("At least one item is required")
 	}
 
 	for _, item := range req.Items {
 		if item.BatchID == "" {
-			return errors.New("batch ID is required for all items")
+			return errors.NewValidationError("Batch ID is required for all items")
 		}
 		if item.Quantity <= 0 {
-			return errors.New("quantity must be greater than 0")
+			return errors.NewValidationError("Quantity must be greater than 0")
 		}
 	}
 

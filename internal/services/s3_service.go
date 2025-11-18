@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"kisanlink-erp/internal/config"
+	"kisanlink-erp/internal/errors"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
@@ -37,7 +38,7 @@ func NewS3Service(cfg *config.Config) (*S3Service, error) {
 		awsconfig.WithRegion(cfg.AWS.Region),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load AWS config: %w", err)
+		return nil, errors.NewInternalServerError(fmt.Sprintf("Failed to load AWS config: %v", err))
 	}
 
 	// Create S3 client with path-style addressing support for MinIO
@@ -63,7 +64,7 @@ func (s *S3Service) UploadFile(ctx context.Context, file *multipart.FileHeader, 
 	// Open the uploaded file
 	src, err := file.Open()
 	if err != nil {
-		return "", fmt.Errorf("failed to open uploaded file: %w", err)
+		return "", errors.NewInternalServerError(fmt.Sprintf("Failed to open uploaded file: %v", err))
 	}
 	defer src.Close()
 
@@ -100,7 +101,7 @@ func (s *S3Service) UploadFile(ctx context.Context, file *multipart.FileHeader, 
 		},
 	})
 	if err != nil {
-		return "", fmt.Errorf("failed to upload file to S3: %w", err)
+		return "", errors.NewInternalServerError(fmt.Sprintf("Failed to upload file to S3: %v", err))
 	}
 
 	// Return the S3 key/path (not full URL)
@@ -112,7 +113,7 @@ func (s *S3Service) DownloadFile(ctx context.Context, s3URL string) (io.ReadClos
 	// Extract key from S3 URL
 	key := strings.TrimPrefix(s3URL, fmt.Sprintf("s3://%s/", s.bucket))
 	if key == s3URL {
-		return nil, "", fmt.Errorf("invalid S3 URL format")
+		return nil, "", errors.NewBadRequestError("Invalid S3 URL format")
 	}
 
 	// Get object from S3
@@ -121,7 +122,7 @@ func (s *S3Service) DownloadFile(ctx context.Context, s3URL string) (io.ReadClos
 		Key:    aws.String(key),
 	})
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to get object from S3: %w", err)
+		return nil, "", errors.NewInternalServerError(fmt.Sprintf("Failed to get object from S3: %v", err))
 	}
 
 	return result.Body, aws.ToString(result.ContentType), nil
@@ -132,7 +133,7 @@ func (s *S3Service) DeleteFile(ctx context.Context, s3URL string) error {
 	// Extract key from S3 URL
 	key := strings.TrimPrefix(s3URL, fmt.Sprintf("s3://%s/", s.bucket))
 	if key == s3URL {
-		return fmt.Errorf("invalid S3 URL format")
+		return errors.NewBadRequestError("Invalid S3 URL format")
 	}
 
 	// Delete object from S3
@@ -141,7 +142,7 @@ func (s *S3Service) DeleteFile(ctx context.Context, s3URL string) error {
 		Key:    aws.String(key),
 	})
 	if err != nil {
-		return fmt.Errorf("failed to delete object from S3: %w", err)
+		return errors.NewInternalServerError(fmt.Sprintf("Failed to delete object from S3: %v", err))
 	}
 
 	return nil
@@ -152,7 +153,7 @@ func (s *S3Service) GeneratePresignedURL(ctx context.Context, s3URL string, expi
 	// Extract key from S3 URL
 	key := strings.TrimPrefix(s3URL, fmt.Sprintf("s3://%s/", s.bucket))
 	if key == s3URL {
-		return "", fmt.Errorf("invalid S3 URL format")
+		return "", errors.NewBadRequestError("Invalid S3 URL format")
 	}
 
 	// Create presigned URL
@@ -162,7 +163,7 @@ func (s *S3Service) GeneratePresignedURL(ctx context.Context, s3URL string, expi
 		Key:    aws.String(key),
 	}, s3.WithPresignExpires(expiration))
 	if err != nil {
-		return "", fmt.Errorf("failed to generate presigned URL: %w", err)
+		return "", errors.NewInternalServerError(fmt.Sprintf("Failed to generate presigned URL: %v", err))
 	}
 
 	return request.URL, nil
@@ -173,7 +174,7 @@ func (s *S3Service) FileExists(ctx context.Context, s3URL string) (bool, error) 
 	// Extract key from S3 URL
 	key := strings.TrimPrefix(s3URL, fmt.Sprintf("s3://%s/", s.bucket))
 	if key == s3URL {
-		return false, fmt.Errorf("invalid S3 URL format")
+		return false, errors.NewBadRequestError("Invalid S3 URL format")
 	}
 
 	// Check if object exists
@@ -186,7 +187,7 @@ func (s *S3Service) FileExists(ctx context.Context, s3URL string) (bool, error) 
 		if strings.Contains(err.Error(), "NoSuchKey") {
 			return false, nil
 		}
-		return false, fmt.Errorf("failed to check if file exists: %w", err)
+		return false, errors.NewInternalServerError(fmt.Sprintf("Failed to check if file exists: %v", err))
 	}
 
 	return true, nil
@@ -197,7 +198,7 @@ func (s *S3Service) GetFileInfo(ctx context.Context, s3URL string) (*FileInfo, e
 	// Extract key from S3 URL
 	key := strings.TrimPrefix(s3URL, fmt.Sprintf("s3://%s/", s.bucket))
 	if key == s3URL {
-		return nil, fmt.Errorf("invalid S3 URL format")
+		return nil, errors.NewBadRequestError("Invalid S3 URL format")
 	}
 
 	// Get object metadata
@@ -206,7 +207,7 @@ func (s *S3Service) GetFileInfo(ctx context.Context, s3URL string) (*FileInfo, e
 		Key:    aws.String(key),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get file info: %w", err)
+		return nil, errors.NewInternalServerError(fmt.Sprintf("Failed to get file info: %v", err))
 	}
 
 	return &FileInfo{
@@ -238,7 +239,7 @@ func (s *S3Service) ValidateFileType(filename string) error {
 		}
 	}
 
-	return fmt.Errorf("file type %s is not allowed", ext)
+	return errors.NewValidationError(fmt.Sprintf("File type %s is not allowed", ext))
 }
 
 // GetFileSize returns the size of the uploaded file
