@@ -34,6 +34,9 @@ func NewCollaboratorProductHandler(collabProductService interfaces.CollaboratorP
 // @Success 201 {object} utils.Response{data=models.CollaboratorProductResponse} "Product added successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/collaborators/{id}/products [post]
@@ -161,7 +164,10 @@ func (h *CollaboratorProductHandler) GetCollaboratorProduct(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=models.CollaboratorProductResponse} "Association updated successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 404 {object} utils.ErrorResponseModel "Association not found"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/collaborator-products/{id} [put]
@@ -201,7 +207,10 @@ func (h *CollaboratorProductHandler) UpdateCollaboratorProduct(c *gin.Context) {
 // @Success 200 {object} utils.Response "Product removed successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 404 {object} utils.ErrorResponseModel "Association not found"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/collaborators/{id}/products/{product_id} [delete]
@@ -233,7 +242,10 @@ func (h *CollaboratorProductHandler) RemoveProductFromCollaborator(c *gin.Contex
 // @Success 200 {object} utils.Response "Association deleted successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 404 {object} utils.ErrorResponseModel "Association not found"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/collaborator-products/{id} [delete]

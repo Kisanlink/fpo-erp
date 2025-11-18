@@ -33,6 +33,9 @@ func NewProductPriceHandler(priceService interfaces.ProductPriceServiceInterface
 // @Success 201 {object} utils.Response{data=models.ProductPriceResponse} "Product price created successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/prices [post]
@@ -63,7 +66,11 @@ func (h *ProductPriceHandler) CreateProductPrice(c *gin.Context) {
 // @Param id path string true "Price ID" example(PRICE_12345678)
 // @Success 200 {object} utils.Response{data=models.ProductPriceResponse} "Product price retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
+// @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 404 {object} utils.ErrorResponseModel "Product price not found"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/prices/{id} [get]
@@ -94,6 +101,9 @@ func (h *ProductPriceHandler) GetProductPrice(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=[]models.ProductPriceResponse} "Variant prices retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/variants/{id}/prices [get]
@@ -124,7 +134,11 @@ func (h *ProductPriceHandler) GetVariantPrices(c *gin.Context) {
 // @Param type query string false "Price type (default: retail)" example(retail)
 // @Success 200 {object} utils.Response{data=models.ProductPriceResponse} "Current price retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
+// @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 404 {object} utils.ErrorResponseModel "Current price not found"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/products/{id}/prices/current [get]
@@ -163,7 +177,10 @@ func (h *ProductPriceHandler) GetCurrentPrice(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=models.ProductPriceResponse} "Product price updated successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 404 {object} utils.ErrorResponseModel "Product price not found"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/prices/{id} [patch]
@@ -202,7 +219,10 @@ func (h *ProductPriceHandler) UpdateProductPrice(c *gin.Context) {
 // @Success 200 {object} utils.Response "Product price deleted successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 404 {object} utils.ErrorResponseModel "Product price not found"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/prices/{id} [delete]
@@ -230,6 +250,9 @@ func (h *ProductPriceHandler) DeleteProductPrice(c *gin.Context) {
 // @Produce json
 // @Success 200 {object} utils.Response{data=[]models.ProductPriceResponse} "Expired prices retrieved successfully"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/prices/expired [get]
@@ -255,6 +278,9 @@ func (h *ProductPriceHandler) GetExpiredPrices(c *gin.Context) {
 // @Success 201 {object} utils.Response{data=models.ProductPriceResponse} "Product price created successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/variants/{id}/prices [post]

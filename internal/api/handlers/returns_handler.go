@@ -34,6 +34,9 @@ func NewReturnsHandler(returnsService interfaces.ReturnsServiceInterface, aaaMid
 // @Success 201 {object} utils.Response{data=models.ReturnResponse} "Return created successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/returns [post]
@@ -63,7 +66,11 @@ func (h *ReturnsHandler) CreateReturn(c *gin.Context) {
 // @Param id path string true "Return ID" example(RET_12345678)
 // @Success 200 {object} utils.Response{data=models.ReturnResponse} "Return retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
+// @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 404 {object} utils.ErrorResponseModel "Return not found"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/returns/{id} [get]
@@ -93,6 +100,9 @@ func (h *ReturnsHandler) GetReturn(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=[]models.ReturnResponse} "Returns retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/returns [get]
@@ -132,7 +142,10 @@ func (h *ReturnsHandler) GetAllReturns(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=models.ReturnResponse} "Return updated successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 404 {object} utils.ErrorResponseModel "Return not found"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/returns/{id} [put]
@@ -167,7 +180,10 @@ func (h *ReturnsHandler) UpdateReturn(c *gin.Context) {
 // @Success 200 {object} utils.Response "Return deleted successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 404 {object} utils.ErrorResponseModel "Return not found"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/returns/{id} [delete]
@@ -196,6 +212,9 @@ func (h *ReturnsHandler) DeleteReturn(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=[]models.ReturnResponse} "Returns retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/returns/customer/{customerID} [get]
@@ -224,6 +243,9 @@ func (h *ReturnsHandler) GetReturnsByCustomer(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=[]models.ReturnResponse} "Returns retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/returns/sale/{saleID} [get]
@@ -253,6 +275,9 @@ func (h *ReturnsHandler) GetReturnsBySaleID(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=[]models.ReturnResponse} "Returns retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/returns/date-range [get]
@@ -295,6 +320,9 @@ func (h *ReturnsHandler) GetReturnsByDateRange(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=[]models.ReturnResponse} "Returns retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/returns/status/{status} [get]
@@ -324,6 +352,9 @@ func (h *ReturnsHandler) GetReturnsByStatus(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=object{total_amount=number,start_date=string,end_date=string}} "Total returns amount calculated successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/returns/total-amount [get]
@@ -372,6 +403,9 @@ func (h *ReturnsHandler) GetTotalReturnsAmount(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=object{product_id=string,return_rate=number,start_date=string,end_date=string}} "Return rate calculated successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/returns/return-rate/{productID} [get]
@@ -425,6 +459,9 @@ func (h *ReturnsHandler) GetReturnRateByProduct(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=[]models.MostReturnedProductResponse} "Most returned products retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/returns/most-returned [get]
@@ -456,7 +493,10 @@ func (h *ReturnsHandler) GetMostReturnedProducts(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=models.ReturnResponse} "Return status updated successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 404 {object} utils.ErrorResponseModel "Return not found"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/returns/{id}/status [patch]

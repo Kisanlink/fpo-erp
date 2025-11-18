@@ -62,6 +62,9 @@ func (h *AttachmentHandler) RegisterRoutes(router *gin.RouterGroup) {
 // @Success 201 {object} utils.Response{data=models.AttachmentResponse} "Attachment uploaded successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/attachments [post]
@@ -112,7 +115,11 @@ func (h *AttachmentHandler) UploadAttachment(c *gin.Context) {
 // @Param id path string true "Attachment ID" example(ATT_12345678)
 // @Success 200 {object} utils.Response{data=models.AttachmentResponse} "Attachment retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
+// @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 404 {object} utils.ErrorResponseModel "Attachment not found"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/attachments/{id} [get]
@@ -140,6 +147,9 @@ func (h *AttachmentHandler) GetAttachment(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=[]models.AttachmentResponse} "Attachments retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/attachments [get]
@@ -191,7 +201,11 @@ func (h *AttachmentHandler) GetAttachments(c *gin.Context) {
 // @Param id path string true "Attachment ID" example(ATT_12345678)
 // @Success 200 {file} file "File download"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
+// @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 404 {object} utils.ErrorResponseModel "Attachment not found"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/attachments/{id}/download [get]
@@ -232,7 +246,11 @@ func (h *AttachmentHandler) DownloadAttachment(c *gin.Context) {
 // @Param expiration query integer false "URL expiration in seconds (default: 3600, max: 86400)" example(3600)
 // @Success 200 {object} utils.Response{data=object{download_url=string,expires_in=integer}} "Download URL generated successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
+// @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 404 {object} utils.ErrorResponseModel "Attachment not found"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/attachments/{id}/url [get]
@@ -272,7 +290,11 @@ func (h *AttachmentHandler) GenerateDownloadURL(c *gin.Context) {
 // @Param id path string true "Attachment ID" example(ATT_12345678)
 // @Success 200 {object} utils.Response{data=models.AttachmentInfoResponse} "Attachment info retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
+// @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 404 {object} utils.ErrorResponseModel "Attachment not found"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/attachments/{id}/info [get]
@@ -298,6 +320,9 @@ func (h *AttachmentHandler) GetAttachmentInfo(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=[]models.AttachmentResponse} "Entity attachments retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/attachments/entity/{entity_type}/{entity_id} [get]
@@ -328,7 +353,10 @@ func (h *AttachmentHandler) GetAttachmentsByEntity(c *gin.Context) {
 // @Success 200 {object} utils.Response "Attachment deleted successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 404 {object} utils.ErrorResponseModel "Attachment not found"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/attachments/{id} [delete]

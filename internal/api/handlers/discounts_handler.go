@@ -34,6 +34,9 @@ func NewDiscountsHandler(discountsService interfaces.DiscountsServiceInterface, 
 // @Success 201 {object} utils.Response{data=models.DiscountResponse} "Discount created successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/discounts [post]
@@ -63,7 +66,11 @@ func (h *DiscountsHandler) CreateDiscount(c *gin.Context) {
 // @Param id path string true "Discount ID" example(DISC_12345678)
 // @Success 200 {object} utils.Response{data=models.DiscountResponse} "Discount retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
+// @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 404 {object} utils.ErrorResponseModel "Discount not found"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/discounts/{id} [get]
@@ -93,6 +100,9 @@ func (h *DiscountsHandler) GetDiscount(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=[]models.DiscountResponse} "Discounts retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/discounts [get]
@@ -127,7 +137,11 @@ func (h *DiscountsHandler) GetAllDiscounts(c *gin.Context) {
 // @Tags Discounts
 // @Produce json
 // @Success 200 {object} utils.Response{data=[]models.DiscountResponse} "Active discounts retrieved successfully"
+// @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/discounts/active [get]
@@ -152,7 +166,10 @@ func (h *DiscountsHandler) GetActiveDiscounts(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=models.DiscountResponse} "Discount updated successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 404 {object} utils.ErrorResponseModel "Discount not found"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/discounts/{id} [put]
@@ -187,7 +204,10 @@ func (h *DiscountsHandler) UpdateDiscount(c *gin.Context) {
 // @Success 200 {object} utils.Response "Discount deleted successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 404 {object} utils.ErrorResponseModel "Discount not found"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/discounts/{id} [delete]
@@ -216,6 +236,9 @@ func (h *DiscountsHandler) DeleteDiscount(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=[]models.DiscountResponse} "Discounts retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/discounts/type/{type} [get]
@@ -244,6 +267,9 @@ func (h *DiscountsHandler) GetDiscountsByType(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=[]models.DiscountResponse} "Discounts retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/discounts/status/{status} [get]
@@ -273,6 +299,9 @@ func (h *DiscountsHandler) GetDiscountsByStatus(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=models.DiscountValidationResponse} "Discount validation completed"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/discounts/validate [post]
@@ -303,6 +332,9 @@ func (h *DiscountsHandler) ValidateDiscount(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=[]models.DiscountUsageResponse} "Discount usage retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/discounts/usage/sale/{saleID} [get]
@@ -334,6 +366,9 @@ func (h *DiscountsHandler) GetDiscountUsageBySale(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=[]models.DiscountResponse} "Applicable discounts retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/discounts/applicable [get]
@@ -386,6 +421,9 @@ func (h *DiscountsHandler) GetApplicableDiscounts(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=[]models.DiscountResponse} "Optimal discounts calculated successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/discounts/calculate-optimal [post]
@@ -419,7 +457,10 @@ func (h *DiscountsHandler) CalculateOptimalDiscounts(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=map[string]interface{}} "Discount usage statistics retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 404 {object} utils.ErrorResponseModel "Discount not found"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/discounts/usage/stats/{discountID} [get]

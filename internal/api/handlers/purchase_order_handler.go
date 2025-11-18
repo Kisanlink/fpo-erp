@@ -33,6 +33,9 @@ func NewPurchaseOrderHandler(poService interfaces.PurchaseOrderServiceInterface,
 // @Success 201 {object} utils.Response{data=models.PurchaseOrderResponse} "Purchase order created successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/purchase-orders [post]
@@ -91,6 +94,9 @@ func (h *PurchaseOrderHandler) GetPurchaseOrder(c *gin.Context) {
 // @Produce json
 // @Success 200 {object} utils.Response{data=[]models.PurchaseOrderResponse} "Purchase orders retrieved successfully"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/purchase-orders [get]
@@ -192,7 +198,10 @@ func (h *PurchaseOrderHandler) GetPendingDeliveries(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=models.PurchaseOrderResponse} "Status updated successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 404 {object} utils.ErrorResponseModel "Purchase order not found"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/purchase-orders/{id}/status [patch]
@@ -239,7 +248,10 @@ func (h *PurchaseOrderHandler) UpdatePurchaseOrderStatus(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=models.PurchaseOrderResponse} "Payment status updated successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 404 {object} utils.ErrorResponseModel "Purchase order not found"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/purchase-orders/{id}/payment [patch]

@@ -36,6 +36,9 @@ func NewInventoryHandler(inventoryService interfaces.InventoryServiceInterface, 
 // @Success 201 {object} utils.Response{data=models.InventoryBatchResponse} "Batch created successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/batches [post]
@@ -83,7 +86,11 @@ func (h *InventoryHandler) CreateBatch(c *gin.Context) {
 // @Param id path string true "Batch ID" example(BTCH_12345678)
 // @Success 200 {object} utils.Response{data=models.InventoryBatchResponse} "Batch retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
+// @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 404 {object} utils.ErrorResponseModel "Batch not found"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/batches/{id} [get]
@@ -114,6 +121,9 @@ func (h *InventoryHandler) GetBatch(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=[]models.InventoryBatchResponse} "Batches retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/warehouses/{id}/batches [get]
@@ -144,6 +154,9 @@ func (h *InventoryHandler) GetBatchesByWarehouse(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=[]models.InventoryBatchResponse} "Batches retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/variants/{id}/batches [get]
@@ -176,6 +189,9 @@ func (h *InventoryHandler) GetBatchesByVariant(c *gin.Context) {
 // @Success 201 {object} utils.Response{data=models.InventoryTransactionResponse} "Transaction created successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/batches/{id}/transactions [post]
@@ -214,6 +230,9 @@ func (h *InventoryHandler) CreateTransaction(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=[]models.InventoryTransactionResponse} "Transactions retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/batches/{id}/transactions [get]
@@ -244,6 +263,9 @@ func (h *InventoryHandler) GetTransactionsByBatch(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=[]models.InventoryBatchResponse} "Expiring batches retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/batches/expiring [get]
@@ -275,6 +297,9 @@ func (h *InventoryHandler) GetExpiringBatches(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=[]models.InventoryBatchResponse} "Low stock batches retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/batches/low-stock [get]
@@ -304,6 +329,9 @@ func (h *InventoryHandler) GetLowStockBatches(c *gin.Context) {
 // @Produce json
 // @Success 200 {object} utils.Response{data=[]models.ProductAvailabilityResponse} "Products availability retrieved successfully"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/products/availability [get]

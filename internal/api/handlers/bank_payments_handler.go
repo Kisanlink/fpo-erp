@@ -33,6 +33,9 @@ func NewBankPaymentsHandler(bankPaymentsService interfaces.BankPaymentsServiceIn
 // @Success 201 {object} utils.Response{data=models.BankPaymentResponse} "Bank payment created successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/bank-payments [post]
@@ -64,6 +67,9 @@ func (h *BankPaymentsHandler) CreateBankPayment(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=[]models.BankPaymentResponse} "Bank payments retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/bank-payments [get]
@@ -100,7 +106,11 @@ func (h *BankPaymentsHandler) GetAllBankPayments(c *gin.Context) {
 // @Param id path string true "Payment ID" example(PAY_12345678)
 // @Success 200 {object} utils.Response{data=models.BankPaymentResponse} "Bank payment retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
+// @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 404 {object} utils.ErrorResponseModel "Bank payment not found"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/bank-payments/{id} [get]
@@ -129,6 +139,9 @@ func (h *BankPaymentsHandler) GetBankPayment(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=[]models.BankPaymentResponse} "Bank payments for sale retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/bank-payments/sale/{saleID} [get]
@@ -157,6 +170,9 @@ func (h *BankPaymentsHandler) GetBankPaymentsBySale(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=[]models.BankPaymentResponse} "Bank payments for return retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/bank-payments/return/{returnID} [get]

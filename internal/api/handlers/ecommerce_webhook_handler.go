@@ -387,6 +387,10 @@ func (h *EcommerceWebhookHandler) HandleOrderPayment(c *gin.Context) {
 // @Param status query string false "Filter by status (processing, success, failed)"
 // @Param limit query int false "Limit results" default(50)
 // @Success 200 {object} utils.Response{data=[]models.WebhookEvent} "Webhook history retrieved"
+// @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/webhooks/history [get]
@@ -427,6 +431,10 @@ func (h *EcommerceWebhookHandler) GetWebhookHistory(c *gin.Context) {
 // @Tags Webhooks
 // @Produce json
 // @Success 200 {object} utils.Response{data=map[string]interface{}} "Webhook statistics"
+// @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/webhooks/stats [get]

@@ -31,6 +31,9 @@ func NewRefundPoliciesHandler(refundPoliciesService interfaces.RefundPoliciesSer
 // @Success 201 {object} utils.Response{data=models.RefundPolicyResponse} "Refund policy created successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/refund-policies [post]
@@ -59,6 +62,9 @@ func (h *RefundPoliciesHandler) CreateRefundPolicy(c *gin.Context) {
 // @Produce json
 // @Success 200 {object} utils.Response{data=[]models.RefundPolicyResponse} "Refund policies retrieved successfully"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/refund-policies [get]
@@ -84,7 +90,11 @@ func (h *RefundPoliciesHandler) GetAllRefundPolicies(c *gin.Context) {
 // @Param id path string true "Policy ID" example(RFPOL_12345678)
 // @Success 200 {object} utils.Response{data=models.RefundPolicyResponse} "Refund policy retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
+// @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 404 {object} utils.ErrorResponseModel "Refund policy not found"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/refund-policies/{id} [get]
@@ -115,7 +125,10 @@ func (h *RefundPoliciesHandler) GetRefundPolicy(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=models.RefundPolicyResponse} "Refund policy updated successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 404 {object} utils.ErrorResponseModel "Refund policy not found"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/refund-policies/{id} [patch]

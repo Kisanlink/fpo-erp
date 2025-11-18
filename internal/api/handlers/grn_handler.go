@@ -33,6 +33,9 @@ func NewGRNHandler(grnService interfaces.GRNServiceInterface, aaaMiddleware *aaa
 // @Success 201 {object} utils.Response{data=models.GRNResponse} "GRN created successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/grns [post]
@@ -91,6 +94,9 @@ func (h *GRNHandler) GetGRN(c *gin.Context) {
 // @Produce json
 // @Success 200 {object} utils.Response{data=[]models.GRNResponse} "GRNs retrieved successfully"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/grns [get]
@@ -173,7 +179,11 @@ func (h *GRNHandler) GetGRNByPurchaseOrder(c *gin.Context) {
 // @Param request body models.UpdateGRNRequest true "Update data"
 // @Success 200 {object} utils.Response{data=models.GRNResponse} "GRN updated successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
+// @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 404 {object} utils.ErrorResponseModel "GRN not found"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Security BearerAuth
 // @Router /api/v1/grns/{id} [put]
