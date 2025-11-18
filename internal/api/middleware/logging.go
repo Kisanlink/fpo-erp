@@ -11,7 +11,7 @@ import (
 // LoggingMiddleware provides request/response logging
 func LoggingMiddleware() gin.HandlerFunc {
 	return gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
-		// Log request details
+		// Log request details at INFO level for all requests
 		utils.Info("HTTP Request",
 			"method", param.Method,
 			"path", param.Path,
@@ -20,6 +20,29 @@ func LoggingMiddleware() gin.HandlerFunc {
 			"client_ip", param.ClientIP,
 			"user_agent", param.Request.UserAgent(),
 		)
+
+		// Additional logging for error responses
+		if param.StatusCode >= 500 {
+			// Log 5xx errors at ERROR level
+			utils.Error("HTTP Server Error",
+				"method", param.Method,
+				"path", param.Path,
+				"status", param.StatusCode,
+				"latency", param.Latency,
+				"client_ip", param.ClientIP,
+				"error_text", param.ErrorMessage,
+			)
+		} else if param.StatusCode >= 400 {
+			// Log 4xx errors at WARN level
+			utils.Warn("HTTP Client Error",
+				"method", param.Method,
+				"path", param.Path,
+				"status", param.StatusCode,
+				"latency", param.Latency,
+				"client_ip", param.ClientIP,
+				"error_text", param.ErrorMessage,
+			)
+		}
 
 		return ""
 	})

@@ -125,3 +125,12 @@ func (r *ProductVariantRepository) FindBySKU(sku string) (*models.ProductVariant
 	}
 	return &variant, nil
 }
+
+// GetByCollaboratorID retrieves all product variants for a specific collaborator
+func (r *ProductVariantRepository) GetByCollaboratorID(collaboratorID string) ([]models.ProductVariant, error) {
+	var variants []models.ProductVariant
+	if err := r.db.Where("collaborator_id = ? AND is_active = ?", collaboratorID, true).Find(&variants).Error; err != nil {
+		return nil, errors.NewInternalServerError("Failed to retrieve variants by collaborator")
+	}
+	return variants, nil
+}

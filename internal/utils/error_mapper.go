@@ -24,6 +24,16 @@ import (
 func HandleServiceError(c *gin.Context, defaultMessage string, err error) {
 	// Check if error is a custom AppError type
 	if appErr, ok := err.(*errors.AppError); ok {
+		// Log error with details
+		Error("Service Error",
+			"type", "AppError",
+			"status", appErr.StatusCode,
+			"message", appErr.Message,
+			"details", appErr.Details,
+			"path", c.Request.URL.Path,
+			"method", c.Request.Method,
+		)
+
 		c.JSON(appErr.StatusCode, Response{
 			Success:   false,
 			Message:   appErr.Message,
@@ -36,6 +46,16 @@ func HandleServiceError(c *gin.Context, defaultMessage string, err error) {
 	// Pattern match error message to determine appropriate status code
 	errMsg := strings.ToLower(err.Error())
 	statusCode := determineStatusCode(errMsg)
+
+	// Log error with details
+	Error("Service Error",
+		"type", "GenericError",
+		"status", statusCode,
+		"message", defaultMessage,
+		"error", err.Error(),
+		"path", c.Request.URL.Path,
+		"method", c.Request.Method,
+	)
 
 	// Return response with determined status code
 	c.JSON(statusCode, Response{

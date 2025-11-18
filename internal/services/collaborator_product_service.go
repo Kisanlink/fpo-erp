@@ -107,26 +107,26 @@ func (s *CollaboratorProductService) AddProductToCollaborator(ctx context.Contex
 // GetProductsByCollaborator retrieves all products for a collaborator
 func (s *CollaboratorProductService) GetProductsByCollaborator(ctx context.Context, collaboratorID string) ([]models.CollaboratorProductResponse, error) {
 	// Validate collaborator exists
-	_, err := s.collaboratorRepo.GetByID(collaboratorID)
+	collaborator, err := s.collaboratorRepo.GetByID(collaboratorID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Get all products for this collaborator
-	collabProducts, err := s.collabProductRepo.GetProductsByCollaborator(collaboratorID)
+	// Get all product variants for this collaborator (unified architecture)
+	variants, err := s.variantRepo.GetByCollaboratorID(collaboratorID)
 	if err != nil {
 		return nil, err
 	}
 
 	var responses []models.CollaboratorProductResponse
-	for _, cp := range collabProducts {
-		// Get collaborator details
-		collaborator, err := s.collaboratorRepo.GetByID(cp.CollaboratorID)
+	for _, variant := range variants {
+		// Get product details
+		product, err := s.productRepo.GetByID(variant.ProductID)
 		if err != nil {
 			continue // Skip on error
 		}
 
-		response, err := s.buildCollaboratorProductResponse(&cp, collaborator, &cp.Product)
+		response, err := s.buildCollaboratorProductResponseFromVariant(&variant, collaborator, product)
 		if err != nil {
 			continue // Skip on error
 		}
