@@ -12,9 +12,6 @@ type ProductInterface interface {
 	// GetByID retrieves a product by ID
 	GetByID(id string) (*models.Product, error)
 
-	// GetBySKU retrieves a product by SKU
-	GetBySKU(sku string) (*models.Product, error)
-
 	// GetAll retrieves all products
 	GetAll() ([]models.Product, error)
 
@@ -26,9 +23,6 @@ type ProductInterface interface {
 
 	// Exists checks if a product exists by ID
 	Exists(id string) (bool, error)
-
-	// SKUExists checks if a SKU already exists
-	SKUExists(sku string) (bool, error)
 
 	// GetByName searches products by name
 	GetByName(name string) ([]models.Product, error)

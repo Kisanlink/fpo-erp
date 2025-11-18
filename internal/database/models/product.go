@@ -33,7 +33,7 @@ func NewProduct(name string, description *string) *Product {
 }
 
 func (Product) TableName() string {
-	return "sku"
+	return "products"
 }
 
 // ProductResponse represents the API response for product

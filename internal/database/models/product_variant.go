@@ -41,7 +41,7 @@ type ProductVariant struct {
 	IsActive bool `gorm:"default:true" json:"is_active"`
 
 	// Associations
-	Product      Product       `gorm:"foreignKey:ProductID;references:ID;tableName:sku" json:"product,omitempty"`
+	Product      Product       `gorm:"foreignKey:ProductID;references:ID" json:"product,omitempty"`
 	Collaborator *Collaborator `gorm:"foreignKey:CollaboratorID" json:"collaborator,omitempty"`
 }
 

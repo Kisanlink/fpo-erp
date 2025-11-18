@@ -39,18 +39,6 @@ func (r *ProductRepository) GetByID(id string) (*models.Product, error) {
 	return &product, nil
 }
 
-// GetBySKU retrieves a product by SKU
-func (r *ProductRepository) GetBySKU(sku string) (*models.Product, error) {
-	var product models.Product
-	if err := r.db.Where("sku = ?", sku).First(&product).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, errors.NewNotFoundError("Product")
-		}
-		return nil, errors.NewInternalServerError("Failed to retrieve product")
-	}
-	return &product, nil
-}
-
 // GetAll retrieves all products
 func (r *ProductRepository) GetAll() ([]models.Product, error) {
 	var products []models.Product
@@ -81,15 +69,6 @@ func (r *ProductRepository) Exists(id string) (bool, error) {
 	var count int64
 	if err := r.db.Model(&models.Product{}).Where("id = ?", id).Count(&count).Error; err != nil {
 		return false, errors.NewInternalServerError("Failed to check product existence")
-	}
-	return count > 0, nil
-}
-
-// SKUExists checks if a SKU already exists
-func (r *ProductRepository) SKUExists(sku string) (bool, error) {
-	var count int64
-	if err := r.db.Model(&models.Product{}).Where("sku = ?", sku).Count(&count).Error; err != nil {
-		return false, errors.NewInternalServerError("Failed to check SKU existence")
 	}
 	return count > 0, nil
 }
