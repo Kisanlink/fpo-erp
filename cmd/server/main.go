@@ -61,9 +61,14 @@ func main() {
 	// Configure GORM logger
 	utils.ConfigureGormLogger(pg)
 
-	// Run auto-migration
-	if err := database.AutoMigrate(pg); err != nil {
-		log.Fatalf("Failed to run auto-migration: %v", err)
+	// Run auto-migration (if enabled)
+	if cfg.Database.AutoMigrate {
+		if err := database.AutoMigrate(pg); err != nil {
+			log.Fatalf("Failed to run auto-migration: %v", err)
+		}
+	} else {
+		log.Println("⚠️  WARNING: Database auto-migration is DISABLED")
+		log.Println("   Ensure database schema matches application models manually")
 	}
 
 	// Initialize hash counters from database

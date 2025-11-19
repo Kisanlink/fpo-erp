@@ -29,12 +29,13 @@ type ServerConfig struct {
 }
 
 type DatabaseConfig struct {
-	Host     string `mapstructure:"host"`
-	Port     string `mapstructure:"port"`
-	User     string `mapstructure:"user"`
-	Password string `mapstructure:"password"`
-	Name     string `mapstructure:"name"`
-	SSLMode  string `mapstructure:"ssl_mode"`
+	Host        string `mapstructure:"host"`
+	Port        string `mapstructure:"port"`
+	User        string `mapstructure:"user"`
+	Password    string `mapstructure:"password"`
+	Name        string `mapstructure:"name"`
+	SSLMode     string `mapstructure:"ssl_mode"`
+	AutoMigrate bool   `mapstructure:"auto_migrate"` // Enable/disable database auto-migration (default: true)
 }
 
 type JWTConfig struct {
@@ -135,6 +136,17 @@ func Load() *Config {
 		}
 	}
 
+	// Parse DB_AUTO_MIGRATE (default: true)
+	dbAutoMigrate := true // Default to enabled for production safety
+	dbAutoMigrateStr := os.Getenv("DB_AUTO_MIGRATE")
+	if dbAutoMigrateStr != "" {
+		dbAutoMigrate, err = strconv.ParseBool(dbAutoMigrateStr)
+		if err != nil {
+			utils.Info("Invalid DB_AUTO_MIGRATE value, defaulting to true:", dbAutoMigrateStr)
+			dbAutoMigrate = true
+		}
+	}
+
 	// Parse WEBHOOK_TIMEOUT_SECONDS (default: 30)
 	webhookTimeout := 30
 	webhookTimeoutStr := os.Getenv("WEBHOOK_TIMEOUT_SECONDS")
@@ -186,12 +198,13 @@ func Load() *Config {
 			PublicURL: os.Getenv("SERVER_PUBLIC_URL"),
 		},
 		Database: DatabaseConfig{
-			Host:     os.Getenv("DB_POSTGRES_HOST"),
-			Port:     os.Getenv("DB_POSTGRES_PORT"),
-			User:     os.Getenv("DB_POSTGRES_USER"),
-			Password: os.Getenv("DB_POSTGRES_PASSWORD"),
-			Name:     os.Getenv("DB_POSTGRES_DBNAME"),
-			SSLMode:  os.Getenv("DB_POSTGRES_SSLMODE"),
+			Host:        os.Getenv("DB_POSTGRES_HOST"),
+			Port:        os.Getenv("DB_POSTGRES_PORT"),
+			User:        os.Getenv("DB_POSTGRES_USER"),
+			Password:    os.Getenv("DB_POSTGRES_PASSWORD"),
+			Name:        os.Getenv("DB_POSTGRES_DBNAME"),
+			SSLMode:     os.Getenv("DB_POSTGRES_SSLMODE"),
+			AutoMigrate: dbAutoMigrate,
 		},
 		JWT: JWTConfig{
 			Secret: os.Getenv("JWT_SECRET"),

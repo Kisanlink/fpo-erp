@@ -10,6 +10,15 @@ import (
 func AutoMigrate(db *gorm.DB) error {
 	log.Println("Starting database auto-migration...")
 
+	// Phase 1: Run pre-migration fixes for legacy schema issues
+	if err := RunPreMigrationFixes(db); err != nil {
+		log.Printf("Failed to run pre-migration fixes: %v", err)
+		return err
+	}
+
+	// Phase 2: Run standard GORM auto-migration
+	log.Println("Running GORM auto-migration...")
+
 	// List all models for auto-migration
 	models := []interface{}{
 		// Core entities
