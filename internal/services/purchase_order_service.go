@@ -8,7 +8,9 @@ import (
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
 	"kisanlink-erp/internal/errors"
+	"kisanlink-erp/internal/interfaces"
 
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -21,6 +23,7 @@ type PurchaseOrderService struct {
 	variantRepo      *repositories.ProductVariantRepository
 	grnRepo          *repositories.GRNRepository
 	inventoryRepo    *repositories.InventoryRepository
+	logger           interfaces.Logger
 }
 
 // NewPurchaseOrderService creates a new purchase order service
@@ -32,6 +35,7 @@ func NewPurchaseOrderService(
 	variantRepo *repositories.ProductVariantRepository,
 	grnRepo *repositories.GRNRepository,
 	inventoryRepo *repositories.InventoryRepository,
+	logger interfaces.Logger,
 ) *PurchaseOrderService {
 	return &PurchaseOrderService{
 		poRepo:           poRepo,
@@ -41,17 +45,28 @@ func NewPurchaseOrderService(
 		variantRepo:      variantRepo,
 		grnRepo:          grnRepo,
 		inventoryRepo:    inventoryRepo,
+		logger:           logger,
 	}
 }
 
 // CreatePurchaseOrder creates a new purchase order with items
 func (s *PurchaseOrderService) CreatePurchaseOrder(ctx context.Context, request *models.CreatePurchaseOrderRequest) (*models.PurchaseOrderResponse, error) {
+	s.logger.Info("Creating purchase order",
+		zap.String("collaborator_id", request.CollaboratorID),
+		zap.String("warehouse_id", request.WarehouseID),
+		zap.Int("items_count", len(request.Items)))
+
 	// Validate collaborator exists and is active
 	collaborator, err := s.collaboratorRepo.GetByID(request.CollaboratorID)
 	if err != nil {
+		s.logger.Error("Failed to retrieve collaborator for PO",
+			zap.Error(err),
+			zap.String("collaborator_id", request.CollaboratorID))
 		return nil, err
 	}
 	if collaborator.IsActive != nil && !*collaborator.IsActive {
+		s.logger.Warn("Attempted to create PO with inactive collaborator",
+			zap.String("collaborator_id", request.CollaboratorID))
 		return nil, errors.NewBadRequestError("collaborator is not active")
 	}
 
@@ -106,8 +121,13 @@ func (s *PurchaseOrderService) CreatePurchaseOrder(ctx context.Context, request 
 	// Generate PO number
 	poNumber, err := s.generatePONumber()
 	if err != nil {
+		s.logger.Error("Failed to generate PO number", zap.Error(err))
 		return nil, err
 	}
+
+	s.logger.Debug("Generated PO number",
+		zap.String("po_number", poNumber),
+		zap.Float64("total_amount", totalAmount))
 
 	// Create purchase order and items in a transaction
 	var po *models.PurchaseOrder
@@ -148,8 +168,16 @@ func (s *PurchaseOrderService) CreatePurchaseOrder(ctx context.Context, request 
 	})
 
 	if err != nil {
+		s.logger.Error("Failed to create purchase order in transaction",
+			zap.Error(err),
+			zap.String("po_number", poNumber))
 		return nil, err
 	}
+
+	s.logger.Info("Purchase order created successfully",
+		zap.String("po_id", po.ID),
+		zap.String("po_number", po.PONumber),
+		zap.Float64("total_amount", po.TotalAmount))
 
 	// Fetch complete PO with items
 	return s.GetPurchaseOrder(ctx, po.ID)
@@ -157,8 +185,14 @@ func (s *PurchaseOrderService) CreatePurchaseOrder(ctx context.Context, request 
 
 // GetPurchaseOrder retrieves a purchase order by ID with items
 func (s *PurchaseOrderService) GetPurchaseOrder(ctx context.Context, id string) (*models.PurchaseOrderResponse, error) {
+	s.logger.Debug("Retrieving purchase order",
+		zap.String("po_id", id))
+
 	po, err := s.poRepo.GetByIDWithItems(id)
 	if err != nil {
+		s.logger.Error("Failed to retrieve purchase order",
+			zap.Error(err),
+			zap.String("po_id", id))
 		return nil, err
 	}
 
@@ -167,10 +201,16 @@ func (s *PurchaseOrderService) GetPurchaseOrder(ctx context.Context, id string) 
 
 // GetAllPurchaseOrders retrieves all purchase orders
 func (s *PurchaseOrderService) GetAllPurchaseOrders(ctx context.Context) ([]models.PurchaseOrderResponse, error) {
+	s.logger.Info("Retrieving all purchase orders")
+
 	pos, err := s.poRepo.GetAll()
 	if err != nil {
+		s.logger.Error("Failed to retrieve all purchase orders", zap.Error(err))
 		return nil, err
 	}
+
+	s.logger.Debug("Retrieved purchase orders",
+		zap.Int("count", len(pos)))
 
 	var responses []models.PurchaseOrderResponse
 	for _, po := range pos {
@@ -275,14 +315,26 @@ func (s *PurchaseOrderService) GetPendingDeliveries(ctx context.Context) ([]mode
 // UpdatePurchaseOrderStatus updates the status of a purchase order
 // Supports auto-GRN creation when status = "delivered" with delivery details
 func (s *PurchaseOrderService) UpdatePurchaseOrderStatus(ctx context.Context, id string, request *models.UpdatePOStatusRequest, userID string) (*models.PurchaseOrderResponse, error) {
+	s.logger.Info("Updating purchase order status",
+		zap.String("po_id", id),
+		zap.String("new_status", request.Status),
+		zap.String("user_id", userID),
+		zap.Bool("has_items", len(request.Items) > 0),
+		zap.Bool("accept_all", request.AcceptAll != nil && *request.AcceptAll))
+
 	// Validate status
 	if !isValidPOStatus(request.Status) {
+		s.logger.Warn("Invalid PO status provided",
+			zap.String("status", request.Status))
 		return nil, errors.NewValidationError(fmt.Sprintf("invalid status: %s", request.Status))
 	}
 
 	// Get existing PO with items
 	po, err := s.poRepo.GetByIDWithItems(id)
 	if err != nil {
+		s.logger.Error("Failed to retrieve PO for status update",
+			zap.Error(err),
+			zap.String("po_id", id))
 		return nil, err
 	}
 
@@ -303,26 +355,49 @@ func (s *PurchaseOrderService) UpdatePurchaseOrderStatus(ctx context.Context, id
 
 	// Pattern Detection: Auto-create GRN if status = "delivered" and delivery details provided
 	if request.Status == "delivered" && (request.AcceptAll != nil || len(request.Items) > 0) {
+		s.logger.Info("Auto-GRN trigger detected",
+			zap.String("po_id", po.ID),
+			zap.Bool("accept_all", request.AcceptAll != nil && *request.AcceptAll))
+
 		// Check if GRN already exists for this PO
 		grnExists, err := s.grnRepo.GRNExistsForPO(po.ID)
 		if err != nil {
+			s.logger.Error("Failed to check GRN existence",
+				zap.Error(err),
+				zap.String("po_id", po.ID))
 			return nil, err
 		}
 		if grnExists {
+			s.logger.Warn("GRN already exists for this PO",
+				zap.String("po_id", po.ID))
 			return nil, errors.NewConflictError("GRN already exists for this purchase order")
 		}
 
 		// Pattern 1: Accept All
 		if request.AcceptAll != nil && *request.AcceptAll {
+			s.logger.Debug("Processing Pattern 1: Accept All",
+				zap.String("po_id", po.ID))
 			if err := s.processAcceptAll(ctx, po, actualDelivery, request.DefaultExpiryDate, userID); err != nil {
+				s.logger.Error("Failed to process Accept All pattern",
+					zap.Error(err),
+					zap.String("po_id", po.ID))
 				return nil, err
 			}
 		} else if len(request.Items) > 0 {
+			s.logger.Debug("Processing Pattern 2/3: Per-item details",
+				zap.String("po_id", po.ID),
+				zap.Int("items_count", len(request.Items)))
 			// Pattern 2 & 3: Per-item details
 			if err := s.processDeliveryItems(ctx, po, actualDelivery, request.Items, userID); err != nil {
+				s.logger.Error("Failed to process delivery items",
+					zap.Error(err),
+					zap.String("po_id", po.ID))
 				return nil, err
 			}
 		}
+
+		s.logger.Info("Auto-GRN created successfully",
+			zap.String("po_id", po.ID))
 
 		// Update PO status and delivery date (already done in transaction above)
 		return s.GetPurchaseOrder(ctx, id)
@@ -344,14 +419,24 @@ func (s *PurchaseOrderService) UpdatePurchaseOrderStatus(ctx context.Context, id
 
 // UpdatePaymentStatus updates the payment status of a purchase order
 func (s *PurchaseOrderService) UpdatePaymentStatus(ctx context.Context, id string, request *models.UpdatePOPaymentRequest) (*models.PurchaseOrderResponse, error) {
+	s.logger.Info("Updating purchase order payment status",
+		zap.String("po_id", id),
+		zap.String("payment_status", request.PaymentStatus),
+		zap.Float64("paid_amount", request.PaidAmount))
+
 	// Validate payment status
 	if !isValidPaymentStatus(request.PaymentStatus) {
+		s.logger.Warn("Invalid payment status provided",
+			zap.String("payment_status", request.PaymentStatus))
 		return nil, errors.NewValidationError(fmt.Sprintf("invalid payment status: %s", request.PaymentStatus))
 	}
 
 	// Get existing PO
 	po, err := s.poRepo.GetByID(id)
 	if err != nil {
+		s.logger.Error("Failed to retrieve PO for payment update",
+			zap.Error(err),
+			zap.String("po_id", id))
 		return nil, err
 	}
 
@@ -374,8 +459,16 @@ func (s *PurchaseOrderService) UpdatePaymentStatus(ctx context.Context, id strin
 
 	// Save to database
 	if err := s.poRepo.Update(po); err != nil {
+		s.logger.Error("Failed to update payment status",
+			zap.Error(err),
+			zap.String("po_id", id))
 		return nil, err
 	}
+
+	s.logger.Info("Payment status updated successfully",
+		zap.String("po_id", id),
+		zap.String("payment_status", po.PaymentStatus),
+		zap.Float64("paid_amount", po.PaidAmount))
 
 	return s.GetPurchaseOrder(ctx, id)
 }
@@ -410,16 +503,31 @@ func (s *PurchaseOrderService) processAcceptAll(ctx context.Context, po *models.
 
 // processDeliveryItems handles Pattern 2 & 3: Per-item details
 func (s *PurchaseOrderService) processDeliveryItems(ctx context.Context, po *models.PurchaseOrder, actualDelivery time.Time, items []models.DeliveryItemRequest, userID string) error {
+	s.logger.Info("Processing delivery items for auto-GRN",
+		zap.String("po_id", po.ID),
+		zap.Int("items_count", len(items)),
+		zap.String("user_id", userID))
+
 	// Validate delivery items
 	if err := s.validateDeliveryItems(po, items); err != nil {
+		s.logger.Error("Delivery items validation failed",
+			zap.Error(err),
+			zap.String("po_id", po.ID))
 		return err
 	}
 
 	// Generate GRN number
 	grnNumber, err := s.generateGRNNumber()
 	if err != nil {
+		s.logger.Error("Failed to generate GRN number",
+			zap.Error(err),
+			zap.String("po_id", po.ID))
 		return err
 	}
+
+	s.logger.Debug("Generated GRN number for auto-GRN",
+		zap.String("grn_number", grnNumber),
+		zap.String("po_id", po.ID))
 
 	// Process in transaction
 	return s.poRepo.WithTransaction(func(tx *gorm.DB) error {
@@ -489,6 +597,12 @@ func (s *PurchaseOrderService) processDeliveryItems(ctx context.Context, po *mod
 
 			// Create inventory batch for accepted quantity
 			if acceptedQty > 0 {
+				s.logger.Debug("Creating inventory batch for accepted quantity",
+					zap.String("grn_number", grnNumber),
+					zap.String("variant_id", poItem.VariantID),
+					zap.Int64("accepted_qty", acceptedQty),
+					zap.Float64("cost_price", poItem.UnitPrice))
+
 				batch := models.NewInventoryBatch(
 					po.WarehouseID,
 					poItem.VariantID,
@@ -502,8 +616,15 @@ func (s *PurchaseOrderService) processDeliveryItems(ctx context.Context, po *mod
 				)
 
 				if err := s.inventoryRepo.CreateBatchWithTx(tx, batch); err != nil {
+					s.logger.Error("Failed to create inventory batch",
+						zap.Error(err),
+						zap.String("grn_number", grnNumber))
 					return err
 				}
+
+				s.logger.Debug("Inventory batch created",
+					zap.String("batch_id", batch.ID),
+					zap.String("grn_number", grnNumber))
 
 				// Link inventory batch to GRN item
 				grnItem.InventoryBatchID = &batch.ID
@@ -520,8 +641,15 @@ func (s *PurchaseOrderService) processDeliveryItems(ctx context.Context, po *mod
 					actualDelivery,
 				)
 				if err := s.inventoryRepo.CreateTransactionWithTx(tx, transaction); err != nil {
+					s.logger.Error("Failed to create inventory transaction",
+						zap.Error(err),
+						zap.String("batch_id", batch.ID))
 					return err
 				}
+
+				s.logger.Debug("Inventory transaction created",
+					zap.String("batch_id", batch.ID),
+					zap.Int64("quantity", acceptedQty))
 			}
 
 			// Save GRN item

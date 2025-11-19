@@ -5,21 +5,25 @@ import (
 
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
+	logger "kisanlink-erp/internal/interfaces"
 	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type TaxHandler struct {
 	taxService    interfaces.TaxServiceInterface
 	aaaMiddleware *aaa.AAAMiddleware
+	logger        logger.Logger
 }
 
-func NewTaxHandler(taxService interfaces.TaxServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *TaxHandler {
+func NewTaxHandler(taxService interfaces.TaxServiceInterface, aaaMiddleware *aaa.AAAMiddleware, logger logger.Logger) *TaxHandler {
 	return &TaxHandler{
 		taxService:    taxService,
 		aaaMiddleware: aaaMiddleware,
+		logger:        logger,
 	}
 }
 
@@ -67,10 +71,16 @@ func (h *TaxHandler) RegisterRoutes(router *gin.RouterGroup) {
 // @Security BearerAuth
 // @Router /api/v1/taxes [post]
 func (h *TaxHandler) CreateTax(c *gin.Context) {
+	h.logger.Info("Handling create tax request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	var req models.CreateTaxRequest
 
 	// Validate request
 	if err := utils.ValidateRequest(c, &req); err != nil {
+		h.logger.Error("Invalid request body for create tax",
+			zap.Error(err))
 		utils.BadRequestResponse(c, "Invalid request data", err)
 		return
 	}
@@ -78,15 +88,28 @@ func (h *TaxHandler) CreateTax(c *gin.Context) {
 	// Get user ID from context
 	userID := c.GetString("user_id")
 	if userID == "" {
+		h.logger.Error("User not authenticated")
 		utils.UnauthorizedResponse(c, "User not authenticated")
 		return
 	}
 
+	h.logger.Debug("Calling tax service to create tax",
+		zap.String("tax_type", string(req.TaxType)),
+		zap.String("calculation_type", string(req.CalculationType)),
+		zap.String("user_id", userID))
+
 	tax, err := h.taxService.CreateTax(&req, userID)
 	if err != nil {
+		h.logger.Error("Failed to create tax via service",
+			zap.Error(err),
+			zap.String("tax_type", string(req.TaxType)))
 		utils.HandleServiceError(c, "Failed to create tax", err)
 		return
 	}
+
+	h.logger.Info("Tax created successfully via handler",
+		zap.String("tax_id", tax.ID),
+		zap.String("tax_type", string(tax.TaxType)))
 
 	utils.CreatedResponse(c, "Tax created successfully", tax)
 }
@@ -108,17 +131,32 @@ func (h *TaxHandler) CreateTax(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/taxes/{id} [get]
 func (h *TaxHandler) GetTax(c *gin.Context) {
+	h.logger.Info("Handling get tax request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	id := c.Param("id")
 	if id == "" {
+		h.logger.Error("Tax ID is required but not provided")
 		utils.BadRequestResponse(c, "Tax ID is required", nil)
 		return
 	}
 
+	h.logger.Debug("Calling tax service to get tax",
+		zap.String("tax_id", id))
+
 	tax, err := h.taxService.GetTax(id)
 	if err != nil {
+		h.logger.Error("Tax not found",
+			zap.Error(err),
+			zap.String("tax_id", id))
 		utils.NotFoundResponse(c, "Tax not found")
 		return
 	}
+
+	h.logger.Info("Tax retrieved successfully via handler",
+		zap.String("tax_id", tax.ID),
+		zap.String("tax_type", string(tax.TaxType)))
 
 	utils.OKResponse(c, "Tax retrieved successfully", tax)
 }
@@ -140,6 +178,10 @@ func (h *TaxHandler) GetTax(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/taxes [get]
 func (h *TaxHandler) GetAllTaxes(c *gin.Context) {
+	h.logger.Info("Handling get all taxes request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	limitStr := c.DefaultQuery("limit", "10")
 	offsetStr := c.DefaultQuery("offset", "0")
 
@@ -153,11 +195,20 @@ func (h *TaxHandler) GetAllTaxes(c *gin.Context) {
 		offset = 0
 	}
 
+	h.logger.Debug("Calling tax service to get all taxes",
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
+
 	taxes, err := h.taxService.GetAllTaxes(limit, offset)
 	if err != nil {
+		h.logger.Error("Failed to retrieve taxes via service",
+			zap.Error(err))
 		utils.HandleServiceError(c, "Failed to retrieve taxes", err)
 		return
 	}
+
+	h.logger.Info("Taxes retrieved successfully via handler",
+		zap.Int("count", len(taxes)))
 
 	utils.OKResponse(c, "Taxes retrieved successfully", taxes)
 }
@@ -176,11 +227,22 @@ func (h *TaxHandler) GetAllTaxes(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/taxes/active [get]
 func (h *TaxHandler) GetActiveTaxes(c *gin.Context) {
+	h.logger.Info("Handling get active taxes request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
+	h.logger.Debug("Calling tax service to get active taxes")
+
 	taxes, err := h.taxService.GetActiveTaxes()
 	if err != nil {
+		h.logger.Error("Failed to retrieve active taxes via service",
+			zap.Error(err))
 		utils.HandleServiceError(c, "Failed to retrieve active taxes", err)
 		return
 	}
+
+	h.logger.Info("Active taxes retrieved successfully via handler",
+		zap.Int("count", len(taxes)))
 
 	utils.OKResponse(c, "Active taxes retrieved successfully", taxes)
 }
@@ -201,8 +263,13 @@ func (h *TaxHandler) GetActiveTaxes(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/taxes/type/{type} [get]
 func (h *TaxHandler) GetTaxesByType(c *gin.Context) {
+	h.logger.Info("Handling get taxes by type request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	taxType := models.TaxType(c.Param("type"))
 	if taxType == "" {
+		h.logger.Error("Tax type is required but not provided")
 		utils.BadRequestResponse(c, "Tax type is required", nil)
 		return
 	}
@@ -224,15 +291,27 @@ func (h *TaxHandler) GetTaxesByType(c *gin.Context) {
 	}
 
 	if !isValid {
+		h.logger.Error("Invalid tax type provided",
+			zap.String("tax_type", string(taxType)))
 		utils.BadRequestResponse(c, "Invalid tax type", nil)
 		return
 	}
 
+	h.logger.Debug("Calling tax service to get taxes by type",
+		zap.String("tax_type", string(taxType)))
+
 	taxes, err := h.taxService.GetTaxesByType(taxType)
 	if err != nil {
+		h.logger.Error("Failed to retrieve taxes by type via service",
+			zap.Error(err),
+			zap.String("tax_type", string(taxType)))
 		utils.HandleServiceError(c, "Failed to retrieve taxes by type", err)
 		return
 	}
+
+	h.logger.Info("Taxes retrieved successfully by type via handler",
+		zap.String("tax_type", string(taxType)),
+		zap.Int("count", len(taxes)))
 
 	utils.OKResponse(c, "Taxes retrieved successfully", taxes)
 }
@@ -253,8 +332,13 @@ func (h *TaxHandler) GetTaxesByType(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/taxes/status/{status} [get]
 func (h *TaxHandler) GetTaxesByStatus(c *gin.Context) {
+	h.logger.Info("Handling get taxes by status request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	status := c.Param("status")
 	if status == "" {
+		h.logger.Error("Tax status is required but not provided")
 		utils.BadRequestResponse(c, "Tax status is required", nil)
 		return
 	}
@@ -270,15 +354,27 @@ func (h *TaxHandler) GetTaxesByStatus(c *gin.Context) {
 	}
 
 	if !isValid {
+		h.logger.Error("Invalid tax status provided",
+			zap.String("status", status))
 		utils.BadRequestResponse(c, "Invalid tax status", nil)
 		return
 	}
 
+	h.logger.Debug("Calling tax service to get taxes by status",
+		zap.String("status", status))
+
 	taxes, err := h.taxService.GetTaxesByStatus(status)
 	if err != nil {
+		h.logger.Error("Failed to retrieve taxes by status via service",
+			zap.Error(err),
+			zap.String("status", status))
 		utils.HandleServiceError(c, "Failed to retrieve taxes by status", err)
 		return
 	}
+
+	h.logger.Info("Taxes retrieved successfully by status via handler",
+		zap.String("status", status),
+		zap.Int("count", len(taxes)))
 
 	utils.OKResponse(c, "Taxes retrieved successfully", taxes)
 }
@@ -302,14 +398,22 @@ func (h *TaxHandler) GetTaxesByStatus(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/taxes/{id} [put]
 func (h *TaxHandler) UpdateTax(c *gin.Context) {
+	h.logger.Info("Handling update tax request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	id := c.Param("id")
 	if id == "" {
+		h.logger.Error("Tax ID is required but not provided")
 		utils.BadRequestResponse(c, "Tax ID is required", nil)
 		return
 	}
 
 	var req models.UpdateTaxRequest
 	if err := utils.ValidatePartialRequest(c, &req); err != nil {
+		h.logger.Error("Invalid request body for update tax",
+			zap.Error(err),
+			zap.String("tax_id", id))
 		utils.BadRequestResponse(c, "Invalid request data", err)
 		return
 	}
@@ -317,15 +421,26 @@ func (h *TaxHandler) UpdateTax(c *gin.Context) {
 	// Get user ID from context
 	userID := c.GetString("user_id")
 	if userID == "" {
+		h.logger.Error("User not authenticated")
 		utils.UnauthorizedResponse(c, "User not authenticated")
 		return
 	}
 
+	h.logger.Debug("Calling tax service to update tax",
+		zap.String("tax_id", id),
+		zap.String("user_id", userID))
+
 	tax, err := h.taxService.UpdateTax(id, &req, userID)
 	if err != nil {
+		h.logger.Error("Failed to update tax via service",
+			zap.Error(err),
+			zap.String("tax_id", id))
 		utils.HandleServiceError(c, "Failed to update tax", err)
 		return
 	}
+
+	h.logger.Info("Tax updated successfully via handler",
+		zap.String("tax_id", tax.ID))
 
 	utils.OKResponse(c, "Tax updated successfully", tax)
 }
@@ -347,17 +462,31 @@ func (h *TaxHandler) UpdateTax(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/taxes/{id} [delete]
 func (h *TaxHandler) DeleteTax(c *gin.Context) {
+	h.logger.Info("Handling delete tax request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	id := c.Param("id")
 	if id == "" {
+		h.logger.Error("Tax ID is required but not provided")
 		utils.BadRequestResponse(c, "Tax ID is required", nil)
 		return
 	}
 
+	h.logger.Debug("Calling tax service to delete tax",
+		zap.String("tax_id", id))
+
 	err := h.taxService.DeleteTax(id)
 	if err != nil {
+		h.logger.Error("Failed to delete tax via service",
+			zap.Error(err),
+			zap.String("tax_id", id))
 		utils.HandleServiceError(c, "Failed to delete tax", err)
 		return
 	}
+
+	h.logger.Info("Tax deleted successfully via handler",
+		zap.String("tax_id", id))
 
 	utils.OKResponse(c, "Tax deleted successfully", nil)
 }
@@ -379,14 +508,21 @@ func (h *TaxHandler) DeleteTax(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/taxes/calculate [post]
 func (h *TaxHandler) CalculateTax(c *gin.Context) {
+	h.logger.Info("Handling calculate tax request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	var req models.TaxCalculationRequest
 	if err := utils.ValidateRequest(c, &req); err != nil {
+		h.logger.Error("Invalid request body for calculate tax",
+			zap.Error(err))
 		utils.BadRequestResponse(c, "Invalid request data", err)
 		return
 	}
 
 	// Validate request
 	if len(req.Items) == 0 {
+		h.logger.Error("At least one item is required for tax calculation")
 		utils.BadRequestResponse(c, "At least one item is required", nil)
 		return
 	}
@@ -394,18 +530,22 @@ func (h *TaxHandler) CalculateTax(c *gin.Context) {
 	// Validate items
 	for i, item := range req.Items {
 		if item.ProductID == "" {
+			h.logger.Error("Product ID is required for all items")
 			utils.BadRequestResponse(c, "Product ID is required for all items", nil)
 			return
 		}
 		if item.Quantity <= 0 {
+			h.logger.Error("Quantity must be greater than 0")
 			utils.BadRequestResponse(c, "Quantity must be greater than 0", nil)
 			return
 		}
 		if item.UnitPrice < 0 {
+			h.logger.Error("Unit price cannot be negative")
 			utils.BadRequestResponse(c, "Unit price cannot be negative", nil)
 			return
 		}
 		if item.LineTotal < 0 {
+			h.logger.Error("Line total cannot be negative")
 			utils.BadRequestResponse(c, "Line total cannot be negative", nil)
 			return
 		}
@@ -417,11 +557,19 @@ func (h *TaxHandler) CalculateTax(c *gin.Context) {
 		}
 	}
 
+	h.logger.Debug("Calling tax service to calculate taxes",
+		zap.Int("items_count", len(req.Items)))
+
 	taxCalculation, err := h.taxService.CalculateTax(&req)
 	if err != nil {
+		h.logger.Error("Failed to calculate taxes via service",
+			zap.Error(err))
 		utils.HandleServiceError(c, "Failed to calculate taxes", err)
 		return
 	}
+
+	h.logger.Info("Tax calculation completed successfully via handler",
+		zap.Int("items_count", len(req.Items)))
 
 	utils.OKResponse(c, "Tax calculation completed successfully", taxCalculation)
 }
@@ -442,17 +590,32 @@ func (h *TaxHandler) CalculateTax(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/taxes/applications/sale/{saleID} [get]
 func (h *TaxHandler) GetTaxApplicationsBySale(c *gin.Context) {
+	h.logger.Info("Handling get tax applications by sale request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	saleID := c.Param("saleID")
 	if saleID == "" {
+		h.logger.Error("Sale ID is required but not provided")
 		utils.BadRequestResponse(c, "Sale ID is required", nil)
 		return
 	}
 
+	h.logger.Debug("Calling tax service to get tax applications by sale",
+		zap.String("sale_id", saleID))
+
 	taxApps, err := h.taxService.GetTaxApplicationsBySale(saleID)
 	if err != nil {
+		h.logger.Error("Failed to retrieve tax applications via service",
+			zap.Error(err),
+			zap.String("sale_id", saleID))
 		utils.HandleServiceError(c, "Failed to retrieve tax applications", err)
 		return
 	}
+
+	h.logger.Info("Tax applications retrieved successfully by sale via handler",
+		zap.String("sale_id", saleID),
+		zap.Int("count", len(taxApps)))
 
 	utils.OKResponse(c, "Tax applications retrieved successfully", taxApps)
 }
@@ -473,17 +636,32 @@ func (h *TaxHandler) GetTaxApplicationsBySale(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/taxes/applications/return/{returnID} [get]
 func (h *TaxHandler) GetTaxApplicationsByReturn(c *gin.Context) {
+	h.logger.Info("Handling get tax applications by return request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	returnID := c.Param("returnID")
 	if returnID == "" {
+		h.logger.Error("Return ID is required but not provided")
 		utils.BadRequestResponse(c, "Return ID is required", nil)
 		return
 	}
 
+	h.logger.Debug("Calling tax service to get tax applications by return",
+		zap.String("return_id", returnID))
+
 	taxApps, err := h.taxService.GetTaxApplicationsByReturn(returnID)
 	if err != nil {
+		h.logger.Error("Failed to retrieve tax applications via service",
+			zap.Error(err),
+			zap.String("return_id", returnID))
 		utils.HandleServiceError(c, "Failed to retrieve tax applications", err)
 		return
 	}
+
+	h.logger.Info("Tax applications retrieved successfully by return via handler",
+		zap.String("return_id", returnID),
+		zap.Int("count", len(taxApps)))
 
 	utils.OKResponse(c, "Tax applications retrieved successfully", taxApps)
 }
@@ -505,17 +683,31 @@ func (h *TaxHandler) GetTaxApplicationsByReturn(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/taxes/summary/sale/{saleID} [get]
 func (h *TaxHandler) GetTaxSummaryBySale(c *gin.Context) {
+	h.logger.Info("Handling get tax summary by sale request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	saleID := c.Param("saleID")
 	if saleID == "" {
+		h.logger.Error("Sale ID is required but not provided")
 		utils.BadRequestResponse(c, "Sale ID is required", nil)
 		return
 	}
 
+	h.logger.Debug("Calling tax service to get tax summary by sale",
+		zap.String("sale_id", saleID))
+
 	taxSummary, err := h.taxService.GetTaxSummaryBySale(saleID)
 	if err != nil {
+		h.logger.Error("Tax summary not found",
+			zap.Error(err),
+			zap.String("sale_id", saleID))
 		utils.NotFoundResponse(c, "Tax summary not found")
 		return
 	}
+
+	h.logger.Info("Tax summary retrieved successfully by sale via handler",
+		zap.String("sale_id", saleID))
 
 	utils.OKResponse(c, "Tax summary retrieved successfully", taxSummary)
 }
@@ -537,17 +729,31 @@ func (h *TaxHandler) GetTaxSummaryBySale(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/taxes/summary/return/{returnID} [get]
 func (h *TaxHandler) GetTaxSummaryByReturn(c *gin.Context) {
+	h.logger.Info("Handling get tax summary by return request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	returnID := c.Param("returnID")
 	if returnID == "" {
+		h.logger.Error("Return ID is required but not provided")
 		utils.BadRequestResponse(c, "Return ID is required", nil)
 		return
 	}
 
+	h.logger.Debug("Calling tax service to get tax summary by return",
+		zap.String("return_id", returnID))
+
 	taxSummary, err := h.taxService.GetTaxSummaryByReturn(returnID)
 	if err != nil {
+		h.logger.Error("Tax summary not found",
+			zap.Error(err),
+			zap.String("return_id", returnID))
 		utils.NotFoundResponse(c, "Tax summary not found")
 		return
 	}
+
+	h.logger.Info("Tax summary retrieved successfully by return via handler",
+		zap.String("return_id", returnID))
 
 	utils.OKResponse(c, "Tax summary retrieved successfully", taxSummary)
 }

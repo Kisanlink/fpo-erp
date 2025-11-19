@@ -7,31 +7,47 @@ import (
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
 	"kisanlink-erp/internal/errors"
+	"kisanlink-erp/internal/interfaces"
+
+	"go.uber.org/zap"
 )
 
 type BankPaymentsService struct {
 	bankPaymentsRepo *repositories.BankPaymentsRepository
 	salesRepo        *repositories.SalesRepository
 	returnsRepo      *repositories.ReturnsRepository
+	logger           interfaces.Logger
 }
 
-func NewBankPaymentsService(bankPaymentsRepo *repositories.BankPaymentsRepository, salesRepo *repositories.SalesRepository, returnsRepo *repositories.ReturnsRepository) *BankPaymentsService {
+func NewBankPaymentsService(bankPaymentsRepo *repositories.BankPaymentsRepository, salesRepo *repositories.SalesRepository, returnsRepo *repositories.ReturnsRepository, logger interfaces.Logger) *BankPaymentsService {
 	return &BankPaymentsService{
 		bankPaymentsRepo: bankPaymentsRepo,
 		salesRepo:        salesRepo,
 		returnsRepo:      returnsRepo,
+		logger:           logger,
 	}
 }
 
 // CreateBankPayment creates a new bank payment
 func (s *BankPaymentsService) CreateBankPayment(req *models.CreateBankPaymentRequest) (*models.BankPaymentResponse, error) {
+	s.logger.Info("Creating bank payment",
+		zap.Stringp("sale_id", req.SaleID),
+		zap.Stringp("return_id", req.ReturnID),
+		zap.String("payment_method", req.PaymentMethod),
+		zap.Float64("amount", req.Amount))
+
 	// Validate request
 	if err := s.validateBankPaymentRequest(req); err != nil {
+		s.logger.Warn("Bank payment validation failed",
+			zap.Error(err))
 		return nil, err
 	}
 
 	// Generate transaction reference
 	transactionRef := "TXN" + strconv.FormatInt(time.Now().Unix(), 10)
+
+	s.logger.Debug("Generated transaction reference",
+		zap.String("transaction_ref", transactionRef))
 
 	// Create bank payment
 	payment := &models.BankPayment{
@@ -44,8 +60,15 @@ func (s *BankPaymentsService) CreateBankPayment(req *models.CreateBankPaymentReq
 	}
 
 	if err := s.bankPaymentsRepo.CreateBankPayment(payment); err != nil {
+		s.logger.Error("Failed to create bank payment",
+			zap.Error(err),
+			zap.String("transaction_ref", transactionRef))
 		return nil, err
 	}
+
+	s.logger.Info("Bank payment created successfully",
+		zap.String("payment_id", payment.ID),
+		zap.String("transaction_ref", transactionRef))
 
 	return s.mapBankPaymentToResponse(payment), nil
 }
@@ -106,8 +129,16 @@ func (s *BankPaymentsService) GetBankPaymentsByReturnID(returnID string) ([]mode
 
 // UpdateBankPayment updates a bank payment
 func (s *BankPaymentsService) UpdateBankPayment(id string, req *models.UpdateBankPaymentRequest) (*models.BankPaymentResponse, error) {
+	s.logger.Info("Updating bank payment",
+		zap.String("payment_id", id),
+		zap.Bool("has_payment_method", req.PaymentMethod != nil),
+		zap.Bool("has_amount", req.Amount != nil))
+
 	payment, err := s.bankPaymentsRepo.GetBankPaymentByID(id)
 	if err != nil {
+		s.logger.Error("Failed to retrieve bank payment for update",
+			zap.Error(err),
+			zap.String("payment_id", id))
 		return nil, errors.NewNotFoundError("Bank payment")
 	}
 
@@ -120,15 +151,34 @@ func (s *BankPaymentsService) UpdateBankPayment(id string, req *models.UpdateBan
 	}
 
 	if err := s.bankPaymentsRepo.UpdateBankPayment(payment); err != nil {
+		s.logger.Error("Failed to update bank payment",
+			zap.Error(err),
+			zap.String("payment_id", id))
 		return nil, err
 	}
+
+	s.logger.Info("Bank payment updated successfully",
+		zap.String("payment_id", id))
 
 	return s.mapBankPaymentToResponse(payment), nil
 }
 
 // DeleteBankPayment deletes a bank payment
 func (s *BankPaymentsService) DeleteBankPayment(id string) error {
-	return s.bankPaymentsRepo.DeleteBankPayment(id)
+	s.logger.Info("Deleting bank payment",
+		zap.String("payment_id", id))
+
+	if err := s.bankPaymentsRepo.DeleteBankPayment(id); err != nil {
+		s.logger.Error("Failed to delete bank payment",
+			zap.Error(err),
+			zap.String("payment_id", id))
+		return err
+	}
+
+	s.logger.Info("Bank payment deleted successfully",
+		zap.String("payment_id", id))
+
+	return nil
 }
 
 // Helper methods

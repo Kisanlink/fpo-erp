@@ -3,23 +3,27 @@ package handlers
 import (
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
+	logger "kisanlink-erp/internal/interfaces"
 	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 // ProductPriceHandler handles product price HTTP requests
 type ProductPriceHandler struct {
 	priceService  interfaces.ProductPriceServiceInterface
 	aaaMiddleware *aaa.AAAMiddleware
+	logger        logger.Logger
 }
 
 // NewProductPriceHandler creates a new product price handler
-func NewProductPriceHandler(priceService interfaces.ProductPriceServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *ProductPriceHandler {
+func NewProductPriceHandler(priceService interfaces.ProductPriceServiceInterface, aaaMiddleware *aaa.AAAMiddleware, logger logger.Logger) *ProductPriceHandler {
 	return &ProductPriceHandler{
 		priceService:  priceService,
 		aaaMiddleware: aaaMiddleware,
+		logger:        logger,
 	}
 }
 
@@ -40,20 +44,37 @@ func NewProductPriceHandler(priceService interfaces.ProductPriceServiceInterface
 // @Security BearerAuth
 // @Router /api/v1/prices [post]
 func (h *ProductPriceHandler) CreateProductPrice(c *gin.Context) {
+	h.logger.Info("Handling create product price request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	var request models.CreateProductPriceRequest
 
 	// Validate request
 	if err := utils.ValidateRequest(c, &request); err != nil {
+		h.logger.Error("Invalid request body for create product price",
+			zap.Error(err))
 		utils.BadRequestResponse(c, "Invalid request data", err)
 		return
 	}
 
+	h.logger.Debug("Calling price service to create product price",
+		zap.String("variant_id", request.VariantID),
+		zap.String("price_type", request.PriceType))
+
 	// Create product price
 	response, err := h.priceService.CreateProductPrice(&request)
 	if err != nil {
+		h.logger.Error("Failed to create product price via service",
+			zap.Error(err),
+			zap.String("variant_id", request.VariantID))
 		utils.HandleServiceError(c, "Failed to create product price", err)
 		return
 	}
+
+	h.logger.Info("Product price created successfully via handler",
+		zap.String("price_id", response.ID),
+		zap.String("variant_id", response.VariantID))
 
 	utils.CreatedResponse(c, "Product price created successfully", response)
 }
@@ -77,17 +98,33 @@ func (h *ProductPriceHandler) CreateProductPrice(c *gin.Context) {
 func (h *ProductPriceHandler) GetProductPrice(c *gin.Context) {
 	// Get ID from URL
 	id := c.Param("id")
+
+	h.logger.Info("Handling get product price request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path),
+		zap.String("price_id", id))
+
 	if id == "" {
+		h.logger.Error("Price ID is missing in request")
 		utils.BadRequestResponse(c, "Price ID is required", nil)
 		return
 	}
 
+	h.logger.Debug("Calling price service to get product price",
+		zap.String("price_id", id))
+
 	// Get product price
 	response, err := h.priceService.GetProductPrice(id)
 	if err != nil {
+		h.logger.Error("Failed to get product price via service",
+			zap.Error(err),
+			zap.String("price_id", id))
 		utils.NotFoundResponse(c, "Product price not found")
 		return
 	}
+
+	h.logger.Info("Product price retrieved successfully via handler",
+		zap.String("price_id", response.ID))
 
 	utils.OKResponse(c, "Product price retrieved successfully", response)
 }
@@ -110,17 +147,34 @@ func (h *ProductPriceHandler) GetProductPrice(c *gin.Context) {
 func (h *ProductPriceHandler) GetVariantPrices(c *gin.Context) {
 	// Get variant ID from URL
 	variantID := c.Param("id")
+
+	h.logger.Info("Handling get variant prices request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path),
+		zap.String("variant_id", variantID))
+
 	if variantID == "" {
+		h.logger.Error("Variant ID is missing in request")
 		utils.BadRequestResponse(c, "Variant ID is required", nil)
 		return
 	}
 
+	h.logger.Debug("Calling price service to get variant prices",
+		zap.String("variant_id", variantID))
+
 	// Get variant prices
 	response, err := h.priceService.GetVariantPrices(variantID)
 	if err != nil {
+		h.logger.Error("Failed to get variant prices via service",
+			zap.Error(err),
+			zap.String("variant_id", variantID))
 		utils.HandleServiceError(c, "Failed to retrieve variant prices", err)
 		return
 	}
+
+	h.logger.Info("Variant prices retrieved successfully via handler",
+		zap.String("variant_id", variantID),
+		zap.Int("count", len(response)))
 
 	utils.OKResponse(c, "Variant prices retrieved successfully", response)
 }
@@ -145,23 +199,42 @@ func (h *ProductPriceHandler) GetVariantPrices(c *gin.Context) {
 func (h *ProductPriceHandler) GetCurrentPrice(c *gin.Context) {
 	// Get product ID from URL
 	productID := c.Param("id")
-	if productID == "" {
-		utils.BadRequestResponse(c, "Product ID is required", nil)
-		return
-	}
-
 	// Get price type from query parameter
 	priceType := c.Query("type")
 	if priceType == "" {
 		priceType = "retail" // Default to retail price
 	}
 
+	h.logger.Info("Handling get current price request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path),
+		zap.String("product_id", productID),
+		zap.String("price_type", priceType))
+
+	if productID == "" {
+		h.logger.Error("Product ID is missing in request")
+		utils.BadRequestResponse(c, "Product ID is required", nil)
+		return
+	}
+
+	h.logger.Debug("Calling price service to get current price",
+		zap.String("product_id", productID),
+		zap.String("price_type", priceType))
+
 	// Get current price
 	response, err := h.priceService.GetCurrentPrice(productID, priceType)
 	if err != nil {
+		h.logger.Error("Failed to get current price via service",
+			zap.Error(err),
+			zap.String("product_id", productID),
+			zap.String("price_type", priceType))
 		utils.NotFoundResponse(c, "Current price not found")
 		return
 	}
+
+	h.logger.Info("Current price retrieved successfully via handler",
+		zap.String("price_id", response.ID),
+		zap.String("product_id", productID))
 
 	utils.OKResponse(c, "Current price retrieved successfully", response)
 }
@@ -187,7 +260,14 @@ func (h *ProductPriceHandler) GetCurrentPrice(c *gin.Context) {
 func (h *ProductPriceHandler) UpdateProductPrice(c *gin.Context) {
 	// Get ID from URL
 	id := c.Param("id")
+
+	h.logger.Info("Handling update product price request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path),
+		zap.String("price_id", id))
+
 	if id == "" {
+		h.logger.Error("Price ID is missing in request")
 		utils.BadRequestResponse(c, "Price ID is required", nil)
 		return
 	}
@@ -196,16 +276,28 @@ func (h *ProductPriceHandler) UpdateProductPrice(c *gin.Context) {
 
 	// Validate request
 	if err := utils.ValidatePartialRequest(c, &request); err != nil {
+		h.logger.Error("Invalid request body for update product price",
+			zap.Error(err),
+			zap.String("price_id", id))
 		utils.BadRequestResponse(c, "Invalid request data", err)
 		return
 	}
 
+	h.logger.Debug("Calling price service to update product price",
+		zap.String("price_id", id))
+
 	// Update product price
 	response, err := h.priceService.UpdateProductPrice(id, &request)
 	if err != nil {
+		h.logger.Error("Failed to update product price via service",
+			zap.Error(err),
+			zap.String("price_id", id))
 		utils.HandleServiceError(c, "Failed to update product price", err)
 		return
 	}
+
+	h.logger.Info("Product price updated successfully via handler",
+		zap.String("price_id", response.ID))
 
 	utils.OKResponse(c, "Product price updated successfully", response)
 }
@@ -229,16 +321,32 @@ func (h *ProductPriceHandler) UpdateProductPrice(c *gin.Context) {
 func (h *ProductPriceHandler) DeleteProductPrice(c *gin.Context) {
 	// Get ID from URL
 	id := c.Param("id")
+
+	h.logger.Info("Handling delete product price request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path),
+		zap.String("price_id", id))
+
 	if id == "" {
+		h.logger.Error("Price ID is missing in request")
 		utils.BadRequestResponse(c, "Price ID is required", nil)
 		return
 	}
 
+	h.logger.Debug("Calling price service to delete product price",
+		zap.String("price_id", id))
+
 	// Delete product price
 	if err := h.priceService.DeleteProductPrice(id); err != nil {
+		h.logger.Error("Failed to delete product price via service",
+			zap.Error(err),
+			zap.String("price_id", id))
 		utils.HandleServiceError(c, "Failed to delete product price", err)
 		return
 	}
+
+	h.logger.Info("Product price deleted successfully via handler",
+		zap.String("price_id", id))
 
 	utils.OKResponse(c, "Product price deleted successfully", nil)
 }
@@ -257,12 +365,23 @@ func (h *ProductPriceHandler) DeleteProductPrice(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/prices/expired [get]
 func (h *ProductPriceHandler) GetExpiredPrices(c *gin.Context) {
+	h.logger.Info("Handling get expired prices request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
+	h.logger.Debug("Calling price service to get expired prices")
+
 	// Get expired prices
 	response, err := h.priceService.GetExpiredPrices()
 	if err != nil {
+		h.logger.Error("Failed to get expired prices via service",
+			zap.Error(err))
 		utils.HandleServiceError(c, "Failed to retrieve expired prices", err)
 		return
 	}
+
+	h.logger.Info("Expired prices retrieved successfully via handler",
+		zap.Int("count", len(response)))
 
 	utils.OKResponse(c, "Expired prices retrieved successfully", response)
 }
@@ -287,7 +406,14 @@ func (h *ProductPriceHandler) GetExpiredPrices(c *gin.Context) {
 func (h *ProductPriceHandler) CreateProductPriceForVariant(c *gin.Context) {
 	// Get variant ID from URL
 	variantID := c.Param("id")
+
+	h.logger.Info("Handling create product price for variant request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path),
+		zap.String("variant_id", variantID))
+
 	if variantID == "" {
+		h.logger.Error("Variant ID is missing in request")
 		utils.BadRequestResponse(c, "Variant ID is required", nil)
 		return
 	}
@@ -296,27 +422,47 @@ func (h *ProductPriceHandler) CreateProductPriceForVariant(c *gin.Context) {
 
 	// Bind first
 	if err := c.ShouldBindJSON(&request); err != nil {
+		h.logger.Error("Invalid request body for create product price for variant",
+			zap.Error(err),
+			zap.String("variant_id", variantID))
 		utils.BadRequestResponse(c, "Invalid request data", err)
 		return
 	}
 	// Reject mismatching body variant_id, then force path precedence
 	if request.VariantID != "" && request.VariantID != variantID {
+		h.logger.Error("Variant ID mismatch between path and body",
+			zap.String("path_variant_id", variantID),
+			zap.String("body_variant_id", request.VariantID))
 		utils.BadRequestResponse(c, "variant_id in body does not match path", nil)
 		return
 	}
 	request.VariantID = variantID
 	// Validate after setting authoritative fields
 	if err := utils.ValidateStruct(&request); err != nil {
+		h.logger.Error("Validation failed for create product price for variant",
+			zap.Error(err),
+			zap.String("variant_id", variantID))
 		utils.BadRequestResponse(c, "Invalid request data", err)
 		return
 	}
 
+	h.logger.Debug("Calling price service to create product price for variant",
+		zap.String("variant_id", variantID),
+		zap.String("price_type", request.PriceType))
+
 	// Create product price
 	response, err := h.priceService.CreateProductPrice(&request)
 	if err != nil {
+		h.logger.Error("Failed to create product price for variant via service",
+			zap.Error(err),
+			zap.String("variant_id", variantID))
 		utils.HandleServiceError(c, "Failed to create product price", err)
 		return
 	}
+
+	h.logger.Info("Product price for variant created successfully via handler",
+		zap.String("price_id", response.ID),
+		zap.String("variant_id", response.VariantID))
 
 	utils.CreatedResponse(c, "Product price created successfully", response)
 }

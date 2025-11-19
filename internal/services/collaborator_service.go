@@ -10,9 +10,11 @@ import (
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
 	"kisanlink-erp/internal/errors"
+	"kisanlink-erp/internal/interfaces"
 
 	pb "github.com/Kisanlink/kisanlink-ecom/proto/gen/go/collaborator/v1"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -32,6 +34,7 @@ type CollaboratorService struct {
 	ecomClient       collaboratorSyncClient
 	ecomTimeout      time.Duration
 	ecomAuthToken    string
+	logger           interfaces.Logger
 }
 
 // NewCollaboratorService creates a new collaborator service
@@ -42,6 +45,7 @@ func NewCollaboratorService(
 	ecomClient collaboratorSyncClient,
 	ecomTimeout time.Duration,
 	ecomAuthToken string,
+	logger interfaces.Logger,
 ) *CollaboratorService {
 	if ecomTimeout <= 0 {
 		ecomTimeout = 5 * time.Second
@@ -53,31 +57,54 @@ func NewCollaboratorService(
 		ecomClient:       ecomClient,
 		ecomTimeout:      ecomTimeout,
 		ecomAuthToken:    ecomAuthToken,
+		logger:           logger,
 	}
 }
 
 // CreateCollaborator creates a new collaborator with address
 func (s *CollaboratorService) CreateCollaborator(ctx context.Context, request *models.CreateCollaboratorRequest, organizationID string, userID string, jwtToken string) (*models.CollaboratorResponse, error) {
+	s.logger.Info("Creating collaborator",
+		zap.String("company_name", request.CompanyName),
+		zap.String("organization_id", organizationID),
+		zap.String("user_id", userID),
+		zap.Bool("has_ecom_client", s.ecomClient != nil))
+
 	if s.ecomClient == nil {
+		s.logger.Debug("Using legacy collaborator creation (no e-commerce sync)")
 		return s.createCollaboratorLegacy(ctx, request, userID, jwtToken)
 	}
+	s.logger.Debug("Using e-commerce sync for collaborator creation")
 	return s.createCollaboratorViaEcommerce(ctx, request, organizationID, userID, jwtToken)
 }
 
 // GetCollaborator retrieves a collaborator by ID
 func (s *CollaboratorService) GetCollaborator(ctx context.Context, id string, jwtToken string) (*models.CollaboratorResponse, error) {
+	s.logger.Info("Retrieving collaborator",
+		zap.String("collaborator_id", id))
+
 	collaborator, err := s.collaboratorRepo.GetByID(id)
 	if err != nil {
+		s.logger.Error("Failed to retrieve collaborator",
+			zap.Error(err),
+			zap.String("collaborator_id", id))
 		return nil, err
 	}
+
+	s.logger.Debug("Collaborator retrieved successfully",
+		zap.String("collaborator_id", id),
+		zap.String("company_name", collaborator.CompanyName))
 
 	return s.buildCollaboratorResponse(ctx, collaborator, jwtToken)
 }
 
 // GetAllCollaborators retrieves all collaborators
 func (s *CollaboratorService) GetAllCollaborators(ctx context.Context, jwtToken string) ([]models.CollaboratorResponse, error) {
+	s.logger.Info("Retrieving all collaborators")
+
 	collaborators, err := s.collaboratorRepo.GetAll()
 	if err != nil {
+		s.logger.Error("Failed to retrieve all collaborators",
+			zap.Error(err))
 		return nil, err
 	}
 
@@ -85,18 +112,28 @@ func (s *CollaboratorService) GetAllCollaborators(ctx context.Context, jwtToken 
 	for _, collaborator := range collaborators {
 		response, err := s.buildCollaboratorResponse(ctx, &collaborator, jwtToken)
 		if err != nil {
+			s.logger.Warn("Failed to build collaborator response",
+				zap.Error(err),
+				zap.String("collaborator_id", collaborator.ID))
 			continue
 		}
 		responses = append(responses, *response)
 	}
+
+	s.logger.Info("Retrieved all collaborators successfully",
+		zap.Int("count", len(responses)))
 
 	return responses, nil
 }
 
 // GetActiveCollaborators retrieves all active collaborators
 func (s *CollaboratorService) GetActiveCollaborators(ctx context.Context, jwtToken string) ([]models.CollaboratorResponse, error) {
+	s.logger.Info("Retrieving active collaborators")
+
 	collaborators, err := s.collaboratorRepo.GetActiveCollaborators()
 	if err != nil {
+		s.logger.Error("Failed to retrieve active collaborators",
+			zap.Error(err))
 		return nil, err
 	}
 
@@ -104,34 +141,61 @@ func (s *CollaboratorService) GetActiveCollaborators(ctx context.Context, jwtTok
 	for _, collaborator := range collaborators {
 		response, err := s.buildCollaboratorResponse(ctx, &collaborator, jwtToken)
 		if err != nil {
+			s.logger.Warn("Failed to build collaborator response",
+				zap.Error(err),
+				zap.String("collaborator_id", collaborator.ID))
 			continue
 		}
 		responses = append(responses, *response)
 	}
+
+	s.logger.Info("Retrieved active collaborators successfully",
+		zap.Int("count", len(responses)))
 
 	return responses, nil
 }
 
 // UpdateCollaborator updates a collaborator
 func (s *CollaboratorService) UpdateCollaborator(ctx context.Context, id string, request *models.UpdateCollaboratorRequest, organizationID string, userID string, jwtToken string) (*models.CollaboratorResponse, error) {
+	s.logger.Info("Updating collaborator",
+		zap.String("collaborator_id", id),
+		zap.String("organization_id", organizationID),
+		zap.String("user_id", userID),
+		zap.Bool("has_ecom_client", s.ecomClient != nil))
+
 	if s.ecomClient == nil {
+		s.logger.Debug("Using legacy collaborator update (no e-commerce sync)")
 		return s.updateCollaboratorLegacy(ctx, id, request, jwtToken)
 	}
+	s.logger.Debug("Using e-commerce sync for collaborator update")
 	return s.updateCollaboratorViaEcommerce(ctx, id, request, organizationID, userID, jwtToken)
 }
 
 // DeleteCollaborator deletes a collaborator (soft delete)
 func (s *CollaboratorService) DeleteCollaborator(ctx context.Context, id string, organizationID string, jwtToken string) error {
+	s.logger.Info("Deleting collaborator",
+		zap.String("collaborator_id", id),
+		zap.String("organization_id", organizationID),
+		zap.Bool("has_ecom_client", s.ecomClient != nil))
+
 	if s.ecomClient == nil {
+		s.logger.Debug("Using legacy collaborator deletion (no e-commerce sync)")
 		return s.deleteCollaboratorLegacy(ctx, id, jwtToken)
 	}
+	s.logger.Debug("Using e-commerce sync for collaborator deletion")
 	return s.deleteCollaboratorViaEcommerce(ctx, id, organizationID, jwtToken)
 }
 
 // SearchCollaborators searches collaborators by name
 func (s *CollaboratorService) SearchCollaborators(ctx context.Context, query string, jwtToken string) ([]models.CollaboratorResponse, error) {
+	s.logger.Info("Searching collaborators",
+		zap.String("query", query))
+
 	collaborators, err := s.collaboratorRepo.SearchByName(query)
 	if err != nil {
+		s.logger.Error("Failed to search collaborators",
+			zap.Error(err),
+			zap.String("query", query))
 		return nil, err
 	}
 
@@ -139,67 +203,114 @@ func (s *CollaboratorService) SearchCollaborators(ctx context.Context, query str
 	for _, collaborator := range collaborators {
 		response, err := s.buildCollaboratorResponse(ctx, &collaborator, jwtToken)
 		if err != nil {
+			s.logger.Warn("Failed to build collaborator response",
+				zap.Error(err),
+				zap.String("collaborator_id", collaborator.ID))
 			continue
 		}
 		responses = append(responses, *response)
 	}
+
+	s.logger.Info("Collaborator search completed",
+		zap.String("query", query),
+		zap.Int("results", len(responses)))
 
 	return responses, nil
 }
 
 // createCollaboratorViaEcommerce syncs collaborator creation with the e-commerce service
 func (s *CollaboratorService) createCollaboratorViaEcommerce(ctx context.Context, request *models.CreateCollaboratorRequest, organizationID string, userID string, jwtToken string) (*models.CollaboratorResponse, error) {
+	s.logger.Debug("Creating collaborator via e-commerce sync",
+		zap.String("company_name", request.CompanyName),
+		zap.String("organization_id", organizationID))
+
 	if request == nil {
+		s.logger.Error("Collaborator request is nil")
 		return nil, errors.NewValidationError("collaborator request cannot be nil")
 	}
 
 	email := stringValue(request.Email)
 	if email == "" {
+		s.logger.Error("Email is required for e-commerce collaborator creation")
 		return nil, errors.NewValidationError("email is required for collaborator creation")
 	}
 
+	s.logger.Debug("Building e-commerce collaborator request",
+		zap.String("email", email))
+
 	pbReq, err := buildCreateCollaboratorRequest(request, organizationID, userID, email)
 	if err != nil {
+		s.logger.Error("Failed to build e-commerce request",
+			zap.Error(err))
 		return nil, err
 	}
 
 	ecomCtx, cancel := s.newEcommerceContext(ctx, organizationID, userID)
 	defer cancel()
 
+	s.logger.Debug("Syncing collaborator to e-commerce",
+		zap.Duration("timeout", s.ecomTimeout))
+
 	resp, err := s.ecomClient.CreateCollaborator(ecomCtx, pbReq)
 	if err != nil {
+		s.logger.Error("Failed to sync collaborator to e-commerce",
+			zap.Error(err),
+			zap.String("error_message", grpcErrorMessage(err)))
 		return nil, errors.NewInternalServerError(fmt.Sprintf("failed to sync collaborator to e-commerce: %s", grpcErrorMessage(err)))
 	}
 
 	remote := resp.GetCollaborator()
 	if remote == nil {
+		s.logger.Error("E-commerce collaborator response missing payload")
 		return nil, errors.NewInternalServerError("e-commerce collaborator response missing payload")
 	}
 
 	externalID := remote.GetId()
 	if externalID == "" {
+		s.logger.Error("E-commerce collaborator response missing id")
 		return nil, errors.NewInternalServerError("e-commerce collaborator response missing id")
 	}
+
+	s.logger.Debug("Received e-commerce collaborator response",
+		zap.String("external_id", externalID))
 
 	addressID := extractAddressID(remote)
 	statusPtr := statusToBool(remote.GetStatus())
 
 	existing, err := s.collaboratorRepo.FindByExternalID(externalID)
 	if err != nil {
+		s.logger.Error("Failed to check for existing collaborator",
+			zap.Error(err),
+			zap.String("external_id", externalID))
 		return nil, err
 	}
 
 	if existing != nil {
+		s.logger.Debug("Updating existing collaborator with e-commerce data",
+			zap.String("collaborator_id", existing.ID),
+			zap.String("external_id", externalID))
+
 		s.applyCreateRequestToModel(existing, request, addressID)
 		existing.ExternalID = ptrString(externalID)
 		if statusPtr != nil {
 			existing.IsActive = statusPtr
 		}
 		if err := s.collaboratorRepo.Update(existing); err != nil {
+			s.logger.Error("Failed to update existing collaborator",
+				zap.Error(err),
+				zap.String("collaborator_id", existing.ID))
 			return nil, err
 		}
+
+		s.logger.Info("Collaborator updated successfully via e-commerce",
+			zap.String("collaborator_id", existing.ID),
+			zap.String("external_id", externalID))
+
 		return s.buildCollaboratorResponse(ctx, existing, jwtToken)
 	}
+
+	s.logger.Debug("Creating new collaborator with e-commerce data",
+		zap.String("external_id", externalID))
 
 	collaborator := models.NewCollaborator(
 		request.CompanyName,
@@ -221,16 +332,31 @@ func (s *CollaboratorService) createCollaboratorViaEcommerce(ctx context.Context
 	}
 
 	if err := s.collaboratorRepo.Create(collaborator); err != nil {
+		s.logger.Error("Failed to create collaborator",
+			zap.Error(err),
+			zap.String("external_id", externalID))
 		return nil, err
 	}
+
+	s.logger.Info("Collaborator created successfully via e-commerce",
+		zap.String("collaborator_id", collaborator.ID),
+		zap.String("external_id", externalID),
+		zap.String("company_name", collaborator.CompanyName))
 
 	return s.buildCollaboratorResponse(ctx, collaborator, jwtToken)
 }
 
 func (s *CollaboratorService) createCollaboratorLegacy(ctx context.Context, request *models.CreateCollaboratorRequest, userID string, jwtToken string) (*models.CollaboratorResponse, error) {
+	s.logger.Debug("Creating collaborator via legacy method",
+		zap.String("company_name", request.CompanyName),
+		zap.String("user_id", userID),
+		zap.Bool("has_inline_address", request.Address != nil))
+
 	var addressID *string
 
 	if request.Address != nil {
+		s.logger.Debug("Creating address via AAA service")
+
 		ctxAddr, cancel := context.WithTimeout(ctx, 3*time.Second)
 		defer cancel()
 
@@ -250,23 +376,40 @@ func (s *CollaboratorService) createCollaboratorLegacy(ctx context.Context, requ
 			IsPrimary:   request.Address.IsPrimary,
 		}, jwtToken)
 		if err != nil {
+			s.logger.Error("Failed to create address via AAA",
+				zap.Error(err),
+				zap.String("user_id", userID))
 			return nil, errors.NewInternalServerError("failed to create address")
 		}
 		addressID = &address.ID
+		s.logger.Debug("Address created successfully",
+			zap.String("address_id", address.ID))
 	}
 
 	if request.GSTNumber != "" {
+		s.logger.Debug("Checking GST number uniqueness",
+			zap.String("gst_number", request.GSTNumber))
+
 		exists, err := s.collaboratorRepo.GSTNumberExists(request.GSTNumber)
 		if err != nil {
+			s.logger.Error("Failed to check GST number existence",
+				zap.Error(err),
+				zap.String("gst_number", request.GSTNumber))
 			return nil, err
 		}
 		if exists {
+			s.logger.Warn("GST number already exists",
+				zap.String("gst_number", request.GSTNumber))
 			if addressID != nil {
+				s.logger.Debug("Rolling back address creation",
+					zap.String("address_id", *addressID))
 				_ = s.addressClient.DeleteAddress(ctx, *addressID, true, jwtToken)
 			}
 			return nil, errors.NewConflictError(fmt.Sprintf("collaborator with GST number %s already exists", request.GSTNumber))
 		}
 	}
+
+	s.logger.Debug("Creating collaborator model")
 
 	collaborator := models.NewCollaborator(
 		request.CompanyName,
@@ -284,32 +427,58 @@ func (s *CollaboratorService) createCollaboratorLegacy(ctx context.Context, requ
 	collaborator.BankName = request.BankName
 	collaborator.Experience = request.Experience
 
+	s.logger.Debug("Saving collaborator to database")
+
 	if err := s.collaboratorRepo.Create(collaborator); err != nil {
+		s.logger.Error("Failed to create collaborator",
+			zap.Error(err),
+			zap.String("company_name", request.CompanyName))
 		if addressID != nil {
+			s.logger.Debug("Rolling back address creation",
+				zap.String("address_id", *addressID))
 			_ = s.addressClient.DeleteAddress(ctx, *addressID, true, jwtToken)
 		}
 		return nil, err
 	}
 
+	s.logger.Info("Collaborator created successfully (legacy method)",
+		zap.String("collaborator_id", collaborator.ID),
+		zap.String("company_name", collaborator.CompanyName))
+
 	return s.buildCollaboratorResponse(ctx, collaborator, jwtToken)
 }
 
 func (s *CollaboratorService) updateCollaboratorViaEcommerce(ctx context.Context, id string, request *models.UpdateCollaboratorRequest, organizationID string, userID string, jwtToken string) (*models.CollaboratorResponse, error) {
+	s.logger.Debug("Updating collaborator via e-commerce sync",
+		zap.String("collaborator_id", id),
+		zap.String("organization_id", organizationID))
+
 	if request == nil {
+		s.logger.Error("Update request is nil")
 		return nil, errors.NewValidationError("update request cannot be nil")
 	}
 
 	collaborator, err := s.collaboratorRepo.GetByID(id)
 	if err != nil {
+		s.logger.Error("Failed to retrieve collaborator for update",
+			zap.Error(err),
+			zap.String("collaborator_id", id))
 		return nil, err
 	}
 
 	if collaborator.ExternalID == nil || *collaborator.ExternalID == "" {
+		s.logger.Debug("No external ID, falling back to legacy update",
+			zap.String("collaborator_id", id))
 		return s.updateCollaboratorLegacy(ctx, id, request, jwtToken)
 	}
 
+	s.logger.Debug("Building e-commerce update request",
+		zap.String("external_id", *collaborator.ExternalID))
+
 	pbReq, err := buildUpdateCollaboratorRequest(collaborator, request, organizationID, userID)
 	if err != nil {
+		s.logger.Error("Failed to build e-commerce update request",
+			zap.Error(err))
 		return nil, err
 	}
 
@@ -317,8 +486,14 @@ func (s *CollaboratorService) updateCollaboratorViaEcommerce(ctx context.Context
 		ecomCtx, cancel := s.newEcommerceContext(ctx, organizationID, userID)
 		defer cancel()
 
+		s.logger.Debug("Syncing collaborator update to e-commerce",
+			zap.String("external_id", *collaborator.ExternalID))
+
 		resp, err := s.ecomClient.UpdateCollaborator(ecomCtx, pbReq)
 		if err != nil {
+			s.logger.Error("Failed to update collaborator in e-commerce",
+				zap.Error(err),
+				zap.String("external_id", *collaborator.ExternalID))
 			return nil, errors.NewInternalServerError(fmt.Sprintf("failed to update collaborator in e-commerce: %s", grpcErrorMessage(err)))
 		}
 		if resp != nil && resp.Collaborator != nil {
@@ -339,36 +514,67 @@ func (s *CollaboratorService) updateCollaboratorViaEcommerce(ctx context.Context
 		if !*request.IsActive {
 			statusValue = pb.CollaboratorStatus_COLLABORATOR_STATUS_INACTIVE
 		}
+		s.logger.Debug("Syncing collaborator status to e-commerce",
+			zap.String("external_id", *collaborator.ExternalID),
+			zap.Bool("is_active", *request.IsActive))
+
 		if err := s.syncCollaboratorStatus(ctx, *collaborator.ExternalID, statusValue, organizationID, userID); err != nil {
 			return nil, err
 		}
 	}
 
 	if request.Address != nil {
+		s.logger.Debug("Updating collaborator address",
+			zap.String("collaborator_id", id))
+
 		if err := s.updateCollaboratorAddress(ctx, collaborator, request.Address, jwtToken); err != nil {
 			return nil, err
 		}
 	}
 
+	s.logger.Debug("Applying update request to collaborator model")
 	s.applyUpdateRequestToModel(collaborator, request)
 
+	s.logger.Debug("Saving collaborator updates to database")
+
 	if err := s.collaboratorRepo.Update(collaborator); err != nil {
+		s.logger.Error("Failed to update collaborator in database",
+			zap.Error(err),
+			zap.String("collaborator_id", id))
 		return nil, err
 	}
+
+	s.logger.Info("Collaborator updated successfully via e-commerce",
+		zap.String("collaborator_id", id),
+		zap.String("company_name", collaborator.CompanyName))
 
 	return s.buildCollaboratorResponse(ctx, collaborator, jwtToken)
 }
 
 func (s *CollaboratorService) updateCollaboratorLegacy(ctx context.Context, id string, request *models.UpdateCollaboratorRequest, jwtToken string) (*models.CollaboratorResponse, error) {
+	s.logger.Debug("Updating collaborator via legacy method",
+		zap.String("collaborator_id", id))
+
 	collaborator, err := s.collaboratorRepo.GetByID(id)
 	if err != nil {
+		s.logger.Error("Failed to retrieve collaborator for legacy update",
+			zap.Error(err),
+			zap.String("collaborator_id", id))
 		return nil, err
 	}
 
 	if request.Address != nil && collaborator.AddressID != nil {
 		if request.Address.ID == "" || *collaborator.AddressID != request.Address.ID {
+			s.logger.Warn("Address mismatch during legacy update",
+				zap.String("collaborator_id", id),
+				zap.String("expected_address_id", *collaborator.AddressID),
+				zap.String("provided_address_id", request.Address.ID))
 			return nil, errors.NewBadRequestError("address mismatch: update not permitted")
 		}
+
+		s.logger.Debug("Updating address via AAA service",
+			zap.String("address_id", request.Address.ID))
+
 		address, err := s.addressClient.UpdateAddress(ctx, &aaa.UpdateAddressRequest{
 			ID:          request.Address.ID,
 			Type:        request.Address.Type,
@@ -386,52 +592,116 @@ func (s *CollaboratorService) updateCollaboratorLegacy(ctx context.Context, id s
 			IsActive:    true,
 		}, jwtToken)
 		if err != nil {
+			s.logger.Error("Failed to update address via AAA",
+				zap.Error(err),
+				zap.String("address_id", request.Address.ID))
 			return nil, errors.NewInternalServerError("failed to update address")
 		}
 		collaborator.AddressID = &address.ID
+		s.logger.Debug("Address updated successfully",
+			zap.String("address_id", address.ID))
 	}
 
+	s.logger.Debug("Applying update request to collaborator model")
 	s.applyUpdateRequestToModel(collaborator, request)
 
+	s.logger.Debug("Saving collaborator updates to database")
+
 	if err := s.collaboratorRepo.Update(collaborator); err != nil {
+		s.logger.Error("Failed to update collaborator in database",
+			zap.Error(err),
+			zap.String("collaborator_id", id))
 		return nil, err
 	}
+
+	s.logger.Info("Collaborator updated successfully (legacy method)",
+		zap.String("collaborator_id", id),
+		zap.String("company_name", collaborator.CompanyName))
 
 	return s.buildCollaboratorResponse(ctx, collaborator, jwtToken)
 }
 
 func (s *CollaboratorService) deleteCollaboratorViaEcommerce(ctx context.Context, id string, organizationID string, jwtToken string) error {
+	s.logger.Debug("Deleting collaborator via e-commerce sync",
+		zap.String("collaborator_id", id),
+		zap.String("organization_id", organizationID))
+
 	collaborator, err := s.collaboratorRepo.GetByID(id)
 	if err != nil {
+		s.logger.Error("Failed to retrieve collaborator for deletion",
+			zap.Error(err),
+			zap.String("collaborator_id", id))
 		return err
 	}
 
 	if collaborator.ExternalID != nil && *collaborator.ExternalID != "" {
+		s.logger.Debug("Syncing collaborator deactivation to e-commerce",
+			zap.String("external_id", *collaborator.ExternalID))
+
 		if err := s.syncCollaboratorStatus(ctx, *collaborator.ExternalID, pb.CollaboratorStatus_COLLABORATOR_STATUS_INACTIVE, organizationID, ""); err != nil {
 			return err
 		}
 	}
 
-	return s.collaboratorRepo.Delete(id)
+	s.logger.Debug("Deleting collaborator from database")
+
+	if err := s.collaboratorRepo.Delete(id); err != nil {
+		s.logger.Error("Failed to delete collaborator from database",
+			zap.Error(err),
+			zap.String("collaborator_id", id))
+		return err
+	}
+
+	s.logger.Info("Collaborator deleted successfully via e-commerce",
+		zap.String("collaborator_id", id))
+
+	return nil
 }
 
 func (s *CollaboratorService) deleteCollaboratorLegacy(ctx context.Context, id string, jwtToken string) error {
+	s.logger.Debug("Deleting collaborator via legacy method",
+		zap.String("collaborator_id", id))
+
 	collaborator, err := s.collaboratorRepo.GetByID(id)
 	if err != nil {
+		s.logger.Error("Failed to retrieve collaborator for legacy deletion",
+			zap.Error(err),
+			zap.String("collaborator_id", id))
 		return err
 	}
 
 	if collaborator.AddressID != nil {
+		s.logger.Debug("Deleting associated address",
+			zap.String("address_id", *collaborator.AddressID))
+
 		if err := s.addressClient.DeleteAddress(ctx, *collaborator.AddressID, true, jwtToken); err != nil {
-			// ignore best-effort delete
+			s.logger.Warn("Failed to delete associated address (continuing with collaborator deletion)",
+				zap.Error(err),
+				zap.String("address_id", *collaborator.AddressID))
 		}
 	}
 
-	return s.collaboratorRepo.Delete(id)
+	s.logger.Debug("Deleting collaborator from database")
+
+	if err := s.collaboratorRepo.Delete(id); err != nil {
+		s.logger.Error("Failed to delete collaborator from database",
+			zap.Error(err),
+			zap.String("collaborator_id", id))
+		return err
+	}
+
+	s.logger.Info("Collaborator deleted successfully (legacy method)",
+		zap.String("collaborator_id", id))
+
+	return nil
 }
 
 // buildCollaboratorResponse builds a collaborator response with address details
 func (s *CollaboratorService) buildCollaboratorResponse(ctx context.Context, collaborator *models.Collaborator, jwtToken string) (*models.CollaboratorResponse, error) {
+	s.logger.Debug("Building collaborator response",
+		zap.String("collaborator_id", collaborator.ID),
+		zap.Bool("has_address_id", collaborator.AddressID != nil))
+
 	isActiveValue := false
 	if collaborator.IsActive != nil {
 		isActiveValue = *collaborator.IsActive
@@ -457,6 +727,9 @@ func (s *CollaboratorService) buildCollaboratorResponse(ctx context.Context, col
 	}
 
 	if collaborator.AddressID != nil {
+		s.logger.Debug("Fetching address details from AAA service",
+			zap.String("address_id", *collaborator.AddressID))
+
 		address, err := s.addressClient.GetAddress(ctx, *collaborator.AddressID, jwtToken)
 		if err == nil {
 			response.Address = &models.AddressInfo{
@@ -474,6 +747,12 @@ func (s *CollaboratorService) buildCollaboratorResponse(ctx context.Context, col
 				Pincode:     address.Pincode,
 				FullAddress: address.BuildFullAddress(),
 			}
+			s.logger.Debug("Address details retrieved successfully",
+				zap.String("address_id", address.ID))
+		} else {
+			s.logger.Warn("Failed to fetch address details",
+				zap.Error(err),
+				zap.String("address_id", *collaborator.AddressID))
 		}
 	}
 
@@ -561,6 +840,11 @@ func (s *CollaboratorService) updateCollaboratorAddress(ctx context.Context, col
 }
 
 func (s *CollaboratorService) syncCollaboratorStatus(ctx context.Context, externalID string, newStatus pb.CollaboratorStatus, organizationID string, userID string) error {
+	s.logger.Debug("Syncing collaborator status to e-commerce",
+		zap.String("external_id", externalID),
+		zap.String("new_status", newStatus.String()),
+		zap.String("organization_id", organizationID))
+
 	ecomCtx, cancel := s.newEcommerceContext(ctx, organizationID, userID)
 	defer cancel()
 
@@ -571,8 +855,17 @@ func (s *CollaboratorService) syncCollaboratorStatus(ctx context.Context, extern
 
 	_, err := s.ecomClient.DeactivateCollaborator(ecomCtx, req)
 	if err != nil {
+		s.logger.Error("Failed to update collaborator status in e-commerce",
+			zap.Error(err),
+			zap.String("external_id", externalID),
+			zap.String("error_message", grpcErrorMessage(err)))
 		return errors.NewInternalServerError(fmt.Sprintf("failed to update collaborator status in e-commerce: %s", grpcErrorMessage(err)))
 	}
+
+	s.logger.Debug("Collaborator status synced successfully",
+		zap.String("external_id", externalID),
+		zap.String("new_status", newStatus.String()))
+
 	return nil
 }
 

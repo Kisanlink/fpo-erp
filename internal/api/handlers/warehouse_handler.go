@@ -3,23 +3,27 @@ package handlers
 import (
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
+	logger "kisanlink-erp/internal/interfaces"
 	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 // WarehouseHandler handles warehouse HTTP requests
 type WarehouseHandler struct {
 	warehouseService interfaces.WarehouseServiceInterface
 	aaaMiddleware    *aaa.AAAMiddleware
+	logger           logger.Logger
 }
 
 // NewWarehouseHandler creates a new warehouse handler
-func NewWarehouseHandler(warehouseService interfaces.WarehouseServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *WarehouseHandler {
+func NewWarehouseHandler(warehouseService interfaces.WarehouseServiceInterface, aaaMiddleware *aaa.AAAMiddleware, logger logger.Logger) *WarehouseHandler {
 	return &WarehouseHandler{
 		warehouseService: warehouseService,
 		aaaMiddleware:    aaaMiddleware,
+		logger:           logger,
 	}
 }
 
@@ -40,10 +44,16 @@ func NewWarehouseHandler(warehouseService interfaces.WarehouseServiceInterface, 
 // @Security BearerAuth
 // @Router /api/v1/warehouses [post]
 func (h *WarehouseHandler) CreateWarehouse(c *gin.Context) {
+	h.logger.Info("Handling create warehouse request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	var request models.CreateWarehouseRequest
 
 	// Validate request
 	if err := utils.ValidateRequest(c, &request); err != nil {
+		h.logger.Error("Invalid request body for create warehouse",
+			zap.Error(err))
 		utils.BadRequestResponse(c, "Invalid request data", err)
 		return
 	}
@@ -57,16 +67,28 @@ func (h *WarehouseHandler) CreateWarehouse(c *gin.Context) {
 	// Extract JWT token for AAA service calls
 	jwtToken := c.GetString("jwt_token")
 	if jwtToken == "" {
+		h.logger.Error("Missing authentication token for create warehouse")
 		utils.UnauthorizedResponse(c, "Missing authentication token")
 		return
 	}
 
+	h.logger.Debug("Calling service to create warehouse",
+		zap.String("warehouse_name", request.Name),
+		zap.String("user_id", userID))
+
 	// Create warehouse
 	response, err := h.warehouseService.CreateWarehouse(c.Request.Context(), &request, userID, jwtToken)
 	if err != nil {
+		h.logger.Error("Service error creating warehouse",
+			zap.Error(err),
+			zap.String("warehouse_name", request.Name))
 		utils.HandleServiceError(c, "Failed to create warehouse", err)
 		return
 	}
+
+	h.logger.Info("Warehouse created successfully",
+		zap.String("warehouse_id", response.ID),
+		zap.String("warehouse_name", response.Name))
 
 	utils.CreatedResponse(c, "Warehouse created successfully", response)
 }
@@ -83,9 +105,14 @@ func (h *WarehouseHandler) CreateWarehouse(c *gin.Context) {
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Router /api/v1/warehouses/{id} [get]
 func (h *WarehouseHandler) GetWarehouse(c *gin.Context) {
+	h.logger.Info("Handling get warehouse request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get ID from URL
 	id := c.Param("id")
 	if id == "" {
+		h.logger.Error("Warehouse ID is required but not provided")
 		utils.BadRequestResponse(c, "Warehouse ID is required", nil)
 		return
 	}
@@ -93,16 +120,27 @@ func (h *WarehouseHandler) GetWarehouse(c *gin.Context) {
 	// Extract JWT token for AAA service calls
 	jwtToken := c.GetString("jwt_token")
 	if jwtToken == "" {
+		h.logger.Error("Missing authentication token for get warehouse")
 		utils.UnauthorizedResponse(c, "Missing authentication token")
 		return
 	}
 
+	h.logger.Debug("Fetching warehouse by ID",
+		zap.String("warehouse_id", id))
+
 	// Get warehouse
 	response, err := h.warehouseService.GetWarehouse(c.Request.Context(), id, jwtToken)
 	if err != nil {
+		h.logger.Error("Warehouse not found",
+			zap.Error(err),
+			zap.String("warehouse_id", id))
 		utils.NotFoundResponse(c, "Warehouse not found")
 		return
 	}
+
+	h.logger.Info("Warehouse retrieved successfully",
+		zap.String("warehouse_id", response.ID),
+		zap.String("warehouse_name", response.Name))
 
 	utils.OKResponse(c, "Warehouse retrieved successfully", response)
 }
@@ -121,9 +159,14 @@ func (h *WarehouseHandler) GetWarehouse(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/warehouses [get]
 func (h *WarehouseHandler) GetAllWarehouses(c *gin.Context) {
+	h.logger.Info("Handling get all warehouses request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Extract JWT token for AAA service calls
 	jwtToken := c.GetString("jwt_token")
 	if jwtToken == "" {
+		h.logger.Error("Missing authentication token for get all warehouses")
 		utils.UnauthorizedResponse(c, "Missing authentication token")
 		return
 	}
@@ -131,9 +174,14 @@ func (h *WarehouseHandler) GetAllWarehouses(c *gin.Context) {
 	// Get all warehouses
 	response, err := h.warehouseService.GetAllWarehouses(c.Request.Context(), jwtToken)
 	if err != nil {
+		h.logger.Error("Service error retrieving all warehouses",
+			zap.Error(err))
 		utils.HandleServiceError(c, "Failed to retrieve warehouses", err)
 		return
 	}
+
+	h.logger.Info("All warehouses retrieved successfully",
+		zap.Int("warehouse_count", len(response)))
 
 	utils.OKResponse(c, "Warehouses retrieved successfully", response)
 }
@@ -157,9 +205,14 @@ func (h *WarehouseHandler) GetAllWarehouses(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/warehouses/{id} [patch]
 func (h *WarehouseHandler) UpdateWarehouse(c *gin.Context) {
+	h.logger.Info("Handling update warehouse request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get ID from URL
 	id := c.Param("id")
 	if id == "" {
+		h.logger.Error("Warehouse ID is required but not provided for update")
 		utils.BadRequestResponse(c, "Warehouse ID is required", nil)
 		return
 	}
@@ -168,6 +221,9 @@ func (h *WarehouseHandler) UpdateWarehouse(c *gin.Context) {
 
 	// Validate request
 	if err := utils.ValidatePartialRequest(c, &request); err != nil {
+		h.logger.Error("Invalid request body for update warehouse",
+			zap.Error(err),
+			zap.String("warehouse_id", id))
 		utils.BadRequestResponse(c, "Invalid request data", err)
 		return
 	}
@@ -175,16 +231,27 @@ func (h *WarehouseHandler) UpdateWarehouse(c *gin.Context) {
 	// Extract JWT token for AAA service calls
 	jwtToken := c.GetString("jwt_token")
 	if jwtToken == "" {
+		h.logger.Error("Missing authentication token for update warehouse")
 		utils.UnauthorizedResponse(c, "Missing authentication token")
 		return
 	}
 
+	h.logger.Debug("Calling service to update warehouse",
+		zap.String("warehouse_id", id))
+
 	// Update warehouse
 	response, err := h.warehouseService.UpdateWarehouse(c.Request.Context(), id, &request, jwtToken)
 	if err != nil {
+		h.logger.Error("Service error updating warehouse",
+			zap.Error(err),
+			zap.String("warehouse_id", id))
 		utils.HandleServiceError(c, "Failed to update warehouse", err)
 		return
 	}
+
+	h.logger.Info("Warehouse updated successfully",
+		zap.String("warehouse_id", response.ID),
+		zap.String("warehouse_name", response.Name))
 
 	utils.OKResponse(c, "Warehouse updated successfully", response)
 }
@@ -206,9 +273,14 @@ func (h *WarehouseHandler) UpdateWarehouse(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/warehouses/{id} [delete]
 func (h *WarehouseHandler) DeleteWarehouse(c *gin.Context) {
+	h.logger.Info("Handling delete warehouse request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get ID from URL
 	id := c.Param("id")
 	if id == "" {
+		h.logger.Error("Warehouse ID is required but not provided for delete")
 		utils.BadRequestResponse(c, "Warehouse ID is required", nil)
 		return
 	}
@@ -216,16 +288,26 @@ func (h *WarehouseHandler) DeleteWarehouse(c *gin.Context) {
 	// Extract JWT token for AAA service calls
 	jwtToken := c.GetString("jwt_token")
 	if jwtToken == "" {
+		h.logger.Error("Missing authentication token for delete warehouse")
 		utils.UnauthorizedResponse(c, "Missing authentication token")
 		return
 	}
 
+	h.logger.Debug("Calling service to delete warehouse",
+		zap.String("warehouse_id", id))
+
 	// Delete warehouse
 	err := h.warehouseService.DeleteWarehouse(c.Request.Context(), id, jwtToken)
 	if err != nil {
+		h.logger.Error("Service error deleting warehouse",
+			zap.Error(err),
+			zap.String("warehouse_id", id))
 		utils.HandleServiceError(c, "Failed to delete warehouse", err)
 		return
 	}
+
+	h.logger.Info("Warehouse deleted successfully",
+		zap.String("warehouse_id", id))
 
 	utils.OKResponse(c, "Warehouse deleted successfully", nil)
 }
@@ -246,9 +328,14 @@ func (h *WarehouseHandler) DeleteWarehouse(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/warehouses/search [get]
 func (h *WarehouseHandler) SearchWarehouses(c *gin.Context) {
+	h.logger.Info("Handling search warehouses request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get query parameter
 	query := c.Query("q")
 	if query == "" {
+		h.logger.Error("Search query is required but not provided")
 		utils.BadRequestResponse(c, "Search query is required", nil)
 		return
 	}
@@ -256,16 +343,27 @@ func (h *WarehouseHandler) SearchWarehouses(c *gin.Context) {
 	// Extract JWT token for AAA service calls
 	jwtToken := c.GetString("jwt_token")
 	if jwtToken == "" {
+		h.logger.Error("Missing authentication token for search warehouses")
 		utils.UnauthorizedResponse(c, "Missing authentication token")
 		return
 	}
 
+	h.logger.Debug("Searching warehouses",
+		zap.String("query", query))
+
 	// Search warehouses
 	response, err := h.warehouseService.SearchWarehouses(c.Request.Context(), query, jwtToken)
 	if err != nil {
+		h.logger.Error("Service error searching warehouses",
+			zap.Error(err),
+			zap.String("query", query))
 		utils.HandleServiceError(c, "Failed to search warehouses", err)
 		return
 	}
+
+	h.logger.Info("Warehouses search completed",
+		zap.String("query", query),
+		zap.Int("results_count", len(response)))
 
 	utils.OKResponse(c, "Warehouses search completed", response)
 }

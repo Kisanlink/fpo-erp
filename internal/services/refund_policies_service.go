@@ -4,22 +4,34 @@ import (
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
 	"kisanlink-erp/internal/errors"
+	"kisanlink-erp/internal/interfaces"
+
+	"go.uber.org/zap"
 )
 
 type RefundPoliciesService struct {
 	refundPoliciesRepo *repositories.RefundPoliciesRepository
+	logger             interfaces.Logger
 }
 
-func NewRefundPoliciesService(refundPoliciesRepo *repositories.RefundPoliciesRepository) *RefundPoliciesService {
+func NewRefundPoliciesService(refundPoliciesRepo *repositories.RefundPoliciesRepository, logger interfaces.Logger) *RefundPoliciesService {
 	return &RefundPoliciesService{
 		refundPoliciesRepo: refundPoliciesRepo,
+		logger:             logger,
 	}
 }
 
 // CreateRefundPolicy creates a new refund policy
 func (s *RefundPoliciesService) CreateRefundPolicy(req *models.CreateRefundPolicyRequest) (*models.RefundPolicyResponse, error) {
+	s.logger.Info("Creating refund policy",
+		zap.String("policy_name", req.PolicyName),
+		zap.Int("max_days", req.MaxDays),
+		zap.Float64("restocking_fee", req.RestockingFee))
+
 	// Validate request
 	if err := s.validateRefundPolicyRequest(req); err != nil {
+		s.logger.Warn("Refund policy validation failed",
+			zap.Error(err))
 		return nil, err
 	}
 
@@ -27,8 +39,15 @@ func (s *RefundPoliciesService) CreateRefundPolicy(req *models.CreateRefundPolic
 	policy := models.NewRefundPolicy(req.PolicyName, req.Description, req.MaxDays, req.RestockingFee)
 
 	if err := s.refundPoliciesRepo.CreateRefundPolicy(policy); err != nil {
+		s.logger.Error("Failed to create refund policy",
+			zap.Error(err),
+			zap.String("policy_name", req.PolicyName))
 		return nil, err
 	}
+
+	s.logger.Info("Refund policy created successfully",
+		zap.String("policy_id", policy.ID),
+		zap.String("policy_name", policy.PolicyName))
 
 	return s.mapRefundPolicyToResponse(policy), nil
 }
@@ -59,8 +78,17 @@ func (s *RefundPoliciesService) GetAllRefundPolicies(limit, offset int) ([]model
 
 // UpdateRefundPolicy updates a refund policy
 func (s *RefundPoliciesService) UpdateRefundPolicy(id string, req *models.UpdateRefundPolicyRequest) (*models.RefundPolicyResponse, error) {
+	s.logger.Info("Updating refund policy",
+		zap.String("policy_id", id),
+		zap.Bool("has_description", req.Description != nil),
+		zap.Bool("has_max_days", req.MaxDays != nil),
+		zap.Bool("has_restocking_fee", req.RestockingFee != nil))
+
 	policy, err := s.refundPoliciesRepo.GetRefundPolicyByID(id)
 	if err != nil {
+		s.logger.Error("Failed to retrieve refund policy for update",
+			zap.Error(err),
+			zap.String("policy_id", id))
 		return nil, errors.NewNotFoundError("Refund policy not found")
 	}
 
@@ -76,15 +104,34 @@ func (s *RefundPoliciesService) UpdateRefundPolicy(id string, req *models.Update
 	}
 
 	if err := s.refundPoliciesRepo.UpdateRefundPolicy(policy); err != nil {
+		s.logger.Error("Failed to update refund policy",
+			zap.Error(err),
+			zap.String("policy_id", id))
 		return nil, err
 	}
+
+	s.logger.Info("Refund policy updated successfully",
+		zap.String("policy_id", id))
 
 	return s.mapRefundPolicyToResponse(policy), nil
 }
 
 // DeleteRefundPolicy deletes a refund policy
 func (s *RefundPoliciesService) DeleteRefundPolicy(id string) error {
-	return s.refundPoliciesRepo.DeleteRefundPolicy(id)
+	s.logger.Info("Deleting refund policy",
+		zap.String("policy_id", id))
+
+	if err := s.refundPoliciesRepo.DeleteRefundPolicy(id); err != nil {
+		s.logger.Error("Failed to delete refund policy",
+			zap.Error(err),
+			zap.String("policy_id", id))
+		return err
+	}
+
+	s.logger.Info("Refund policy deleted successfully",
+		zap.String("policy_id", id))
+
+	return nil
 }
 
 // Helper methods

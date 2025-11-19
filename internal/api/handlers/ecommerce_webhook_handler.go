@@ -8,6 +8,7 @@ import (
 	"io"
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
+	logger "kisanlink-erp/internal/interfaces"
 	"kisanlink-erp/internal/services"
 	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
@@ -15,6 +16,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 // EcommerceWebhookHandler handles incoming webhooks from e-commerce platform
@@ -24,6 +26,7 @@ type EcommerceWebhookHandler struct {
 	historyService  *services.WebhookHistoryService
 	webhookRepo     *repositories.WebhookRepository
 	aaaMiddleware   interface{ Authenticate() gin.HandlerFunc }
+	logger          logger.Logger
 }
 
 // NewEcommerceWebhookHandler creates a new e-commerce webhook handler
@@ -33,11 +36,13 @@ func NewEcommerceWebhookHandler(
 	historyService *services.WebhookHistoryService,
 	webhookRepo *repositories.WebhookRepository,
 	aaaMiddleware interface{ Authenticate() gin.HandlerFunc },
+	logger logger.Logger,
 ) *EcommerceWebhookHandler {
 	return &EcommerceWebhookHandler{
 		webhookService:  webhookService,
 		securityService: securityService,
 		historyService:  historyService,
+		logger:          logger,
 		webhookRepo:     webhookRepo,
 		aaaMiddleware:   aaaMiddleware,
 	}
@@ -76,28 +81,59 @@ func (h *EcommerceWebhookHandler) processWebhook(
 	parseFunc func([]byte) (interface{}, error),
 	processFunc func(context.Context, interface{}) (string, error),
 ) {
+	// 1. Entry Log
+	h.logger.Info("Handling webhook request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path),
+		zap.String("event_type", eventType))
+
 	// Read raw request body for signature verification
 	bodyBytes, err := io.ReadAll(c.Request.Body)
 	if err != nil {
+		h.logger.Error("Failed to read webhook request body",
+			zap.Error(err),
+			zap.String("event_type", eventType))
 		utils.BadRequestResponse(c, "Failed to read request body", err)
 		return
 	}
 
 	// Verify webhook signature and headers
+	h.logger.Debug("Validating webhook signature and headers",
+		zap.String("event_type", eventType))
+
 	headers, err := h.securityService.ValidateWebhook(c, bodyBytes)
 	if err != nil {
+		h.logger.Error("Webhook validation failed",
+			zap.Error(err),
+			zap.String("event_type", eventType))
 		utils.UnauthorizedResponse(c, "Webhook validation failed: "+err.Error())
 		return
 	}
 
+	h.logger.Debug("Webhook signature validated successfully",
+		zap.String("event_type", eventType),
+		zap.String("event_id", headers.EventID))
+
 	// Check idempotency (duplicate event detection)
+	h.logger.Debug("Checking webhook idempotency",
+		zap.String("event_type", eventType),
+		zap.String("event_id", headers.EventID))
+
 	alreadyProcessed, existingEvent, err := h.historyService.CheckIdempotency(c.Request.Context(), headers.EventID)
 	if err != nil {
+		h.logger.Error("Failed to check webhook idempotency",
+			zap.Error(err),
+			zap.String("event_type", eventType),
+			zap.String("event_id", headers.EventID))
 		utils.HandleServiceError(c, "Failed to check webhook idempotency", err)
 		return
 	}
 
 	if alreadyProcessed {
+		h.logger.Info("Webhook already processed (idempotent)",
+			zap.String("event_type", eventType),
+			zap.String("event_id", headers.EventID),
+			zap.String("status", existingEvent.Status))
 		// Return success for duplicate events (idempotency)
 		utils.OKResponse(c, "Webhook already processed", gin.H{
 			"event_id":     headers.EventID,
@@ -153,8 +189,16 @@ func (h *EcommerceWebhookHandler) processWebhook(
 	}
 
 	// Parse webhook payload
+	h.logger.Debug("Parsing webhook payload",
+		zap.String("event_type", eventType),
+		zap.String("event_id", headers.EventID))
+
 	webhookData, err := parseFunc(bodyBytes)
 	if err != nil {
+		h.logger.Error("Invalid webhook payload",
+			zap.Error(err),
+			zap.String("event_type", eventType),
+			zap.String("event_id", headers.EventID))
 		// Mark webhook as failed
 		h.historyService.MarkFailed(c.Request.Context(), headers.EventID, err)
 		utils.BadRequestResponse(c, "Invalid webhook payload", err)
@@ -162,8 +206,16 @@ func (h *EcommerceWebhookHandler) processWebhook(
 	}
 
 	// Process webhook
+	h.logger.Debug("Processing webhook via service",
+		zap.String("event_type", eventType),
+		zap.String("event_id", headers.EventID))
+
 	poID, err := processFunc(c.Request.Context(), webhookData)
 	if err != nil {
+		h.logger.Error("Failed to process webhook via service",
+			zap.Error(err),
+			zap.String("event_type", eventType),
+			zap.String("event_id", headers.EventID))
 		// Mark webhook as failed
 		h.historyService.MarkFailed(c.Request.Context(), headers.EventID, err)
 		utils.HandleServiceError(c, "Failed to process webhook", err)
@@ -172,11 +224,19 @@ func (h *EcommerceWebhookHandler) processWebhook(
 
 	// Mark webhook as successfully processed
 	if err := h.historyService.MarkProcessed(c.Request.Context(), headers.EventID, poID); err != nil {
+		h.logger.Error("Failed to mark webhook as processed",
+			zap.Error(err),
+			zap.String("event_type", eventType),
+			zap.String("event_id", headers.EventID))
 		utils.Error("Failed to mark webhook as processed:", err)
 		// Don't fail the request - webhook was processed successfully
 	}
 
 	// Return success response
+	h.logger.Info("Webhook processed successfully via handler",
+		zap.String("event_type", eventType),
+		zap.String("event_id", headers.EventID),
+		zap.String("purchase_order_id", poID))
 	utils.OKResponse(c, "Webhook processed successfully", gin.H{
 		"event_id":          headers.EventID,
 		"event_type":        eventType,
@@ -395,6 +455,11 @@ func (h *EcommerceWebhookHandler) HandleOrderPayment(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/webhooks/history [get]
 func (h *EcommerceWebhookHandler) GetWebhookHistory(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get webhook history request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get query parameters
 	externalOrderID := c.Query("external_order_id")
 	status := c.Query("status")
@@ -408,6 +473,12 @@ func (h *EcommerceWebhookHandler) GetWebhookHistory(c *gin.Context) {
 	var events []models.WebhookEvent
 	var err error
 
+	// 3. Service Call
+	h.logger.Debug("Querying webhook history",
+		zap.String("external_order_id", externalOrderID),
+		zap.String("status", status),
+		zap.Int("limit", limit))
+
 	// Query based on filters
 	if externalOrderID != "" {
 		events, err = h.webhookRepo.FindByExternalOrderID(c.Request.Context(), externalOrderID)
@@ -417,11 +488,17 @@ func (h *EcommerceWebhookHandler) GetWebhookHistory(c *gin.Context) {
 		events, err = h.webhookRepo.FindRecent(c.Request.Context(), limit)
 	}
 
+	// 4. Service Error
 	if err != nil {
+		h.logger.Error("Failed to retrieve webhook history",
+			zap.Error(err))
 		utils.HandleServiceError(c, "Failed to retrieve webhook history", err)
 		return
 	}
 
+	// 5. Success
+	h.logger.Info("Webhook history retrieved successfully via handler",
+		zap.Int("count", len(events)))
 	utils.OKResponse(c, "Webhook history retrieved successfully", events)
 }
 
@@ -439,12 +516,26 @@ func (h *EcommerceWebhookHandler) GetWebhookHistory(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/webhooks/stats [get]
 func (h *EcommerceWebhookHandler) GetWebhookStats(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get webhook stats request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
+	// 3. Service Call
+	h.logger.Debug("Calling service to get webhook stats")
+
 	stats, err := h.historyService.GetWebhookStats(c.Request.Context())
+
+	// 4. Service Error
 	if err != nil {
+		h.logger.Error("Failed to retrieve webhook stats via service",
+			zap.Error(err))
 		utils.HandleServiceError(c, "Failed to retrieve webhook stats", err)
 		return
 	}
 
+	// 5. Success
+	h.logger.Info("Webhook statistics retrieved successfully via handler")
 	utils.OKResponse(c, "Webhook statistics retrieved successfully", stats)
 }
 

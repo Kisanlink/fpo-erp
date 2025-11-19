@@ -8,7 +8,9 @@ import (
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
 	"kisanlink-erp/internal/errors"
+	"kisanlink-erp/internal/interfaces"
 
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -19,6 +21,7 @@ type GRNService struct {
 	warehouseRepo *repositories.WarehouseRepository
 	productRepo   *repositories.ProductRepository
 	inventoryRepo *repositories.InventoryRepository
+	logger        interfaces.Logger
 }
 
 // NewGRNService creates a new GRN service
@@ -28,6 +31,7 @@ func NewGRNService(
 	warehouseRepo *repositories.WarehouseRepository,
 	productRepo *repositories.ProductRepository,
 	inventoryRepo *repositories.InventoryRepository,
+	logger interfaces.Logger,
 ) *GRNService {
 	return &GRNService{
 		grnRepo:       grnRepo,
@@ -35,19 +39,32 @@ func NewGRNService(
 		warehouseRepo: warehouseRepo,
 		productRepo:   productRepo,
 		inventoryRepo: inventoryRepo,
+		logger:        logger,
 	}
 }
 
 // CreateGRN creates a new goods receipt note and inventory batches
 func (s *GRNService) CreateGRN(ctx context.Context, request *models.CreateGRNRequest) (*models.GRNResponse, error) {
+	s.logger.Info("Creating manual GRN",
+		zap.String("grn_number", request.GRNNumber),
+		zap.String("po_id", request.POID),
+		zap.String("received_by", request.ReceivedBy),
+		zap.Int("items_count", len(request.Items)))
+
 	// Validate purchase order exists with items
 	po, err := s.poRepo.GetByIDWithItems(request.POID)
 	if err != nil {
+		s.logger.Error("Failed to retrieve purchase order for GRN",
+			zap.Error(err),
+			zap.String("po_id", request.POID))
 		return nil, err
 	}
 
 	// Validate PO status is delivered
 	if po.Status != "delivered" {
+		s.logger.Warn("Attempted to create GRN for non-delivered PO",
+			zap.String("po_id", request.POID),
+			zap.String("po_status", po.Status))
 		return nil, errors.NewBadRequestError("Purchase order must be in 'delivered' status to create GRN")
 	}
 
@@ -116,11 +133,19 @@ func (s *GRNService) CreateGRN(ctx context.Context, request *models.CreateGRNReq
 	// Validate GRN number is unique
 	exists, err = s.grnRepo.GRNNumberExists(grnNumber)
 	if err != nil {
+		s.logger.Error("Failed to check GRN number uniqueness",
+			zap.Error(err),
+			zap.String("grn_number", grnNumber))
 		return nil, err
 	}
 	if exists {
+		s.logger.Warn("Duplicate GRN number provided",
+			zap.String("grn_number", grnNumber))
 		return nil, errors.NewConflictError(fmt.Sprintf("GRN number '%s' already exists", grnNumber))
 	}
+
+	s.logger.Debug("GRN number validation passed",
+		zap.String("grn_number", grnNumber))
 
 	// Create GRN, items, and inventory batches in a transaction
 	var grn *models.GRN
@@ -164,6 +189,14 @@ func (s *GRNService) CreateGRN(ctx context.Context, request *models.CreateGRNReq
 
 			// Create inventory batch for accepted quantity
 			if itemReq.AcceptedQuantity > 0 {
+				s.logger.Debug("Creating inventory batch from manual GRN",
+					zap.String("grn_number", grnNumber),
+					zap.String("variant_id", poItem.VariantID),
+					zap.Int64("accepted_qty", itemReq.AcceptedQuantity),
+					zap.Float64("cost_price", poItem.UnitPrice),
+					zap.String("expiry_date", expiryDate.Format("2006-01-02")),
+					zap.Stringp("batch_number", itemReq.BatchNumber))
+
 				// Create inventory batch with ALL-IN cost price from PO
 				// For procurement, we use the PO unit price as cost price
 				// Tax rates are 0 because PO price already includes all taxes
@@ -180,8 +213,15 @@ func (s *GRNService) CreateGRN(ctx context.Context, request *models.CreateGRNReq
 				)
 
 				if err := s.inventoryRepo.CreateBatchWithTx(tx, batch); err != nil {
+					s.logger.Error("Failed to create inventory batch in manual GRN",
+						zap.Error(err),
+						zap.String("grn_number", grnNumber))
 					return err
 				}
+
+				s.logger.Debug("Inventory batch created from manual GRN",
+					zap.String("batch_id", batch.ID),
+					zap.String("grn_number", grnNumber))
 
 				// Link inventory batch to GRN item
 				grnItem.InventoryBatchID = &batch.ID
@@ -198,8 +238,15 @@ func (s *GRNService) CreateGRN(ctx context.Context, request *models.CreateGRNReq
 					receivedDate,
 				)
 				if err := s.inventoryRepo.CreateTransactionWithTx(tx, transaction); err != nil {
+					s.logger.Error("Failed to create inventory transaction",
+						zap.Error(err),
+						zap.String("batch_id", batch.ID))
 					return err
 				}
+
+				s.logger.Debug("Inventory transaction created",
+					zap.String("batch_id", batch.ID),
+					zap.Int64("quantity", itemReq.AcceptedQuantity))
 			}
 
 			// Save GRN item
@@ -217,8 +264,16 @@ func (s *GRNService) CreateGRN(ctx context.Context, request *models.CreateGRNReq
 	})
 
 	if err != nil {
+		s.logger.Error("Failed to create GRN in transaction",
+			zap.Error(err),
+			zap.String("grn_number", grnNumber))
 		return nil, err
 	}
+
+	s.logger.Info("Manual GRN created successfully",
+		zap.String("grn_id", grn.ID),
+		zap.String("grn_number", grn.GRNNumber),
+		zap.String("quality_status", grn.QualityStatus))
 
 	// Fetch complete GRN with items
 	return s.GetGRN(ctx, grn.ID)
@@ -226,8 +281,14 @@ func (s *GRNService) CreateGRN(ctx context.Context, request *models.CreateGRNReq
 
 // GetGRN retrieves a GRN by ID with items
 func (s *GRNService) GetGRN(ctx context.Context, id string) (*models.GRNResponse, error) {
+	s.logger.Debug("Retrieving GRN",
+		zap.String("grn_id", id))
+
 	grn, err := s.grnRepo.GetByIDWithItems(id)
 	if err != nil {
+		s.logger.Error("Failed to retrieve GRN",
+			zap.Error(err),
+			zap.String("grn_id", id))
 		return nil, err
 	}
 
@@ -312,9 +373,17 @@ func (s *GRNService) GetGRNByPurchaseOrder(ctx context.Context, poID string) (*m
 
 // UpdateGRN updates a GRN
 func (s *GRNService) UpdateGRN(ctx context.Context, id string, request *models.UpdateGRNRequest) (*models.GRNResponse, error) {
+	s.logger.Info("Updating GRN",
+		zap.String("grn_id", id),
+		zap.Bool("has_document", request.GRNDocument != nil),
+		zap.Bool("has_quality_status", request.QualityStatus != nil))
+
 	// Validate GRN exists
 	_, err := s.grnRepo.GetByID(id)
 	if err != nil {
+		s.logger.Error("Failed to retrieve GRN for update",
+			zap.Error(err),
+			zap.String("grn_id", id))
 		return nil, err
 	}
 

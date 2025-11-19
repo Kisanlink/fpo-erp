@@ -36,12 +36,27 @@ import (
 
 	"github.com/Kisanlink/kisanlink-db/pkg/core/hash"
 	kdb "github.com/Kisanlink/kisanlink-db/pkg/db"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 func main() {
-	// Initialize logger
-	utils.Init()
+	// Initialize structured logger
+	zapLogger, err := zap.NewDevelopment()
+	if err != nil {
+		log.Fatalf("Failed to initialize logger: %v", err)
+	}
+	defer func() {
+		if err := zapLogger.Sync(); err != nil {
+			log.Printf("Failed to sync logger: %v", err)
+		}
+	}()
+
+	// Create logger adapter
+	logger := utils.NewLoggerAdapter(zapLogger)
+
+	// Set global logger for utils functions
+	utils.SetGlobalLogger(zapLogger)
 
 	// Load configuration from environment variables
 	cfg := config.Load()
@@ -104,7 +119,7 @@ func main() {
 	}
 
 	// Initialize HTTP server with AAA middleware
-	httpServer := api_server.NewServer(pg, cfg)
+	httpServer := api_server.NewServer(pg, cfg, logger)
 
 	// Start HTTP server
 	go func() {

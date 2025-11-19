@@ -9,28 +9,50 @@ import (
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
 	"kisanlink-erp/internal/errors"
+	"kisanlink-erp/internal/interfaces"
+
+	"go.uber.org/zap"
 )
 
 // WarehouseService handles warehouse business logic
 type WarehouseService struct {
 	warehouseRepo *repositories.WarehouseRepository
 	addressClient *aaa.AddressGRPCClient
+	logger        interfaces.Logger
 }
 
 // NewWarehouseService creates a new warehouse service
-func NewWarehouseService(warehouseRepo *repositories.WarehouseRepository, addressClient *aaa.AddressGRPCClient) *WarehouseService {
+func NewWarehouseService(warehouseRepo *repositories.WarehouseRepository, addressClient *aaa.AddressGRPCClient, logger interfaces.Logger) *WarehouseService {
 	return &WarehouseService{
 		warehouseRepo: warehouseRepo,
 		addressClient: addressClient,
+		logger:        logger,
 	}
 }
 
 // CreateWarehouse creates a new warehouse
 func (s *WarehouseService) CreateWarehouse(ctx context.Context, request *models.CreateWarehouseRequest, userID string, jwtToken string) (*models.WarehouseResponse, error) {
+	s.logger.Info("Creating warehouse",
+		zap.String("name", request.Name),
+		zap.String("user_id", userID),
+		zap.Bool("has_inline_address", request.Address != nil))
+
 	var addressID *string
 
 	// Handle inline address creation if provided
 	if request.Address != nil {
+		state := ""
+		if request.Address.State != nil {
+			state = *request.Address.State
+		}
+		district := ""
+		if request.Address.District != nil {
+			district = *request.Address.District
+		}
+		s.logger.Debug("Creating address via AAA service",
+			zap.String("state", state),
+			zap.String("district", district))
+
 		// Create address via AAA service with timeout
 		ctxAddr, cancel := context.WithTimeout(ctx, 3*time.Second)
 		defer cancel()
@@ -51,23 +73,41 @@ func (s *WarehouseService) CreateWarehouse(ctx context.Context, request *models.
 			IsPrimary:   request.Address.IsPrimary,
 		}, jwtToken)
 		if err != nil {
+			s.logger.Error("Failed to create address via AAA",
+				zap.Error(err),
+				zap.String("user_id", userID))
 			return nil, fmt.Errorf("failed to create address: %w", err)
 		}
 		addressID = &address.ID
+		s.logger.Debug("Address created successfully",
+			zap.String("address_id", address.ID))
 	} else if request.AddressID != nil {
 		addressID = request.AddressID
+		s.logger.Debug("Using existing address",
+			zap.String("address_id", *addressID))
 	}
 
 	// Create warehouse model using the proper constructor
 	warehouse := models.NewWarehouse(request.Name, addressID)
 
+	s.logger.Debug("Saving warehouse to database")
+
 	// Save to database
 	if err := s.warehouseRepo.Create(warehouse); err != nil {
+		s.logger.Error("Failed to create warehouse",
+			zap.Error(err),
+			zap.String("name", request.Name))
 		if addressID != nil {
+			s.logger.Warn("Rolling back address creation",
+				zap.String("address_id", *addressID))
 			_ = s.addressClient.DeleteAddress(ctx, *addressID, true, jwtToken) // best-effort rollback
 		}
 		return nil, err
 	}
+
+	s.logger.Info("Warehouse created successfully",
+		zap.String("warehouse_id", warehouse.ID),
+		zap.String("name", warehouse.Name))
 
 	// Build response with address details
 	return s.buildWarehouseResponse(ctx, warehouse, jwtToken)
@@ -75,18 +115,32 @@ func (s *WarehouseService) CreateWarehouse(ctx context.Context, request *models.
 
 // GetWarehouse retrieves a warehouse by ID
 func (s *WarehouseService) GetWarehouse(ctx context.Context, id string, jwtToken string) (*models.WarehouseResponse, error) {
+	s.logger.Info("Retrieving warehouse",
+		zap.String("warehouse_id", id))
+
 	warehouse, err := s.warehouseRepo.GetByID(id)
 	if err != nil {
+		s.logger.Error("Failed to retrieve warehouse",
+			zap.Error(err),
+			zap.String("warehouse_id", id))
 		return nil, err
 	}
+
+	s.logger.Debug("Warehouse retrieved successfully",
+		zap.String("warehouse_id", id),
+		zap.String("name", warehouse.Name))
 
 	return s.buildWarehouseResponse(ctx, warehouse, jwtToken)
 }
 
 // GetAllWarehouses retrieves all warehouses
 func (s *WarehouseService) GetAllWarehouses(ctx context.Context, jwtToken string) ([]models.WarehouseResponse, error) {
+	s.logger.Info("Retrieving all warehouses")
+
 	warehouses, err := s.warehouseRepo.GetAll()
 	if err != nil {
+		s.logger.Error("Failed to retrieve all warehouses",
+			zap.Error(err))
 		return nil, err
 	}
 
@@ -95,26 +149,51 @@ func (s *WarehouseService) GetAllWarehouses(ctx context.Context, jwtToken string
 		response, err := s.buildWarehouseResponse(ctx, &warehouse, jwtToken)
 		if err != nil {
 			// Log error but continue with other warehouses
+			s.logger.Warn("Failed to build warehouse response",
+				zap.Error(err),
+				zap.String("warehouse_id", warehouse.ID))
 			continue
 		}
 		responses = append(responses, *response)
 	}
+
+	s.logger.Info("Retrieved all warehouses successfully",
+		zap.Int("count", len(responses)))
 
 	return responses, nil
 }
 
 // UpdateWarehouse updates a warehouse
 func (s *WarehouseService) UpdateWarehouse(ctx context.Context, id string, request *models.UpdateWarehouseRequest, jwtToken string) (*models.WarehouseResponse, error) {
+	s.logger.Info("Updating warehouse",
+		zap.String("warehouse_id", id))
+
 	// Get existing warehouse
 	warehouse, err := s.warehouseRepo.GetByID(id)
 	if err != nil {
+		s.logger.Error("Failed to retrieve warehouse for update",
+			zap.Error(err),
+			zap.String("warehouse_id", id))
 		return nil, err
 	}
 
 	// Handle inline address updates if provided
 	if request.Address != nil {
+		s.logger.Debug("Updating warehouse address",
+			zap.String("warehouse_id", id),
+			zap.String("address_id", request.Address.ID))
+
 		// Validate ownership/association before update
 		if warehouse.AddressID == nil || request.Address.ID == "" || *warehouse.AddressID != request.Address.ID {
+			s.logger.Warn("Address mismatch during warehouse update",
+				zap.String("warehouse_id", id),
+				zap.String("expected_address_id", func() string {
+					if warehouse.AddressID != nil {
+						return *warehouse.AddressID
+					}
+					return "nil"
+				}()),
+				zap.String("provided_address_id", request.Address.ID))
 			return nil, errors.NewBadRequestError("address mismatch: update not permitted")
 		}
 		// Update address via AAA service
@@ -135,10 +214,18 @@ func (s *WarehouseService) UpdateWarehouse(ctx context.Context, id string, reque
 			IsActive:    true,
 		}, jwtToken)
 		if err != nil {
+			s.logger.Error("Failed to update address via AAA",
+				zap.Error(err),
+				zap.String("address_id", request.Address.ID))
 			return nil, fmt.Errorf("failed to update address: %w", err)
 		}
 		warehouse.AddressID = &address.ID
+		s.logger.Debug("Address updated successfully",
+			zap.String("address_id", address.ID))
 	}
+
+	s.logger.Debug("Applying warehouse updates",
+		zap.String("warehouse_id", id))
 
 	// Update fields if provided
 	if request.Name != nil {
@@ -150,36 +237,71 @@ func (s *WarehouseService) UpdateWarehouse(ctx context.Context, id string, reque
 
 	// Save to database
 	if err := s.warehouseRepo.Update(warehouse); err != nil {
+		s.logger.Error("Failed to update warehouse",
+			zap.Error(err),
+			zap.String("warehouse_id", id))
 		return nil, err
 	}
+
+	s.logger.Info("Warehouse updated successfully",
+		zap.String("warehouse_id", id),
+		zap.String("name", warehouse.Name))
 
 	return s.buildWarehouseResponse(ctx, warehouse, jwtToken)
 }
 
 // DeleteWarehouse deletes a warehouse
 func (s *WarehouseService) DeleteWarehouse(ctx context.Context, id string, jwtToken string) error {
+	s.logger.Info("Deleting warehouse",
+		zap.String("warehouse_id", id))
+
 	// Get warehouse to check if it has an address
 	warehouse, err := s.warehouseRepo.GetByID(id)
 	if err != nil {
+		s.logger.Error("Failed to retrieve warehouse for deletion",
+			zap.Error(err),
+			zap.String("warehouse_id", id))
 		return err
 	}
 
 	// Delete associated address if exists
 	if warehouse.AddressID != nil {
+		s.logger.Debug("Deleting associated address",
+			zap.String("warehouse_id", id),
+			zap.String("address_id", *warehouse.AddressID))
+
 		if err := s.addressClient.DeleteAddress(ctx, *warehouse.AddressID, true, jwtToken); err != nil {
 			// Log error but don't fail the warehouse deletion
-			// You might want to handle this differently based on requirements
+			s.logger.Warn("Failed to delete associated address",
+				zap.Error(err),
+				zap.String("address_id", *warehouse.AddressID))
 		}
 	}
 
 	// Delete warehouse
-	return s.warehouseRepo.Delete(id)
+	if err := s.warehouseRepo.Delete(id); err != nil {
+		s.logger.Error("Failed to delete warehouse",
+			zap.Error(err),
+			zap.String("warehouse_id", id))
+		return err
+	}
+
+	s.logger.Info("Warehouse deleted successfully",
+		zap.String("warehouse_id", id))
+
+	return nil
 }
 
 // SearchWarehouses searches warehouses by name
 func (s *WarehouseService) SearchWarehouses(ctx context.Context, query string, jwtToken string) ([]models.WarehouseResponse, error) {
+	s.logger.Info("Searching warehouses",
+		zap.String("query", query))
+
 	warehouses, err := s.warehouseRepo.GetByName(query)
 	if err != nil {
+		s.logger.Error("Failed to search warehouses",
+			zap.Error(err),
+			zap.String("query", query))
 		return nil, err
 	}
 
@@ -188,10 +310,17 @@ func (s *WarehouseService) SearchWarehouses(ctx context.Context, query string, j
 		response, err := s.buildWarehouseResponse(ctx, &warehouse, jwtToken)
 		if err != nil {
 			// Log error but continue with other warehouses
+			s.logger.Warn("Failed to build warehouse response",
+				zap.Error(err),
+				zap.String("warehouse_id", warehouse.ID))
 			continue
 		}
 		responses = append(responses, *response)
 	}
+
+	s.logger.Info("Warehouse search completed",
+		zap.String("query", query),
+		zap.Int("results", len(responses)))
 
 	return responses, nil
 }

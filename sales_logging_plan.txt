@@ -1,0 +1,21 @@
+Sales Handler Logging Plan
+===========================
+
+COMPLETED (6 logs):
+1. CreateSale - 6 logs (entry, validation error, debug, service error, success with BRD fields)
+
+REMAINING (12 endpoints, ~60 logs needed):
+2. GetSale
+3. GetAllSales
+4. UpdateSale
+5. DeleteSale
+6. GetSalesByDateRange
+7. GetSalesByStatus
+8. GetTotalSalesAmount
+9. GetTopSellingProducts
+10. GetSalesSummary
+11. UpdateSaleStatus
+12. GetReturnsForSale
+13. (RegisterRoutes - no logs needed)
+
+Strategy: Batch update 3-4 endpoints at a time to be efficient

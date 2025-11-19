@@ -1,13 +1,12 @@
 package server
 
 import (
-	"time"
-
 	_ "kisanlink-erp/docs"
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/api/middleware"
 	"kisanlink-erp/internal/api/routes"
 	"kisanlink-erp/internal/config"
+	"kisanlink-erp/internal/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	scalar "github.com/MarceloPetrucio/go-scalar-api-reference"
@@ -22,16 +21,17 @@ type Server struct {
 	Router        *gin.Engine
 	config        *config.Config
 	db            *gorm.DB
+	logger        interfaces.Logger
 	aaaMiddleware *aaa.AAAMiddleware
 }
 
 // NewServer creates a new API server
-func NewServer(db *gorm.DB, cfg *config.Config) *Server {
+func NewServer(db *gorm.DB, cfg *config.Config, logger interfaces.Logger) *Server {
 	// Set Gin mode
 	gin.SetMode(cfg.Server.Mode)
 
-	// Create router
-	router := gin.New()
+	// Create router (gin.Default includes colored logger and recovery middleware like farmers-module)
+	router := gin.Default()
 
 	// Initialize AAA middleware
 	aaaMiddleware, err := aaa.NewAAAMiddleware(cfg)
@@ -45,6 +45,7 @@ func NewServer(db *gorm.DB, cfg *config.Config) *Server {
 		Router:        router,
 		config:        cfg,
 		db:            db,
+		logger:        logger,
 		aaaMiddleware: aaaMiddleware,
 	}
 
@@ -61,10 +62,8 @@ func NewServer(db *gorm.DB, cfg *config.Config) *Server {
 func (s *Server) setupMiddleware() {
 	// Global middleware
 	s.Router.Use(
-		middleware.LoggingMiddleware(),
-		middleware.RequestIDMiddleware(),
-		middleware.ErrorLoggingMiddleware(),
-		middleware.PerformanceMiddleware(5*time.Second), // 5 second threshold
+		middleware.RequestID(),
+		middleware.Logger(s.logger),
 		middleware.CORSMiddleware(s.config),
 		middleware.SecurityHeadersMiddleware(),
 		middleware.CreateRateLimitMiddleware(100, 60), // 100 requests per minute
@@ -137,7 +136,7 @@ func (s *Server) setupMiddleware() {
 // setupRoutes configures all API routes
 func (s *Server) setupRoutes() {
 	// Register all routes using the routes package with the AAA middleware
-	routes.RegisterRoutes(s.Router, s.db, s.config, s.aaaMiddleware)
+	routes.RegisterRoutes(s.Router, s.db, s.config, s.aaaMiddleware, s.logger)
 
 	// 404 handler for unmatched routes
 	s.Router.NoRoute(func(c *gin.Context) {

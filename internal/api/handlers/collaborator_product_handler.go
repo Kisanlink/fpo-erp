@@ -3,23 +3,27 @@ package handlers
 import (
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
+	logger "kisanlink-erp/internal/interfaces"
 	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 // CollaboratorProductHandler handles collaborator-product association HTTP requests
 type CollaboratorProductHandler struct {
 	collabProductService interfaces.CollaboratorProductServiceInterface
 	aaaMiddleware        *aaa.AAAMiddleware
+	logger               logger.Logger
 }
 
 // NewCollaboratorProductHandler creates a new collaborator product handler
-func NewCollaboratorProductHandler(collabProductService interfaces.CollaboratorProductServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *CollaboratorProductHandler {
+func NewCollaboratorProductHandler(collabProductService interfaces.CollaboratorProductServiceInterface, aaaMiddleware *aaa.AAAMiddleware, logger logger.Logger) *CollaboratorProductHandler {
 	return &CollaboratorProductHandler{
 		collabProductService: collabProductService,
 		aaaMiddleware:        aaaMiddleware,
+		logger:               logger,
 	}
 }
 
@@ -41,9 +45,14 @@ func NewCollaboratorProductHandler(collabProductService interfaces.CollaboratorP
 // @Security BearerAuth
 // @Router /api/v1/collaborators/{id}/products [post]
 func (h *CollaboratorProductHandler) AddProductToCollaborator(c *gin.Context) {
+	h.logger.Info("Handling add product to collaborator request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get collaborator ID from URL
 	collaboratorID := c.Param("id")
 	if collaboratorID == "" {
+		h.logger.Error("Collaborator ID is required but not provided")
 		utils.BadRequestResponse(c, "Collaborator ID is required", nil)
 		return
 	}
@@ -52,16 +61,32 @@ func (h *CollaboratorProductHandler) AddProductToCollaborator(c *gin.Context) {
 
 	// Validate request
 	if err := utils.ValidateRequest(c, &request); err != nil {
+		h.logger.Error("Invalid request body for add product to collaborator",
+			zap.Error(err),
+			zap.String("collaborator_id", collaboratorID))
 		utils.BadRequestResponse(c, "Invalid request data", err)
 		return
 	}
 
+	h.logger.Debug("Calling collaborator product service to add product",
+		zap.String("collaborator_id", collaboratorID),
+		zap.String("product_id", request.ProductID))
+
 	// Add product to collaborator
 	response, err := h.collabProductService.AddProductToCollaborator(c.Request.Context(), collaboratorID, &request)
 	if err != nil {
+		h.logger.Error("Failed to add product to collaborator via service",
+			zap.Error(err),
+			zap.String("collaborator_id", collaboratorID),
+			zap.String("product_id", request.ProductID))
 		utils.HandleServiceError(c, "Failed to add product to collaborator", err)
 		return
 	}
+
+	h.logger.Info("Product added to collaborator successfully via handler",
+		zap.String("collaborator_product_id", response.ID),
+		zap.String("collaborator_id", collaboratorID),
+		zap.String("product_id", request.ProductID))
 
 	utils.CreatedResponse(c, "Product added to collaborator successfully", response)
 }
@@ -78,19 +103,34 @@ func (h *CollaboratorProductHandler) AddProductToCollaborator(c *gin.Context) {
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Router /api/v1/collaborators/{id}/products [get]
 func (h *CollaboratorProductHandler) GetProductsByCollaborator(c *gin.Context) {
+	h.logger.Info("Handling get products by collaborator request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get collaborator ID from URL
 	collaboratorID := c.Param("id")
 	if collaboratorID == "" {
+		h.logger.Error("Collaborator ID is required but not provided")
 		utils.BadRequestResponse(c, "Collaborator ID is required", nil)
 		return
 	}
 
+	h.logger.Debug("Calling collaborator product service to get products by collaborator",
+		zap.String("collaborator_id", collaboratorID))
+
 	// Get products
 	response, err := h.collabProductService.GetProductsByCollaborator(c.Request.Context(), collaboratorID)
 	if err != nil {
+		h.logger.Error("Failed to retrieve products by collaborator via service",
+			zap.Error(err),
+			zap.String("collaborator_id", collaboratorID))
 		utils.HandleServiceError(c, "Failed to retrieve products", err)
 		return
 	}
+
+	h.logger.Info("Products by collaborator retrieved successfully via handler",
+		zap.String("collaborator_id", collaboratorID),
+		zap.Int("count", len(response)))
 
 	utils.OKResponse(c, "Products retrieved successfully", response)
 }
@@ -107,19 +147,34 @@ func (h *CollaboratorProductHandler) GetProductsByCollaborator(c *gin.Context) {
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Router /api/v1/products/{id}/collaborators [get]
 func (h *CollaboratorProductHandler) GetCollaboratorsByProduct(c *gin.Context) {
+	h.logger.Info("Handling get collaborators by product request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get product ID from URL
 	productID := c.Param("id")
 	if productID == "" {
+		h.logger.Error("Product ID is required but not provided")
 		utils.BadRequestResponse(c, "Product ID is required", nil)
 		return
 	}
 
+	h.logger.Debug("Calling collaborator product service to get collaborators by product",
+		zap.String("product_id", productID))
+
 	// Get collaborators
 	response, err := h.collabProductService.GetCollaboratorsByProduct(c.Request.Context(), productID)
 	if err != nil {
+		h.logger.Error("Failed to retrieve collaborators by product via service",
+			zap.Error(err),
+			zap.String("product_id", productID))
 		utils.HandleServiceError(c, "Failed to retrieve collaborators", err)
 		return
 	}
+
+	h.logger.Info("Collaborators by product retrieved successfully via handler",
+		zap.String("product_id", productID),
+		zap.Int("count", len(response)))
 
 	utils.OKResponse(c, "Collaborators retrieved successfully", response)
 }
@@ -136,19 +191,33 @@ func (h *CollaboratorProductHandler) GetCollaboratorsByProduct(c *gin.Context) {
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Router /api/v1/collaborator-products/{id} [get]
 func (h *CollaboratorProductHandler) GetCollaboratorProduct(c *gin.Context) {
+	h.logger.Info("Handling get collaborator product request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get ID from URL
 	id := c.Param("id")
 	if id == "" {
+		h.logger.Error("Collaborator Product ID is required but not provided")
 		utils.BadRequestResponse(c, "Collaborator Product ID is required", nil)
 		return
 	}
 
+	h.logger.Debug("Calling collaborator product service to get association",
+		zap.String("collaborator_product_id", id))
+
 	// Get association
 	response, err := h.collabProductService.GetCollaboratorProduct(c.Request.Context(), id)
 	if err != nil {
+		h.logger.Error("Association not found",
+			zap.Error(err),
+			zap.String("collaborator_product_id", id))
 		utils.NotFoundResponse(c, "Association not found")
 		return
 	}
+
+	h.logger.Info("Association retrieved successfully via handler",
+		zap.String("collaborator_product_id", response.ID))
 
 	utils.OKResponse(c, "Association retrieved successfully", response)
 }
@@ -172,9 +241,14 @@ func (h *CollaboratorProductHandler) GetCollaboratorProduct(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/collaborator-products/{id} [put]
 func (h *CollaboratorProductHandler) UpdateCollaboratorProduct(c *gin.Context) {
+	h.logger.Info("Handling update collaborator product request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get ID from URL
 	id := c.Param("id")
 	if id == "" {
+		h.logger.Error("Collaborator Product ID is required but not provided")
 		utils.BadRequestResponse(c, "Collaborator Product ID is required", nil)
 		return
 	}
@@ -183,16 +257,28 @@ func (h *CollaboratorProductHandler) UpdateCollaboratorProduct(c *gin.Context) {
 
 	// Validate request
 	if err := utils.ValidateRequest(c, &request); err != nil {
+		h.logger.Error("Invalid request body for update collaborator product",
+			zap.Error(err),
+			zap.String("collaborator_product_id", id))
 		utils.BadRequestResponse(c, "Invalid request data", err)
 		return
 	}
 
+	h.logger.Debug("Calling collaborator product service to update association",
+		zap.String("collaborator_product_id", id))
+
 	// Update association
 	response, err := h.collabProductService.UpdateCollaboratorProduct(c.Request.Context(), id, &request)
 	if err != nil {
+		h.logger.Error("Failed to update association via service",
+			zap.Error(err),
+			zap.String("collaborator_product_id", id))
 		utils.HandleServiceError(c, "Failed to update association", err)
 		return
 	}
+
+	h.logger.Info("Association updated successfully via handler",
+		zap.String("collaborator_product_id", response.ID))
 
 	utils.OKResponse(c, "Association updated successfully", response)
 }
@@ -215,20 +301,37 @@ func (h *CollaboratorProductHandler) UpdateCollaboratorProduct(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/collaborators/{id}/products/{product_id} [delete]
 func (h *CollaboratorProductHandler) RemoveProductFromCollaborator(c *gin.Context) {
+	h.logger.Info("Handling remove product from collaborator request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get IDs from URL
 	collaboratorID := c.Param("id")
 	productID := c.Param("product_id")
 
 	if collaboratorID == "" || productID == "" {
+		h.logger.Error("Collaborator ID and Product ID are required but not provided")
 		utils.BadRequestResponse(c, "Collaborator ID and Product ID are required", nil)
 		return
 	}
 
+	h.logger.Debug("Calling collaborator product service to remove product",
+		zap.String("collaborator_id", collaboratorID),
+		zap.String("product_id", productID))
+
 	// Remove association
 	if err := h.collabProductService.RemoveProductFromCollaborator(c.Request.Context(), collaboratorID, productID); err != nil {
+		h.logger.Error("Failed to remove product from collaborator via service",
+			zap.Error(err),
+			zap.String("collaborator_id", collaboratorID),
+			zap.String("product_id", productID))
 		utils.HandleServiceError(c, "Failed to remove product from collaborator", err)
 		return
 	}
+
+	h.logger.Info("Product removed from collaborator successfully via handler",
+		zap.String("collaborator_id", collaboratorID),
+		zap.String("product_id", productID))
 
 	utils.OKResponse(c, "Product removed from collaborator successfully", nil)
 }
@@ -250,18 +353,32 @@ func (h *CollaboratorProductHandler) RemoveProductFromCollaborator(c *gin.Contex
 // @Security BearerAuth
 // @Router /api/v1/collaborator-products/{id} [delete]
 func (h *CollaboratorProductHandler) DeleteCollaboratorProduct(c *gin.Context) {
+	h.logger.Info("Handling delete collaborator product request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get ID from URL
 	id := c.Param("id")
 	if id == "" {
+		h.logger.Error("Collaborator Product ID is required but not provided")
 		utils.BadRequestResponse(c, "Collaborator Product ID is required", nil)
 		return
 	}
 
+	h.logger.Debug("Calling collaborator product service to delete association",
+		zap.String("collaborator_product_id", id))
+
 	// Delete association
 	if err := h.collabProductService.DeleteCollaboratorProduct(c.Request.Context(), id); err != nil {
+		h.logger.Error("Failed to delete association via service",
+			zap.Error(err),
+			zap.String("collaborator_product_id", id))
 		utils.HandleServiceError(c, "Failed to delete association", err)
 		return
 	}
+
+	h.logger.Info("Association deleted successfully via handler",
+		zap.String("collaborator_product_id", id))
 
 	utils.OKResponse(c, "Association deleted successfully", nil)
 }

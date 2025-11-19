@@ -7,22 +7,26 @@ import (
 	"time"
 
 	"kisanlink-erp/internal/aaa"
+	logger "kisanlink-erp/internal/interfaces"
 	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 // AttachmentHandler handles attachment HTTP requests
 type AttachmentHandler struct {
 	attachmentService interfaces.AttachmentServiceInterface
 	aaaMiddleware     *aaa.AAAMiddleware
+	logger            logger.Logger
 }
 
 // NewAttachmentHandler creates a new attachment handler
-func NewAttachmentHandler(attachmentService interfaces.AttachmentServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *AttachmentHandler {
+func NewAttachmentHandler(attachmentService interfaces.AttachmentServiceInterface, aaaMiddleware *aaa.AAAMiddleware, logger logger.Logger) *AttachmentHandler {
 	return &AttachmentHandler{
 		attachmentService: attachmentService,
+		logger:            logger,
 		aaaMiddleware:     aaaMiddleware,
 	}
 }
@@ -69,9 +73,15 @@ func (h *AttachmentHandler) RegisterRoutes(router *gin.RouterGroup) {
 // @Security BearerAuth
 // @Router /api/v1/attachments [post]
 func (h *AttachmentHandler) UploadAttachment(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling upload attachment request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get user ID from context (set by auth middleware)
 	userIDStr, exists := c.Get("user_id")
 	if !exists {
+		h.logger.Error("User ID not found in context for attachment upload")
 		utils.UnauthorizedResponse(c, "User ID not found in context")
 		return
 	}
@@ -80,12 +90,14 @@ func (h *AttachmentHandler) UploadAttachment(c *gin.Context) {
 	entityType := c.PostForm("entity_type")
 	entityID := c.PostForm("entity_id")
 
-	// Validate required fields
+	// 2. Validation Error
 	if entityType == "" {
+		h.logger.Error("Invalid request: entity_type is required")
 		utils.BadRequestResponse(c, "entity_type is required", nil)
 		return
 	}
 	if entityID == "" {
+		h.logger.Error("Invalid request: entity_id is required")
 		utils.BadRequestResponse(c, "entity_id is required", nil)
 		return
 	}
@@ -93,17 +105,33 @@ func (h *AttachmentHandler) UploadAttachment(c *gin.Context) {
 	// Get uploaded file
 	file, err := c.FormFile("file")
 	if err != nil {
+		h.logger.Error("Invalid request: no file uploaded",
+			zap.Error(err))
 		utils.BadRequestResponse(c, "No file uploaded", err)
 		return
 	}
 
-	// Upload attachment
+	// 3. Service Call
+	h.logger.Debug("Calling service to upload attachment",
+		zap.String("entity_type", entityType),
+		zap.String("entity_id", entityID),
+		zap.String("filename", file.Filename))
+
 	attachment, err := h.attachmentService.UploadAttachment(c.Request.Context(), file, entityType, entityID, userIDStr.(string))
+
+	// 4. Service Error
 	if err != nil {
+		h.logger.Error("Failed to upload attachment via service",
+			zap.Error(err),
+			zap.String("entity_type", entityType),
+			zap.String("entity_id", entityID))
 		utils.HandleServiceError(c, "Failed to upload attachment", err)
 		return
 	}
 
+	// 5. Success
+	h.logger.Info("Attachment upload completed successfully via handler",
+		zap.String("attachment_id", attachment.ID))
 	utils.CreatedResponse(c, "Attachment uploaded successfully", attachment)
 }
 
@@ -124,14 +152,31 @@ func (h *AttachmentHandler) UploadAttachment(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/attachments/{id} [get]
 func (h *AttachmentHandler) GetAttachment(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get attachment request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	id := c.Param("id")
 
+	// 3. Service Call
+	h.logger.Debug("Calling service to get attachment",
+		zap.String("id", id))
+
 	attachment, err := h.attachmentService.GetAttachment(id)
+
+	// 4. Service Error
 	if err != nil {
+		h.logger.Error("Failed to retrieve attachment via service",
+			zap.Error(err),
+			zap.String("id", id))
 		utils.HandleServiceError(c, "Failed to retrieve attachment", err)
 		return
 	}
 
+	// 5. Success
+	h.logger.Info("Attachment retrieved successfully via handler",
+		zap.String("id", id))
 	utils.OKResponse(c, "Attachment retrieved successfully", attachment)
 }
 
@@ -154,6 +199,11 @@ func (h *AttachmentHandler) GetAttachment(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/attachments [get]
 func (h *AttachmentHandler) GetAttachments(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get attachments request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get query parameters
 	entityType := c.Query("entity_type")
 	entityID := c.Query("entity_id")
@@ -183,13 +233,26 @@ func (h *AttachmentHandler) GetAttachments(c *gin.Context) {
 		entityIDPtr = &entityID
 	}
 
-	// Get attachments
+	// 3. Service Call
+	h.logger.Debug("Calling service to get attachments",
+		zap.String("entity_type", entityType),
+		zap.String("entity_id", entityID),
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
+
 	attachments, err := h.attachmentService.GetAttachments(entityTypePtr, entityIDPtr, limit, offset)
+
+	// 4. Service Error
 	if err != nil {
+		h.logger.Error("Failed to retrieve attachments via service",
+			zap.Error(err))
 		utils.HandleServiceError(c, "Failed to retrieve attachments", err)
 		return
 	}
 
+	// 5. Success
+	h.logger.Info("Attachments retrieved successfully via handler",
+		zap.Int("count", len(attachments)))
 	utils.OKResponse(c, "Attachments retrieved successfully", attachments)
 }
 
@@ -210,11 +273,24 @@ func (h *AttachmentHandler) GetAttachments(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/attachments/{id}/download [get]
 func (h *AttachmentHandler) DownloadAttachment(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling download attachment request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	id := c.Param("id")
 
-	// Download file
+	// 3. Service Call
+	h.logger.Debug("Calling service to download attachment",
+		zap.String("id", id))
+
 	fileReader, contentType, err := h.attachmentService.DownloadAttachment(c.Request.Context(), id)
+
+	// 4. Service Error
 	if err != nil {
+		h.logger.Error("Failed to download attachment via service",
+			zap.Error(err),
+			zap.String("id", id))
 		utils.HandleServiceError(c, "Failed to download attachment", err)
 		return
 	}
@@ -231,9 +307,16 @@ func (h *AttachmentHandler) DownloadAttachment(c *gin.Context) {
 	// Stream the file
 	r, ok := fileReader.(io.Reader)
 	if !ok {
+		h.logger.Error("Attachment stream is not readable",
+			zap.String("id", id))
 		utils.HandleServiceError(c, "Attachment stream is not readable", nil)
 		return
 	}
+
+	// 5. Success
+	h.logger.Info("Attachment download completed successfully via handler",
+		zap.String("id", id),
+		zap.String("content_type", contentType))
 	c.DataFromReader(http.StatusOK, -1, contentType, r, nil)
 }
 
@@ -255,6 +338,11 @@ func (h *AttachmentHandler) DownloadAttachment(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/attachments/{id}/url [get]
 func (h *AttachmentHandler) GenerateDownloadURL(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling generate download URL request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	id := c.Param("id")
 	expirationStr := c.DefaultQuery("expiration", "3600") // Default 1 hour
 
@@ -269,13 +357,26 @@ func (h *AttachmentHandler) GenerateDownloadURL(c *gin.Context) {
 
 	expiration := time.Duration(expirationSeconds) * time.Second
 
-	// Generate URL
+	// 3. Service Call
+	h.logger.Debug("Calling service to generate download URL",
+		zap.String("id", id),
+		zap.Int("expiration_seconds", expirationSeconds))
+
 	url, err := h.attachmentService.GenerateDownloadURL(c.Request.Context(), id, expiration)
+
+	// 4. Service Error
 	if err != nil {
+		h.logger.Error("Failed to generate download URL via service",
+			zap.Error(err),
+			zap.String("id", id))
 		utils.HandleServiceError(c, "Failed to generate download URL", err)
 		return
 	}
 
+	// 5. Success
+	h.logger.Info("Download URL generated successfully via handler",
+		zap.String("id", id),
+		zap.Int("expires_in", expirationSeconds))
 	utils.OKResponse(c, "Download URL generated successfully", gin.H{
 		"download_url": url,
 		"expires_in":   expirationSeconds,
@@ -299,14 +400,31 @@ func (h *AttachmentHandler) GenerateDownloadURL(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/attachments/{id}/info [get]
 func (h *AttachmentHandler) GetAttachmentInfo(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get attachment info request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	id := c.Param("id")
 
+	// 3. Service Call
+	h.logger.Debug("Calling service to get attachment info",
+		zap.String("id", id))
+
 	info, err := h.attachmentService.GetAttachmentInfo(c.Request.Context(), id)
+
+	// 4. Service Error
 	if err != nil {
+		h.logger.Error("Failed to retrieve attachment info via service",
+			zap.Error(err),
+			zap.String("id", id))
 		utils.HandleServiceError(c, "Failed to retrieve attachment info", err)
 		return
 	}
 
+	// 5. Success
+	h.logger.Info("Attachment info retrieved successfully via handler",
+		zap.String("id", id))
 	utils.OKResponse(c, "Attachment info retrieved successfully", info)
 }
 
@@ -327,20 +445,43 @@ func (h *AttachmentHandler) GetAttachmentInfo(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/attachments/entity/{entity_type}/{entity_id} [get]
 func (h *AttachmentHandler) GetAttachmentsByEntity(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get attachments by entity request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	entityType := c.Param("entity_type")
 	entityID := c.Param("entity_id")
 
+	// 2. Validation Error
 	if entityType == "" || entityID == "" {
+		h.logger.Error("Invalid request: entity_type and entity_id are required")
 		utils.BadRequestResponse(c, "entity_type and entity_id are required", nil)
 		return
 	}
 
+	// 3. Service Call
+	h.logger.Debug("Calling service to get attachments by entity",
+		zap.String("entity_type", entityType),
+		zap.String("entity_id", entityID))
+
 	attachments, err := h.attachmentService.GetAttachmentsByEntity(entityType, entityID)
+
+	// 4. Service Error
 	if err != nil {
+		h.logger.Error("Failed to retrieve entity attachments via service",
+			zap.Error(err),
+			zap.String("entity_type", entityType),
+			zap.String("entity_id", entityID))
 		utils.HandleServiceError(c, "Failed to retrieve entity attachments", err)
 		return
 	}
 
+	// 5. Success
+	h.logger.Info("Entity attachments retrieved successfully via handler",
+		zap.String("entity_type", entityType),
+		zap.String("entity_id", entityID),
+		zap.Int("count", len(attachments)))
 	utils.OKResponse(c, "Entity attachments retrieved successfully", attachments)
 }
 
@@ -361,13 +502,30 @@ func (h *AttachmentHandler) GetAttachmentsByEntity(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/attachments/{id} [delete]
 func (h *AttachmentHandler) DeleteAttachment(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling delete attachment request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	id := c.Param("id")
 
+	// 3. Service Call
+	h.logger.Debug("Calling service to delete attachment",
+		zap.String("id", id))
+
 	err := h.attachmentService.DeleteAttachment(c.Request.Context(), id)
+
+	// 4. Service Error
 	if err != nil {
+		h.logger.Error("Failed to delete attachment via service",
+			zap.Error(err),
+			zap.String("id", id))
 		utils.HandleServiceError(c, "Failed to delete attachment", err)
 		return
 	}
 
+	// 5. Success
+	h.logger.Info("Attachment deleted successfully via handler",
+		zap.String("id", id))
 	utils.OKResponse(c, "Attachment deleted successfully", nil)
 }

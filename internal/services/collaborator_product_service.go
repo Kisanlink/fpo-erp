@@ -1,6 +1,9 @@
 package services
 
 import (
+	"go.uber.org/zap"
+	"kisanlink-erp/internal/interfaces"
+
 	"context"
 	"encoding/json"
 	"fmt"
@@ -17,6 +20,7 @@ type CollaboratorProductService struct {
 	collaboratorRepo  *repositories.CollaboratorRepository
 	productRepo       *repositories.ProductRepository
 	variantRepo       *repositories.ProductVariantRepository // Added for unified architecture
+	logger        interfaces.Logger
 }
 
 // NewCollaboratorProductService creates a new collaborator product service
@@ -25,23 +29,33 @@ func NewCollaboratorProductService(
 	collaboratorRepo *repositories.CollaboratorRepository,
 	productRepo *repositories.ProductRepository,
 	variantRepo *repositories.ProductVariantRepository,
+	logger interfaces.Logger,
 ) *CollaboratorProductService {
 	return &CollaboratorProductService{
 		collabProductRepo: collabProductRepo,
 		collaboratorRepo:  collaboratorRepo,
 		productRepo:       productRepo,
 		variantRepo:       variantRepo,
+		logger:            logger,
 	}
 }
 
 // AddProductToCollaborator adds a product to a collaborator with metadata
 // This now creates a ProductVariant with collaborator_id set (unified architecture)
 func (s *CollaboratorProductService) AddProductToCollaborator(ctx context.Context, collaboratorID string, request *models.CreateCollaboratorProductRequest) (*models.CollaboratorProductResponse, error) {
+	s.logger.Info("Adding product to collaborator",
+		zap.String("collaborator_id", collaboratorID),
+		zap.String("product_id", request.ProductID))
+
 	// Validate collaborator exists
 	collaborator, err := s.collaboratorRepo.GetByID(collaboratorID)
 	if err != nil {
+		s.logger.Error("Collaborator not found",
+			zap.Error(err),
+			zap.String("collaborator_id", collaboratorID))
 		return nil, err
 	}
+	s.logger.Debug("Collaborator found")
 	if collaborator.IsActive != nil && !*collaborator.IsActive {
 		return nil, errors.NewBadRequestError("collaborator is not active")
 	}
@@ -96,7 +110,10 @@ func (s *CollaboratorProductService) AddProductToCollaborator(ctx context.Contex
 	variant.UsageDetails = request.UsageDetails
 
 	// Save to database
+	s.logger.Debug("Saving collaborator variant to database")
 	if err := s.variantRepo.Create(variant); err != nil {
+		s.logger.Error("Failed to create collaborator variant",
+			zap.Error(err))
 		return nil, err
 	}
 
@@ -109,8 +126,12 @@ func (s *CollaboratorProductService) GetProductsByCollaborator(ctx context.Conte
 	// Validate collaborator exists
 	collaborator, err := s.collaboratorRepo.GetByID(collaboratorID)
 	if err != nil {
+		s.logger.Error("Collaborator not found",
+			zap.Error(err),
+			zap.String("collaborator_id", collaboratorID))
 		return nil, err
 	}
+	s.logger.Debug("Collaborator found")
 
 	// Get all product variants for this collaborator (unified architecture)
 	variants, err := s.variantRepo.GetByCollaboratorID(collaboratorID)

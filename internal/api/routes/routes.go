@@ -11,6 +11,7 @@ import (
 	"kisanlink-erp/internal/api/handlers"
 	"kisanlink-erp/internal/config"
 	"kisanlink-erp/internal/database/repositories"
+	"kisanlink-erp/internal/interfaces"
 	"kisanlink-erp/internal/services"
 	"kisanlink-erp/internal/utils"
 
@@ -24,7 +25,7 @@ import (
 )
 
 // RegisterRoutes registers all API routes
-func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMiddleware *aaa.AAAMiddleware) {
+func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMiddleware *aaa.AAAMiddleware, logger interfaces.Logger) {
 	// Initialize repositories
 	warehouseRepo := repositories.NewWarehouseRepository(db)
 	productRepo := repositories.NewProductRepository(db)
@@ -77,17 +78,17 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	}
 
 	// Initialize services
-	warehouseService := services.NewWarehouseService(warehouseRepo, addressClient)
-	productService := services.NewProductService(productRepo, priceRepo, productVariantRepo)
-	priceService := services.NewProductPriceService(priceRepo, productRepo, productVariantRepo)
-	inventoryService := services.NewInventoryService(inventoryRepo, warehouseRepo, productRepo, productVariantRepo, addressClient)
-	discountsService := services.NewDiscountsService(discountRepo, productRepo, warehouseRepo)
-	taxService := services.NewTaxService(taxRepo)
-	salesService := services.NewSalesService(salesRepo, productRepo, inventoryRepo, priceRepo, discountRepo, taxRepo, warehouseRepo)
-	returnsService := services.NewReturnsService(returnsRepo, salesRepo, inventoryRepo)
-	attachmentService := services.NewAttachmentService(attachmentRepo, s3Service)
-	refundPoliciesService := services.NewRefundPoliciesService(refundPoliciesRepo)
-	bankPaymentsService := services.NewBankPaymentsService(bankPaymentsRepo, salesRepo, returnsRepo)
+	warehouseService := services.NewWarehouseService(warehouseRepo, addressClient, logger)
+	productService := services.NewProductService(productRepo, priceRepo, productVariantRepo, logger)
+	priceService := services.NewProductPriceService(priceRepo, productRepo, productVariantRepo, logger)
+	inventoryService := services.NewInventoryService(inventoryRepo, warehouseRepo, productRepo, productVariantRepo, addressClient, logger)
+	discountsService := services.NewDiscountsService(discountRepo, productRepo, warehouseRepo, logger)
+	taxService := services.NewTaxService(taxRepo, logger)
+	salesService := services.NewSalesService(salesRepo, productRepo, inventoryRepo, priceRepo, discountRepo, taxRepo, warehouseRepo, logger)
+	returnsService := services.NewReturnsService(returnsRepo, salesRepo, inventoryRepo, logger)
+	attachmentService := services.NewAttachmentService(attachmentRepo, s3Service, logger)
+	refundPoliciesService := services.NewRefundPoliciesService(refundPoliciesRepo, logger)
+	bankPaymentsService := services.NewBankPaymentsService(bankPaymentsRepo, salesRepo, returnsRepo, logger)
 
 	// Procurement services
 	ecommerceTimeout := time.Duration(cfg.Ecommerce.TimeoutSeconds) * time.Second
@@ -101,11 +102,12 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 		ecommerceClient,
 		ecommerceTimeout,
 		cfg.Ecommerce.AuthToken,
+		logger,
 	)
-	collaboratorProductService := services.NewCollaboratorProductService(collaboratorProductRepo, collaboratorRepo, productRepo, productVariantRepo)
-	productVariantService := services.NewProductVariantService(productVariantRepo, productRepo)
-	purchaseOrderService := services.NewPurchaseOrderService(purchaseOrderRepo, collaboratorRepo, warehouseRepo, productRepo, productVariantRepo, grnRepo, inventoryRepo)
-	grnService := services.NewGRNService(grnRepo, purchaseOrderRepo, warehouseRepo, productRepo, inventoryRepo)
+	collaboratorProductService := services.NewCollaboratorProductService(collaboratorProductRepo, collaboratorRepo, productRepo, productVariantRepo, logger)
+	productVariantService := services.NewProductVariantService(productVariantRepo, productRepo, logger)
+	purchaseOrderService := services.NewPurchaseOrderService(purchaseOrderRepo, collaboratorRepo, warehouseRepo, productRepo, productVariantRepo, grnRepo, inventoryRepo, logger)
+	grnService := services.NewGRNService(grnRepo, purchaseOrderRepo, warehouseRepo, productRepo, inventoryRepo, logger)
 
 	// Webhook services
 	webhookSecurityService := services.NewWebhookSecurityService(cfg.Webhook.Secret)
@@ -125,24 +127,24 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	// AAA middleware is now passed as parameter
 
 	// Initialize handlers
-	warehouseHandler := handlers.NewWarehouseHandler(warehouseService, aaaMiddleware)
-	productHandler := handlers.NewProductHandler(productService, aaaMiddleware)
-	priceHandler := handlers.NewProductPriceHandler(priceService, aaaMiddleware)
-	inventoryHandler := handlers.NewInventoryHandler(inventoryService, aaaMiddleware)
-	discountsHandler := handlers.NewDiscountsHandler(discountsService, aaaMiddleware)
-	taxHandler := handlers.NewTaxHandler(taxService, aaaMiddleware)
-	salesHandler := handlers.NewSalesHandler(salesService, aaaMiddleware)
-	returnsHandler := handlers.NewReturnsHandler(returnsService, aaaMiddleware)
-	attachmentHandler := handlers.NewAttachmentHandler(attachmentService, aaaMiddleware)
-	refundPoliciesHandler := handlers.NewRefundPoliciesHandler(refundPoliciesService, aaaMiddleware)
-	bankPaymentsHandler := handlers.NewBankPaymentsHandler(bankPaymentsService, aaaMiddleware)
+	warehouseHandler := handlers.NewWarehouseHandler(warehouseService, aaaMiddleware, logger)
+	productHandler := handlers.NewProductHandler(productService, aaaMiddleware, logger)
+	priceHandler := handlers.NewProductPriceHandler(priceService, aaaMiddleware, logger)
+	inventoryHandler := handlers.NewInventoryHandler(inventoryService, aaaMiddleware, logger)
+	discountsHandler := handlers.NewDiscountsHandler(discountsService, aaaMiddleware, logger)
+	taxHandler := handlers.NewTaxHandler(taxService, aaaMiddleware, logger)
+	salesHandler := handlers.NewSalesHandler(salesService, aaaMiddleware, logger)
+	returnsHandler := handlers.NewReturnsHandler(returnsService, aaaMiddleware, logger)
+	attachmentHandler := handlers.NewAttachmentHandler(attachmentService, aaaMiddleware, logger)
+	refundPoliciesHandler := handlers.NewRefundPoliciesHandler(refundPoliciesService, aaaMiddleware, logger)
+	bankPaymentsHandler := handlers.NewBankPaymentsHandler(bankPaymentsService, aaaMiddleware, logger)
 
 	// Procurement handlers
-	collaboratorHandler := handlers.NewCollaboratorHandler(collaboratorService, aaaMiddleware)
-	collaboratorProductHandler := handlers.NewCollaboratorProductHandler(collaboratorProductService, aaaMiddleware)
-	productVariantHandler := handlers.NewProductVariantHandler(productVariantService, aaaMiddleware)
-	purchaseOrderHandler := handlers.NewPurchaseOrderHandler(purchaseOrderService, aaaMiddleware)
-	grnHandler := handlers.NewGRNHandler(grnService, aaaMiddleware)
+	collaboratorHandler := handlers.NewCollaboratorHandler(collaboratorService, aaaMiddleware, logger)
+	collaboratorProductHandler := handlers.NewCollaboratorProductHandler(collaboratorProductService, aaaMiddleware, logger)
+	productVariantHandler := handlers.NewProductVariantHandler(productVariantService, aaaMiddleware, logger)
+	purchaseOrderHandler := handlers.NewPurchaseOrderHandler(purchaseOrderService, aaaMiddleware, logger)
+	grnHandler := handlers.NewGRNHandler(grnService, aaaMiddleware, logger)
 
 	// Webhook handler (no AAA middleware - uses HMAC signature verification)
 	ecommerceWebhookHandler := handlers.NewEcommerceWebhookHandler(
@@ -151,6 +153,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 		webhookHistoryService,
 		webhookRepo,
 		aaaMiddleware,
+		logger,
 	)
 
 	// API v1 routes

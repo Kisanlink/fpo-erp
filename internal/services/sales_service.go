@@ -1,13 +1,14 @@
 package services
 
 import (
-	"log"
 	"time"
 
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
 	"kisanlink-erp/internal/errors"
+	"kisanlink-erp/internal/interfaces"
 
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -25,9 +26,10 @@ type SalesService struct {
 	taxRepo       *repositories.TaxRepository
 	taxService    *TaxService
 	warehouseRepo *repositories.WarehouseRepository
+	logger        interfaces.Logger
 }
 
-func NewSalesService(salesRepo *repositories.SalesRepository, productRepo *repositories.ProductRepository, inventoryRepo *repositories.InventoryRepository, priceRepo *repositories.ProductPriceRepository, discountsRepo *repositories.DiscountsRepository, taxRepo *repositories.TaxRepository, warehouseRepo *repositories.WarehouseRepository) *SalesService {
+func NewSalesService(salesRepo *repositories.SalesRepository, productRepo *repositories.ProductRepository, inventoryRepo *repositories.InventoryRepository, priceRepo *repositories.ProductPriceRepository, discountsRepo *repositories.DiscountsRepository, taxRepo *repositories.TaxRepository, warehouseRepo *repositories.WarehouseRepository, logger interfaces.Logger) *SalesService {
 	return &SalesService{
 		salesRepo:     salesRepo,
 		productRepo:   productRepo,
@@ -35,21 +37,26 @@ func NewSalesService(salesRepo *repositories.SalesRepository, productRepo *repos
 		priceRepo:     priceRepo,
 		discountsRepo: discountsRepo,
 		taxRepo:       taxRepo,
-		taxService:    NewTaxService(taxRepo),
+		taxService:    NewTaxService(taxRepo, logger),
 		warehouseRepo: warehouseRepo,
+		logger:        logger,
 	}
 }
 
 // CreateSale creates a new sale with items and summary using database transaction
 func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleResponse, error) {
-	log.Printf("[DEBUG] Starting transactional sale creation for warehouse: %s", req.WarehouseID)
+	s.logger.Info("Starting transactional sale creation",
+		zap.String("warehouse_id", req.WarehouseID),
+		zap.Int("item_count", len(req.Items)))
 
 	// Validate sale request
 	if err := s.validateSaleRequest(req); err != nil {
-		log.Printf("[ERROR] Sale validation failed: %v", err)
+		s.logger.Error("Sale validation failed",
+			zap.Error(err),
+			zap.String("warehouse_id", req.WarehouseID))
 		return nil, err
 	}
-	log.Printf("[DEBUG] Sale validation passed")
+	s.logger.Debug("Sale validation passed")
 
 	// Pre-fetch all required data BEFORE transaction to avoid SQLite deadlocks
 	// This follows the same pattern as CreatePurchaseOrder
@@ -61,28 +68,39 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 	itemDataMap := make(map[string]*itemData)
 	for _, itemReq := range req.Items {
 		// Get selling price from product_prices table (by variant_id)
-		log.Printf("[DEBUG] Getting selling price for variant: %s", itemReq.VariantID)
+		s.logger.Debug("Getting selling price for variant",
+		zap.String("variant_id", itemReq.VariantID))
 		sellingPrice, err := s.getSellingPrice(itemReq.VariantID)
 		if err != nil {
-			log.Printf("[ERROR] Failed to get selling price: %v", err)
+			s.logger.Error("Failed to get selling price",
+			zap.Error(err),
+			zap.String("variant_id", itemReq.VariantID))
 			return nil, errors.NewNotFoundError("selling price not found for product")
 		}
-		log.Printf("[DEBUG] Selling price retrieved: %.2f", sellingPrice)
+		s.logger.Debug("Selling price retrieved",
+			zap.Float64("selling_price", sellingPrice))
 
 		// Get batches for this variant in the warehouse ordered by expiry date (FEFO)
-		log.Printf("[DEBUG] Getting batches for variant: %s in warehouse: %s", itemReq.VariantID, req.WarehouseID)
+		s.logger.Debug("Getting batches for variant",
+			zap.String("variant_id", itemReq.VariantID),
+			zap.String("warehouse_id", req.WarehouseID))
 		batches, err := s.inventoryRepo.GetBatchesByVariantAndWarehouseOrderedByExpiry(itemReq.VariantID, req.WarehouseID)
 		if err != nil {
-			log.Printf("[ERROR] Failed to get batches for variant: %v", err)
+			s.logger.Error("Failed to get batches for variant",
+			zap.Error(err),
+			zap.String("variant_id", itemReq.VariantID))
 			return nil, errors.NewInternalServerError("failed to retrieve variant batches")
 		}
 
 		if len(batches) == 0 {
-			log.Printf("[ERROR] No batches found for variant: %s in warehouse: %s", itemReq.VariantID, req.WarehouseID)
+			s.logger.Error("No batches found for variant",
+			zap.String("variant_id", itemReq.VariantID),
+			zap.String("warehouse_id", req.WarehouseID))
 			return nil, errors.NewNotFoundError("no inventory available for variant in this warehouse")
 		}
 
-		log.Printf("[DEBUG] Found %d batches for product", len(batches))
+		s.logger.Debug("Found batches for product",
+			zap.Int("batch_count", len(batches)))
 
 		// Calculate total available quantity across all batches
 		totalAvailable := int64(0)
@@ -91,11 +109,15 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 		}
 
 		if totalAvailable < itemReq.Quantity {
-			log.Printf("[ERROR] Insufficient stock: available %d, requested %d", totalAvailable, itemReq.Quantity)
+			s.logger.Error("Insufficient stock",
+			zap.Int64("available", totalAvailable),
+			zap.Int64("requested", itemReq.Quantity))
 			return nil, errors.NewBadRequestError("insufficient stock for product")
 		}
 
-		log.Printf("[DEBUG] Stock validation passed - available: %d, requested: %d", totalAvailable, itemReq.Quantity)
+		s.logger.Debug("Stock validation passed",
+			zap.Int64("available", totalAvailable),
+			zap.Int64("requested", itemReq.Quantity))
 
 		itemDataMap[itemReq.VariantID] = &itemData{
 			sellingPrice: sellingPrice,
@@ -123,18 +145,21 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 		// Parse sale date or use current time
 		var saleDate time.Time
 		if req.SaleDate != nil {
-			log.Printf("[DEBUG] Parsing sale date: %s", *req.SaleDate)
+			s.logger.Debug("Parsing sale date",
+			zap.String("sale_date", *req.SaleDate))
 			if parsedDate, err := time.Parse(time.RFC3339, *req.SaleDate); err == nil {
 				saleDate = parsedDate
-				log.Printf("[DEBUG] Sale date parsed successfully: %v", saleDate)
+				s.logger.Debug("Sale date parsed successfully",
+				zap.Time("sale_date", saleDate))
 			} else {
 				// If parsing fails, use current time
-				log.Printf("[WARN] Date parsing failed, using current time: %v", err)
+				s.logger.Warn("Date parsing failed, using current time",
+				zap.Error(err))
 				saleDate = time.Now()
 			}
 		} else {
 			// If no sale date provided, use current time
-			log.Printf("[DEBUG] No sale date provided, using current time")
+			s.logger.Debug("No sale date provided, using current time")
 			saleDate = time.Now()
 		}
 
@@ -145,23 +170,34 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 		}
 
 		// Create sale using the proper constructor with BRD requirements
-		log.Printf("[DEBUG] Creating sale with warehouse: %s, date: %v, payment_mode: %s, sale_type: %s, apply_taxes: %v",
-			req.WarehouseID, saleDate, req.PaymentMode, req.SaleType, applyTaxes)
+		s.logger.Debug("Creating sale",
+			zap.String("warehouse_id", req.WarehouseID),
+			zap.Time("sale_date", saleDate),
+			zap.String("payment_mode", req.PaymentMode),
+			zap.String("sale_type", req.SaleType),
+			zap.Bool("apply_taxes", applyTaxes))
 		sale := models.NewSale(req.WarehouseID, saleDate, 0, "pending", req.FarmerID, req.PaymentMode, req.SaleType, applyTaxes)
-		log.Printf("[DEBUG] Sale created with ID: %s, apply_taxes: %v", sale.ID, sale.ApplyTaxes)
+		s.logger.Info("Sale created",
+			zap.String("sale_id", sale.ID),
+			zap.Bool("apply_taxes", sale.ApplyTaxes))
 
 		if err := s.salesRepo.CreateSaleWithTx(tx, sale); err != nil {
-			log.Printf("[ERROR] Failed to create sale in database: %v", err)
+			s.logger.Error("Failed to create sale in database",
+			zap.Error(err))
 			return err
 		}
-		log.Printf("[DEBUG] Sale created successfully in database")
+		s.logger.Debug("Sale created successfully in database")
 
 		// Create sale items using pre-fetched data
-		log.Printf("[DEBUG] Starting to process %d sale items", len(req.Items))
+		s.logger.Debug("Starting to process sale items",
+			zap.Int("item_count", len(req.Items)))
 		var totalAmount float64
 		var saleItems []models.SaleItem // Collect sale items for tax calculation
 		for i, itemReq := range req.Items {
-			log.Printf("[DEBUG] Processing item %d: variant=%s, qty=%d", i+1, itemReq.VariantID, itemReq.Quantity)
+			s.logger.Debug("Processing sale item",
+				zap.Int("item_number", i+1),
+				zap.String("variant_id", itemReq.VariantID),
+				zap.Int64("quantity", itemReq.Quantity))
 
 			// Get pre-fetched data
 			itemData := itemDataMap[itemReq.VariantID]
@@ -183,67 +219,86 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 					quantityFromBatch = batch.TotalQuantity
 				}
 
-				log.Printf("[DEBUG] Allocating %d units from batch %s (expires: %s)", quantityFromBatch, batch.ID, batch.ExpiryDate.Format("2006-01-02"))
+				s.logger.Debug("FEFO: Allocating from batch",
+					zap.Int64("quantity", quantityFromBatch),
+					zap.String("batch_id", batch.ID),
+					zap.String("expiry_date", batch.ExpiryDate.Format("2006-01-02")))
 
 				// BRD Requirement: Capture cost price from batch for margin calculation
 				costPrice := batch.CostPrice
-				log.Printf("[DEBUG] Batch cost price: %.2f, selling price: %.2f, margin: %.2f",
-					costPrice, sellingPrice, sellingPrice-costPrice)
+				s.logger.Debug("Cost price and margin calculation",
+					zap.Float64("cost_price", costPrice),
+					zap.Float64("selling_price", sellingPrice),
+					zap.Float64("margin", sellingPrice-costPrice))
 
 				// Calculate line total for this batch allocation
 				batchLineTotal := sellingPrice * float64(quantityFromBatch)
 
 				// Calculate taxes for this batch allocation
-				log.Printf("[DEBUG] Calculating taxes for batch allocation")
+				s.logger.Debug("Calculating taxes for batch allocation")
 				taxCalculation, err := s.taxService.CalculateBatchTax(batch, quantityFromBatch, sellingPrice)
 				if err != nil {
-					log.Printf("[ERROR] Failed to calculate taxes: %v", err)
+					s.logger.Error("Failed to calculate taxes",
+						zap.Error(err))
 					return err
 				}
-				log.Printf("[DEBUG] Tax calculation completed: CGST=%.2f, SGST=%.2f, Custom=%.2f, Total=%.2f",
-					taxCalculation.CGSTAmount, taxCalculation.SGSTAmount, taxCalculation.CustomTaxAmount, taxCalculation.TotalTaxAmount)
+				s.logger.Debug("Tax calculation completed",
+					zap.Float64("cgst_amount", taxCalculation.CGSTAmount),
+					zap.Float64("sgst_amount", taxCalculation.SGSTAmount),
+					zap.Float64("custom_tax_amount", taxCalculation.CustomTaxAmount),
+					zap.Float64("total_tax_amount", taxCalculation.TotalTaxAmount))
 
 				itemTotal += batchLineTotal
 
 				// Create sale item with tax amounts and cost price (BRD requirement)
 				saleItem := models.NewSaleItemWithTax(sale.ID, batch.ID, quantityFromBatch, sellingPrice, costPrice, batchLineTotal,
 					taxCalculation.CGSTAmount, taxCalculation.SGSTAmount, taxCalculation.CustomTaxAmount)
-				log.Printf("[DEBUG] Sale item created with ID: %s (includes cost price: %.2f, margin: %.2f, tax amounts)",
-					saleItem.ID, costPrice, saleItem.Margin)
+				s.logger.Info("Sale item created",
+					zap.String("sale_item_id", saleItem.ID),
+					zap.Float64("cost_price", costPrice),
+					zap.Float64("margin", saleItem.Margin))
 
 				if err := s.salesRepo.CreateSaleItemWithTx(tx, saleItem); err != nil {
-					log.Printf("[ERROR] Failed to create sale item: %v", err)
+					s.logger.Error("Failed to create sale item",
+						zap.Error(err))
 					return err
 				}
-				log.Printf("[DEBUG] Sale item created successfully in database")
+				s.logger.Debug("Sale item created successfully in database")
 
 				// Add to collection for tax calculation
 				saleItems = append(saleItems, *saleItem)
 
 				// Update inventory using the proper constructor
-				log.Printf("[DEBUG] Creating inventory transaction for batch: %s", batch.ID)
+				s.logger.Debug("Creating inventory transaction",
+					zap.String("batch_id", batch.ID))
 				transaction := models.NewInventoryTransaction(batch.ID, "sale", -quantityFromBatch, &sale.ID, nil, stringPtr("Sale transaction"), time.Now())
-				log.Printf("[DEBUG] Inventory transaction created with ID: %s", transaction.ID)
+				s.logger.Debug("Inventory transaction created",
+					zap.String("transaction_id", transaction.ID))
 
 				if err := s.inventoryRepo.CreateTransactionWithTx(tx, transaction); err != nil {
-					log.Printf("[ERROR] Failed to create inventory transaction: %v", err)
+					s.logger.Error("Failed to create inventory transaction",
+						zap.Error(err))
 					return err
 				}
-				log.Printf("[DEBUG] Inventory transaction created successfully")
+				s.logger.Debug("Inventory transaction created successfully")
 
 				// Update batch stock level with row lock to prevent race conditions
-				log.Printf("[DEBUG] Updating batch stock: %s, change: %d", batch.ID, -quantityFromBatch)
+				s.logger.Debug("Updating batch stock",
+					zap.String("batch_id", batch.ID),
+					zap.Int64("quantity_change", -quantityFromBatch))
 				if err := s.inventoryRepo.UpdateBatchStockWithTx(tx, batch.ID, -quantityFromBatch); err != nil {
-					log.Printf("[ERROR] Failed to update batch stock: %v", err)
+					s.logger.Error("Failed to update batch stock",
+						zap.Error(err))
 					return err
 				}
-				log.Printf("[DEBUG] Batch stock updated successfully")
+				s.logger.Debug("Batch stock updated successfully")
 
 				remainingQuantity -= quantityFromBatch
 			}
 
 			totalAmount += itemTotal
-			log.Printf("[DEBUG] Running total: %.2f", totalAmount)
+			s.logger.Debug("Running total",
+				zap.Float64("total_amount", totalAmount))
 		}
 
 		// Use pre-built product IDs for discount discovery (already built before transaction)
@@ -259,7 +314,8 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 
 		finalDiscounts, applications, totalDiscountAmount, err := s.resolveDiscountsWithPriority(req, totalAmount, productIDs, saleItemPtrs)
 		if err != nil {
-			log.Printf("[ERROR] Failed to resolve discounts: %v", err)
+			s.logger.Error("Failed to resolve discounts",
+			zap.Error(err))
 			return err
 		}
 
@@ -271,48 +327,57 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 			discountUsage := s.discountsRepo.CalculateDiscount(&discount, totalAmount)
 			usage := models.NewDiscountUsage(discount.ID, sale.ID, discountUsage)
 			if err := s.discountsRepo.CreateDiscountUsageWithTx(tx, usage); err != nil {
-				log.Printf("[ERROR] Failed to create discount usage record: %v", err)
+				s.logger.Error("Failed to create discount usage record",
+				zap.Error(err))
 				return err
 			}
 			if err := s.discountsRepo.IncrementUsageWithTx(tx, discount.ID); err != nil {
-				log.Printf("[ERROR] Failed to increment discount usage: %v", err)
+				s.logger.Error("Failed to increment discount usage",
+				zap.Error(err))
 				return err
 			}
 		}
 
-		log.Printf("[DEBUG] Total discount applied: %.2f from %d discounts", discountAmount, len(finalDiscounts))
+		s.logger.Info("Discounts applied",
+			zap.Float64("discount_amount", discountAmount),
+			zap.Int("discount_count", len(finalDiscounts)))
 
 		// Calculate final amount after discount
 		finalAmount := totalAmount - discountAmount
-		log.Printf("[DEBUG] Final amount after discount: %.2f", finalAmount)
+		s.logger.Debug("Final amount after discount",
+			zap.Float64("final_amount", finalAmount))
 
 		// Apply taxes using the existing tax service (no customer data needed)
 		// Only apply taxes if ApplyTaxes field is true
 		var taxAmount float64
 		if sale.ApplyTaxes && len(saleItems) > 0 {
-			log.Printf("[DEBUG] ApplyTaxes is true, calculating taxes")
+			s.logger.Debug("ApplyTaxes is true, calculating taxes")
 			taxSummary, err := s.applyTaxesToSaleWithTx(tx, sale.ID, saleItems, req.WarehouseID)
 			if err != nil {
-				log.Printf("[ERROR] Tax calculation failed: %v", err)
+				s.logger.Error("Tax calculation failed",
+				zap.Error(err))
 				return err
 			}
 			if taxSummary != nil {
 				taxAmount = taxSummary.TotalTaxAmount
 				finalAmount += taxAmount
-				log.Printf("[DEBUG] Tax applied successfully: %.2f", taxAmount)
+				s.logger.Info("Tax applied successfully",
+				zap.Float64("tax_amount", taxAmount))
 			}
 		} else {
-			log.Printf("[DEBUG] ApplyTaxes is false, skipping tax calculation")
+			s.logger.Debug("ApplyTaxes is false, skipping tax calculation")
 		}
 
 		// Update sale with final amount
-		log.Printf("[DEBUG] Updating sale with final amount: %.2f", finalAmount)
+		s.logger.Debug("Updating sale with final amount",
+			zap.Float64("final_amount", finalAmount))
 		sale.TotalAmount = finalAmount
 		if err := s.salesRepo.UpdateSaleWithTx(tx, sale); err != nil {
-			log.Printf("[ERROR] Failed to update sale with final amount: %v", err)
+			s.logger.Error("Failed to update sale with final amount",
+			zap.Error(err))
 			return err
 		}
-		log.Printf("[DEBUG] Sale updated with final amount successfully")
+		s.logger.Debug("Sale updated with final amount successfully")
 
 		// Load sale items into sale.Items for response mapping
 		// The sale object doesn't have items preloaded, so we set them from the saleItems we created
@@ -351,11 +416,12 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 	})
 
 	if err != nil {
-		log.Printf("[ERROR] Transaction failed: %v", err)
+		s.logger.Error("Transaction failed",
+		zap.Error(err))
 		return nil, err
 	}
 
-	log.Printf("[DEBUG] Transactional sale creation completed successfully")
+	s.logger.Info("Transactional sale creation completed successfully")
 	return response, nil
 }
 
@@ -505,42 +571,51 @@ func isValidSaleType(saleType string) bool {
 
 // Helper methods
 func (s *SalesService) validateSaleRequest(req *models.CreateSaleRequest) error {
-	log.Printf("[DEBUG] Validating sale request: warehouse=%s, items=%d", req.WarehouseID, len(req.Items))
+	s.logger.Debug("Validating sale request",
+		zap.String("warehouse_id", req.WarehouseID),
+		zap.Int("item_count", len(req.Items)))
 
 	if req.WarehouseID == "" {
-		log.Printf("[ERROR] Validation failed: warehouse ID is empty")
+		s.logger.Error("Validation failed: warehouse ID is empty")
 		return errors.NewValidationError("warehouse ID is required")
 	}
 	if len(req.Items) == 0 {
-		log.Printf("[ERROR] Validation failed: no items provided")
+		s.logger.Error("Validation failed: no items provided")
 		return errors.NewValidationError("at least one item is required")
 	}
 
 	// BRD Requirements: Validate payment_mode and sale_type
 	if !isValidPaymentMode(req.PaymentMode) {
-		log.Printf("[ERROR] Validation failed: invalid payment mode: %s", req.PaymentMode)
+		s.logger.Error("Validation failed: invalid payment mode",
+			zap.String("payment_mode", req.PaymentMode))
 		return errors.NewValidationError("payment_mode must be one of: cash, upi, online")
 	}
 	if !isValidSaleType(req.SaleType) {
-		log.Printf("[ERROR] Validation failed: invalid sale type: %s", req.SaleType)
+		s.logger.Error("Validation failed: invalid sale type",
+			zap.String("sale_type", req.SaleType))
 		return errors.NewValidationError("sale_type must be one of: in_store, delivery")
 	}
 
 	for i, item := range req.Items {
-		log.Printf("[DEBUG] Validating item %d: variant=%s, qty=%d", i+1, item.VariantID, item.Quantity)
+		s.logger.Debug("Validating item",
+			zap.Int("item_number", i+1),
+			zap.String("variant_id", item.VariantID),
+			zap.Int64("quantity", item.Quantity))
 
 		if item.VariantID == "" {
-			log.Printf("[ERROR] Validation failed: variant ID is empty for item %d", i+1)
+			s.logger.Error("Validation failed: variant ID is empty",
+				zap.Int("item_number", i+1))
 			return errors.NewValidationError("variant ID is required for all items")
 		}
 		if item.Quantity <= 0 {
-			log.Printf("[ERROR] Validation failed: quantity <= 0 for item %d", i+1)
+			s.logger.Error("Validation failed: quantity <= 0",
+				zap.Int("item_number", i+1))
 			return errors.NewValidationError("quantity must be greater than 0")
 		}
 		// Remove selling price validation since it will be calculated automatically from product_prices table
 	}
 
-	log.Printf("[DEBUG] Sale request validation passed")
+	s.logger.Debug("Sale request validation passed")
 	return nil
 }
 
@@ -744,7 +819,8 @@ func (s *SalesService) resolveDiscountsWithPriority(req *models.CreateSaleReques
 	if autoApply {
 		autoDiscounts, err := s.discoverApplicableDiscounts(orderValue, productIDs, req.WarehouseID)
 		if err != nil {
-			log.Printf("[WARN] Failed to discover automatic discounts: %v", err)
+			s.logger.Warn("Failed to discover automatic discounts",
+				zap.Error(err))
 			return []models.Discount{}, []models.DiscountApplication{}, 0, nil
 		}
 

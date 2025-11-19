@@ -6,21 +6,25 @@ import (
 
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
+	logger "kisanlink-erp/internal/interfaces"
 	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type SalesHandler struct {
 	salesService  interfaces.SalesServiceInterface
 	aaaMiddleware *aaa.AAAMiddleware
+	logger        logger.Logger
 }
 
-func NewSalesHandler(salesService interfaces.SalesServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *SalesHandler {
+func NewSalesHandler(salesService interfaces.SalesServiceInterface, aaaMiddleware *aaa.AAAMiddleware, logger logger.Logger) *SalesHandler {
 	return &SalesHandler{
 		salesService:  salesService,
 		aaaMiddleware: aaaMiddleware,
+		logger:        logger,
 	}
 }
 
@@ -41,19 +45,49 @@ func NewSalesHandler(salesService interfaces.SalesServiceInterface, aaaMiddlewar
 // @Security BearerAuth
 // @Router /api/v1/sales [post]
 func (h *SalesHandler) CreateSale(c *gin.Context) {
+	h.logger.Info("Handling create sale request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	var req models.CreateSaleRequest
 
 	// Validate request
 	if err := utils.ValidateRequest(c, &req); err != nil {
+		h.logger.Error("Invalid request body for create sale",
+			zap.Error(err))
 		utils.BadRequestResponse(c, "Invalid request data", err)
 		return
 	}
 
+	// Log BRD-specific fields
+	h.logger.Debug("Calling sales service to create sale",
+		zap.String("warehouse_id", req.WarehouseID),
+		zap.String("payment_mode", req.PaymentMode),
+		zap.String("sale_type", req.SaleType),
+		zap.Bool("apply_taxes", req.ApplyTaxes != nil && *req.ApplyTaxes),
+		zap.Int("items_count", len(req.Items)))
+
+	// Log farmer_id if present
+	if req.FarmerID != nil {
+		h.logger.Debug("Sale includes farmer tracking",
+			zap.String("farmer_id", *req.FarmerID))
+	}
+
 	sale, err := h.salesService.CreateSale(&req)
 	if err != nil {
+		h.logger.Error("Failed to create sale via service",
+			zap.Error(err),
+			zap.String("warehouse_id", req.WarehouseID),
+			zap.String("payment_mode", req.PaymentMode))
 		utils.HandleServiceError(c, "Failed to create sale", err)
 		return
 	}
+
+	h.logger.Info("Sale created successfully via handler",
+		zap.String("sale_id", sale.ID),
+		zap.String("warehouse_id", req.WarehouseID),
+		zap.Float64("total_amount", sale.TotalAmount),
+		zap.Int("items_count", len(sale.Items)))
 
 	utils.CreatedResponse(c, "Sale created successfully", sale)
 }
@@ -75,17 +109,32 @@ func (h *SalesHandler) CreateSale(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/sales/{id} [get]
 func (h *SalesHandler) GetSale(c *gin.Context) {
+	h.logger.Info("Handling get sale request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	id := c.Param("id")
 	if id == "" {
+		h.logger.Error("Sale ID is required but not provided")
 		utils.BadRequestResponse(c, "Sale ID is required", nil)
 		return
 	}
 
+	h.logger.Debug("Calling sales service to get sale",
+		zap.String("sale_id", id))
+
 	sale, err := h.salesService.GetSale(id)
 	if err != nil {
+		h.logger.Error("Sale not found",
+			zap.Error(err),
+			zap.String("sale_id", id))
 		utils.NotFoundResponse(c, "Sale not found")
 		return
 	}
+
+	h.logger.Info("Sale retrieved successfully via handler",
+		zap.String("sale_id", sale.ID),
+		zap.Float64("total_amount", sale.TotalAmount))
 
 	utils.OKResponse(c, "Sale retrieved successfully", sale)
 }
@@ -107,26 +156,45 @@ func (h *SalesHandler) GetSale(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/sales [get]
 func (h *SalesHandler) GetAllSales(c *gin.Context) {
+	h.logger.Info("Handling get all sales request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	limitStr := c.DefaultQuery("limit", "10")
 	offsetStr := c.DefaultQuery("offset", "0")
 
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
+		h.logger.Error("Invalid limit parameter",
+			zap.Error(err),
+			zap.String("limit", limitStr))
 		utils.BadRequestResponse(c, "Invalid limit parameter", err)
 		return
 	}
 
 	offset, err := strconv.Atoi(offsetStr)
 	if err != nil {
+		h.logger.Error("Invalid offset parameter",
+			zap.Error(err),
+			zap.String("offset", offsetStr))
 		utils.BadRequestResponse(c, "Invalid offset parameter", err)
 		return
 	}
 
+	h.logger.Debug("Calling sales service to get all sales",
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
+
 	sales, err := h.salesService.GetAllSales(limit, offset)
 	if err != nil {
+		h.logger.Error("Failed to retrieve sales via service",
+			zap.Error(err))
 		utils.HandleServiceError(c, "Failed to retrieve sales", err)
 		return
 	}
+
+	h.logger.Info("Sales retrieved successfully via handler",
+		zap.Int("count", len(sales)))
 
 	utils.OKResponse(c, "Sales retrieved successfully", sales)
 }
@@ -150,23 +218,40 @@ func (h *SalesHandler) GetAllSales(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/sales/{id} [put]
 func (h *SalesHandler) UpdateSale(c *gin.Context) {
+	h.logger.Info("Handling update sale request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	id := c.Param("id")
 	if id == "" {
+		h.logger.Error("Sale ID is required but not provided")
 		utils.BadRequestResponse(c, "Sale ID is required", nil)
 		return
 	}
 
 	var req models.UpdateSaleRequest
 	if err := utils.ValidatePartialRequest(c, &req); err != nil {
+		h.logger.Error("Invalid request body for update sale",
+			zap.Error(err),
+			zap.String("sale_id", id))
 		utils.BadRequestResponse(c, "Invalid request data", err)
 		return
 	}
 
+	h.logger.Debug("Calling sales service to update sale",
+		zap.String("sale_id", id))
+
 	sale, err := h.salesService.UpdateSale(id, &req)
 	if err != nil {
+		h.logger.Error("Failed to update sale via service",
+			zap.Error(err),
+			zap.String("sale_id", id))
 		utils.HandleServiceError(c, "Failed to update sale", err)
 		return
 	}
+
+	h.logger.Info("Sale updated successfully via handler",
+		zap.String("sale_id", sale.ID))
 
 	utils.OKResponse(c, "Sale updated successfully", sale)
 }
@@ -188,17 +273,31 @@ func (h *SalesHandler) UpdateSale(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/sales/{id} [delete]
 func (h *SalesHandler) DeleteSale(c *gin.Context) {
+	h.logger.Info("Handling delete sale request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	id := c.Param("id")
 	if id == "" {
+		h.logger.Error("Sale ID is required but not provided")
 		utils.BadRequestResponse(c, "Sale ID is required", nil)
 		return
 	}
 
+	h.logger.Debug("Calling sales service to delete sale",
+		zap.String("sale_id", id))
+
 	err := h.salesService.DeleteSale(id)
 	if err != nil {
+		h.logger.Error("Failed to delete sale via service",
+			zap.Error(err),
+			zap.String("sale_id", id))
 		utils.HandleServiceError(c, "Failed to delete sale", err)
 		return
 	}
+
+	h.logger.Info("Sale deleted successfully via handler",
+		zap.String("sale_id", id))
 
 	utils.OKResponse(c, "Sale deleted successfully", nil)
 }
@@ -220,31 +319,55 @@ func (h *SalesHandler) DeleteSale(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/sales/date-range [get]
 func (h *SalesHandler) GetSalesByDateRange(c *gin.Context) {
+	h.logger.Info("Handling get sales by date range request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	startDateStr := c.Query("start_date")
 	endDateStr := c.Query("end_date")
 
 	if startDateStr == "" || endDateStr == "" {
+		h.logger.Error("Start date and end date are required but not provided")
 		utils.BadRequestResponse(c, "Start date and end date are required", nil)
 		return
 	}
 
 	startDate, err := time.Parse("2006-01-02", startDateStr)
 	if err != nil {
+		h.logger.Error("Invalid start date format",
+			zap.Error(err),
+			zap.String("start_date", startDateStr))
 		utils.BadRequestResponse(c, "Invalid start date format", err)
 		return
 	}
 
 	endDate, err := time.Parse("2006-01-02", endDateStr)
 	if err != nil {
+		h.logger.Error("Invalid end date format",
+			zap.Error(err),
+			zap.String("end_date", endDateStr))
 		utils.BadRequestResponse(c, "Invalid end date format", err)
 		return
 	}
 
+	h.logger.Debug("Calling sales service to get sales by date range",
+		zap.String("start_date", startDateStr),
+		zap.String("end_date", endDateStr))
+
 	sales, err := h.salesService.GetSalesByDateRange(startDate, endDate)
 	if err != nil {
+		h.logger.Error("Failed to retrieve sales by date range via service",
+			zap.Error(err),
+			zap.String("start_date", startDateStr),
+			zap.String("end_date", endDateStr))
 		utils.HandleServiceError(c, "Failed to retrieve sales", err)
 		return
 	}
+
+	h.logger.Info("Sales by date range retrieved successfully via handler",
+		zap.Int("count", len(sales)),
+		zap.String("start_date", startDateStr),
+		zap.String("end_date", endDateStr))
 
 	utils.OKResponse(c, "Sales retrieved successfully", sales)
 }
@@ -265,17 +388,32 @@ func (h *SalesHandler) GetSalesByDateRange(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/sales/status/{status} [get]
 func (h *SalesHandler) GetSalesByStatus(c *gin.Context) {
+	h.logger.Info("Handling get sales by status request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	status := c.Param("status")
 	if status == "" {
+		h.logger.Error("Status is required but not provided")
 		utils.BadRequestResponse(c, "Status is required", nil)
 		return
 	}
 
+	h.logger.Debug("Calling sales service to get sales by status",
+		zap.String("status", status))
+
 	sales, err := h.salesService.GetSalesByStatus(status)
 	if err != nil {
+		h.logger.Error("Failed to retrieve sales by status via service",
+			zap.Error(err),
+			zap.String("status", status))
 		utils.HandleServiceError(c, "Failed to retrieve sales", err)
 		return
 	}
+
+	h.logger.Info("Sales by status retrieved successfully via handler",
+		zap.Int("count", len(sales)),
+		zap.String("status", status))
 
 	utils.OKResponse(c, "Sales retrieved successfully", sales)
 }
@@ -297,31 +435,55 @@ func (h *SalesHandler) GetSalesByStatus(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/sales/total-amount [get]
 func (h *SalesHandler) GetTotalSalesAmount(c *gin.Context) {
+	h.logger.Info("Handling get total sales amount request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	startDateStr := c.Query("start_date")
 	endDateStr := c.Query("end_date")
 
 	if startDateStr == "" || endDateStr == "" {
+		h.logger.Error("Start date and end date are required but not provided")
 		utils.BadRequestResponse(c, "Start date and end date are required", nil)
 		return
 	}
 
 	startDate, err := time.Parse("2006-01-02", startDateStr)
 	if err != nil {
+		h.logger.Error("Invalid start date format",
+			zap.Error(err),
+			zap.String("start_date", startDateStr))
 		utils.BadRequestResponse(c, "Invalid start date format", err)
 		return
 	}
 
 	endDate, err := time.Parse("2006-01-02", endDateStr)
 	if err != nil {
+		h.logger.Error("Invalid end date format",
+			zap.Error(err),
+			zap.String("end_date", endDateStr))
 		utils.BadRequestResponse(c, "Invalid end date format", err)
 		return
 	}
 
+	h.logger.Debug("Calling sales service to calculate total sales amount",
+		zap.String("start_date", startDateStr),
+		zap.String("end_date", endDateStr))
+
 	totalAmount, err := h.salesService.GetTotalSalesAmount(startDate, endDate)
 	if err != nil {
+		h.logger.Error("Failed to calculate total sales amount via service",
+			zap.Error(err),
+			zap.String("start_date", startDateStr),
+			zap.String("end_date", endDateStr))
 		utils.HandleServiceError(c, "Failed to calculate total amount", err)
 		return
 	}
+
+	h.logger.Info("Total sales amount calculated successfully via handler",
+		zap.Float64("total_amount", totalAmount),
+		zap.String("start_date", startDateStr),
+		zap.String("end_date", endDateStr))
 
 	utils.OKResponse(c, "Total sales amount calculated successfully", gin.H{
 		"total_amount": totalAmount,
@@ -346,18 +508,35 @@ func (h *SalesHandler) GetTotalSalesAmount(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/sales/top-selling [get]
 func (h *SalesHandler) GetTopSellingProducts(c *gin.Context) {
+	h.logger.Info("Handling get top selling products request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	limitStr := c.DefaultQuery("limit", "10")
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
+		h.logger.Error("Invalid limit parameter",
+			zap.Error(err),
+			zap.String("limit", limitStr))
 		utils.BadRequestResponse(c, "Invalid limit parameter", err)
 		return
 	}
 
+	h.logger.Debug("Calling sales service to get top selling products",
+		zap.Int("limit", limit))
+
 	products, err := h.salesService.GetTopSellingProducts(limit)
 	if err != nil {
+		h.logger.Error("Failed to retrieve top selling products via service",
+			zap.Error(err),
+			zap.Int("limit", limit))
 		utils.HandleServiceError(c, "Failed to retrieve top selling products", err)
 		return
 	}
+
+	h.logger.Info("Top selling products retrieved successfully via handler",
+		zap.Int("count", len(products)),
+		zap.Int("limit", limit))
 
 	utils.OKResponse(c, "Top selling products retrieved successfully", products)
 }
@@ -376,12 +555,22 @@ func (h *SalesHandler) GetTopSellingProducts(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/sales/summary [get]
 func (h *SalesHandler) GetSalesSummary(c *gin.Context) {
+	h.logger.Info("Handling get sales summary request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
+	h.logger.Debug("Calling sales service to get sales summary")
+
 	// For now, return a simple summary - this can be enhanced later
-	utils.OKResponse(c, "Sales summary retrieved successfully", gin.H{
+	summary := gin.H{
 		"total_sales":  0,
 		"total_amount": 0.0,
 		"period":       "all_time",
-	})
+	}
+
+	h.logger.Info("Sales summary retrieved successfully via handler")
+
+	utils.OKResponse(c, "Sales summary retrieved successfully", summary)
 }
 
 // UpdateSaleStatus handles PATCH /api/v1/sales/:id/status
@@ -403,8 +592,13 @@ func (h *SalesHandler) GetSalesSummary(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/sales/{id}/status [patch]
 func (h *SalesHandler) UpdateSaleStatus(c *gin.Context) {
+	h.logger.Info("Handling update sale status request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	id := c.Param("id")
 	if id == "" {
+		h.logger.Error("Sale ID is required but not provided")
 		utils.BadRequestResponse(c, "Sale ID is required", nil)
 		return
 	}
@@ -413,9 +607,16 @@ func (h *SalesHandler) UpdateSaleStatus(c *gin.Context) {
 		Status string `json:"status" binding:"required"`
 	}
 	if err := utils.ValidateRequest(c, &req); err != nil {
+		h.logger.Error("Invalid request body for update sale status",
+			zap.Error(err),
+			zap.String("sale_id", id))
 		utils.BadRequestResponse(c, "Invalid request data", err)
 		return
 	}
+
+	h.logger.Debug("Calling sales service to update sale status",
+		zap.String("sale_id", id),
+		zap.String("new_status", req.Status))
 
 	updateReq := models.UpdateSaleRequest{
 		Status: &req.Status,
@@ -423,9 +624,17 @@ func (h *SalesHandler) UpdateSaleStatus(c *gin.Context) {
 
 	sale, err := h.salesService.UpdateSale(id, &updateReq)
 	if err != nil {
+		h.logger.Error("Failed to update sale status via service",
+			zap.Error(err),
+			zap.String("sale_id", id),
+			zap.String("new_status", req.Status))
 		utils.HandleServiceError(c, "Failed to update sale status", err)
 		return
 	}
+
+	h.logger.Info("Sale status updated successfully via handler",
+		zap.String("sale_id", sale.ID),
+		zap.String("new_status", req.Status))
 
 	utils.OKResponse(c, "Sale status updated successfully", sale)
 }
@@ -447,14 +656,28 @@ func (h *SalesHandler) UpdateSaleStatus(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/sales/{id}/returns [get]
 func (h *SalesHandler) GetReturnsForSale(c *gin.Context) {
+	h.logger.Info("Handling get returns for sale request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	saleID := c.Param("id")
 	if saleID == "" {
+		h.logger.Error("Sale ID is required but not provided")
 		utils.BadRequestResponse(c, "Sale ID is required", nil)
 		return
 	}
 
+	h.logger.Debug("Calling sales service to get returns for sale",
+		zap.String("sale_id", saleID))
+
 	// For now, return empty array - this can be enhanced later
-	utils.OKResponse(c, "Returns for sale retrieved successfully", []interface{}{})
+	returns := []interface{}{}
+
+	h.logger.Info("Returns for sale retrieved successfully via handler",
+		zap.String("sale_id", saleID),
+		zap.Int("count", 0))
+
+	utils.OKResponse(c, "Returns for sale retrieved successfully", returns)
 }
 
 // RegisterRoutes registers all sales routes

@@ -6,21 +6,25 @@ import (
 
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
+	logger "kisanlink-erp/internal/interfaces"
 	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type ReturnsHandler struct {
 	returnsService interfaces.ReturnsServiceInterface
 	aaaMiddleware  *aaa.AAAMiddleware
+	logger         logger.Logger
 }
 
-func NewReturnsHandler(returnsService interfaces.ReturnsServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *ReturnsHandler {
+func NewReturnsHandler(returnsService interfaces.ReturnsServiceInterface, aaaMiddleware *aaa.AAAMiddleware, logger logger.Logger) *ReturnsHandler {
 	return &ReturnsHandler{
 		returnsService: returnsService,
 		aaaMiddleware:  aaaMiddleware,
+		logger:         logger,
 	}
 }
 
@@ -41,19 +45,40 @@ func NewReturnsHandler(returnsService interfaces.ReturnsServiceInterface, aaaMid
 // @Security BearerAuth
 // @Router /api/v1/returns [post]
 func (h *ReturnsHandler) CreateReturn(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling create return request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	var req models.CreateReturnRequest
 
 	// Validate request
 	if err := utils.ValidateRequest(c, &req); err != nil {
+		// 2. Validation Error Log
+		h.logger.Error("Invalid request body for create return",
+			zap.Error(err))
 		utils.BadRequestResponse(c, "Invalid request data", err)
 		return
 	}
 
+	// 3. Service Call Log
+	h.logger.Debug("Calling service to create return",
+		zap.String("sale_id", req.SaleID))
+
 	ret, err := h.returnsService.CreateReturn(&req)
 	if err != nil {
+		// 4. Service Error Log
+		h.logger.Error("Service error creating return",
+			zap.Error(err),
+			zap.String("sale_id", req.SaleID))
 		utils.HandleServiceError(c, "Failed to create return", err)
 		return
 	}
+
+	// 5. Success Log
+	h.logger.Info("Return created successfully",
+		zap.String("return_id", ret.ID),
+		zap.String("sale_id", ret.SaleID))
 
 	utils.CreatedResponse(c, "Return created successfully", ret)
 }
@@ -75,17 +100,35 @@ func (h *ReturnsHandler) CreateReturn(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/returns/{id} [get]
 func (h *ReturnsHandler) GetReturn(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get return request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	id := c.Param("id")
 	if id == "" {
 		utils.BadRequestResponse(c, "Return ID is required", nil)
 		return
 	}
 
+	// 3. Service Call Log
+	h.logger.Debug("Calling service to get return",
+		zap.String("return_id", id))
+
 	ret, err := h.returnsService.GetReturn(id)
 	if err != nil {
+		// 4. Service Error Log
+		h.logger.Error("Service error getting return",
+			zap.Error(err),
+			zap.String("return_id", id))
 		utils.NotFoundResponse(c, "Return not found")
 		return
 	}
+
+	// 5. Success Log
+	h.logger.Info("Return retrieved successfully",
+		zap.String("return_id", ret.ID),
+		zap.String("sale_id", ret.SaleID))
 
 	utils.OKResponse(c, "Return retrieved successfully", ret)
 }
@@ -107,6 +150,11 @@ func (h *ReturnsHandler) GetReturn(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/returns [get]
 func (h *ReturnsHandler) GetAllReturns(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get all returns request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	limitStr := c.DefaultQuery("limit", "10")
 	offsetStr := c.DefaultQuery("offset", "0")
 
@@ -122,11 +170,23 @@ func (h *ReturnsHandler) GetAllReturns(c *gin.Context) {
 		return
 	}
 
+	// 3. Service Call Log
+	h.logger.Debug("Calling service to get all returns",
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
+
 	returns, err := h.returnsService.GetAllReturns(limit, offset)
 	if err != nil {
+		// 4. Service Error Log
+		h.logger.Error("Service error getting all returns",
+			zap.Error(err))
 		utils.HandleServiceError(c, "Failed to retrieve returns", err)
 		return
 	}
+
+	// 5. Success Log
+	h.logger.Info("All returns retrieved successfully",
+		zap.Int("count", len(returns)))
 
 	utils.OKResponse(c, "Returns retrieved successfully", returns)
 }
@@ -150,6 +210,11 @@ func (h *ReturnsHandler) GetAllReturns(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/returns/{id} [put]
 func (h *ReturnsHandler) UpdateReturn(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling update return request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	id := c.Param("id")
 	if id == "" {
 		utils.BadRequestResponse(c, "Return ID is required", nil)
@@ -158,15 +223,32 @@ func (h *ReturnsHandler) UpdateReturn(c *gin.Context) {
 
 	var req models.UpdateReturnRequest
 	if err := utils.ValidatePartialRequest(c, &req); err != nil {
+		// 2. Validation Error Log
+		h.logger.Error("Invalid request body for update return",
+			zap.Error(err),
+			zap.String("return_id", id))
 		utils.BadRequestResponse(c, "Invalid request data", err)
 		return
 	}
 
+	// 3. Service Call Log
+	h.logger.Debug("Calling service to update return",
+		zap.String("return_id", id))
+
 	ret, err := h.returnsService.UpdateReturn(id, &req)
 	if err != nil {
+		// 4. Service Error Log
+		h.logger.Error("Service error updating return",
+			zap.Error(err),
+			zap.String("return_id", id))
 		utils.HandleServiceError(c, "Failed to update return", err)
 		return
 	}
+
+	// 5. Success Log
+	h.logger.Info("Return updated successfully",
+		zap.String("return_id", ret.ID),
+		zap.String("sale_id", ret.SaleID))
 
 	utils.OKResponse(c, "Return updated successfully", ret)
 }
@@ -188,17 +270,34 @@ func (h *ReturnsHandler) UpdateReturn(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/returns/{id} [delete]
 func (h *ReturnsHandler) DeleteReturn(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling delete return request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	id := c.Param("id")
 	if id == "" {
 		utils.BadRequestResponse(c, "Return ID is required", nil)
 		return
 	}
 
+	// 3. Service Call Log
+	h.logger.Debug("Calling service to delete return",
+		zap.String("return_id", id))
+
 	err := h.returnsService.DeleteReturn(id)
 	if err != nil {
+		// 4. Service Error Log
+		h.logger.Error("Service error deleting return",
+			zap.Error(err),
+			zap.String("return_id", id))
 		utils.HandleServiceError(c, "Failed to delete return", err)
 		return
 	}
+
+	// 5. Success Log
+	h.logger.Info("Return deleted successfully",
+		zap.String("return_id", id))
 
 	utils.OKResponse(c, "Return deleted successfully", nil)
 }
@@ -219,17 +318,35 @@ func (h *ReturnsHandler) DeleteReturn(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/returns/customer/{customerID} [get]
 func (h *ReturnsHandler) GetReturnsByCustomer(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get returns by customer request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	customerID := c.Param("customerID")
 	if customerID == "" {
 		utils.BadRequestResponse(c, "Customer ID is required", nil)
 		return
 	}
 
+	// 3. Service Call Log
+	h.logger.Debug("Calling service to get returns by customer",
+		zap.String("customer_id", customerID))
+
 	returns, err := h.returnsService.GetReturnsByCustomer(customerID)
 	if err != nil {
+		// 4. Service Error Log
+		h.logger.Error("Service error getting returns by customer",
+			zap.Error(err),
+			zap.String("customer_id", customerID))
 		utils.HandleServiceError(c, "Failed to retrieve returns", err)
 		return
 	}
+
+	// 5. Success Log
+	h.logger.Info("Returns by customer retrieved successfully",
+		zap.String("customer_id", customerID),
+		zap.Int("count", len(returns)))
 
 	utils.OKResponse(c, "Returns retrieved successfully", returns)
 }
@@ -250,17 +367,35 @@ func (h *ReturnsHandler) GetReturnsByCustomer(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/returns/sale/{saleID} [get]
 func (h *ReturnsHandler) GetReturnsBySaleID(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get returns by sale ID request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	saleID := c.Param("saleID")
 	if saleID == "" {
 		utils.BadRequestResponse(c, "Sale ID is required", nil)
 		return
 	}
 
+	// 3. Service Call Log
+	h.logger.Debug("Calling service to get returns by sale",
+		zap.String("sale_id", saleID))
+
 	returns, err := h.returnsService.GetReturnsBySaleID(saleID)
 	if err != nil {
+		// 4. Service Error Log
+		h.logger.Error("Service error getting returns by sale",
+			zap.Error(err),
+			zap.String("sale_id", saleID))
 		utils.HandleServiceError(c, "Failed to retrieve returns", err)
 		return
 	}
+
+	// 5. Success Log
+	h.logger.Info("Returns by sale retrieved successfully",
+		zap.String("sale_id", saleID),
+		zap.Int("count", len(returns)))
 
 	utils.OKResponse(c, "Returns retrieved successfully", returns)
 }
@@ -282,6 +417,11 @@ func (h *ReturnsHandler) GetReturnsBySaleID(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/returns/date-range [get]
 func (h *ReturnsHandler) GetReturnsByDateRange(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get returns by date range request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	startDateStr := c.Query("start_date")
 	endDateStr := c.Query("end_date")
 
@@ -302,11 +442,27 @@ func (h *ReturnsHandler) GetReturnsByDateRange(c *gin.Context) {
 		return
 	}
 
+	// 3. Service Call Log
+	h.logger.Debug("Calling service to get returns by date range",
+		zap.String("start_date", startDateStr),
+		zap.String("end_date", endDateStr))
+
 	returns, err := h.returnsService.GetReturnsByDateRange(startDate, endDate)
 	if err != nil {
+		// 4. Service Error Log
+		h.logger.Error("Service error getting returns by date range",
+			zap.Error(err),
+			zap.String("start_date", startDateStr),
+			zap.String("end_date", endDateStr))
 		utils.HandleServiceError(c, "Failed to retrieve returns", err)
 		return
 	}
+
+	// 5. Success Log
+	h.logger.Info("Returns by date range retrieved successfully",
+		zap.String("start_date", startDateStr),
+		zap.String("end_date", endDateStr),
+		zap.Int("count", len(returns)))
 
 	utils.OKResponse(c, "Returns retrieved successfully", returns)
 }
@@ -327,17 +483,35 @@ func (h *ReturnsHandler) GetReturnsByDateRange(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/returns/status/{status} [get]
 func (h *ReturnsHandler) GetReturnsByStatus(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get returns by status request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	status := c.Param("status")
 	if status == "" {
 		utils.BadRequestResponse(c, "Status is required", nil)
 		return
 	}
 
+	// 3. Service Call Log
+	h.logger.Debug("Calling service to get returns by status",
+		zap.String("status", status))
+
 	returns, err := h.returnsService.GetReturnsByStatus(status)
 	if err != nil {
+		// 4. Service Error Log
+		h.logger.Error("Service error getting returns by status",
+			zap.Error(err),
+			zap.String("status", status))
 		utils.HandleServiceError(c, "Failed to retrieve returns", err)
 		return
 	}
+
+	// 5. Success Log
+	h.logger.Info("Returns by status retrieved successfully",
+		zap.String("status", status),
+		zap.Int("count", len(returns)))
 
 	utils.OKResponse(c, "Returns retrieved successfully", returns)
 }
@@ -359,6 +533,11 @@ func (h *ReturnsHandler) GetReturnsByStatus(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/returns/total-amount [get]
 func (h *ReturnsHandler) GetTotalReturnsAmount(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get total returns amount request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	startDateStr := c.Query("start_date")
 	endDateStr := c.Query("end_date")
 
@@ -379,11 +558,27 @@ func (h *ReturnsHandler) GetTotalReturnsAmount(c *gin.Context) {
 		return
 	}
 
+	// 3. Service Call Log
+	h.logger.Debug("Calling service to get total returns amount",
+		zap.String("start_date", startDateStr),
+		zap.String("end_date", endDateStr))
+
 	totalAmount, err := h.returnsService.GetTotalReturnsAmount(startDate, endDate)
 	if err != nil {
+		// 4. Service Error Log
+		h.logger.Error("Service error calculating total returns amount",
+			zap.Error(err),
+			zap.String("start_date", startDateStr),
+			zap.String("end_date", endDateStr))
 		utils.HandleServiceError(c, "Failed to calculate total amount", err)
 		return
 	}
+
+	// 5. Success Log
+	h.logger.Info("Total returns amount calculated successfully",
+		zap.String("start_date", startDateStr),
+		zap.String("end_date", endDateStr),
+		zap.Float64("total_amount", totalAmount))
 
 	utils.OKResponse(c, "Total returns amount calculated successfully", gin.H{
 		"total_amount": totalAmount,
@@ -410,6 +605,11 @@ func (h *ReturnsHandler) GetTotalReturnsAmount(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/returns/return-rate/{productID} [get]
 func (h *ReturnsHandler) GetReturnRateByProduct(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get return rate by product request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	productID := c.Param("productID")
 	if productID == "" {
 		utils.BadRequestResponse(c, "Product ID is required", nil)
@@ -436,11 +636,26 @@ func (h *ReturnsHandler) GetReturnRateByProduct(c *gin.Context) {
 		return
 	}
 
+	// 3. Service Call Log
+	h.logger.Debug("Calling service to get return rate by product",
+		zap.String("product_id", productID),
+		zap.String("start_date", startDateStr),
+		zap.String("end_date", endDateStr))
+
 	returnRate, err := h.returnsService.GetReturnRateByProduct(productID, startDate, endDate)
 	if err != nil {
+		// 4. Service Error Log
+		h.logger.Error("Service error calculating return rate by product",
+			zap.Error(err),
+			zap.String("product_id", productID))
 		utils.HandleServiceError(c, "Failed to calculate return rate", err)
 		return
 	}
+
+	// 5. Success Log
+	h.logger.Info("Return rate by product calculated successfully",
+		zap.String("product_id", productID),
+		zap.Float64("return_rate", returnRate))
 
 	utils.OKResponse(c, "Return rate calculated successfully", gin.H{
 		"product_id":  productID,
@@ -466,6 +681,11 @@ func (h *ReturnsHandler) GetReturnRateByProduct(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/returns/most-returned [get]
 func (h *ReturnsHandler) GetMostReturnedProducts(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get most returned products request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	limitStr := c.DefaultQuery("limit", "10")
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
@@ -473,11 +693,23 @@ func (h *ReturnsHandler) GetMostReturnedProducts(c *gin.Context) {
 		return
 	}
 
+	// 3. Service Call Log
+	h.logger.Debug("Calling service to get most returned products",
+		zap.Int("limit", limit))
+
 	products, err := h.returnsService.GetMostReturnedProducts(limit)
 	if err != nil {
+		// 4. Service Error Log
+		h.logger.Error("Service error getting most returned products",
+			zap.Error(err),
+			zap.Int("limit", limit))
 		utils.HandleServiceError(c, "Failed to retrieve most returned products", err)
 		return
 	}
+
+	// 5. Success Log
+	h.logger.Info("Most returned products retrieved successfully",
+		zap.Int("count", len(products)))
 
 	utils.OKResponse(c, "Most returned products retrieved successfully", products)
 }
@@ -501,6 +733,11 @@ func (h *ReturnsHandler) GetMostReturnedProducts(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/returns/{id}/status [patch]
 func (h *ReturnsHandler) UpdateReturnStatus(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling update return status request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	id := c.Param("id")
 	if id == "" {
 		utils.BadRequestResponse(c, "Return ID is required", nil)
@@ -511,6 +748,10 @@ func (h *ReturnsHandler) UpdateReturnStatus(c *gin.Context) {
 		Status string `json:"status" binding:"required"`
 	}
 	if err := utils.ValidateRequest(c, &req); err != nil {
+		// 2. Validation Error Log
+		h.logger.Error("Invalid request body for update return status",
+			zap.Error(err),
+			zap.String("return_id", id))
 		utils.BadRequestResponse(c, "Invalid request data", err)
 		return
 	}
@@ -519,11 +760,26 @@ func (h *ReturnsHandler) UpdateReturnStatus(c *gin.Context) {
 		Status: &req.Status,
 	}
 
+	// 3. Service Call Log
+	h.logger.Debug("Calling service to update return status",
+		zap.String("return_id", id),
+		zap.String("new_status", req.Status))
+
 	ret, err := h.returnsService.UpdateReturn(id, &updateReq)
 	if err != nil {
+		// 4. Service Error Log
+		h.logger.Error("Service error updating return status",
+			zap.Error(err),
+			zap.String("return_id", id),
+			zap.String("new_status", req.Status))
 		utils.HandleServiceError(c, "Failed to update return status", err)
 		return
 	}
+
+	// 5. Success Log
+	h.logger.Info("Return status updated successfully",
+		zap.String("return_id", ret.ID),
+		zap.String("new_status", ret.Status))
 
 	utils.OKResponse(c, "Return status updated successfully", ret)
 }

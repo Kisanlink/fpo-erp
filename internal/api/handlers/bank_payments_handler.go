@@ -5,21 +5,25 @@ import (
 
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
+	logger "kisanlink-erp/internal/interfaces"
 	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type BankPaymentsHandler struct {
 	bankPaymentsService interfaces.BankPaymentsServiceInterface
 	aaaMiddleware       *aaa.AAAMiddleware
+	logger              logger.Logger
 }
 
-func NewBankPaymentsHandler(bankPaymentsService interfaces.BankPaymentsServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *BankPaymentsHandler {
+func NewBankPaymentsHandler(bankPaymentsService interfaces.BankPaymentsServiceInterface, aaaMiddleware *aaa.AAAMiddleware, logger logger.Logger) *BankPaymentsHandler {
 	return &BankPaymentsHandler{
 		bankPaymentsService: bankPaymentsService,
 		aaaMiddleware:       aaaMiddleware,
+		logger:              logger,
 	}
 }
 
@@ -40,20 +44,38 @@ func NewBankPaymentsHandler(bankPaymentsService interfaces.BankPaymentsServiceIn
 // @Security BearerAuth
 // @Router /api/v1/bank-payments [post]
 func (h *BankPaymentsHandler) CreateBankPayment(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling create bank payment request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	var req models.CreateBankPaymentRequest
 
-	// Validate request
+	// 2. Validation Error
 	if err := utils.ValidateRequest(c, &req); err != nil {
+		h.logger.Error("Invalid request body for create bank payment",
+			zap.Error(err))
 		utils.BadRequestResponse(c, "Invalid request data", err)
 		return
 	}
 
+	// 3. Service Call
+	h.logger.Debug("Calling service to create bank payment",
+		zap.Float64("amount", req.Amount))
+
 	payment, err := h.bankPaymentsService.CreateBankPayment(&req)
+
+	// 4. Service Error
 	if err != nil {
+		h.logger.Error("Failed to create bank payment via service",
+			zap.Error(err))
 		utils.HandleServiceError(c, "Failed to create bank payment", err)
 		return
 	}
 
+	// 5. Success
+	h.logger.Info("Bank payment created successfully via handler",
+		zap.String("payment_id", payment.ID))
 	utils.CreatedResponse(c, "Bank payment created successfully", payment)
 }
 
@@ -74,27 +96,49 @@ func (h *BankPaymentsHandler) CreateBankPayment(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/bank-payments [get]
 func (h *BankPaymentsHandler) GetAllBankPayments(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get all bank payments request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	limitStr := c.DefaultQuery("limit", "10")
 	offsetStr := c.DefaultQuery("offset", "0")
 
+	// 2. Validation Error
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
+		h.logger.Error("Invalid limit parameter for get all bank payments",
+			zap.Error(err))
 		utils.BadRequestResponse(c, "Invalid limit parameter", err)
 		return
 	}
 
 	offset, err := strconv.Atoi(offsetStr)
 	if err != nil {
+		h.logger.Error("Invalid offset parameter for get all bank payments",
+			zap.Error(err))
 		utils.BadRequestResponse(c, "Invalid offset parameter", err)
 		return
 	}
 
+	// 3. Service Call
+	h.logger.Debug("Calling service to get all bank payments",
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
+
 	payments, err := h.bankPaymentsService.GetAllBankPayments(limit, offset)
+
+	// 4. Service Error
 	if err != nil {
+		h.logger.Error("Failed to retrieve bank payments via service",
+			zap.Error(err))
 		utils.HandleServiceError(c, "Failed to retrieve bank payments", err)
 		return
 	}
 
+	// 5. Success
+	h.logger.Info("Bank payments retrieved successfully via handler",
+		zap.Int("count", len(payments)))
 	utils.OKResponse(c, "Bank payments retrieved successfully", payments)
 }
 
@@ -115,18 +159,38 @@ func (h *BankPaymentsHandler) GetAllBankPayments(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/bank-payments/{id} [get]
 func (h *BankPaymentsHandler) GetBankPayment(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get bank payment request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	id := c.Param("id")
+
+	// 2. Validation Error
 	if id == "" {
+		h.logger.Error("Invalid request: payment ID is required")
 		utils.BadRequestResponse(c, "Payment ID is required", nil)
 		return
 	}
 
+	// 3. Service Call
+	h.logger.Debug("Calling service to get bank payment",
+		zap.String("id", id))
+
 	payment, err := h.bankPaymentsService.GetBankPayment(id)
+
+	// 4. Service Error
 	if err != nil {
+		h.logger.Error("Failed to retrieve bank payment via service",
+			zap.Error(err),
+			zap.String("id", id))
 		utils.NotFoundResponse(c, "Bank payment not found")
 		return
 	}
 
+	// 5. Success
+	h.logger.Info("Bank payment retrieved successfully via handler",
+		zap.String("id", id))
 	utils.OKResponse(c, "Bank payment retrieved successfully", payment)
 }
 
@@ -146,18 +210,39 @@ func (h *BankPaymentsHandler) GetBankPayment(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/bank-payments/sale/{saleID} [get]
 func (h *BankPaymentsHandler) GetBankPaymentsBySale(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get bank payments by sale request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	saleID := c.Param("saleID")
+
+	// 2. Validation Error
 	if saleID == "" {
+		h.logger.Error("Invalid request: sale ID is required")
 		utils.BadRequestResponse(c, "Sale ID is required", nil)
 		return
 	}
 
+	// 3. Service Call
+	h.logger.Debug("Calling service to get bank payments by sale",
+		zap.String("sale_id", saleID))
+
 	payments, err := h.bankPaymentsService.GetBankPaymentsBySaleID(saleID)
+
+	// 4. Service Error
 	if err != nil {
+		h.logger.Error("Failed to retrieve bank payments for sale via service",
+			zap.Error(err),
+			zap.String("sale_id", saleID))
 		utils.HandleServiceError(c, "Failed to retrieve bank payments for sale", err)
 		return
 	}
 
+	// 5. Success
+	h.logger.Info("Bank payments for sale retrieved successfully via handler",
+		zap.String("sale_id", saleID),
+		zap.Int("count", len(payments)))
 	utils.OKResponse(c, "Bank payments for sale retrieved successfully", payments)
 }
 
@@ -177,18 +262,39 @@ func (h *BankPaymentsHandler) GetBankPaymentsBySale(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/bank-payments/return/{returnID} [get]
 func (h *BankPaymentsHandler) GetBankPaymentsByReturn(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get bank payments by return request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	returnID := c.Param("returnID")
+
+	// 2. Validation Error
 	if returnID == "" {
+		h.logger.Error("Invalid request: return ID is required")
 		utils.BadRequestResponse(c, "Return ID is required", nil)
 		return
 	}
 
+	// 3. Service Call
+	h.logger.Debug("Calling service to get bank payments by return",
+		zap.String("return_id", returnID))
+
 	payments, err := h.bankPaymentsService.GetBankPaymentsByReturnID(returnID)
+
+	// 4. Service Error
 	if err != nil {
+		h.logger.Error("Failed to retrieve bank payments for return via service",
+			zap.Error(err),
+			zap.String("return_id", returnID))
 		utils.HandleServiceError(c, "Failed to retrieve bank payments for return", err)
 		return
 	}
 
+	// 5. Success
+	h.logger.Info("Bank payments for return retrieved successfully via handler",
+		zap.String("return_id", returnID),
+		zap.Int("count", len(payments)))
 	utils.OKResponse(c, "Bank payments for return retrieved successfully", payments)
 }
 

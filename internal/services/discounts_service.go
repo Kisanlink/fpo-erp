@@ -2,6 +2,9 @@
 package services
 
 import (
+	"go.uber.org/zap"
+	"kisanlink-erp/internal/interfaces"
+
 	"encoding/json"
 	"time"
 
@@ -14,18 +17,24 @@ type DiscountsService struct {
 	discountRepo  *repositories.DiscountsRepository
 	productRepo   *repositories.ProductRepository
 	warehouseRepo *repositories.WarehouseRepository
+	logger        interfaces.Logger
 }
 
-func NewDiscountsService(discountRepo *repositories.DiscountsRepository, productRepo *repositories.ProductRepository, warehouseRepo *repositories.WarehouseRepository) *DiscountsService {
+func NewDiscountsService(discountRepo *repositories.DiscountsRepository, productRepo *repositories.ProductRepository, warehouseRepo *repositories.WarehouseRepository, logger interfaces.Logger) *DiscountsService {
 	return &DiscountsService{
 		discountRepo:  discountRepo,
 		productRepo:   productRepo,
 		warehouseRepo: warehouseRepo,
+			logger:        logger,
 	}
 }
 
 // CreateDiscount creates a new discount
 func (s *DiscountsService) CreateDiscount(req *models.CreateDiscountRequest) (*models.DiscountResponse, error) {
+	s.logger.Info("Creating discount",
+		zap.String("code", req.Code),
+		zap.String("discount_type", string(req.DiscountType)))
+
 	// Parse dates
 	validFrom, err := time.Parse(time.RFC3339, req.ValidFrom)
 	if err != nil {

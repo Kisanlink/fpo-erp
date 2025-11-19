@@ -3,23 +3,27 @@ package handlers
 import (
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
+	logger "kisanlink-erp/internal/interfaces"
 	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 // GRNHandler handles goods receipt note HTTP requests
 type GRNHandler struct {
 	grnService    interfaces.GRNServiceInterface
 	aaaMiddleware *aaa.AAAMiddleware
+	logger        logger.Logger
 }
 
 // NewGRNHandler creates a new GRN handler
-func NewGRNHandler(grnService interfaces.GRNServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *GRNHandler {
+func NewGRNHandler(grnService interfaces.GRNServiceInterface, aaaMiddleware *aaa.AAAMiddleware, logger logger.Logger) *GRNHandler {
 	return &GRNHandler{
 		grnService:    grnService,
 		aaaMiddleware: aaaMiddleware,
+		logger:        logger,
 	}
 }
 
@@ -40,20 +44,42 @@ func NewGRNHandler(grnService interfaces.GRNServiceInterface, aaaMiddleware *aaa
 // @Security BearerAuth
 // @Router /api/v1/grns [post]
 func (h *GRNHandler) CreateGRN(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling create GRN request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	var request models.CreateGRNRequest
 
 	// Validate request
 	if err := utils.ValidateRequest(c, &request); err != nil {
+		// 2. Validation Error Log
+		h.logger.Error("Invalid request body for create GRN",
+			zap.Error(err))
 		utils.BadRequestResponse(c, "Invalid request data", err)
 		return
 	}
 
+	// 3. Service Call Log
+	h.logger.Debug("Calling service to create GRN",
+		zap.String("po_id", request.POID),
+		zap.String("grn_number", request.GRNNumber))
+
 	// Create GRN
 	response, err := h.grnService.CreateGRN(c.Request.Context(), &request)
 	if err != nil {
+		// 4. Service Error Log
+		h.logger.Error("Service error creating GRN",
+			zap.Error(err),
+			zap.String("po_id", request.POID))
 		utils.HandleServiceError(c, "Failed to create GRN", err)
 		return
 	}
+
+	// 5. Success Log
+	h.logger.Info("GRN created successfully",
+		zap.String("grn_id", response.ID),
+		zap.String("grn_number", response.GRNNumber))
 
 	utils.CreatedResponse(c, "GRN created successfully", response)
 }
@@ -70,6 +96,11 @@ func (h *GRNHandler) CreateGRN(c *gin.Context) {
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Router /api/v1/grns/{id} [get]
 func (h *GRNHandler) GetGRN(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get GRN request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get ID from URL
 	id := c.Param("id")
 	if id == "" {
@@ -77,12 +108,25 @@ func (h *GRNHandler) GetGRN(c *gin.Context) {
 		return
 	}
 
+	// 3. Service Call Log
+	h.logger.Debug("Calling service to get GRN",
+		zap.String("grn_id", id))
+
 	// Get GRN
 	response, err := h.grnService.GetGRN(c.Request.Context(), id)
 	if err != nil {
+		// 4. Service Error Log
+		h.logger.Error("Service error getting GRN",
+			zap.Error(err),
+			zap.String("grn_id", id))
 		utils.NotFoundResponse(c, "GRN not found")
 		return
 	}
+
+	// 5. Success Log
+	h.logger.Info("GRN retrieved successfully",
+		zap.String("grn_id", response.ID),
+		zap.String("grn_number", response.GRNNumber))
 
 	utils.OKResponse(c, "GRN retrieved successfully", response)
 }
@@ -101,12 +145,27 @@ func (h *GRNHandler) GetGRN(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/grns [get]
 func (h *GRNHandler) GetAllGRNs(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get all GRNs request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
+	// 3. Service Call Log
+	h.logger.Debug("Calling service to get all GRNs")
+
 	// Get all GRNs
 	response, err := h.grnService.GetAllGRNs(c.Request.Context())
 	if err != nil {
+		// 4. Service Error Log
+		h.logger.Error("Service error getting all GRNs",
+			zap.Error(err))
 		utils.HandleServiceError(c, "Failed to retrieve GRNs", err)
 		return
 	}
+
+	// 5. Success Log
+	h.logger.Info("All GRNs retrieved successfully",
+		zap.Int("count", len(response)))
 
 	utils.OKResponse(c, "GRNs retrieved successfully", response)
 }
@@ -123,6 +182,11 @@ func (h *GRNHandler) GetAllGRNs(c *gin.Context) {
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Router /api/v1/warehouses/{id}/grns [get]
 func (h *GRNHandler) GetGRNsByWarehouse(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get GRNs by warehouse request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get warehouse ID from URL
 	warehouseID := c.Param("id")
 	if warehouseID == "" {
@@ -130,12 +194,25 @@ func (h *GRNHandler) GetGRNsByWarehouse(c *gin.Context) {
 		return
 	}
 
+	// 3. Service Call Log
+	h.logger.Debug("Calling service to get GRNs by warehouse",
+		zap.String("warehouse_id", warehouseID))
+
 	// Get GRNs
 	response, err := h.grnService.GetGRNsByWarehouse(c.Request.Context(), warehouseID)
 	if err != nil {
+		// 4. Service Error Log
+		h.logger.Error("Service error getting GRNs by warehouse",
+			zap.Error(err),
+			zap.String("warehouse_id", warehouseID))
 		utils.HandleServiceError(c, "Failed to retrieve GRNs", err)
 		return
 	}
+
+	// 5. Success Log
+	h.logger.Info("GRNs by warehouse retrieved successfully",
+		zap.String("warehouse_id", warehouseID),
+		zap.Int("count", len(response)))
 
 	utils.OKResponse(c, "GRNs retrieved successfully", response)
 }
@@ -152,6 +229,11 @@ func (h *GRNHandler) GetGRNsByWarehouse(c *gin.Context) {
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Router /api/v1/purchase-orders/{id}/grn [get]
 func (h *GRNHandler) GetGRNByPurchaseOrder(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get GRN by purchase order request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get PO ID from URL
 	poID := c.Param("id")
 	if poID == "" {
@@ -159,12 +241,25 @@ func (h *GRNHandler) GetGRNByPurchaseOrder(c *gin.Context) {
 		return
 	}
 
+	// 3. Service Call Log
+	h.logger.Debug("Calling service to get GRN by purchase order",
+		zap.String("purchase_order_id", poID))
+
 	// Get GRN
 	response, err := h.grnService.GetGRNByPurchaseOrder(c.Request.Context(), poID)
 	if err != nil {
+		// 4. Service Error Log
+		h.logger.Error("Service error getting GRN by purchase order",
+			zap.Error(err),
+			zap.String("purchase_order_id", poID))
 		utils.NotFoundResponse(c, "GRN not found for this purchase order")
 		return
 	}
+
+	// 5. Success Log
+	h.logger.Info("GRN by purchase order retrieved successfully",
+		zap.String("purchase_order_id", poID),
+		zap.String("grn_id", response.ID))
 
 	utils.OKResponse(c, "GRN retrieved successfully", response)
 }
@@ -188,6 +283,11 @@ func (h *GRNHandler) GetGRNByPurchaseOrder(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/grns/{id} [put]
 func (h *GRNHandler) UpdateGRN(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling update GRN request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get ID from URL
 	id := c.Param("id")
 	if id == "" {
@@ -198,16 +298,33 @@ func (h *GRNHandler) UpdateGRN(c *gin.Context) {
 	// Validate request
 	var request models.UpdateGRNRequest
 	if err := utils.ValidateRequest(c, &request); err != nil {
+		// 2. Validation Error Log
+		h.logger.Error("Invalid request body for update GRN",
+			zap.Error(err),
+			zap.String("grn_id", id))
 		utils.BadRequestResponse(c, "Invalid request data", err)
 		return
 	}
 
+	// 3. Service Call Log
+	h.logger.Debug("Calling service to update GRN",
+		zap.String("grn_id", id))
+
 	// Update GRN
 	response, err := h.grnService.UpdateGRN(c.Request.Context(), id, &request)
 	if err != nil {
+		// 4. Service Error Log
+		h.logger.Error("Service error updating GRN",
+			zap.Error(err),
+			zap.String("grn_id", id))
 		utils.HandleServiceError(c, "Failed to update GRN", err)
 		return
 	}
+
+	// 5. Success Log
+	h.logger.Info("GRN updated successfully",
+		zap.String("grn_id", response.ID),
+		zap.String("grn_number", response.GRNNumber))
 
 	utils.OKResponse(c, "GRN updated successfully", response)
 }

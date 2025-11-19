@@ -9,26 +9,41 @@ import (
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
 	"kisanlink-erp/internal/errors"
+	"kisanlink-erp/internal/interfaces"
+
+	"go.uber.org/zap"
 )
 
 // AttachmentService handles attachment business logic
 type AttachmentService struct {
 	attachmentRepo *repositories.AttachmentRepository
 	s3Service      *S3Service
+	logger         interfaces.Logger
 }
 
 // NewAttachmentService creates a new attachment service
-func NewAttachmentService(attachmentRepo *repositories.AttachmentRepository, s3Service *S3Service) *AttachmentService {
+func NewAttachmentService(attachmentRepo *repositories.AttachmentRepository, s3Service *S3Service, logger interfaces.Logger) *AttachmentService {
 	return &AttachmentService{
 		attachmentRepo: attachmentRepo,
 		s3Service:      s3Service,
+		logger:         logger,
 	}
 }
 
 // UploadAttachment uploads a file and creates an attachment record
 func (s *AttachmentService) UploadAttachment(ctx context.Context, file *multipart.FileHeader, entityType, entityID, uploadedBy string) (*models.AttachmentResponse, error) {
+	s.logger.Info("Uploading attachment",
+		zap.String("entity_type", entityType),
+		zap.String("entity_id", entityID),
+		zap.String("filename", file.Filename),
+		zap.Int64("file_size", file.Size),
+		zap.String("uploaded_by", uploadedBy))
+
 	// Validate file
 	if err := s.validateFile(file); err != nil {
+		s.logger.Warn("File validation failed",
+			zap.Error(err),
+			zap.String("filename", file.Filename))
 		return nil, err
 	}
 
@@ -43,8 +58,14 @@ func (s *AttachmentService) UploadAttachment(ctx context.Context, file *multipar
 	// Upload file to S3 with entity-based folder structure
 	s3Key, err := s.s3Service.UploadFile(ctx, file, entityType, entityID)
 	if err != nil {
+		s.logger.Error("Failed to upload file to S3",
+			zap.Error(err),
+			zap.String("filename", file.Filename))
 		return nil, errors.NewInternalServerError("failed to upload file")
 	}
+
+	s.logger.Debug("File uploaded to S3",
+		zap.String("s3_key", s3Key))
 
 	// Create attachment record using the proper constructor
 	var uploadedByPtr *string
@@ -55,13 +76,24 @@ func (s *AttachmentService) UploadAttachment(ctx context.Context, file *multipar
 	attachment := models.NewAttachment(entityType, entityID, s3Key, s.s3Service.GetContentType(file), uploadedByPtr, time.Now())
 
 	if err := s.attachmentRepo.Create(attachment); err != nil {
+		s.logger.Error("Failed to create attachment record",
+			zap.Error(err),
+			zap.String("s3_key", s3Key))
 		// If database creation fails, delete the uploaded file
 		if deleteErr := s.s3Service.DeleteFile(ctx, s3Key); deleteErr != nil {
+			s.logger.Error("Failed to delete S3 file after database error",
+				zap.Error(deleteErr),
+				zap.String("s3_key", s3Key))
 			// Log the deletion error but return the original error
 			fmt.Printf("Failed to delete S3 file after database error: %v", deleteErr)
 		}
 		return nil, errors.NewInternalServerError("failed to create attachment record")
 	}
+
+	s.logger.Info("Attachment created successfully",
+		zap.String("attachment_id", attachment.ID),
+		zap.String("entity_type", entityType),
+		zap.String("entity_id", entityID))
 
 	// Build response
 	return &models.AttachmentResponse{
@@ -141,21 +173,39 @@ func (s *AttachmentService) GetAttachmentsByEntity(entityType, entityID string) 
 
 // DeleteAttachment deletes an attachment and its associated file
 func (s *AttachmentService) DeleteAttachment(ctx context.Context, id string) error {
+	s.logger.Info("Deleting attachment",
+		zap.String("attachment_id", id))
+
 	// Get attachment to get the S3 URL
 	attachment, err := s.attachmentRepo.GetByID(id)
 	if err != nil {
+		s.logger.Error("Failed to retrieve attachment for deletion",
+			zap.Error(err),
+			zap.String("attachment_id", id))
 		return errors.NewNotFoundError("attachment not found")
 	}
 
 	// Delete file from S3
 	if err := s.s3Service.DeleteFile(ctx, attachment.FilePath); err != nil {
+		s.logger.Error("Failed to delete file from S3",
+			zap.Error(err),
+			zap.String("s3_path", attachment.FilePath))
 		return errors.NewInternalServerError("failed to delete file from S3")
 	}
 
+	s.logger.Debug("S3 file deleted",
+		zap.String("s3_path", attachment.FilePath))
+
 	// Delete attachment record
 	if err := s.attachmentRepo.Delete(id); err != nil {
+		s.logger.Error("Failed to delete attachment record",
+			zap.Error(err),
+			zap.String("attachment_id", id))
 		return errors.NewInternalServerError("failed to delete attachment record")
 	}
+
+	s.logger.Info("Attachment deleted successfully",
+		zap.String("attachment_id", id))
 
 	return nil
 }

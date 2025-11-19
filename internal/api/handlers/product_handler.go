@@ -3,23 +3,27 @@ package handlers
 import (
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
+	logger "kisanlink-erp/internal/interfaces"
 	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 // ProductHandler handles product HTTP requests
 type ProductHandler struct {
 	productService interfaces.ProductServiceInterface
 	aaaMiddleware  *aaa.AAAMiddleware
+	logger         logger.Logger
 }
 
 // NewProductHandler creates a new product handler
-func NewProductHandler(productService interfaces.ProductServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *ProductHandler {
+func NewProductHandler(productService interfaces.ProductServiceInterface, aaaMiddleware *aaa.AAAMiddleware, logger logger.Logger) *ProductHandler {
 	return &ProductHandler{
 		productService: productService,
 		aaaMiddleware:  aaaMiddleware,
+		logger:         logger,
 	}
 }
 
@@ -40,20 +44,36 @@ func NewProductHandler(productService interfaces.ProductServiceInterface, aaaMid
 // @Security BearerAuth
 // @Router /api/v1/products [post]
 func (h *ProductHandler) CreateProduct(c *gin.Context) {
+	h.logger.Info("Handling create product request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	var request models.CreateProductRequest
 
 	// Validate request
 	if err := utils.ValidateRequest(c, &request); err != nil {
+		h.logger.Error("Invalid request body for create product",
+			zap.Error(err))
 		utils.BadRequestResponse(c, "Invalid request data", err)
 		return
 	}
 
+	h.logger.Debug("Calling service to create product",
+		zap.String("product_name", request.Name))
+
 	// Create product
 	response, err := h.productService.CreateProduct(&request)
 	if err != nil {
+		h.logger.Error("Service error creating product",
+			zap.Error(err),
+			zap.String("product_name", request.Name))
 		utils.HandleServiceError(c, "Failed to create product", err)
 		return
 	}
+
+	h.logger.Info("Product created successfully",
+		zap.String("product_id", response.ID),
+		zap.String("product_name", response.Name))
 
 	utils.CreatedResponse(c, "Product created successfully", response)
 }
@@ -75,19 +95,34 @@ func (h *ProductHandler) CreateProduct(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/products/{id} [get]
 func (h *ProductHandler) GetProduct(c *gin.Context) {
+	h.logger.Info("Handling get product request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get ID from URL
 	id := c.Param("id")
 	if id == "" {
+		h.logger.Error("Product ID is required but not provided")
 		utils.BadRequestResponse(c, "Product ID is required", nil)
 		return
 	}
 
+	h.logger.Debug("Fetching product by ID",
+		zap.String("product_id", id))
+
 	// Get product
 	response, err := h.productService.GetProduct(id)
 	if err != nil {
+		h.logger.Error("Product not found",
+			zap.Error(err),
+			zap.String("product_id", id))
 		utils.NotFoundResponse(c, "Product not found")
 		return
 	}
+
+	h.logger.Info("Product retrieved successfully",
+		zap.String("product_id", response.ID),
+		zap.String("product_name", response.Name))
 
 	utils.OKResponse(c, "Product retrieved successfully", response)
 }
@@ -106,12 +141,21 @@ func (h *ProductHandler) GetProduct(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/products [get]
 func (h *ProductHandler) GetAllProducts(c *gin.Context) {
+	h.logger.Info("Handling get all products request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get all products
 	response, err := h.productService.GetAllProducts()
 	if err != nil {
+		h.logger.Error("Service error retrieving all products",
+			zap.Error(err))
 		utils.HandleServiceError(c, "Failed to retrieve products", err)
 		return
 	}
+
+	h.logger.Info("All products retrieved successfully",
+		zap.Int("product_count", len(response)))
 
 	utils.OKResponse(c, "Products retrieved successfully", response)
 }
@@ -135,9 +179,14 @@ func (h *ProductHandler) GetAllProducts(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/products/{id} [patch]
 func (h *ProductHandler) UpdateProduct(c *gin.Context) {
+	h.logger.Info("Handling update product request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get ID from URL
 	id := c.Param("id")
 	if id == "" {
+		h.logger.Error("Product ID is required but not provided for update")
 		utils.BadRequestResponse(c, "Product ID is required", nil)
 		return
 	}
@@ -146,16 +195,29 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 
 	// Validate request
 	if err := utils.ValidatePartialRequest(c, &request); err != nil {
+		h.logger.Error("Invalid request body for update product",
+			zap.Error(err),
+			zap.String("product_id", id))
 		utils.BadRequestResponse(c, "Invalid request data", err)
 		return
 	}
 
+	h.logger.Debug("Calling service to update product",
+		zap.String("product_id", id))
+
 	// Update product
 	response, err := h.productService.UpdateProduct(id, &request)
 	if err != nil {
+		h.logger.Error("Service error updating product",
+			zap.Error(err),
+			zap.String("product_id", id))
 		utils.HandleServiceError(c, "Failed to update product", err)
 		return
 	}
+
+	h.logger.Info("Product updated successfully",
+		zap.String("product_id", response.ID),
+		zap.String("product_name", response.Name))
 
 	utils.OKResponse(c, "Product updated successfully", response)
 }
@@ -177,18 +239,32 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/products/{id} [delete]
 func (h *ProductHandler) DeleteProduct(c *gin.Context) {
+	h.logger.Info("Handling delete product request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get ID from URL
 	id := c.Param("id")
 	if id == "" {
+		h.logger.Error("Product ID is required but not provided for delete")
 		utils.BadRequestResponse(c, "Product ID is required", nil)
 		return
 	}
 
+	h.logger.Debug("Calling service to delete product",
+		zap.String("product_id", id))
+
 	// Delete product
 	if err := h.productService.DeleteProduct(id); err != nil {
+		h.logger.Error("Service error deleting product",
+			zap.Error(err),
+			zap.String("product_id", id))
 		utils.HandleServiceError(c, "Failed to delete product", err)
 		return
 	}
+
+	h.logger.Info("Product deleted successfully",
+		zap.String("product_id", id))
 
 	utils.OKResponse(c, "Product deleted successfully", nil)
 }
@@ -209,19 +285,34 @@ func (h *ProductHandler) DeleteProduct(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/products/search [get]
 func (h *ProductHandler) SearchProducts(c *gin.Context) {
+	h.logger.Info("Handling search products request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get query parameter
 	query := c.Query("q")
 	if query == "" {
+		h.logger.Error("Search query is required but not provided")
 		utils.BadRequestResponse(c, "Search query is required", nil)
 		return
 	}
 
+	h.logger.Debug("Searching products",
+		zap.String("query", query))
+
 	// Search products
 	response, err := h.productService.SearchProducts(query)
 	if err != nil {
+		h.logger.Error("Service error searching products",
+			zap.Error(err),
+			zap.String("query", query))
 		utils.HandleServiceError(c, "Failed to search products", err)
 		return
 	}
+
+	h.logger.Info("Products search completed",
+		zap.String("query", query),
+		zap.Int("results_count", len(response)))
 
 	utils.OKResponse(c, "Products found", response)
 }
@@ -243,19 +334,33 @@ func (h *ProductHandler) SearchProducts(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/products/{id}/with-prices [get]
 func (h *ProductHandler) GetProductWithPrices(c *gin.Context) {
+	h.logger.Info("Handling get product with prices request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get ID from URL
 	id := c.Param("id")
 	if id == "" {
+		h.logger.Error("Product ID is required but not provided for get with prices")
 		utils.BadRequestResponse(c, "Product ID is required", nil)
 		return
 	}
 
+	h.logger.Debug("Fetching product with prices",
+		zap.String("product_id", id))
+
 	// Get product with prices
 	response, err := h.productService.GetProductWithPrices(id)
 	if err != nil {
+		h.logger.Error("Product not found for get with prices",
+			zap.Error(err),
+			zap.String("product_id", id))
 		utils.NotFoundResponse(c, "Product not found")
 		return
 	}
+
+	h.logger.Info("Product with prices retrieved successfully",
+		zap.String("product_id", id))
 
 	utils.OKResponse(c, "Product with prices retrieved successfully", response)
 }

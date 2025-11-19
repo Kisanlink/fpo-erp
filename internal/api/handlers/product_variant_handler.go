@@ -3,23 +3,27 @@ package handlers
 import (
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
+	logger "kisanlink-erp/internal/interfaces"
 	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 // ProductVariantHandler handles product variant HTTP requests
 type ProductVariantHandler struct {
 	variantService interfaces.ProductVariantServiceInterface
 	aaaMiddleware  *aaa.AAAMiddleware
+	logger         logger.Logger
 }
 
 // NewProductVariantHandler creates a new product variant handler
-func NewProductVariantHandler(variantService interfaces.ProductVariantServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *ProductVariantHandler {
+func NewProductVariantHandler(variantService interfaces.ProductVariantServiceInterface, aaaMiddleware *aaa.AAAMiddleware, logger logger.Logger) *ProductVariantHandler {
 	return &ProductVariantHandler{
 		variantService: variantService,
 		aaaMiddleware:  aaaMiddleware,
+		logger:         logger,
 	}
 }
 
@@ -41,9 +45,14 @@ func NewProductVariantHandler(variantService interfaces.ProductVariantServiceInt
 // @Security BearerAuth
 // @Router /api/v1/products/{id}/variants [post]
 func (h *ProductVariantHandler) CreateProductVariant(c *gin.Context) {
+	h.logger.Info("Handling create product variant request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get product ID from URL
 	productID := c.Param("id")
 	if productID == "" {
+		h.logger.Error("Product ID is required but not provided")
 		utils.BadRequestResponse(c, "Product ID is required", nil)
 		return
 	}
@@ -52,16 +61,33 @@ func (h *ProductVariantHandler) CreateProductVariant(c *gin.Context) {
 
 	// Validate request
 	if err := utils.ValidateRequest(c, &request); err != nil {
+		h.logger.Error("Invalid request body for create product variant",
+			zap.Error(err),
+			zap.String("product_id", productID))
 		utils.BadRequestResponse(c, "Invalid request data", err)
 		return
 	}
 
+	h.logger.Debug("Calling variant service to create product variant",
+		zap.String("product_id", productID),
+		zap.String("sku", *request.SKU),
+		zap.String("variant_name", request.VariantName))
+
 	// Create variant
 	response, err := h.variantService.CreateProductVariant(c.Request.Context(), productID, &request)
 	if err != nil {
+		h.logger.Error("Failed to create product variant via service",
+			zap.Error(err),
+			zap.String("product_id", productID),
+			zap.String("sku", *request.SKU))
 		utils.HandleServiceError(c, "Failed to create variant", err)
 		return
 	}
+
+	h.logger.Info("Product variant created successfully via handler",
+		zap.String("variant_id", response.ID),
+		zap.String("product_id", productID),
+		zap.String("sku", *response.SKU))
 
 	utils.CreatedResponse(c, "Variant created successfully", response)
 }
@@ -78,19 +104,34 @@ func (h *ProductVariantHandler) CreateProductVariant(c *gin.Context) {
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Router /api/v1/variants/{id} [get]
 func (h *ProductVariantHandler) GetProductVariant(c *gin.Context) {
+	h.logger.Info("Handling get product variant request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get ID from URL
 	id := c.Param("id")
 	if id == "" {
+		h.logger.Error("Variant ID is required but not provided")
 		utils.BadRequestResponse(c, "Variant ID is required", nil)
 		return
 	}
 
+	h.logger.Debug("Calling variant service to get product variant",
+		zap.String("variant_id", id))
+
 	// Get variant
 	response, err := h.variantService.GetProductVariant(c.Request.Context(), id)
 	if err != nil {
+		h.logger.Error("Product variant not found",
+			zap.Error(err),
+			zap.String("variant_id", id))
 		utils.NotFoundResponse(c, "Variant not found")
 		return
 	}
+
+	h.logger.Info("Product variant retrieved successfully via handler",
+		zap.String("variant_id", response.ID),
+		zap.String("sku", *response.SKU))
 
 	utils.OKResponse(c, "Variant retrieved successfully", response)
 }
@@ -107,19 +148,34 @@ func (h *ProductVariantHandler) GetProductVariant(c *gin.Context) {
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Router /api/v1/products/{id}/variants [get]
 func (h *ProductVariantHandler) GetVariantsByProduct(c *gin.Context) {
+	h.logger.Info("Handling get variants by product request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get product ID from URL
 	productID := c.Param("id")
 	if productID == "" {
+		h.logger.Error("Product ID is required but not provided")
 		utils.BadRequestResponse(c, "Product ID is required", nil)
 		return
 	}
 
+	h.logger.Debug("Calling variant service to get variants by product",
+		zap.String("product_id", productID))
+
 	// Get variants
 	response, err := h.variantService.GetVariantsByProduct(c.Request.Context(), productID)
 	if err != nil {
+		h.logger.Error("Failed to retrieve variants for product via service",
+			zap.Error(err),
+			zap.String("product_id", productID))
 		utils.HandleServiceError(c, "Failed to retrieve variants", err)
 		return
 	}
+
+	h.logger.Info("Product variants retrieved successfully via handler",
+		zap.String("product_id", productID),
+		zap.Int("count", len(response)))
 
 	utils.OKResponse(c, "Variants retrieved successfully", response)
 }
@@ -136,19 +192,34 @@ func (h *ProductVariantHandler) GetVariantsByProduct(c *gin.Context) {
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Router /api/v1/variants/sku/{sku} [get]
 func (h *ProductVariantHandler) GetVariantBySKU(c *gin.Context) {
+	h.logger.Info("Handling get variant by SKU request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get SKU from URL
 	sku := c.Param("sku")
 	if sku == "" {
+		h.logger.Error("SKU is required but not provided")
 		utils.BadRequestResponse(c, "SKU is required", nil)
 		return
 	}
 
+	h.logger.Debug("Calling variant service to get variant by SKU",
+		zap.String("sku", sku))
+
 	// Get variant
 	response, err := h.variantService.GetVariantBySKU(c.Request.Context(), sku)
 	if err != nil {
+		h.logger.Error("Variant not found by SKU",
+			zap.Error(err),
+			zap.String("sku", sku))
 		utils.NotFoundResponse(c, "Variant not found")
 		return
 	}
+
+	h.logger.Info("Variant retrieved successfully by SKU via handler",
+		zap.String("variant_id", response.ID),
+		zap.String("sku", sku))
 
 	utils.OKResponse(c, "Variant retrieved successfully", response)
 }
@@ -165,19 +236,34 @@ func (h *ProductVariantHandler) GetVariantBySKU(c *gin.Context) {
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Router /api/v1/variants/barcode/{barcode} [get]
 func (h *ProductVariantHandler) GetVariantByBarcode(c *gin.Context) {
+	h.logger.Info("Handling get variant by barcode request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get barcode from URL
 	barcode := c.Param("barcode")
 	if barcode == "" {
+		h.logger.Error("Barcode is required but not provided")
 		utils.BadRequestResponse(c, "Barcode is required", nil)
 		return
 	}
 
+	h.logger.Debug("Calling variant service to get variant by barcode",
+		zap.String("barcode", barcode))
+
 	// Get variant
 	response, err := h.variantService.GetVariantByBarcode(c.Request.Context(), barcode)
 	if err != nil {
+		h.logger.Error("Variant not found by barcode",
+			zap.Error(err),
+			zap.String("barcode", barcode))
 		utils.NotFoundResponse(c, "Variant not found")
 		return
 	}
+
+	h.logger.Info("Variant retrieved successfully by barcode via handler",
+		zap.String("variant_id", response.ID),
+		zap.String("barcode", barcode))
 
 	utils.OKResponse(c, "Variant retrieved successfully", response)
 }
@@ -201,9 +287,14 @@ func (h *ProductVariantHandler) GetVariantByBarcode(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/variants/{id} [put]
 func (h *ProductVariantHandler) UpdateProductVariant(c *gin.Context) {
+	h.logger.Info("Handling update product variant request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get ID from URL
 	id := c.Param("id")
 	if id == "" {
+		h.logger.Error("Variant ID is required but not provided")
 		utils.BadRequestResponse(c, "Variant ID is required", nil)
 		return
 	}
@@ -212,16 +303,29 @@ func (h *ProductVariantHandler) UpdateProductVariant(c *gin.Context) {
 
 	// Validate request
 	if err := utils.ValidateRequest(c, &request); err != nil {
+		h.logger.Error("Invalid request body for update product variant",
+			zap.Error(err),
+			zap.String("variant_id", id))
 		utils.BadRequestResponse(c, "Invalid request data", err)
 		return
 	}
 
+	h.logger.Debug("Calling variant service to update product variant",
+		zap.String("variant_id", id))
+
 	// Update variant
 	response, err := h.variantService.UpdateProductVariant(c.Request.Context(), id, &request)
 	if err != nil {
+		h.logger.Error("Failed to update product variant via service",
+			zap.Error(err),
+			zap.String("variant_id", id))
 		utils.HandleServiceError(c, "Failed to update variant", err)
 		return
 	}
+
+	h.logger.Info("Product variant updated successfully via handler",
+		zap.String("variant_id", response.ID),
+		zap.String("sku", *response.SKU))
 
 	utils.OKResponse(c, "Variant updated successfully", response)
 }
@@ -243,18 +347,32 @@ func (h *ProductVariantHandler) UpdateProductVariant(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/variants/{id} [delete]
 func (h *ProductVariantHandler) DeleteProductVariant(c *gin.Context) {
+	h.logger.Info("Handling delete product variant request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get ID from URL
 	id := c.Param("id")
 	if id == "" {
+		h.logger.Error("Variant ID is required but not provided")
 		utils.BadRequestResponse(c, "Variant ID is required", nil)
 		return
 	}
 
+	h.logger.Debug("Calling variant service to delete product variant",
+		zap.String("variant_id", id))
+
 	// Delete variant
 	if err := h.variantService.DeleteProductVariant(c.Request.Context(), id); err != nil {
+		h.logger.Error("Failed to delete product variant via service",
+			zap.Error(err),
+			zap.String("variant_id", id))
 		utils.HandleServiceError(c, "Failed to delete variant", err)
 		return
 	}
+
+	h.logger.Info("Product variant deleted successfully via handler",
+		zap.String("variant_id", id))
 
 	utils.OKResponse(c, "Variant deleted successfully", nil)
 }

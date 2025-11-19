@@ -1,6 +1,9 @@
 package services
 
 import (
+	"go.uber.org/zap"
+	"kisanlink-erp/internal/interfaces"
+
 	"math"
 	"time"
 
@@ -13,16 +16,22 @@ import (
 
 type TaxService struct {
 	taxRepo *repositories.TaxRepository
+	logger        interfaces.Logger
 }
 
-func NewTaxService(taxRepo *repositories.TaxRepository) *TaxService {
+func NewTaxService(taxRepo *repositories.TaxRepository, logger interfaces.Logger) *TaxService {
 	return &TaxService{
 		taxRepo: taxRepo,
+			logger:        logger,
 	}
 }
 
 // CreateTax creates a new tax
 func (s *TaxService) CreateTax(req *models.CreateTaxRequest, userID string) (*models.TaxResponse, error) {
+	s.logger.Info("Creating tax",
+		zap.String("code", req.Code),
+		zap.String("tax_type", string(req.TaxType)))
+
 	// Check if tax code already exists
 	existingTax, _ := s.taxRepo.GetTaxByCode(req.Code)
 	if existingTax != nil {
@@ -70,9 +79,14 @@ func (s *TaxService) CreateTax(req *models.CreateTaxRequest, userID string) (*mo
 	tax.CreatedBy = userID
 	tax.UpdatedBy = userID
 
+	s.logger.Debug("Saving tax to database")
 	if err := s.taxRepo.CreateTax(tax); err != nil {
+		s.logger.Error("Failed to create tax",
+			zap.Error(err))
 		return nil, err
 	}
+	s.logger.Info("Tax created successfully",
+		zap.String("tax_id", tax.ID))
 
 	return tax.ToResponse(), nil
 }

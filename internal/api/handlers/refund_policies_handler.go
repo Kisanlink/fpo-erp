@@ -3,21 +3,25 @@ package handlers
 import (
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
+	logger "kisanlink-erp/internal/interfaces"
 	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type RefundPoliciesHandler struct {
 	refundPoliciesService interfaces.RefundPoliciesServiceInterface
 	aaaMiddleware         *aaa.AAAMiddleware
+	logger                logger.Logger
 }
 
-func NewRefundPoliciesHandler(refundPoliciesService interfaces.RefundPoliciesServiceInterface, aaaMiddleware *aaa.AAAMiddleware) *RefundPoliciesHandler {
+func NewRefundPoliciesHandler(refundPoliciesService interfaces.RefundPoliciesServiceInterface, aaaMiddleware *aaa.AAAMiddleware, logger logger.Logger) *RefundPoliciesHandler {
 	return &RefundPoliciesHandler{
 		refundPoliciesService: refundPoliciesService,
 		aaaMiddleware:         aaaMiddleware,
+		logger:                logger,
 	}
 }
 
@@ -38,20 +42,38 @@ func NewRefundPoliciesHandler(refundPoliciesService interfaces.RefundPoliciesSer
 // @Security BearerAuth
 // @Router /api/v1/refund-policies [post]
 func (h *RefundPoliciesHandler) CreateRefundPolicy(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling create refund policy request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	var req models.CreateRefundPolicyRequest
 
-	// Validate request
+	// 2. Validation Error
 	if err := utils.ValidateRequest(c, &req); err != nil {
+		h.logger.Error("Invalid request body for create refund policy",
+			zap.Error(err))
 		utils.BadRequestResponse(c, "Invalid request data", err)
 		return
 	}
 
+	// 3. Service Call
+	h.logger.Debug("Calling service to create refund policy",
+		zap.String("policy_name", req.PolicyName))
+
 	policy, err := h.refundPoliciesService.CreateRefundPolicy(&req)
+
+	// 4. Service Error
 	if err != nil {
+		h.logger.Error("Failed to create refund policy via service",
+			zap.Error(err))
 		utils.HandleServiceError(c, "Failed to create refund policy", err)
 		return
 	}
 
+	// 5. Success
+	h.logger.Info("Refund policy created successfully via handler",
+		zap.String("policy_id", policy.ID))
 	utils.CreatedResponse(c, "Refund policy created successfully", policy)
 }
 
@@ -69,16 +91,33 @@ func (h *RefundPoliciesHandler) CreateRefundPolicy(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/refund-policies [get]
 func (h *RefundPoliciesHandler) GetAllRefundPolicies(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get all refund policies request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	// Get query parameters for pagination
 	limit := 10 // default limit
 	offset := 0 // default offset
 
+	// 3. Service Call
+	h.logger.Debug("Calling service to get all refund policies",
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
+
 	policies, err := h.refundPoliciesService.GetAllRefundPolicies(limit, offset)
+
+	// 4. Service Error
 	if err != nil {
+		h.logger.Error("Failed to retrieve refund policies via service",
+			zap.Error(err))
 		utils.HandleServiceError(c, "Failed to retrieve refund policies", err)
 		return
 	}
 
+	// 5. Success
+	h.logger.Info("Refund policies retrieved successfully via handler",
+		zap.Int("count", len(policies)))
 	utils.OKResponse(c, "Refund policies retrieved successfully", policies)
 }
 
@@ -99,18 +138,38 @@ func (h *RefundPoliciesHandler) GetAllRefundPolicies(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/refund-policies/{id} [get]
 func (h *RefundPoliciesHandler) GetRefundPolicy(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get refund policy request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	id := c.Param("id")
+
+	// 2. Validation Error
 	if id == "" {
+		h.logger.Error("Invalid request: policy ID is required")
 		utils.BadRequestResponse(c, "Policy ID is required", nil)
 		return
 	}
 
+	// 3. Service Call
+	h.logger.Debug("Calling service to get refund policy",
+		zap.String("id", id))
+
 	policy, err := h.refundPoliciesService.GetRefundPolicy(id)
+
+	// 4. Service Error
 	if err != nil {
+		h.logger.Error("Failed to retrieve refund policy via service",
+			zap.Error(err),
+			zap.String("id", id))
 		utils.NotFoundResponse(c, "Refund policy not found")
 		return
 	}
 
+	// 5. Success
+	h.logger.Info("Refund policy retrieved successfully via handler",
+		zap.String("id", id))
 	utils.OKResponse(c, "Refund policy retrieved successfully", policy)
 }
 
@@ -133,26 +192,48 @@ func (h *RefundPoliciesHandler) GetRefundPolicy(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/refund-policies/{id} [patch]
 func (h *RefundPoliciesHandler) UpdateRefundPolicy(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling update refund policy request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
 	id := c.Param("id")
+
+	// 2. Validation Error
 	if id == "" {
+		h.logger.Error("Invalid request: policy ID is required")
 		utils.BadRequestResponse(c, "Policy ID is required", nil)
 		return
 	}
 
 	var req models.UpdateRefundPolicyRequest
 
-	// Validate request
 	if err := utils.ValidateRequest(c, &req); err != nil {
+		h.logger.Error("Invalid request body for update refund policy",
+			zap.Error(err),
+			zap.String("id", id))
 		utils.BadRequestResponse(c, "Invalid request data", err)
 		return
 	}
 
+	// 3. Service Call
+	h.logger.Debug("Calling service to update refund policy",
+		zap.String("id", id))
+
 	policy, err := h.refundPoliciesService.UpdateRefundPolicy(id, &req)
+
+	// 4. Service Error
 	if err != nil {
+		h.logger.Error("Failed to update refund policy via service",
+			zap.Error(err),
+			zap.String("id", id))
 		utils.HandleServiceError(c, "Failed to update refund policy", err)
 		return
 	}
 
+	// 5. Success
+	h.logger.Info("Refund policy updated successfully via handler",
+		zap.String("id", id))
 	utils.OKResponse(c, "Refund policy updated successfully", policy)
 }
 
