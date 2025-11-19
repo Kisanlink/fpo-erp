@@ -198,13 +198,26 @@ func (m *AAAMiddleware) Authenticate() gin.HandlerFunc {
 // RequirePermission checks if user has a specific permission using gRPC
 func (m *AAAMiddleware) RequirePermission(resourceType, resourceID, action string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Skip OPTIONS requests (CORS preflight)
+		if c.Request.Method == "OPTIONS" {
+			c.Next()
+			return
+		}
+
 		// Early return if AAA disabled - allow all permissions
 		if !m.config.AAA.Enabled {
 			c.Next()
 			return
 		}
 
-		userID := c.MustGet("user_id").(string)
+		// Safe access to user_id
+		userID := c.GetString("user_id")
+		if userID == "" {
+			utils.UnauthorizedResponse(c, "User not authenticated")
+			c.Abort()
+			return
+		}
+
 		jwtToken := c.GetString("jwt_token") // Get JWT token from context
 
 		// Check permission via gRPC with JWT token
@@ -230,13 +243,26 @@ func (m *AAAMiddleware) RequirePermission(resourceType, resourceID, action strin
 // It automatically uses the organization_id from the JWT token context
 func (m *AAAMiddleware) RequireOrgPermission(resourceType, action string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Skip OPTIONS requests (CORS preflight)
+		if c.Request.Method == "OPTIONS" {
+			c.Next()
+			return
+		}
+
 		// Early return if AAA disabled - allow all permissions
 		if !m.config.AAA.Enabled {
 			c.Next()
 			return
 		}
 
-		userID := c.MustGet("user_id").(string)
+		// Safe access to user_id
+		userID := c.GetString("user_id")
+		if userID == "" {
+			utils.UnauthorizedResponse(c, "User not authenticated")
+			c.Abort()
+			return
+		}
+
 		jwtToken := c.GetString("jwt_token")
 
 		// Extract organization ID from context (set by Authenticate middleware)
@@ -278,13 +304,26 @@ func (m *AAAMiddleware) RequireOrgPermission(resourceType, action string) gin.Ha
 // For example, creating a collaborator with address requires both "collaborator:create" and "address:create"
 func (m *AAAMiddleware) RequireMultipleOrgPermissions(resourceActions []ResourceAction) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Skip OPTIONS requests (CORS preflight)
+		if c.Request.Method == "OPTIONS" {
+			c.Next()
+			return
+		}
+
 		// Early return if AAA disabled - allow all permissions
 		if !m.config.AAA.Enabled {
 			c.Next()
 			return
 		}
 
-		userID := c.MustGet("user_id").(string)
+		// Safe access to user_id
+		userID := c.GetString("user_id")
+		if userID == "" {
+			utils.UnauthorizedResponse(c, "User not authenticated")
+			c.Abort()
+			return
+		}
+
 		jwtToken := c.GetString("jwt_token")
 
 		// Extract organization ID from context (set by Authenticate middleware)
@@ -348,13 +387,26 @@ func (m *AAAMiddleware) RequireMultipleOrgPermissions(resourceActions []Resource
 // RequireAnyPermission checks if user has any of the specified permissions using gRPC
 func (m *AAAMiddleware) RequireAnyPermission(permissions []Permission) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Skip OPTIONS requests (CORS preflight)
+		if c.Request.Method == "OPTIONS" {
+			c.Next()
+			return
+		}
+
 		// Early return if AAA disabled - allow all permissions
 		if !m.config.AAA.Enabled {
 			c.Next()
 			return
 		}
 
-		userID := c.MustGet("user_id").(string)
+		// Safe access to user_id
+		userID := c.GetString("user_id")
+		if userID == "" {
+			utils.UnauthorizedResponse(c, "User not authenticated")
+			c.Abort()
+			return
+		}
+
 		jwtToken := c.GetString("jwt_token") // Get JWT token from context
 
 		// Check permissions via gRPC with JWT token
@@ -381,13 +433,26 @@ func (m *AAAMiddleware) RequireAnyPermission(permissions []Permission) gin.Handl
 // RequireAllPermissions checks if user has all specified permissions using gRPC
 func (m *AAAMiddleware) RequireAllPermissions(permissions []Permission) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Skip OPTIONS requests (CORS preflight)
+		if c.Request.Method == "OPTIONS" {
+			c.Next()
+			return
+		}
+
 		// Early return if AAA disabled - allow all permissions
 		if !m.config.AAA.Enabled {
 			c.Next()
 			return
 		}
 
-		userID := c.MustGet("user_id").(string)
+		// Safe access to user_id
+		userID := c.GetString("user_id")
+		if userID == "" {
+			utils.UnauthorizedResponse(c, "User not authenticated")
+			c.Abort()
+			return
+		}
+
 		jwtToken := c.GetString("jwt_token") // Get JWT token from context
 
 		// Check permissions via gRPC with JWT token
@@ -414,13 +479,32 @@ func (m *AAAMiddleware) RequireAllPermissions(permissions []Permission) gin.Hand
 // RequireRole checks if user has a specific role
 func (m *AAAMiddleware) RequireRole(role string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Skip OPTIONS requests (CORS preflight)
+		if c.Request.Method == "OPTIONS" {
+			c.Next()
+			return
+		}
+
 		// Early return if AAA disabled - allow all roles
 		if !m.config.AAA.Enabled {
 			c.Next()
 			return
 		}
 
-		userRoles := c.MustGet("roles").([]AAARole)
+		// Safe access to roles
+		rolesValue, exists := c.Get("roles")
+		if !exists {
+			utils.UnauthorizedResponse(c, "User not authenticated")
+			c.Abort()
+			return
+		}
+
+		userRoles, ok := rolesValue.([]AAARole)
+		if !ok {
+			utils.UnauthorizedResponse(c, "Invalid role data")
+			c.Abort()
+			return
+		}
 
 		if !containsRole(userRoles, role) {
 			utils.ForbiddenResponse(c, "Insufficient role")
@@ -435,13 +519,32 @@ func (m *AAAMiddleware) RequireRole(role string) gin.HandlerFunc {
 // RequireAnyRole checks if user has any of the specified roles
 func (m *AAAMiddleware) RequireAnyRole(roles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Skip OPTIONS requests (CORS preflight)
+		if c.Request.Method == "OPTIONS" {
+			c.Next()
+			return
+		}
+
 		// Early return if AAA disabled - allow all roles
 		if !m.config.AAA.Enabled {
 			c.Next()
 			return
 		}
 
-		userRoles := c.MustGet("roles").([]AAARole)
+		// Safe access to roles
+		rolesValue, exists := c.Get("roles")
+		if !exists {
+			utils.UnauthorizedResponse(c, "User not authenticated")
+			c.Abort()
+			return
+		}
+
+		userRoles, ok := rolesValue.([]AAARole)
+		if !ok {
+			utils.UnauthorizedResponse(c, "Invalid role data")
+			c.Abort()
+			return
+		}
 
 		for _, role := range roles {
 			if containsRole(userRoles, role) {

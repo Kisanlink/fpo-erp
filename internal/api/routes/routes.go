@@ -12,6 +12,7 @@ import (
 	"kisanlink-erp/internal/config"
 	"kisanlink-erp/internal/database/repositories"
 	"kisanlink-erp/internal/services"
+	"kisanlink-erp/internal/utils"
 
 	pb "github.com/Kisanlink/kisanlink-ecom/proto/gen/go/collaborator/v1"
 
@@ -54,9 +55,18 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	}
 
 	// Initialize AAA address gRPC client (for server-to-server communication)
-	addressClient, err := aaa.NewAddressGRPCClient(cfg.AAA.GRPCAddress)
-	if err != nil {
-		panic("Failed to initialize AAA address gRPC client: " + err.Error())
+	// Only initialize if AAA is enabled to support local development without AAA service
+	var addressClient *aaa.AddressGRPCClient
+	if cfg.AAA.Enabled && cfg.AAA.GRPCAddress != "" {
+		var err error
+		addressClient, err = aaa.NewAddressGRPCClient(cfg.AAA.GRPCAddress)
+		if err != nil {
+			panic("Failed to initialize AAA address gRPC client: " + err.Error())
+		}
+		utils.Info("✓ AAA address gRPC client initialized successfully")
+	} else {
+		utils.Info("⚠️  Skipping AAA address gRPC client initialization (AAA disabled)")
+		addressClient = nil
 	}
 	// Note: Connection will be closed when the application shuts down
 
