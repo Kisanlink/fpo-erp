@@ -313,7 +313,7 @@ func (s *PurchaseOrderService) GetPendingDeliveries(ctx context.Context) ([]mode
 }
 
 // UpdatePurchaseOrderStatus updates the status of a purchase order
-// Supports auto-GRN creation when status = "delivered" with delivery details
+// Supports auto-GRN creation when status = "verified" with delivery details
 func (s *PurchaseOrderService) UpdatePurchaseOrderStatus(ctx context.Context, id string, request *models.UpdatePOStatusRequest, userID string) (*models.PurchaseOrderResponse, error) {
 	s.logger.Info("Updating purchase order status",
 		zap.String("po_id", id),
@@ -353,8 +353,8 @@ func (s *PurchaseOrderService) UpdatePurchaseOrderStatus(ctx context.Context, id
 		}
 	}
 
-	// Pattern Detection: Auto-create GRN if status = "delivered" and delivery details provided
-	if request.Status == "delivered" && (request.AcceptAll != nil || len(request.Items) > 0) {
+	// Pattern Detection: Auto-create GRN if status = "verified" and delivery details provided
+	if request.Status == "verified" && (request.AcceptAll != nil || len(request.Items) > 0) {
 		s.logger.Info("Auto-GRN trigger detected",
 			zap.String("po_id", po.ID),
 			zap.Bool("accept_all", request.AcceptAll != nil && *request.AcceptAll))
@@ -877,7 +877,7 @@ func (s *PurchaseOrderService) buildPurchaseOrderResponse(po *models.PurchaseOrd
 
 // isValidPOStatus validates purchase order status
 func isValidPOStatus(status string) bool {
-	validStatuses := []string{"placed", "confirmed", "out_for_delivery", "delivered", "paid"}
+	validStatuses := []string{"placed", "confirmed", "out_for_delivery", "delivered", "verified", "paid"}
 	for _, s := range validStatuses {
 		if s == status {
 			return true
@@ -893,7 +893,8 @@ func isValidPOStatusTransition(from, to string) bool {
 		"placed":           {"confirmed"},
 		"confirmed":        {"out_for_delivery"},
 		"out_for_delivery": {"delivered"},
-		"delivered":        {"paid"},
+		"delivered":        {"verified"},
+		"verified":         {"paid"},
 	}
 
 	validNextStatuses, ok := transitions[from]

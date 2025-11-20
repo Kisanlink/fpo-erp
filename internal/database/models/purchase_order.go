@@ -27,7 +27,7 @@ type PurchaseOrder struct {
 
 	// Status workflow
 	Status string `gorm:"type:varchar(30);not null;index" json:"status"`
-	// Values: "placed", "confirmed", "out_for_delivery", "delivered", "paid"
+	// Values: "placed", "confirmed", "out_for_delivery", "delivered", "verified", "paid"
 
 	// Financial (ALL-IN pricing - includes everything)
 	TotalAmount float64 `gorm:"type:numeric(14,4);not null" json:"total_amount"` // Grand total
@@ -161,7 +161,7 @@ type CreatePurchaseOrderItemRequest struct {
 
 // UpdatePOStatusRequest represents the request to update purchase order status
 type UpdatePOStatusRequest struct {
-	Status         string     `json:"status" binding:"required"` // placed, confirmed, out_for_delivery, delivered, paid
+	Status         string     `json:"status" binding:"required"` // placed, confirmed, out_for_delivery, delivered, verified, paid
 	ActualDelivery *time.Time `json:"actual_delivery_date"`      // Set when status = delivered
 
 	// Pattern 1: Accept All (simplest - for quick processing)

@@ -60,12 +60,12 @@ func (s *GRNService) CreateGRN(ctx context.Context, request *models.CreateGRNReq
 		return nil, err
 	}
 
-	// Validate PO status is delivered
-	if po.Status != "delivered" {
-		s.logger.Warn("Attempted to create GRN for non-delivered PO",
+	// Validate PO status is verified
+	if po.Status != "verified" {
+		s.logger.Warn("Attempted to create GRN for non-verified PO",
 			zap.String("po_id", request.POID),
 			zap.String("po_status", po.Status))
-		return nil, errors.NewBadRequestError("Purchase order must be in 'delivered' status to create GRN")
+		return nil, errors.NewBadRequestError("Purchase order must be in 'verified' status to create GRN")
 	}
 
 	// Check if GRN already exists for this PO

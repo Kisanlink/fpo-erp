@@ -1,8 +1,231 @@
-# API Changes - Rejected Goods Return Tracking
+# API Changes - Purchase Order Workflow & Rejected Goods Tracking
 
 **Date**: November 20, 2025
-**Version**: 1.1.0
-**Feature**: Rejected Goods Return Workflow
+**Version**: 1.2.0
+**Features**:
+- Purchase Order "Verified" Status (Quality Inspection Stage)
+- Rejected Goods Return Workflow
+
+---
+
+## NEW: Purchase Order Workflow Update - "Verified" Status
+
+### Overview
+
+A new **"verified"** status has been added to the Purchase Order workflow to create a quality inspection stage between delivery and payment. This allows the team to test/inspect products after delivery before creating a GRN and proceeding with payment.
+
+### Updated Status Workflow
+
+**Previous Workflow**:
+```
+placed → confirmed → out_for_delivery → delivered → paid
+```
+
+**New Workflow**:
+```
+placed → confirmed → out_for_delivery → delivered → verified → paid
+```
+
+### Key Changes
+
+1. **New Status**: `"verified"` added between `"delivered"` and `"paid"`
+2. **GRN Creation**: GRNs can now ONLY be created when PO status = `"verified"` (previously required `"delivered"`)
+3. **Quality Inspection Stage**: After goods are delivered, change status to `"verified"` once inspection/testing is complete
+4. **Manual GRN Only**: Auto-GRN creation now triggers at `"verified"` status (not `"delivered"`)
+
+### API Impact
+
+#### 1. Purchase Order Status Values
+
+All PO status fields now accept/return the new `"verified"` status:
+
+**Valid Status Values**:
+- `"placed"` - Order created
+- `"confirmed"` - Vendor confirmed order
+- `"out_for_delivery"` - Shipment dispatched
+- `"delivered"` - Goods arrived at warehouse
+- **`"verified"` (NEW)** - Quality inspection completed
+- `"paid"` - Payment completed
+
+#### 2. Status Transitions
+
+**Valid Transitions**:
+| From | To | Purpose |
+|------|-----|---------|
+| `placed` | `confirmed` | Vendor confirms order |
+| `confirmed` | `out_for_delivery` | Vendor ships goods |
+| `out_for_delivery` | `delivered` | Goods arrive at warehouse |
+| **`delivered`** | **`verified`** | **Quality inspection completed (NEW)** |
+| **`verified`** | **`paid`** | **Payment processed (NEW)** |
+
+**Invalid Transitions** (will return `400 Bad Request`):
+- `delivered` → `paid` (must go through `verified` first)
+- Any status → `delivered` → `paid` (skipping `verified`)
+
+#### 3. GRN Creation Endpoint
+
+**Endpoint**: `POST /api/v1/grns`
+
+**Change**: Purchase Order must be in `"verified"` status (previously `"delivered"`)
+
+**Error Response** (if PO not verified):
+```json
+{
+  "status": "error",
+  "message": "Purchase order must be in 'verified' status to create GRN"
+}
+```
+
+#### 4. Auto-GRN Creation
+
+**Endpoint**: `PATCH /api/v1/purchase-orders/:id/status`
+
+**Change**: Auto-GRN creation now triggers when changing status to `"verified"` (with delivery details provided)
+
+**Example Request**:
+```json
+{
+  "status": "verified",
+  "accept_all": true,
+  "default_expiry_date": "2025-12-31"
+}
+```
+
+### Frontend Integration Guide
+
+#### 1. Update PO Status Dropdown
+
+**Before**:
+```jsx
+<select name="status">
+  <option value="placed">Placed</option>
+  <option value="confirmed">Confirmed</option>
+  <option value="out_for_delivery">Out for Delivery</option>
+  <option value="delivered">Delivered</option>
+  <option value="paid">Paid</option>
+</select>
+```
+
+**After**:
+```jsx
+<select name="status">
+  <option value="placed">Placed</option>
+  <option value="confirmed">Confirmed</option>
+  <option value="out_for_delivery">Out for Delivery</option>
+  <option value="delivered">Delivered</option>
+  <option value="verified">Verified (Quality Checked)</option>
+  <option value="paid">Paid</option>
+</select>
+```
+
+#### 2. Status Flow UI
+
+**Add visual workflow indicator**:
+```
+┌────────┐   ┌───────────┐   ┌──────────────────┐   ┌───────────┐   ┌──────────┐   ┌──────┐
+│ Placed │ → │ Confirmed │ → │ Out for Delivery │ → │ Delivered │ → │ Verified │ → │ Paid │
+└────────┘   └───────────┘   └──────────────────┘   └───────────┘   └──────────┘   └──────┘
+                                                                           ↓
+                                                                      [Create GRN]
+```
+
+#### 3. GRN Creation Button Logic
+
+**Before**:
+```jsx
+<button
+  disabled={po.status !== 'delivered'}
+  onClick={createGRN}
+>
+  Create GRN
+</button>
+```
+
+**After**:
+```jsx
+<button
+  disabled={po.status !== 'verified'}
+  onClick={createGRN}
+  title={po.status !== 'verified' ? 'PO must be verified first' : 'Create GRN'}
+>
+  Create GRN
+</button>
+```
+
+#### 4. Status Transition Validation
+
+```javascript
+const isValidTransition = (currentStatus, newStatus) => {
+  const transitions = {
+    'placed': ['confirmed'],
+    'confirmed': ['out_for_delivery'],
+    'out_for_delivery': ['delivered'],
+    'delivered': ['verified'],    // NEW
+    'verified': ['paid'],         // NEW
+  };
+
+  return transitions[currentStatus]?.includes(newStatus) || false;
+};
+```
+
+### Workflow Example
+
+**Scenario**: Receiving a purchase order
+
+1. **Goods Arrive**: Change PO status to `"delivered"`
+   ```
+   PATCH /api/v1/purchase-orders/{id}/status
+   { "status": "delivered" }
+   ```
+
+2. **Quality Inspection**: Warehouse team tests/inspects products
+   - Check for damages
+   - Verify quantities
+   - Test product quality
+
+3. **Mark as Verified**: After inspection passes, change status to `"verified"`
+   ```
+   PATCH /api/v1/purchase-orders/{id}/status
+   {
+     "status": "verified",
+     "accept_all": true,
+     "default_expiry_date": "2025-12-31"
+   }
+   ```
+   - This auto-creates GRN with accepted quantities
+   - Inventory batches created automatically
+
+4. **Process Payment**: After GRN is created, mark as `"paid"`
+   ```
+   PATCH /api/v1/purchase-orders/{id}/status
+   { "status": "paid" }
+   ```
+
+### Migration Notes
+
+**Existing POs**: No data migration required. Existing purchase orders in `"delivered"` status can:
+- Option A: Move directly to `"verified"` status (recommended)
+- Option B: Update workflow code to allow one-time `delivered` → `paid` transition for legacy orders
+
+**Database**: No schema changes required. `status` field already supports VARCHAR(30) which accommodates `"verified"`.
+
+### Breaking Changes
+
+**❗ IMPORTANT**: This is a **breaking change** for existing integrations:
+
+1. **Cannot skip "verified" status**: Direct transition from `delivered` → `paid` is no longer allowed
+2. **GRN creation blocked**: Cannot create GRN for POs in `"delivered"` status (must be `"verified"`)
+3. **Auto-GRN trigger changed**: Auto-GRN creation moved from `"delivered"` to `"verified"` status
+
+**Migration Path for Frontend**:
+1. Update all PO status displays to include `"verified"`
+2. Update status transition logic to enforce new workflow
+3. Update GRN creation buttons to check for `"verified"` status
+4. Add messaging for users: "Goods delivered. Complete quality inspection to verify."
+
+---
+
+## Rejected Goods Return Tracking
 
 ---
 

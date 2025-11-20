@@ -2119,7 +2119,7 @@ definitions:
           $ref: '#/definitions/models.DeliveryItemRequest'
         type: array
       status:
-        description: placed, confirmed, out_for_delivery, delivered, paid
+        description: placed, confirmed, out_for_delivery, delivered, verified, paid
         type: string
     required:
     - status
