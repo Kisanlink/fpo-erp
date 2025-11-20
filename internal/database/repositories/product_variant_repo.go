@@ -130,9 +130,9 @@ func (r *ProductVariantRepository) FindBySKU(sku string) (*models.ProductVariant
 // Now searches within the collaborator_ids JSON array
 func (r *ProductVariantRepository) GetByCollaboratorID(collaboratorID string) ([]models.ProductVariant, error) {
 	var variants []models.ProductVariant
-	// Use JSON contains operator for PostgreSQL: collaborator_ids @> '["CLAB001"]'
-	// This works with GORM's JSON serializer
-	if err := r.db.Where("collaborator_ids @> ?", `["`+collaboratorID+`"]`).Where("is_active = ?", true).Find(&variants).Error; err != nil {
+	// Use JSON contains operator for PostgreSQL: collaborator_ids::jsonb @> '["CLAB001"]'::jsonb
+	// Both sides must be cast to jsonb for the @> operator to work
+	if err := r.db.Where("collaborator_ids::jsonb @> ?::jsonb", `["`+collaboratorID+`"]`).Where("is_active = ?", true).Find(&variants).Error; err != nil {
 		return nil, errors.NewInternalServerError("Failed to retrieve variants by collaborator")
 	}
 	return variants, nil

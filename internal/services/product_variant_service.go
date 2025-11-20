@@ -92,6 +92,14 @@ func (s *ProductVariantService) CreateProductVariant(ctx context.Context, produc
 	variant.Barcode = request.Barcode
 	variant.Prices = request.Prices // Assign validated prices
 
+	// Assign collaborator-specific fields
+	variant.CollaboratorIDs = request.CollaboratorIDs
+	variant.BrandName = request.BrandName
+	variant.HSNCode = request.HSNCode
+	variant.GSTRate = request.GSTRate
+	variant.DosageInstructions = request.DosageInstructions
+	variant.UsageDetails = request.UsageDetails
+
 	// Marshal attachment IDs to JSON
 	if len(request.Images) > 0 {
 		imagesBytes, err := json.Marshal(request.Images)
@@ -276,6 +284,21 @@ func (s *ProductVariantService) UpdateProductVariant(ctx context.Context, id str
 		}
 		imagesStr := string(imagesBytes)
 		variant.Images = &imagesStr
+	}
+	if request.BrandName != nil {
+		variant.BrandName = request.BrandName
+	}
+	if request.HSNCode != nil {
+		variant.HSNCode = request.HSNCode
+	}
+	if request.GSTRate != nil {
+		variant.GSTRate = request.GSTRate
+	}
+	if request.DosageInstructions != nil {
+		variant.DosageInstructions = request.DosageInstructions
+	}
+	if request.UsageDetails != nil {
+		variant.UsageDetails = request.UsageDetails
 	}
 
 	// Save to database

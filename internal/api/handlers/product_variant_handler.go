@@ -27,6 +27,14 @@ func NewProductVariantHandler(variantService interfaces.ProductVariantServiceInt
 	}
 }
 
+// safeStringDeref safely dereferences a string pointer, returning a default value if nil
+func safeStringDeref(ptr *string, defaultVal string) string {
+	if ptr != nil {
+		return *ptr
+	}
+	return defaultVal
+}
+
 // CreateProductVariant handles POST /api/v1/products/:id/variants
 // @Summary Create Product Variant
 // @Description Create a new variant for a product (requires authentication)
@@ -70,7 +78,7 @@ func (h *ProductVariantHandler) CreateProductVariant(c *gin.Context) {
 
 	h.logger.Debug("Calling variant service to create product variant",
 		zap.String("product_id", productID),
-		zap.String("sku", *request.SKU),
+		zap.String("sku", safeStringDeref(request.SKU, "<none>")),
 		zap.String("variant_name", request.VariantName))
 
 	// Create variant
@@ -79,7 +87,7 @@ func (h *ProductVariantHandler) CreateProductVariant(c *gin.Context) {
 		h.logger.Error("Failed to create product variant via service",
 			zap.Error(err),
 			zap.String("product_id", productID),
-			zap.String("sku", *request.SKU))
+			zap.String("sku", safeStringDeref(request.SKU, "<none>")))
 		utils.HandleServiceError(c, "Failed to create variant", err)
 		return
 	}
@@ -87,7 +95,7 @@ func (h *ProductVariantHandler) CreateProductVariant(c *gin.Context) {
 	h.logger.Info("Product variant created successfully via handler",
 		zap.String("variant_id", response.ID),
 		zap.String("product_id", productID),
-		zap.String("sku", *response.SKU))
+		zap.String("sku", safeStringDeref(response.SKU, "<none>")))
 
 	utils.CreatedResponse(c, "Variant created successfully", response)
 }
@@ -131,7 +139,7 @@ func (h *ProductVariantHandler) GetProductVariant(c *gin.Context) {
 
 	h.logger.Info("Product variant retrieved successfully via handler",
 		zap.String("variant_id", response.ID),
-		zap.String("sku", *response.SKU))
+		zap.String("sku", safeStringDeref(response.SKU, "<none>")))
 
 	utils.OKResponse(c, "Variant retrieved successfully", response)
 }
@@ -325,7 +333,7 @@ func (h *ProductVariantHandler) UpdateProductVariant(c *gin.Context) {
 
 	h.logger.Info("Product variant updated successfully via handler",
 		zap.String("variant_id", response.ID),
-		zap.String("sku", *response.SKU))
+		zap.String("sku", safeStringDeref(response.SKU, "<none>")))
 
 	utils.OKResponse(c, "Variant updated successfully", response)
 }
