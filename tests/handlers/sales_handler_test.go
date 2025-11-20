@@ -14,6 +14,7 @@ import (
 
 	"kisanlink-erp/internal/api/handlers"
 	"kisanlink-erp/internal/database/models"
+	"kisanlink-erp/internal/utils"
 	mockServices "kisanlink-erp/tests/mocks/services"
 	"kisanlink-erp/tests/testutils"
 )
@@ -24,7 +25,8 @@ func TestSalesHandler_CreateSale_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -80,7 +82,8 @@ func TestSalesHandler_CreateSale_ValidationError_MissingWarehouseID(t *testing.T
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with missing warehouse_id
@@ -111,7 +114,8 @@ func TestSalesHandler_CreateSale_ValidationError_MissingPaymentMode(t *testing.T
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with missing payment_mode
@@ -142,7 +146,8 @@ func TestSalesHandler_CreateSale_ValidationError_MissingSaleType(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with missing sale_type
@@ -173,7 +178,8 @@ func TestSalesHandler_CreateSale_ValidationError_MissingItems(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with missing items
@@ -199,7 +205,8 @@ func TestSalesHandler_CreateSale_ServiceError(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -239,7 +246,8 @@ func TestSalesHandler_GetSale_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -279,7 +287,8 @@ func TestSalesHandler_GetSale_NotFound(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -302,7 +311,8 @@ func TestSalesHandler_GetSale_MissingID(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with empty ID
@@ -322,7 +332,8 @@ func TestSalesHandler_GetAllSales_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -372,7 +383,8 @@ func TestSalesHandler_GetAllSales_EmptyList(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -395,7 +407,8 @@ func TestSalesHandler_GetAllSales_CustomPagination(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -418,7 +431,8 @@ func TestSalesHandler_GetAllSales_InvalidLimit(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with invalid limit
@@ -436,7 +450,8 @@ func TestSalesHandler_GetAllSales_InvalidOffset(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with invalid offset
@@ -456,7 +471,8 @@ func TestSalesHandler_UpdateSale_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -495,7 +511,8 @@ func TestSalesHandler_UpdateSale_NotFound(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -526,7 +543,8 @@ func TestSalesHandler_DeleteSale_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -549,7 +567,8 @@ func TestSalesHandler_DeleteSale_NotFound(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -574,7 +593,8 @@ func TestSalesHandler_GetSalesByDateRange_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -615,7 +635,8 @@ func TestSalesHandler_GetSalesByDateRange_MissingStartDate(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request without start_date
@@ -633,7 +654,8 @@ func TestSalesHandler_GetSalesByDateRange_MissingEndDate(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request without end_date
@@ -651,7 +673,8 @@ func TestSalesHandler_GetSalesByDateRange_InvalidStartDate(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with invalid start_date format
@@ -669,7 +692,8 @@ func TestSalesHandler_GetSalesByDateRange_InvalidEndDate(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with invalid end_date format
@@ -689,7 +713,8 @@ func TestSalesHandler_GetSalesByStatus_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -728,7 +753,8 @@ func TestSalesHandler_GetSalesByStatus_EmptyResult(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -753,7 +779,8 @@ func TestSalesHandler_GetTotalSalesAmount_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -783,7 +810,8 @@ func TestSalesHandler_GetTotalSalesAmount_MissingDates(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request without dates
@@ -801,7 +829,8 @@ func TestSalesHandler_GetTotalSalesAmount_InvalidDateFormat(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with invalid date format
@@ -821,7 +850,8 @@ func TestSalesHandler_GetTopSellingProducts_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -862,7 +892,8 @@ func TestSalesHandler_GetTopSellingProducts_CustomLimit(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -885,7 +916,8 @@ func TestSalesHandler_GetTopSellingProducts_InvalidLimit(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with invalid limit
@@ -905,7 +937,8 @@ func TestSalesHandler_GetSalesSummary_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request
@@ -930,7 +963,8 @@ func TestSalesHandler_UpdateSaleStatus_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -968,7 +1002,8 @@ func TestSalesHandler_UpdateSaleStatus_ValidationError(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockSalesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request without status

@@ -8,6 +8,7 @@ import (
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
 	"kisanlink-erp/internal/services"
+	"kisanlink-erp/internal/utils"
 	"kisanlink-erp/tests/testutils"
 
 	"gorm.io/gorm"
@@ -31,7 +32,8 @@ func setupInventoryService(t *testing.T) (*services.InventoryService, *gorm.DB, 
 	variantRepo := repositories.NewProductVariantRepository(db)
 
 	// Create service (nil AAA client for most tests that don't need address service)
-	service := services.NewInventoryService(inventoryRepo, warehouseRepo, productRepo, variantRepo, nil)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	service := services.NewInventoryService(inventoryRepo, warehouseRepo, productRepo, variantRepo, nil, mockLogger)
 
 	// Cleanup function
 	cleanup := func() {

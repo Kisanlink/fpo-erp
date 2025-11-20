@@ -7,6 +7,7 @@ import (
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
 	"kisanlink-erp/internal/services"
+	"kisanlink-erp/internal/utils"
 	"kisanlink-erp/tests/testutils"
 
 	"gorm.io/gorm"
@@ -28,7 +29,8 @@ func setupPriceService(t *testing.T) (*services.ProductPriceService, *gorm.DB, f
 	variantRepo := repositories.NewProductVariantRepository(db)
 
 	// Create service
-	service := services.NewProductPriceService(priceRepo, productRepo, variantRepo)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	service := services.NewProductPriceService(priceRepo, productRepo, variantRepo, mockLogger)
 
 	cleanup := func() {
 		testutils.CleanupTestDB(db)

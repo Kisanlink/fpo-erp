@@ -14,6 +14,7 @@ import (
 
 	"kisanlink-erp/internal/api/handlers"
 	"kisanlink-erp/internal/database/models"
+	"kisanlink-erp/internal/utils"
 	mockServices "kisanlink-erp/tests/mocks/services"
 	"kisanlink-erp/tests/testutils"
 )
@@ -22,7 +23,8 @@ func TestPriceHandler_CreateProductPrice_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockProductPriceService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -71,7 +73,8 @@ func TestPriceHandler_CreateProductPrice_ValidationError(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockProductPriceService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with missing required fields
@@ -95,7 +98,8 @@ func TestPriceHandler_CreateProductPrice_ServiceError(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockProductPriceService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -127,7 +131,8 @@ func TestPriceHandler_UpdateProductPrice_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockProductPriceService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -168,7 +173,8 @@ func TestPriceHandler_UpdateProductPrice_NotFound(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockProductPriceService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -197,7 +203,8 @@ func TestPriceHandler_DeleteProductPrice_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockProductPriceService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -220,7 +227,8 @@ func TestPriceHandler_DeleteProductPrice_NotFound(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockProductPriceService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -243,7 +251,8 @@ func TestPriceHandler_GetProductPrice_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockProductPriceService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -274,7 +283,8 @@ func TestPriceHandler_GetProductPrice_NotFound(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockProductPriceService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -297,7 +307,8 @@ func TestPriceHandler_GetExpiredPrices_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockProductPriceService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -332,7 +343,8 @@ func TestPriceHandler_GetExpiredPrices_EmptyList(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockProductPriceService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -355,7 +367,8 @@ func TestPriceHandler_GetVariantPrices_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockProductPriceService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -395,7 +408,8 @@ func TestPriceHandler_GetVariantPrices_EmptyList(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockProductPriceService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -418,7 +432,8 @@ func TestPriceHandler_GetCurrentPrice_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockProductPriceService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -449,7 +464,8 @@ func TestPriceHandler_GetCurrentPrice_NotFound(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockProductPriceService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -472,7 +488,8 @@ func TestPriceHandler_GetCurrentPrice_MissingPriceType(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockProductPriceService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations - should default to "retail" when price_type is missing
@@ -503,7 +520,8 @@ func TestPriceHandler_CreateProductPriceForVariant_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockProductPriceService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -547,7 +565,8 @@ func TestPriceHandler_CreateProductPriceForVariant_ValidationError(t *testing.T)
 	// Setup
 	mockService := new(mockServices.MockProductPriceService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewProductPriceHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with missing required fields

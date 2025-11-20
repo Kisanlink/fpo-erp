@@ -11,6 +11,7 @@ import (
 
 	"kisanlink-erp/internal/api/handlers"
 	"kisanlink-erp/internal/database/models"
+	"kisanlink-erp/internal/utils"
 	mockServices "kisanlink-erp/tests/mocks/services"
 	"kisanlink-erp/tests/testutils"
 
@@ -29,7 +30,8 @@ func init() {
 func TestTaxHandler_CreateTax_Success(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	validFrom := time.Now()
 	request := &models.CreateTaxRequest{
@@ -74,7 +76,8 @@ func TestTaxHandler_CreateTax_Success(t *testing.T) {
 func TestTaxHandler_CreateTax_ValidationError(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	// Missing required fields
 	request := &models.CreateTaxRequest{}
@@ -96,7 +99,8 @@ func TestTaxHandler_CreateTax_ValidationError(t *testing.T) {
 func TestTaxHandler_CreateTax_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	validFrom := time.Now()
 	request := &models.CreateTaxRequest{
@@ -127,7 +131,8 @@ func TestTaxHandler_CreateTax_ServiceError(t *testing.T) {
 func TestTaxHandler_GetTax_Success(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	expectedTax := &models.TaxResponse{
 		ID:              "TAX000000001",
@@ -160,7 +165,8 @@ func TestTaxHandler_GetTax_Success(t *testing.T) {
 func TestTaxHandler_GetTax_NotFound(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("GetTax", "TAX999999999").Return(nil, assert.AnError)
 
@@ -179,7 +185,8 @@ func TestTaxHandler_GetTax_NotFound(t *testing.T) {
 func TestTaxHandler_GetAllTaxes_Success(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	expectedTaxes := []models.TaxResponse{
 		{
@@ -219,7 +226,8 @@ func TestTaxHandler_GetAllTaxes_Success(t *testing.T) {
 func TestTaxHandler_GetAllTaxes_WithPagination(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("GetAllTaxes", 20, 10).Return([]models.TaxResponse{}, nil)
 
@@ -237,7 +245,8 @@ func TestTaxHandler_GetAllTaxes_WithPagination(t *testing.T) {
 func TestTaxHandler_UpdateTax_Success(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	rate := 10.0
 	request := &models.UpdateTaxRequest{
@@ -276,7 +285,8 @@ func TestTaxHandler_UpdateTax_Success(t *testing.T) {
 func TestTaxHandler_UpdateTax_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	rate := 10.0
 	request := &models.UpdateTaxRequest{
@@ -303,7 +313,8 @@ func TestTaxHandler_UpdateTax_ServiceError(t *testing.T) {
 func TestTaxHandler_DeleteTax_Success(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("DeleteTax", "TAX000000001").Return(nil)
 
@@ -326,7 +337,8 @@ func TestTaxHandler_DeleteTax_Success(t *testing.T) {
 func TestTaxHandler_DeleteTax_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("DeleteTax", "TAX999999999").Return(assert.AnError)
 
@@ -345,7 +357,8 @@ func TestTaxHandler_DeleteTax_ServiceError(t *testing.T) {
 func TestTaxHandler_GetActiveTaxes_Success(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	expectedTaxes := []models.TaxResponse{
 		{ID: "TAX000000001", Name: "CGST", Status: "active"},
@@ -372,7 +385,8 @@ func TestTaxHandler_GetActiveTaxes_Success(t *testing.T) {
 func TestTaxHandler_GetActiveTaxes_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("GetActiveTaxes").Return(nil, assert.AnError)
 
@@ -390,7 +404,8 @@ func TestTaxHandler_GetActiveTaxes_ServiceError(t *testing.T) {
 func TestTaxHandler_GetTaxesByType_Success(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	expectedTaxes := []models.TaxResponse{
 		{ID: "TAX000000001", Name: "CGST", TaxType: "cgst"},
@@ -417,7 +432,8 @@ func TestTaxHandler_GetTaxesByType_Success(t *testing.T) {
 func TestTaxHandler_GetTaxesByType_InvalidType(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -434,7 +450,8 @@ func TestTaxHandler_GetTaxesByType_InvalidType(t *testing.T) {
 func TestTaxHandler_GetTaxesByType_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("GetTaxesByType", models.TaxType("cgst")).Return(nil, assert.AnError)
 
@@ -453,7 +470,8 @@ func TestTaxHandler_GetTaxesByType_ServiceError(t *testing.T) {
 func TestTaxHandler_GetTaxesByStatus_Success(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	expectedTaxes := []models.TaxResponse{
 		{ID: "TAX000000001", Name: "CGST", Status: "active"},
@@ -480,7 +498,8 @@ func TestTaxHandler_GetTaxesByStatus_Success(t *testing.T) {
 func TestTaxHandler_GetTaxesByStatus_InvalidStatus(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -497,7 +516,8 @@ func TestTaxHandler_GetTaxesByStatus_InvalidStatus(t *testing.T) {
 func TestTaxHandler_GetTaxesByStatus_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("GetTaxesByStatus", "active").Return(nil, assert.AnError)
 
@@ -516,7 +536,8 @@ func TestTaxHandler_GetTaxesByStatus_ServiceError(t *testing.T) {
 func TestTaxHandler_CalculateTax_Success(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	request := &models.TaxCalculationRequest{
 		WarehouseID:    "WH000000001",
@@ -560,7 +581,8 @@ func TestTaxHandler_CalculateTax_Success(t *testing.T) {
 func TestTaxHandler_CalculateTax_EmptyItems(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	request := &models.TaxCalculationRequest{
 		Items: []models.TaxCalculationItem{},
@@ -582,7 +604,8 @@ func TestTaxHandler_CalculateTax_EmptyItems(t *testing.T) {
 func TestTaxHandler_CalculateTax_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	request := &models.TaxCalculationRequest{
 		WarehouseID:    "WH000000001",
@@ -615,7 +638,8 @@ func TestTaxHandler_CalculateTax_ServiceError(t *testing.T) {
 func TestTaxHandler_GetTaxApplicationsBySale_Success(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	expectedApplications := []models.TaxApplication{
 		{
@@ -649,7 +673,8 @@ func TestTaxHandler_GetTaxApplicationsBySale_Success(t *testing.T) {
 func TestTaxHandler_GetTaxApplicationsBySale_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("GetTaxApplicationsBySale", "SALE999999999").Return(nil, assert.AnError)
 
@@ -668,7 +693,8 @@ func TestTaxHandler_GetTaxApplicationsBySale_ServiceError(t *testing.T) {
 func TestTaxHandler_GetTaxApplicationsByReturn_Success(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	expectedApplications := []models.TaxApplication{
 		{
@@ -702,7 +728,8 @@ func TestTaxHandler_GetTaxApplicationsByReturn_Success(t *testing.T) {
 func TestTaxHandler_GetTaxApplicationsByReturn_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("GetTaxApplicationsByReturn", "RETN999999999").Return(nil, assert.AnError)
 
@@ -721,7 +748,8 @@ func TestTaxHandler_GetTaxApplicationsByReturn_ServiceError(t *testing.T) {
 func TestTaxHandler_GetTaxSummaryBySale_Success(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	expectedSummary := &models.TaxSummary{
 		SaleID:         stringPtr("SALE00000001"),
@@ -753,7 +781,8 @@ func TestTaxHandler_GetTaxSummaryBySale_Success(t *testing.T) {
 func TestTaxHandler_GetTaxSummaryBySale_NotFound(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("GetTaxSummaryBySale", "SALE999999999").Return(nil, assert.AnError)
 
@@ -772,7 +801,8 @@ func TestTaxHandler_GetTaxSummaryBySale_NotFound(t *testing.T) {
 func TestTaxHandler_GetTaxSummaryByReturn_Success(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	expectedSummary := &models.TaxSummary{
 		ReturnID:       stringPtr("RETN00000001"),
@@ -804,7 +834,8 @@ func TestTaxHandler_GetTaxSummaryByReturn_Success(t *testing.T) {
 func TestTaxHandler_GetTaxSummaryByReturn_NotFound(t *testing.T) {
 	mockService := new(mockServices.MockTaxService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewTaxHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("GetTaxSummaryByReturn", "RETN999999999").Return(nil, assert.AnError)
 

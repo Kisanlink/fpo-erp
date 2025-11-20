@@ -10,6 +10,7 @@ import (
 
 	"kisanlink-erp/internal/api/handlers"
 	"kisanlink-erp/internal/database/models"
+	"kisanlink-erp/internal/utils"
 	mockServices "kisanlink-erp/tests/mocks/services"
 	"kisanlink-erp/tests/testutils"
 
@@ -28,7 +29,8 @@ func init() {
 func TestBankPaymentsHandler_CreateBankPayment_Success(t *testing.T) {
 	mockService := new(mockServices.MockBankPaymentsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewBankPaymentsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewBankPaymentsHandler(mockService, mockAAA, mockLogger)
 
 	request := &models.CreateBankPaymentRequest{
 		SaleID:        stringPtr("SALE00000001"),
@@ -68,7 +70,8 @@ func TestBankPaymentsHandler_CreateBankPayment_Success(t *testing.T) {
 func TestBankPaymentsHandler_CreateBankPayment_ValidationError(t *testing.T) {
 	mockService := new(mockServices.MockBankPaymentsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewBankPaymentsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewBankPaymentsHandler(mockService, mockAAA, mockLogger)
 
 	// Missing required fields
 	request := &models.CreateBankPaymentRequest{}
@@ -89,7 +92,8 @@ func TestBankPaymentsHandler_CreateBankPayment_ValidationError(t *testing.T) {
 func TestBankPaymentsHandler_CreateBankPayment_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockBankPaymentsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewBankPaymentsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewBankPaymentsHandler(mockService, mockAAA, mockLogger)
 
 	request := &models.CreateBankPaymentRequest{
 		SaleID:        stringPtr("SALE00000001"),
@@ -115,7 +119,8 @@ func TestBankPaymentsHandler_CreateBankPayment_ServiceError(t *testing.T) {
 func TestBankPaymentsHandler_GetAllBankPayments_Success(t *testing.T) {
 	mockService := new(mockServices.MockBankPaymentsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewBankPaymentsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewBankPaymentsHandler(mockService, mockAAA, mockLogger)
 
 	expectedPayments := []models.BankPaymentResponse{
 		{
@@ -153,7 +158,8 @@ func TestBankPaymentsHandler_GetAllBankPayments_Success(t *testing.T) {
 func TestBankPaymentsHandler_GetAllBankPayments_WithPagination(t *testing.T) {
 	mockService := new(mockServices.MockBankPaymentsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewBankPaymentsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewBankPaymentsHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("GetAllBankPayments", 10, 20).Return([]models.BankPaymentResponse{}, nil)
 
@@ -171,7 +177,8 @@ func TestBankPaymentsHandler_GetAllBankPayments_WithPagination(t *testing.T) {
 func TestBankPaymentsHandler_GetBankPayment_Success(t *testing.T) {
 	mockService := new(mockServices.MockBankPaymentsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewBankPaymentsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewBankPaymentsHandler(mockService, mockAAA, mockLogger)
 
 	expectedPayment := &models.BankPaymentResponse{
 		ID:            "BPAY00000001",
@@ -202,7 +209,8 @@ func TestBankPaymentsHandler_GetBankPayment_Success(t *testing.T) {
 func TestBankPaymentsHandler_GetBankPayment_NotFound(t *testing.T) {
 	mockService := new(mockServices.MockBankPaymentsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewBankPaymentsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewBankPaymentsHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("GetBankPayment", "BPAY99999999").Return(nil, assert.AnError)
 
@@ -221,7 +229,8 @@ func TestBankPaymentsHandler_GetBankPayment_NotFound(t *testing.T) {
 func TestBankPaymentsHandler_GetBankPaymentsBySale_Success(t *testing.T) {
 	mockService := new(mockServices.MockBankPaymentsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewBankPaymentsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewBankPaymentsHandler(mockService, mockAAA, mockLogger)
 
 	expectedPayments := []models.BankPaymentResponse{
 		{
@@ -253,7 +262,8 @@ func TestBankPaymentsHandler_GetBankPaymentsBySale_Success(t *testing.T) {
 func TestBankPaymentsHandler_GetBankPaymentsBySale_NoPayments(t *testing.T) {
 	mockService := new(mockServices.MockBankPaymentsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewBankPaymentsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewBankPaymentsHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("GetBankPaymentsBySaleID", "SALE00000999").Return([]models.BankPaymentResponse{}, nil)
 
@@ -272,7 +282,8 @@ func TestBankPaymentsHandler_GetBankPaymentsBySale_NoPayments(t *testing.T) {
 func TestBankPaymentsHandler_GetBankPaymentsByReturn_Success(t *testing.T) {
 	mockService := new(mockServices.MockBankPaymentsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewBankPaymentsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewBankPaymentsHandler(mockService, mockAAA, mockLogger)
 
 	expectedPayments := []models.BankPaymentResponse{
 		{
@@ -304,7 +315,8 @@ func TestBankPaymentsHandler_GetBankPaymentsByReturn_Success(t *testing.T) {
 func TestBankPaymentsHandler_GetBankPaymentsByReturn_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockBankPaymentsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewBankPaymentsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewBankPaymentsHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("GetBankPaymentsByReturnID", "RETN99999999").Return(nil, assert.AnError)
 

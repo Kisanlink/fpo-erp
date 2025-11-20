@@ -13,6 +13,7 @@ import (
 
 	"kisanlink-erp/internal/api/handlers"
 	"kisanlink-erp/internal/database/models"
+	"kisanlink-erp/internal/utils"
 	mockServices "kisanlink-erp/tests/mocks/services"
 	"kisanlink-erp/tests/testutils"
 )
@@ -21,7 +22,8 @@ func TestWarehouseHandler_CreateWarehouse_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockWarehouseService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewWarehouseHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewWarehouseHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -60,7 +62,8 @@ func TestWarehouseHandler_CreateWarehouse_ValidationError(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockWarehouseService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewWarehouseHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewWarehouseHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with missing required fields
@@ -83,7 +86,8 @@ func TestWarehouseHandler_CreateWarehouse_ServiceError(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockWarehouseService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewWarehouseHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewWarehouseHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -113,7 +117,8 @@ func TestWarehouseHandler_GetAllWarehouses_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockWarehouseService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewWarehouseHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewWarehouseHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -151,7 +156,8 @@ func TestWarehouseHandler_GetAllWarehouses_EmptyList(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockWarehouseService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewWarehouseHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewWarehouseHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -174,7 +180,8 @@ func TestWarehouseHandler_SearchWarehouses_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockWarehouseService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewWarehouseHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewWarehouseHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -203,7 +210,8 @@ func TestWarehouseHandler_SearchWarehouses_NoResults(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockWarehouseService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewWarehouseHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewWarehouseHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -226,7 +234,8 @@ func TestWarehouseHandler_GetWarehouse_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockWarehouseService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewWarehouseHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewWarehouseHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -253,7 +262,8 @@ func TestWarehouseHandler_GetWarehouse_NotFound(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockWarehouseService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewWarehouseHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewWarehouseHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -276,7 +286,8 @@ func TestWarehouseHandler_UpdateWarehouse_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockWarehouseService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewWarehouseHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewWarehouseHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -309,7 +320,8 @@ func TestWarehouseHandler_UpdateWarehouse_NotFound(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockWarehouseService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewWarehouseHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewWarehouseHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -338,7 +350,8 @@ func TestWarehouseHandler_UpdateWarehouse_ValidationError(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockWarehouseService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewWarehouseHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewWarehouseHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with invalid JSON
@@ -357,7 +370,8 @@ func TestWarehouseHandler_DeleteWarehouse_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockWarehouseService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewWarehouseHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewWarehouseHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -380,7 +394,8 @@ func TestWarehouseHandler_DeleteWarehouse_NotFound(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockWarehouseService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewWarehouseHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewWarehouseHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error

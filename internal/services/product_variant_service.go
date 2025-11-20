@@ -1,8 +1,9 @@
 package services
 
 import (
-	"go.uber.org/zap"
 	"kisanlink-erp/internal/interfaces"
+
+	"go.uber.org/zap"
 
 	"context"
 	"encoding/json"
@@ -17,7 +18,7 @@ import (
 type ProductVariantService struct {
 	variantRepo *repositories.ProductVariantRepository
 	productRepo *repositories.ProductRepository
-	logger        interfaces.Logger
+	logger      interfaces.Logger
 }
 
 // NewProductVariantService creates a new product variant service
@@ -208,8 +209,8 @@ func (s *ProductVariantService) UpdateProductVariant(ctx context.Context, id str
 			}
 			if exists {
 				s.logger.Error("SKU already exists",
-				zap.String("sku", *request.SKU))
-			return nil, errors.NewConflictError("variant with SKU " + *request.SKU + " already exists")
+					zap.String("sku", *request.SKU))
+				return nil, errors.NewConflictError("variant with SKU " + *request.SKU + " already exists")
 			}
 		}
 	}

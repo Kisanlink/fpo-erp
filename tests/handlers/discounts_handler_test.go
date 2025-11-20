@@ -10,6 +10,7 @@ import (
 
 	"kisanlink-erp/internal/api/handlers"
 	"kisanlink-erp/internal/database/models"
+	"kisanlink-erp/internal/utils"
 	mockServices "kisanlink-erp/tests/mocks/services"
 	"kisanlink-erp/tests/testutils"
 
@@ -28,7 +29,8 @@ func init() {
 func TestDiscountsHandler_CreateDiscount_Success(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	request := &models.CreateDiscountRequest{
 		Code:         "SUMMER20",
@@ -71,7 +73,8 @@ func TestDiscountsHandler_CreateDiscount_Success(t *testing.T) {
 func TestDiscountsHandler_CreateDiscount_ValidationError(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	// Missing required fields
 	request := &models.CreateDiscountRequest{}
@@ -92,7 +95,8 @@ func TestDiscountsHandler_CreateDiscount_ValidationError(t *testing.T) {
 func TestDiscountsHandler_CreateDiscount_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	request := &models.CreateDiscountRequest{
 		Code:         "SUMMER20",
@@ -121,7 +125,8 @@ func TestDiscountsHandler_CreateDiscount_ServiceError(t *testing.T) {
 func TestDiscountsHandler_GetDiscount_Success(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	expectedDiscount := &models.DiscountResponse{
 		ID:           "DISC00000001",
@@ -153,7 +158,8 @@ func TestDiscountsHandler_GetDiscount_Success(t *testing.T) {
 func TestDiscountsHandler_GetDiscount_NotFound(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("GetDiscount", "DISC99999999").Return(nil, assert.AnError)
 
@@ -172,7 +178,8 @@ func TestDiscountsHandler_GetDiscount_NotFound(t *testing.T) {
 func TestDiscountsHandler_GetAllDiscounts_Success(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	expectedDiscounts := []models.DiscountResponse{
 		{
@@ -212,7 +219,8 @@ func TestDiscountsHandler_GetAllDiscounts_Success(t *testing.T) {
 func TestDiscountsHandler_GetAllDiscounts_WithPagination(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("GetAllDiscounts", 10, 20).Return([]models.DiscountResponse{}, nil)
 
@@ -230,7 +238,8 @@ func TestDiscountsHandler_GetAllDiscounts_WithPagination(t *testing.T) {
 func TestDiscountsHandler_GetActiveDiscounts_Success(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	expectedDiscounts := []models.DiscountResponse{
 		{
@@ -256,7 +265,8 @@ func TestDiscountsHandler_GetActiveDiscounts_Success(t *testing.T) {
 func TestDiscountsHandler_GetActiveDiscounts_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("GetActiveDiscounts").Return(nil, assert.AnError)
 
@@ -274,7 +284,8 @@ func TestDiscountsHandler_GetActiveDiscounts_ServiceError(t *testing.T) {
 func TestDiscountsHandler_UpdateDiscount_Success(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	value := 25.0
 	request := &models.UpdateDiscountRequest{
@@ -307,7 +318,8 @@ func TestDiscountsHandler_UpdateDiscount_Success(t *testing.T) {
 func TestDiscountsHandler_UpdateDiscount_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	request := &models.UpdateDiscountRequest{
 		Name: stringPtr("Updated Name"),
@@ -332,7 +344,8 @@ func TestDiscountsHandler_UpdateDiscount_ServiceError(t *testing.T) {
 func TestDiscountsHandler_DeleteDiscount_Success(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("DeleteDiscount", "DISC00000001").Return(nil)
 
@@ -351,7 +364,8 @@ func TestDiscountsHandler_DeleteDiscount_Success(t *testing.T) {
 func TestDiscountsHandler_DeleteDiscount_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("DeleteDiscount", "DISC00000001").Return(assert.AnError)
 
@@ -370,7 +384,8 @@ func TestDiscountsHandler_DeleteDiscount_ServiceError(t *testing.T) {
 func TestDiscountsHandler_GetDiscountsByType_Success(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	expectedDiscounts := []models.DiscountResponse{
 		{
@@ -396,7 +411,8 @@ func TestDiscountsHandler_GetDiscountsByType_Success(t *testing.T) {
 func TestDiscountsHandler_GetDiscountsByType_InvalidType(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	// Handler doesn't validate type, so service is called and returns empty results
 	mockService.On("GetDiscountsByType", models.DiscountType("invalid_type")).Return([]models.DiscountResponse{}, nil)
@@ -416,7 +432,8 @@ func TestDiscountsHandler_GetDiscountsByType_InvalidType(t *testing.T) {
 func TestDiscountsHandler_GetDiscountsByType_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("GetDiscountsByType", models.DiscountType("percentage")).Return(nil, assert.AnError)
 
@@ -435,7 +452,8 @@ func TestDiscountsHandler_GetDiscountsByType_ServiceError(t *testing.T) {
 func TestDiscountsHandler_GetDiscountsByStatus_Success(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	expectedDiscounts := []models.DiscountResponse{
 		{
@@ -461,7 +479,8 @@ func TestDiscountsHandler_GetDiscountsByStatus_Success(t *testing.T) {
 func TestDiscountsHandler_GetDiscountsByStatus_InvalidStatus(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	// Handler doesn't validate status, so service is called and returns empty results
 	mockService.On("GetDiscountsByStatus", "invalid_status").Return([]models.DiscountResponse{}, nil)
@@ -481,7 +500,8 @@ func TestDiscountsHandler_GetDiscountsByStatus_InvalidStatus(t *testing.T) {
 func TestDiscountsHandler_GetDiscountsByStatus_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("GetDiscountsByStatus", "active").Return(nil, assert.AnError)
 
@@ -500,7 +520,8 @@ func TestDiscountsHandler_GetDiscountsByStatus_ServiceError(t *testing.T) {
 func TestDiscountsHandler_ValidateDiscount_Success(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	request := &models.ValidateDiscountRequest{
 		DiscountCode: "SUMMER20",
@@ -532,7 +553,8 @@ func TestDiscountsHandler_ValidateDiscount_Success(t *testing.T) {
 func TestDiscountsHandler_ValidateDiscount_ValidationError(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	request := &models.ValidateDiscountRequest{}
 
@@ -552,7 +574,8 @@ func TestDiscountsHandler_ValidateDiscount_ValidationError(t *testing.T) {
 func TestDiscountsHandler_ValidateDiscount_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	request := &models.ValidateDiscountRequest{
 		DiscountCode: "SUMMER20",
@@ -578,7 +601,8 @@ func TestDiscountsHandler_ValidateDiscount_ServiceError(t *testing.T) {
 func TestDiscountsHandler_GetDiscountUsageBySale_Success(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	expectedUsage := []models.DiscountUsageResponse{
 		{
@@ -606,7 +630,8 @@ func TestDiscountsHandler_GetDiscountUsageBySale_Success(t *testing.T) {
 func TestDiscountsHandler_GetDiscountUsageBySale_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("GetDiscountUsageBySale", "SALE00000001").Return(nil, assert.AnError)
 
@@ -625,7 +650,8 @@ func TestDiscountsHandler_GetDiscountUsageBySale_ServiceError(t *testing.T) {
 func TestDiscountsHandler_GetApplicableDiscounts_Success(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	expectedDiscounts := []models.DiscountResponse{
 		{
@@ -652,7 +678,8 @@ func TestDiscountsHandler_GetApplicableDiscounts_Success(t *testing.T) {
 func TestDiscountsHandler_GetApplicableDiscounts_MissingParams(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -668,7 +695,8 @@ func TestDiscountsHandler_GetApplicableDiscounts_MissingParams(t *testing.T) {
 func TestDiscountsHandler_GetApplicableDiscounts_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("GetApplicableDiscountsForOrder", 1000.0, []string{"PROD00000001"}, []string(nil), "WHSE00000001").Return(nil, assert.AnError)
 
@@ -686,7 +714,8 @@ func TestDiscountsHandler_GetApplicableDiscounts_ServiceError(t *testing.T) {
 func TestDiscountsHandler_CalculateOptimalDiscounts_Success(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	request := &models.ValidateDiscountRequest{
 		DiscountCode: "SUMMER20",
@@ -720,7 +749,8 @@ func TestDiscountsHandler_CalculateOptimalDiscounts_Success(t *testing.T) {
 func TestDiscountsHandler_CalculateOptimalDiscounts_InvalidOrderValue(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	// Empty request - missing required fields
 	request := &models.ValidateDiscountRequest{}
@@ -741,7 +771,8 @@ func TestDiscountsHandler_CalculateOptimalDiscounts_InvalidOrderValue(t *testing
 func TestDiscountsHandler_CalculateOptimalDiscounts_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	request := &models.ValidateDiscountRequest{
 		DiscountCode: "SUMMER20",
@@ -768,7 +799,8 @@ func TestDiscountsHandler_CalculateOptimalDiscounts_ServiceError(t *testing.T) {
 func TestDiscountsHandler_GetDiscountUsageStats_Success(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	expectedStats := map[string]interface{}{
 		"total_usage":           50,
@@ -792,7 +824,8 @@ func TestDiscountsHandler_GetDiscountUsageStats_Success(t *testing.T) {
 func TestDiscountsHandler_GetDiscountUsageStats_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockDiscountsService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewDiscountsHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("GetDiscountUsageStats", "DISC00000001").Return(nil, assert.AnError)
 

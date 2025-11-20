@@ -1,8 +1,9 @@
 package services
 
 import (
-	"go.uber.org/zap"
 	"kisanlink-erp/internal/interfaces"
+
+	"go.uber.org/zap"
 
 	"math"
 	"time"
@@ -16,13 +17,13 @@ import (
 
 type TaxService struct {
 	taxRepo *repositories.TaxRepository
-	logger        interfaces.Logger
+	logger  interfaces.Logger
 }
 
 func NewTaxService(taxRepo *repositories.TaxRepository, logger interfaces.Logger) *TaxService {
 	return &TaxService{
 		taxRepo: taxRepo,
-			logger:        logger,
+		logger:  logger,
 	}
 }
 

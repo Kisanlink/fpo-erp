@@ -137,9 +137,9 @@ func (r *SalesRepository) GetTopSellingProducts(limit int) ([]struct {
 	}
 
 	err := r.db.Table("sale_items").
-		Select("sale_items.product_id, sku.name as product_name, SUM(sale_items.quantity) as total_sold, SUM(sale_items.total_price) as total_amount").
-		Joins("JOIN sku ON sale_items.product_id = sku.id").
-		Group("sale_items.product_id, sku.name").
+		Select("sale_items.product_id, products.name as product_name, SUM(sale_items.quantity) as total_sold, SUM(sale_items.total_price) as total_amount").
+		Joins("JOIN products ON sale_items.product_id = products.id").
+		Group("sale_items.product_id, products.name").
 		Order("total_sold DESC").
 		Limit(limit).
 		Find(&results).Error

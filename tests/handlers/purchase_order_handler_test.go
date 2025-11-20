@@ -14,6 +14,7 @@ import (
 
 	"kisanlink-erp/internal/api/handlers"
 	"kisanlink-erp/internal/database/models"
+	"kisanlink-erp/internal/utils"
 	mockServices "kisanlink-erp/tests/mocks/services"
 	"kisanlink-erp/tests/testutils"
 )
@@ -26,7 +27,8 @@ func TestPurchaseOrderHandler_CreatePurchaseOrder_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockPurchaseOrderService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -82,7 +84,8 @@ func TestPurchaseOrderHandler_CreatePurchaseOrder_ValidationError(t *testing.T) 
 	// Setup
 	mockService := new(mockServices.MockPurchaseOrderService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with missing required fields
@@ -106,7 +109,8 @@ func TestPurchaseOrderHandler_CreatePurchaseOrder_ServiceError(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockPurchaseOrderService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -147,7 +151,8 @@ func TestPurchaseOrderHandler_GetAllPurchaseOrders_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockPurchaseOrderService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -191,7 +196,8 @@ func TestPurchaseOrderHandler_GetAllPurchaseOrders_EmptyList(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockPurchaseOrderService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -214,7 +220,8 @@ func TestPurchaseOrderHandler_GetAllPurchaseOrders_ServiceError(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockPurchaseOrderService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -241,7 +248,8 @@ func TestPurchaseOrderHandler_GetPurchaseOrder_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockPurchaseOrderService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -276,7 +284,8 @@ func TestPurchaseOrderHandler_GetPurchaseOrder_NotFound(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockPurchaseOrderService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -303,7 +312,8 @@ func TestPurchaseOrderHandler_GetPendingDeliveries_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockPurchaseOrderService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -345,7 +355,8 @@ func TestPurchaseOrderHandler_GetPendingDeliveries_EmptyList(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockPurchaseOrderService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -372,7 +383,8 @@ func TestPurchaseOrderHandler_GetPurchaseOrdersByStatus_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockPurchaseOrderService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -412,7 +424,8 @@ func TestPurchaseOrderHandler_GetPurchaseOrdersByStatus_MultipleStatuses(t *test
 			// Setup
 			mockService := new(mockServices.MockPurchaseOrderService)
 			router := testutils.SetupTestRouter()
-			handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware())
+			mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+			handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 			handler.RegisterRoutes(router.Group("/api/v1"))
 
 			// Mock expectations
@@ -441,7 +454,8 @@ func TestPurchaseOrderHandler_UpdatePurchaseOrderStatus_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockPurchaseOrderService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -479,7 +493,8 @@ func TestPurchaseOrderHandler_UpdatePurchaseOrderStatus_WithAcceptAll(t *testing
 	// Setup
 	mockService := new(mockServices.MockPurchaseOrderService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -518,7 +533,8 @@ func TestPurchaseOrderHandler_UpdatePurchaseOrderStatus_WithItemDetails(t *testi
 	// Setup
 	mockService := new(mockServices.MockPurchaseOrderService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -565,7 +581,8 @@ func TestPurchaseOrderHandler_UpdatePurchaseOrderStatus_ValidationError(t *testi
 	// Setup
 	mockService := new(mockServices.MockPurchaseOrderService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with missing status
@@ -588,7 +605,8 @@ func TestPurchaseOrderHandler_UpdatePurchaseOrderStatus_NotFound(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockPurchaseOrderService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -620,7 +638,8 @@ func TestPurchaseOrderHandler_UpdatePaymentStatus_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockPurchaseOrderService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -660,7 +679,8 @@ func TestPurchaseOrderHandler_UpdatePaymentStatus_ValidationError(t *testing.T) 
 	// Setup
 	mockService := new(mockServices.MockPurchaseOrderService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with invalid data (missing required fields)
@@ -683,7 +703,8 @@ func TestPurchaseOrderHandler_UpdatePaymentStatus_NotFound(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockPurchaseOrderService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -716,7 +737,8 @@ func TestPurchaseOrderHandler_GetPurchaseOrdersByCollaborator_Success(t *testing
 	// Setup
 	mockService := new(mockServices.MockPurchaseOrderService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -760,7 +782,8 @@ func TestPurchaseOrderHandler_GetPurchaseOrdersByCollaborator_EmptyList(t *testi
 	// Setup
 	mockService := new(mockServices.MockPurchaseOrderService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -783,7 +806,8 @@ func TestPurchaseOrderHandler_GetPurchaseOrdersByCollaborator_ServiceError(t *te
 	// Setup
 	mockService := new(mockServices.MockPurchaseOrderService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewPurchaseOrderHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error

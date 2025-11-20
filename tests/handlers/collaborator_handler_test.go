@@ -13,6 +13,7 @@ import (
 
 	"kisanlink-erp/internal/api/handlers"
 	"kisanlink-erp/internal/database/models"
+	"kisanlink-erp/internal/utils"
 	mockServices "kisanlink-erp/tests/mocks/services"
 	"kisanlink-erp/tests/testutils"
 )
@@ -21,8 +22,9 @@ func TestCollaboratorHandler_CreateCollaborator_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockCollaboratorService)
 	mockAAA := testutils.NewMockAAAMiddleware()
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewCollaboratorHandler(mockService, mockAAA)
+	handler := handlers.NewCollaboratorHandler(mockService, mockAAA, mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -83,7 +85,8 @@ func TestCollaboratorHandler_CreateCollaborator_ValidationError(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockCollaboratorService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewCollaboratorHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewCollaboratorHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with missing required fields
@@ -107,7 +110,8 @@ func TestCollaboratorHandler_CreateCollaborator_ServiceError(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockCollaboratorService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewCollaboratorHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewCollaboratorHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -153,7 +157,8 @@ func TestCollaboratorHandler_GetAllCollaborators_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockCollaboratorService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewCollaboratorHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewCollaboratorHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -195,7 +200,8 @@ func TestCollaboratorHandler_GetAllCollaborators_EmptyList(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockCollaboratorService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewCollaboratorHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewCollaboratorHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -218,7 +224,8 @@ func TestCollaboratorHandler_GetActiveCollaborators_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockCollaboratorService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewCollaboratorHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewCollaboratorHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -248,7 +255,8 @@ func TestCollaboratorHandler_SearchCollaborators_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockCollaboratorService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewCollaboratorHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewCollaboratorHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -279,7 +287,8 @@ func TestCollaboratorHandler_SearchCollaborators_NoResults(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockCollaboratorService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewCollaboratorHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewCollaboratorHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -302,7 +311,8 @@ func TestCollaboratorHandler_GetCollaborator_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockCollaboratorService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewCollaboratorHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewCollaboratorHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -331,7 +341,8 @@ func TestCollaboratorHandler_GetCollaborator_NotFound(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockCollaboratorService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewCollaboratorHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewCollaboratorHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service returns error
@@ -354,7 +365,8 @@ func TestCollaboratorHandler_UpdateCollaborator_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockCollaboratorService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewCollaboratorHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewCollaboratorHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -401,7 +413,8 @@ func TestCollaboratorHandler_UpdateCollaborator_NotFound(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockCollaboratorService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewCollaboratorHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewCollaboratorHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -438,7 +451,8 @@ func TestCollaboratorHandler_UpdateCollaborator_ValidationError(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockCollaboratorService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewCollaboratorHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewCollaboratorHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with invalid JSON
@@ -457,7 +471,8 @@ func TestCollaboratorHandler_DeleteCollaborator_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockCollaboratorService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewCollaboratorHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewCollaboratorHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -486,7 +501,8 @@ func TestCollaboratorHandler_DeleteCollaborator_NotFound(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockCollaboratorService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewCollaboratorHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewCollaboratorHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error

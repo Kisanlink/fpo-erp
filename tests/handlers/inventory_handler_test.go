@@ -13,6 +13,7 @@ import (
 
 	"kisanlink-erp/internal/api/handlers"
 	"kisanlink-erp/internal/database/models"
+	"kisanlink-erp/internal/utils"
 	mockServices "kisanlink-erp/tests/mocks/services"
 	"kisanlink-erp/tests/testutils"
 )
@@ -26,7 +27,8 @@ func TestInventoryHandler_CreateBatch_Success(t *testing.T) {
 	mockService := new(mockServices.MockInventoryService)
 	mockAAA := testutils.NewMockAAAMiddleware()
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, mockAAA, mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -80,7 +82,8 @@ func TestInventoryHandler_CreateBatch_ValidationError_MissingFields(t *testing.T
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with missing required fields
@@ -104,7 +107,8 @@ func TestInventoryHandler_CreateBatch_InvalidExpiryDateFormat(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with invalid date format
@@ -131,7 +135,8 @@ func TestInventoryHandler_CreateBatch_ServiceError(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -172,7 +177,8 @@ func TestInventoryHandler_GetBatch_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -210,7 +216,8 @@ func TestInventoryHandler_GetBatch_NotFound(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -233,7 +240,8 @@ func TestInventoryHandler_GetBatch_MissingID(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request without ID
@@ -255,7 +263,8 @@ func TestInventoryHandler_GetBatchesByWarehouse_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -297,7 +306,8 @@ func TestInventoryHandler_GetBatchesByWarehouse_EmptyList(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -320,7 +330,8 @@ func TestInventoryHandler_GetBatchesByWarehouse_ServiceError(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -347,7 +358,8 @@ func TestInventoryHandler_GetBatchesByVariant_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -389,7 +401,8 @@ func TestInventoryHandler_GetBatchesByVariant_EmptyList(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -412,7 +425,8 @@ func TestInventoryHandler_GetBatchesByVariant_ServiceError(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -440,7 +454,8 @@ func TestInventoryHandler_CreateTransaction_Success(t *testing.T) {
 	mockService := new(mockServices.MockInventoryService)
 	mockAAA := testutils.NewMockAAAMiddleware()
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, mockAAA, mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -486,7 +501,8 @@ func TestInventoryHandler_CreateTransaction_ValidationError(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with missing required fields
@@ -509,7 +525,8 @@ func TestInventoryHandler_CreateTransaction_MissingBatchID(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request without batch ID in URL
@@ -536,7 +553,8 @@ func TestInventoryHandler_CreateTransaction_ServiceError(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -571,7 +589,8 @@ func TestInventoryHandler_GetTransactionsByBatch_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -613,7 +632,8 @@ func TestInventoryHandler_GetTransactionsByBatch_EmptyList(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -636,7 +656,8 @@ func TestInventoryHandler_GetTransactionsByBatch_ServiceError(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -663,7 +684,8 @@ func TestInventoryHandler_GetExpiringBatches_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -701,7 +723,8 @@ func TestInventoryHandler_GetExpiringBatches_DefaultDays(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations (default 30 days)
@@ -724,7 +747,8 @@ func TestInventoryHandler_GetExpiringBatches_InvalidDays(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with invalid days parameter
@@ -742,7 +766,8 @@ func TestInventoryHandler_GetExpiringBatches_ServiceError(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -769,7 +794,8 @@ func TestInventoryHandler_GetLowStockBatches_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -807,7 +833,8 @@ func TestInventoryHandler_GetLowStockBatches_DefaultThreshold(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations (default threshold 10)
@@ -830,7 +857,8 @@ func TestInventoryHandler_GetLowStockBatches_InvalidThreshold(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with invalid threshold parameter
@@ -848,7 +876,8 @@ func TestInventoryHandler_GetLowStockBatches_ServiceError(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -875,7 +904,8 @@ func TestInventoryHandler_GetAllProductsAvailability_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -923,7 +953,8 @@ func TestInventoryHandler_GetAllProductsAvailability_EmptyList(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -946,7 +977,8 @@ func TestInventoryHandler_GetAllProductsAvailability_ServiceError(t *testing.T) 
 	// Setup
 	mockService := new(mockServices.MockInventoryService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewInventoryHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error

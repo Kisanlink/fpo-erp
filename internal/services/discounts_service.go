@@ -2,8 +2,9 @@
 package services
 
 import (
-	"go.uber.org/zap"
 	"kisanlink-erp/internal/interfaces"
+
+	"go.uber.org/zap"
 
 	"encoding/json"
 	"time"
@@ -25,7 +26,7 @@ func NewDiscountsService(discountRepo *repositories.DiscountsRepository, product
 		discountRepo:  discountRepo,
 		productRepo:   productRepo,
 		warehouseRepo: warehouseRepo,
-			logger:        logger,
+		logger:        logger,
 	}
 }
 

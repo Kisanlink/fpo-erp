@@ -139,15 +139,15 @@ func (r *ReturnsRepository) GetMostReturnedProducts(limit int) ([]struct {
 		ReturnAmount  float64 `json:"return_amount"`
 	}
 
-	// Join through: return_items -> inventory_batches -> product_variants -> sku
+	// Join through: return_items -> inventory_batches -> product_variants -> products
 	// Use batch_id from return_items, not product_id (which doesn't exist)
 	// Calculate return_amount as refund_amount * quantity
 	err := r.db.Table("return_items").
-		Select("product_variants.product_id, sku.name as product_name, SUM(return_items.quantity) as total_returned, SUM(return_items.refund_amount * return_items.quantity) as return_amount").
+		Select("product_variants.product_id, products.name as product_name, SUM(return_items.quantity) as total_returned, SUM(return_items.refund_amount * return_items.quantity) as return_amount").
 		Joins("JOIN inventory_batches ON return_items.batch_id = inventory_batches.id").
 		Joins("JOIN product_variants ON inventory_batches.variant_id = product_variants.id").
-		Joins("JOIN sku ON product_variants.product_id = sku.id").
-		Group("product_variants.product_id, sku.name").
+		Joins("JOIN products ON product_variants.product_id = products.id").
+		Group("product_variants.product_id, products.name").
 		Order("total_returned DESC").
 		Limit(limit).
 		Find(&results).Error

@@ -8,6 +8,7 @@ import (
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
 	"kisanlink-erp/internal/services"
+	"kisanlink-erp/internal/utils"
 	"kisanlink-erp/tests/testutils"
 
 	"gorm.io/gorm"
@@ -42,6 +43,7 @@ func setupPurchaseOrderService(t *testing.T) (*services.PurchaseOrderService, *g
 		variantRepo,
 		grnRepo,
 		inventoryRepo,
+		utils.NewLoggerAdapter(utils.GetZapLogger()),
 	)
 
 	cleanup := func() {

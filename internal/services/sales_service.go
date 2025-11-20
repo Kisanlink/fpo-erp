@@ -69,12 +69,12 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 	for _, itemReq := range req.Items {
 		// Get selling price from product_prices table (by variant_id)
 		s.logger.Debug("Getting selling price for variant",
-		zap.String("variant_id", itemReq.VariantID))
+			zap.String("variant_id", itemReq.VariantID))
 		sellingPrice, err := s.getSellingPrice(itemReq.VariantID)
 		if err != nil {
 			s.logger.Error("Failed to get selling price",
-			zap.Error(err),
-			zap.String("variant_id", itemReq.VariantID))
+				zap.Error(err),
+				zap.String("variant_id", itemReq.VariantID))
 			return nil, errors.NewNotFoundError("selling price not found for product")
 		}
 		s.logger.Debug("Selling price retrieved",
@@ -87,15 +87,15 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 		batches, err := s.inventoryRepo.GetBatchesByVariantAndWarehouseOrderedByExpiry(itemReq.VariantID, req.WarehouseID)
 		if err != nil {
 			s.logger.Error("Failed to get batches for variant",
-			zap.Error(err),
-			zap.String("variant_id", itemReq.VariantID))
+				zap.Error(err),
+				zap.String("variant_id", itemReq.VariantID))
 			return nil, errors.NewInternalServerError("failed to retrieve variant batches")
 		}
 
 		if len(batches) == 0 {
 			s.logger.Error("No batches found for variant",
-			zap.String("variant_id", itemReq.VariantID),
-			zap.String("warehouse_id", req.WarehouseID))
+				zap.String("variant_id", itemReq.VariantID),
+				zap.String("warehouse_id", req.WarehouseID))
 			return nil, errors.NewNotFoundError("no inventory available for variant in this warehouse")
 		}
 
@@ -110,8 +110,8 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 
 		if totalAvailable < itemReq.Quantity {
 			s.logger.Error("Insufficient stock",
-			zap.Int64("available", totalAvailable),
-			zap.Int64("requested", itemReq.Quantity))
+				zap.Int64("available", totalAvailable),
+				zap.Int64("requested", itemReq.Quantity))
 			return nil, errors.NewBadRequestError("insufficient stock for product")
 		}
 
@@ -146,15 +146,15 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 		var saleDate time.Time
 		if req.SaleDate != nil {
 			s.logger.Debug("Parsing sale date",
-			zap.String("sale_date", *req.SaleDate))
+				zap.String("sale_date", *req.SaleDate))
 			if parsedDate, err := time.Parse(time.RFC3339, *req.SaleDate); err == nil {
 				saleDate = parsedDate
 				s.logger.Debug("Sale date parsed successfully",
-				zap.Time("sale_date", saleDate))
+					zap.Time("sale_date", saleDate))
 			} else {
 				// If parsing fails, use current time
 				s.logger.Warn("Date parsing failed, using current time",
-				zap.Error(err))
+					zap.Error(err))
 				saleDate = time.Now()
 			}
 		} else {
@@ -183,7 +183,7 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 
 		if err := s.salesRepo.CreateSaleWithTx(tx, sale); err != nil {
 			s.logger.Error("Failed to create sale in database",
-			zap.Error(err))
+				zap.Error(err))
 			return err
 		}
 		s.logger.Debug("Sale created successfully in database")
@@ -315,7 +315,7 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 		finalDiscounts, applications, totalDiscountAmount, err := s.resolveDiscountsWithPriority(req, totalAmount, productIDs, saleItemPtrs)
 		if err != nil {
 			s.logger.Error("Failed to resolve discounts",
-			zap.Error(err))
+				zap.Error(err))
 			return err
 		}
 
@@ -328,12 +328,12 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 			usage := models.NewDiscountUsage(discount.ID, sale.ID, discountUsage)
 			if err := s.discountsRepo.CreateDiscountUsageWithTx(tx, usage); err != nil {
 				s.logger.Error("Failed to create discount usage record",
-				zap.Error(err))
+					zap.Error(err))
 				return err
 			}
 			if err := s.discountsRepo.IncrementUsageWithTx(tx, discount.ID); err != nil {
 				s.logger.Error("Failed to increment discount usage",
-				zap.Error(err))
+					zap.Error(err))
 				return err
 			}
 		}
@@ -355,14 +355,14 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 			taxSummary, err := s.applyTaxesToSaleWithTx(tx, sale.ID, saleItems, req.WarehouseID)
 			if err != nil {
 				s.logger.Error("Tax calculation failed",
-				zap.Error(err))
+					zap.Error(err))
 				return err
 			}
 			if taxSummary != nil {
 				taxAmount = taxSummary.TotalTaxAmount
 				finalAmount += taxAmount
 				s.logger.Info("Tax applied successfully",
-				zap.Float64("tax_amount", taxAmount))
+					zap.Float64("tax_amount", taxAmount))
 			}
 		} else {
 			s.logger.Debug("ApplyTaxes is false, skipping tax calculation")
@@ -374,7 +374,7 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 		sale.TotalAmount = finalAmount
 		if err := s.salesRepo.UpdateSaleWithTx(tx, sale); err != nil {
 			s.logger.Error("Failed to update sale with final amount",
-			zap.Error(err))
+				zap.Error(err))
 			return err
 		}
 		s.logger.Debug("Sale updated with final amount successfully")
@@ -417,7 +417,7 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 
 	if err != nil {
 		s.logger.Error("Transaction failed",
-		zap.Error(err))
+			zap.Error(err))
 		return nil, err
 	}
 

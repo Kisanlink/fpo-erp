@@ -13,6 +13,7 @@ import (
 
 	"kisanlink-erp/internal/api/handlers"
 	"kisanlink-erp/internal/database/models"
+	"kisanlink-erp/internal/utils"
 	mockServices "kisanlink-erp/tests/mocks/services"
 	"kisanlink-erp/tests/testutils"
 )
@@ -21,7 +22,8 @@ func TestGRNHandler_CreateGRN_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockGRNService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -76,7 +78,8 @@ func TestGRNHandler_CreateGRN_ValidationError(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockGRNService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with missing required fields
@@ -100,7 +103,8 @@ func TestGRNHandler_CreateGRN_ServiceError(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockGRNService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -139,7 +143,8 @@ func TestGRNHandler_GetGRN_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockGRNService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -172,7 +177,8 @@ func TestGRNHandler_GetGRN_NotFound(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockGRNService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -195,7 +201,8 @@ func TestGRNHandler_GetAllGRNs_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockGRNService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -243,7 +250,8 @@ func TestGRNHandler_GetAllGRNs_EmptyList(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockGRNService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -266,7 +274,8 @@ func TestGRNHandler_GetGRNsByWarehouse_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockGRNService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -299,7 +308,8 @@ func TestGRNHandler_GetGRNsByWarehouse_EmptyList(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockGRNService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -322,7 +332,8 @@ func TestGRNHandler_GetGRNsByWarehouse_ServiceError(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockGRNService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -345,7 +356,8 @@ func TestGRNHandler_GetGRNByPurchaseOrder_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockGRNService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -377,7 +389,8 @@ func TestGRNHandler_GetGRNByPurchaseOrder_NotFound(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockGRNService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -400,7 +413,8 @@ func TestGRNHandler_UpdateGRN_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockGRNService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -439,7 +453,8 @@ func TestGRNHandler_UpdateGRN_NotFound(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockGRNService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -468,7 +483,8 @@ func TestGRNHandler_UpdateGRN_ValidationError(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockGRNService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with invalid JSON
@@ -487,7 +503,8 @@ func TestGRNHandler_CreateGRN_EmptyItems(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockGRNService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with empty items array (should fail validation)
@@ -514,7 +531,8 @@ func TestGRNHandler_GetGRNsByWarehouse_MissingID(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockGRNService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations - handler should check if ID is empty
@@ -537,7 +555,8 @@ func TestGRNHandler_GetGRNByPurchaseOrder_MissingID(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockGRNService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewGRNHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations

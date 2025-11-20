@@ -9,6 +9,7 @@ import (
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
 	"kisanlink-erp/internal/services"
+	"kisanlink-erp/internal/utils"
 	"kisanlink-erp/tests/testutils"
 
 	"gorm.io/gorm"
@@ -24,7 +25,8 @@ func setupReturnsService(t *testing.T) (*services.ReturnsService, *gorm.DB, func
 	inventoryRepo := repositories.NewInventoryRepository(db)
 
 	// Create service
-	service := services.NewReturnsService(returnsRepo, salesRepo, inventoryRepo)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	service := services.NewReturnsService(returnsRepo, salesRepo, inventoryRepo, mockLogger)
 
 	// Cleanup function
 	cleanup := func() {

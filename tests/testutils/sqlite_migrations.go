@@ -327,14 +327,14 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 		return err
 	}
 
-	// Product table (table name: sku)
+	// Product table
 	// Drop table first to ensure schema is correct
-	if err := db.Exec(`DROP TABLE IF EXISTS sku`).Error; err != nil {
+	if err := db.Exec(`DROP TABLE IF EXISTS products`).Error; err != nil {
 		return err
 	}
 
 	if err := db.Exec(`
-		CREATE TABLE sku (
+		CREATE TABLE products (
 			id TEXT PRIMARY KEY,
 			external_id TEXT UNIQUE,
 			name TEXT NOT NULL,
@@ -352,7 +352,7 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 
 	// Create index for external_id
 	if err := db.Exec(`
-		CREATE INDEX IF NOT EXISTS idx_product_external_id ON sku(external_id)
+		CREATE INDEX IF NOT EXISTS idx_product_external_id ON products(external_id)
 	`).Error; err != nil {
 		return err
 	}
@@ -860,6 +860,278 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 
 	if err := db.Exec(`
 		CREATE INDEX IF NOT EXISTS idx_return_item_batch_id ON return_items(batch_id)
+	`).Error; err != nil {
+		return err
+	}
+
+	// BankPayment table
+	// Drop table first to ensure schema is correct
+	if err := db.Exec(`DROP TABLE IF EXISTS bank_payments`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE TABLE bank_payments (
+			id TEXT PRIMARY KEY,
+			entity_type TEXT NOT NULL,
+			entity_id TEXT NOT NULL,
+			payment_method TEXT NOT NULL,
+			amount REAL NOT NULL,
+			transaction_reference TEXT,
+			payment_date DATETIME NOT NULL,
+			notes TEXT,
+			created_at DATETIME,
+			updated_at DATETIME,
+			deleted_at DATETIME,
+			created_by TEXT,
+			updated_by TEXT,
+			deleted_by TEXT
+		)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Create indexes for bank_payments
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_bank_payment_entity ON bank_payments(entity_type, entity_id)
+	`).Error; err != nil {
+		return err
+	}
+
+	// RefundPolicy table
+	// Drop table first to ensure schema is correct
+	if err := db.Exec(`DROP TABLE IF EXISTS refund_policies`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE TABLE refund_policies (
+			id TEXT PRIMARY KEY,
+			policy_name TEXT NOT NULL,
+			description TEXT,
+			refund_window_days INTEGER NOT NULL,
+			refund_percentage REAL NOT NULL,
+			conditions TEXT,
+			is_active INTEGER DEFAULT 1,
+			created_at DATETIME,
+			updated_at DATETIME,
+			deleted_at DATETIME,
+			created_by TEXT,
+			updated_by TEXT,
+			deleted_by TEXT
+		)
+	`).Error; err != nil {
+		return err
+	}
+
+	// SaleSummary table
+	// Drop table first to ensure schema is correct
+	if err := db.Exec(`DROP TABLE IF EXISTS sale_summaries`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE TABLE sale_summaries (
+			id TEXT PRIMARY KEY,
+			summary_date DATE NOT NULL UNIQUE,
+			total_sales INTEGER NOT NULL,
+			total_amount REAL NOT NULL,
+			total_discount REAL DEFAULT 0,
+			total_tax REAL DEFAULT 0,
+			net_amount REAL NOT NULL,
+			created_at DATETIME,
+			updated_at DATETIME,
+			deleted_at DATETIME,
+			created_by TEXT,
+			updated_by TEXT,
+			deleted_by TEXT
+		)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Create index for summary_date
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_sale_summary_date ON sale_summaries(summary_date)
+	`).Error; err != nil {
+		return err
+	}
+
+	// ReturnSummary table
+	// Drop table first to ensure schema is correct
+	if err := db.Exec(`DROP TABLE IF EXISTS return_summaries`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE TABLE return_summaries (
+			id TEXT PRIMARY KEY,
+			summary_date DATE NOT NULL UNIQUE,
+			total_returns INTEGER NOT NULL,
+			total_refund REAL NOT NULL,
+			created_at DATETIME,
+			updated_at DATETIME,
+			deleted_at DATETIME,
+			created_by TEXT,
+			updated_by TEXT,
+			deleted_by TEXT
+		)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Create index for summary_date
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_return_summary_date ON return_summaries(summary_date)
+	`).Error; err != nil {
+		return err
+	}
+
+	// TaxTier table
+	// Drop table first to ensure schema is correct
+	if err := db.Exec(`DROP TABLE IF EXISTS tax_tiers`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE TABLE tax_tiers (
+			id TEXT PRIMARY KEY,
+			tax_id TEXT NOT NULL,
+			min_amount REAL NOT NULL,
+			max_amount REAL,
+			rate REAL NOT NULL,
+			tier_order INTEGER NOT NULL,
+			created_at DATETIME,
+			updated_at DATETIME,
+			deleted_at DATETIME,
+			created_by TEXT,
+			updated_by TEXT,
+			deleted_by TEXT
+		)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Create indexes for tax_tiers
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_tax_tier_tax_id ON tax_tiers(tax_id)
+	`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_tax_tier_order ON tax_tiers(tax_id, tier_order)
+	`).Error; err != nil {
+		return err
+	}
+
+	// TaxApplication table
+	// Drop table first to ensure schema is correct
+	if err := db.Exec(`DROP TABLE IF EXISTS tax_applications`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE TABLE tax_applications (
+			id TEXT PRIMARY KEY,
+			tax_id TEXT NOT NULL,
+			entity_type TEXT NOT NULL,
+			entity_id TEXT NOT NULL,
+			tax_amount REAL NOT NULL,
+			taxable_amount REAL NOT NULL,
+			applied_at DATETIME NOT NULL,
+			created_at DATETIME,
+			updated_at DATETIME,
+			deleted_at DATETIME,
+			created_by TEXT,
+			updated_by TEXT,
+			deleted_by TEXT
+		)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Create indexes for tax_applications
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_tax_application_entity ON tax_applications(entity_type, entity_id)
+	`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_tax_application_tax_id ON tax_applications(tax_id)
+	`).Error; err != nil {
+		return err
+	}
+
+	// TaxSummary table
+	// Drop table first to ensure schema is correct
+	if err := db.Exec(`DROP TABLE IF EXISTS tax_summaries`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE TABLE tax_summaries (
+			id TEXT PRIMARY KEY,
+			entity_type TEXT NOT NULL,
+			entity_id TEXT NOT NULL,
+			total_tax REAL NOT NULL,
+			cgst_amount REAL DEFAULT 0,
+			sgst_amount REAL DEFAULT 0,
+			igst_amount REAL DEFAULT 0,
+			custom_tax_amount REAL DEFAULT 0,
+			created_at DATETIME,
+			updated_at DATETIME,
+			deleted_at DATETIME,
+			created_by TEXT,
+			updated_by TEXT,
+			deleted_by TEXT
+		)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Create index for tax_summaries
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_tax_summary_entity ON tax_summaries(entity_type, entity_id)
+	`).Error; err != nil {
+		return err
+	}
+
+	// WebhookDeliveryAttempt table
+	// Drop table first to ensure schema is correct
+	if err := db.Exec(`DROP TABLE IF EXISTS webhook_delivery_attempts`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE TABLE webhook_delivery_attempts (
+			id TEXT PRIMARY KEY,
+			webhook_event_id TEXT NOT NULL,
+			attempt_number INTEGER NOT NULL,
+			response_code INTEGER,
+			error_message TEXT,
+			attempted_at DATETIME NOT NULL,
+			created_at DATETIME,
+			updated_at DATETIME,
+			deleted_at DATETIME,
+			created_by TEXT,
+			updated_by TEXT,
+			deleted_by TEXT
+		)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Create indexes for webhook_delivery_attempts
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_webhook_attempt_event ON webhook_delivery_attempts(webhook_event_id)
+	`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_webhook_attempt_number ON webhook_delivery_attempts(webhook_event_id, attempt_number)
 	`).Error; err != nil {
 		return err
 	}

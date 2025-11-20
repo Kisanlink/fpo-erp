@@ -1,8 +1,9 @@
 package services
 
 import (
-	"go.uber.org/zap"
 	"kisanlink-erp/internal/interfaces"
+
+	"go.uber.org/zap"
 
 	"context"
 	"encoding/json"
@@ -20,7 +21,7 @@ type CollaboratorProductService struct {
 	collaboratorRepo  *repositories.CollaboratorRepository
 	productRepo       *repositories.ProductRepository
 	variantRepo       *repositories.ProductVariantRepository // Added for unified architecture
-	logger        interfaces.Logger
+	logger            interfaces.Logger
 }
 
 // NewCollaboratorProductService creates a new collaborator product service

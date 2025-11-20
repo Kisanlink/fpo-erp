@@ -13,6 +13,7 @@ import (
 
 	"kisanlink-erp/internal/api/handlers"
 	"kisanlink-erp/internal/database/models"
+	"kisanlink-erp/internal/utils"
 	mockServices "kisanlink-erp/tests/mocks/services"
 	"kisanlink-erp/tests/testutils"
 
@@ -31,7 +32,8 @@ func init() {
 func TestAttachmentHandler_UploadAttachment_Success(t *testing.T) {
 	mockService := new(mockServices.MockAttachmentService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewAttachmentHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewAttachmentHandler(mockService, mockAAA, mockLogger)
 
 	expectedResponse := &models.AttachmentResponse{
 		ID:         "ATCH00000001",
@@ -76,7 +78,8 @@ func TestAttachmentHandler_UploadAttachment_Success(t *testing.T) {
 func TestAttachmentHandler_UploadAttachment_MissingEntityType(t *testing.T) {
 	mockService := new(mockServices.MockAttachmentService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewAttachmentHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewAttachmentHandler(mockService, mockAAA, mockLogger)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -103,7 +106,8 @@ func TestAttachmentHandler_UploadAttachment_MissingEntityType(t *testing.T) {
 func TestAttachmentHandler_UploadAttachment_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockAttachmentService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewAttachmentHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewAttachmentHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("UploadAttachment", mock.Anything, mock.Anything, "logo", "CLAB00000001", "test-user-123").Return(nil, assert.AnError)
 
@@ -133,7 +137,8 @@ func TestAttachmentHandler_UploadAttachment_ServiceError(t *testing.T) {
 func TestAttachmentHandler_GetAttachment_Success(t *testing.T) {
 	mockService := new(mockServices.MockAttachmentService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewAttachmentHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewAttachmentHandler(mockService, mockAAA, mockLogger)
 
 	uploadedBy := "USER_12345678"
 	expectedAttachment := &models.Attachment{
@@ -166,7 +171,8 @@ func TestAttachmentHandler_GetAttachment_Success(t *testing.T) {
 func TestAttachmentHandler_GetAttachment_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockAttachmentService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewAttachmentHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewAttachmentHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("GetAttachment", "ATCH99999999").Return(nil, assert.AnError)
 
@@ -185,7 +191,8 @@ func TestAttachmentHandler_GetAttachment_ServiceError(t *testing.T) {
 func TestAttachmentHandler_GetAttachments_Success(t *testing.T) {
 	mockService := new(mockServices.MockAttachmentService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewAttachmentHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewAttachmentHandler(mockService, mockAAA, mockLogger)
 
 	expectedAttachments := []models.AttachmentResponse{
 		{
@@ -225,7 +232,8 @@ func TestAttachmentHandler_GetAttachments_Success(t *testing.T) {
 func TestAttachmentHandler_GetAttachments_WithFilters(t *testing.T) {
 	mockService := new(mockServices.MockAttachmentService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewAttachmentHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewAttachmentHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("GetAttachments", stringPtr("logo"), stringPtr("CLAB00000001"), 10, 0).Return([]models.AttachmentResponse{}, nil)
 
@@ -243,7 +251,8 @@ func TestAttachmentHandler_GetAttachments_WithFilters(t *testing.T) {
 func TestAttachmentHandler_GetAttachments_WithPagination(t *testing.T) {
 	mockService := new(mockServices.MockAttachmentService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewAttachmentHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewAttachmentHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("GetAttachments", (*string)(nil), (*string)(nil), 20, 10).Return([]models.AttachmentResponse{}, nil)
 
@@ -261,7 +270,8 @@ func TestAttachmentHandler_GetAttachments_WithPagination(t *testing.T) {
 func TestAttachmentHandler_DownloadAttachment_Success(t *testing.T) {
 	mockService := new(mockServices.MockAttachmentService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewAttachmentHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewAttachmentHandler(mockService, mockAAA, mockLogger)
 
 	fileContent := strings.NewReader("test file content")
 	mockService.On("DownloadAttachment", mock.Anything, "ATCH00000001").Return(fileContent, "image/png", nil)
@@ -282,7 +292,8 @@ func TestAttachmentHandler_DownloadAttachment_Success(t *testing.T) {
 func TestAttachmentHandler_DownloadAttachment_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockAttachmentService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewAttachmentHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewAttachmentHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("DownloadAttachment", mock.Anything, "ATCH99999999").Return(nil, "", assert.AnError)
 
@@ -301,7 +312,8 @@ func TestAttachmentHandler_DownloadAttachment_ServiceError(t *testing.T) {
 func TestAttachmentHandler_GenerateDownloadURL_Success(t *testing.T) {
 	mockService := new(mockServices.MockAttachmentService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewAttachmentHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewAttachmentHandler(mockService, mockAAA, mockLogger)
 
 	expectedURL := "https://s3.amazonaws.com/bucket/logos/test.png?presigned=true"
 	mockService.On("GenerateDownloadURL", mock.Anything, "ATCH00000001", time.Duration(3600)*time.Second).Return(expectedURL, nil)
@@ -328,7 +340,8 @@ func TestAttachmentHandler_GenerateDownloadURL_Success(t *testing.T) {
 func TestAttachmentHandler_GenerateDownloadURL_CustomExpiration(t *testing.T) {
 	mockService := new(mockServices.MockAttachmentService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewAttachmentHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewAttachmentHandler(mockService, mockAAA, mockLogger)
 
 	expectedURL := "https://s3.amazonaws.com/bucket/logos/test.png?presigned=true"
 	mockService.On("GenerateDownloadURL", mock.Anything, "ATCH00000001", time.Duration(7200)*time.Second).Return(expectedURL, nil)
@@ -353,7 +366,8 @@ func TestAttachmentHandler_GenerateDownloadURL_CustomExpiration(t *testing.T) {
 func TestAttachmentHandler_GenerateDownloadURL_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockAttachmentService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewAttachmentHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewAttachmentHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("GenerateDownloadURL", mock.Anything, "ATCH99999999", mock.Anything).Return("", assert.AnError)
 
@@ -372,7 +386,8 @@ func TestAttachmentHandler_GenerateDownloadURL_ServiceError(t *testing.T) {
 func TestAttachmentHandler_GetAttachmentInfo_Success(t *testing.T) {
 	mockService := new(mockServices.MockAttachmentService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewAttachmentHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewAttachmentHandler(mockService, mockAAA, mockLogger)
 
 	expectedInfo := &models.AttachmentInfoResponse{
 		ID:         "ATCH00000001",
@@ -407,7 +422,8 @@ func TestAttachmentHandler_GetAttachmentInfo_Success(t *testing.T) {
 func TestAttachmentHandler_GetAttachmentInfo_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockAttachmentService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewAttachmentHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewAttachmentHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("GetAttachmentInfo", mock.Anything, "ATCH99999999").Return(nil, assert.AnError)
 
@@ -426,7 +442,8 @@ func TestAttachmentHandler_GetAttachmentInfo_ServiceError(t *testing.T) {
 func TestAttachmentHandler_GetAttachmentsByEntity_Success(t *testing.T) {
 	mockService := new(mockServices.MockAttachmentService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewAttachmentHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewAttachmentHandler(mockService, mockAAA, mockLogger)
 
 	expectedAttachments := []models.AttachmentResponse{
 		{
@@ -463,7 +480,8 @@ func TestAttachmentHandler_GetAttachmentsByEntity_Success(t *testing.T) {
 func TestAttachmentHandler_GetAttachmentsByEntity_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockAttachmentService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewAttachmentHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewAttachmentHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("GetAttachmentsByEntity", "logo", "CLAB99999999").Return(nil, assert.AnError)
 
@@ -485,7 +503,8 @@ func TestAttachmentHandler_GetAttachmentsByEntity_ServiceError(t *testing.T) {
 func TestAttachmentHandler_DeleteAttachment_Success(t *testing.T) {
 	mockService := new(mockServices.MockAttachmentService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewAttachmentHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewAttachmentHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("DeleteAttachment", mock.Anything, "ATCH00000001").Return(nil)
 
@@ -508,7 +527,8 @@ func TestAttachmentHandler_DeleteAttachment_Success(t *testing.T) {
 func TestAttachmentHandler_DeleteAttachment_ServiceError(t *testing.T) {
 	mockService := new(mockServices.MockAttachmentService)
 	mockAAA := testutils.NewMockAAAMiddleware()
-	handler := handlers.NewAttachmentHandler(mockService, mockAAA)
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewAttachmentHandler(mockService, mockAAA, mockLogger)
 
 	mockService.On("DeleteAttachment", mock.Anything, "ATCH99999999").Return(assert.AnError)
 

@@ -17,6 +17,7 @@ import (
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
 	"kisanlink-erp/internal/services"
+	"kisanlink-erp/internal/utils"
 	mockServices "kisanlink-erp/tests/mocks/services"
 	"kisanlink-erp/tests/testutils"
 )
@@ -72,12 +73,14 @@ func setupWebhookIntegration(t *testing.T) (*WebhookTestContext, func()) {
 	mockWebhookService := new(mockServices.MockEcommerceWebhookService)
 
 	// Create webhook handler
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
 	handler := handlers.NewEcommerceWebhookHandler(
 		mockWebhookService,
 		securityService,
 		historyService,
 		webhookRepo,
 		testutils.NewMockAAAMiddleware(),
+		mockLogger,
 	)
 
 	// Setup router

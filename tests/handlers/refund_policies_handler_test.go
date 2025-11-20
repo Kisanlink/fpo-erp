@@ -13,6 +13,7 @@ import (
 
 	"kisanlink-erp/internal/api/handlers"
 	"kisanlink-erp/internal/database/models"
+	"kisanlink-erp/internal/utils"
 	mockServices "kisanlink-erp/tests/mocks/services"
 	"kisanlink-erp/tests/testutils"
 )
@@ -25,7 +26,8 @@ func TestRefundPoliciesHandler_CreateRefundPolicy_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockRefundPoliciesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewRefundPoliciesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewRefundPoliciesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -70,7 +72,8 @@ func TestRefundPoliciesHandler_CreateRefundPolicy_ValidationError(t *testing.T) 
 	// Setup
 	mockService := new(mockServices.MockRefundPoliciesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewRefundPoliciesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewRefundPoliciesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with missing required fields
@@ -94,7 +97,8 @@ func TestRefundPoliciesHandler_CreateRefundPolicy_InvalidJSON(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockRefundPoliciesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewRefundPoliciesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewRefundPoliciesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with invalid JSON
@@ -113,7 +117,8 @@ func TestRefundPoliciesHandler_CreateRefundPolicy_ServiceError(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockRefundPoliciesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewRefundPoliciesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewRefundPoliciesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -146,7 +151,8 @@ func TestRefundPoliciesHandler_GetAllRefundPolicies_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockRefundPoliciesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewRefundPoliciesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewRefundPoliciesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -192,7 +198,8 @@ func TestRefundPoliciesHandler_GetAllRefundPolicies_EmptyList(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockRefundPoliciesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewRefundPoliciesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewRefundPoliciesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -215,7 +222,8 @@ func TestRefundPoliciesHandler_GetAllRefundPolicies_ServiceError(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockRefundPoliciesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewRefundPoliciesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewRefundPoliciesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -242,7 +250,8 @@ func TestRefundPoliciesHandler_GetRefundPolicy_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockRefundPoliciesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewRefundPoliciesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewRefundPoliciesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -273,7 +282,8 @@ func TestRefundPoliciesHandler_GetRefundPolicy_MissingID(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockRefundPoliciesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewRefundPoliciesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewRefundPoliciesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with missing ID
@@ -291,7 +301,8 @@ func TestRefundPoliciesHandler_GetRefundPolicy_NotFound(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockRefundPoliciesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewRefundPoliciesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewRefundPoliciesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
@@ -318,7 +329,8 @@ func TestRefundPoliciesHandler_UpdateRefundPolicy_Success(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockRefundPoliciesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewRefundPoliciesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewRefundPoliciesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
@@ -357,7 +369,8 @@ func TestRefundPoliciesHandler_UpdateRefundPolicy_MissingID(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockRefundPoliciesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewRefundPoliciesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewRefundPoliciesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with missing ID
@@ -381,7 +394,8 @@ func TestRefundPoliciesHandler_UpdateRefundPolicy_InvalidJSON(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockRefundPoliciesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewRefundPoliciesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewRefundPoliciesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Create request with invalid JSON
@@ -400,7 +414,8 @@ func TestRefundPoliciesHandler_UpdateRefundPolicy_ServiceError(t *testing.T) {
 	// Setup
 	mockService := new(mockServices.MockRefundPoliciesService)
 	router := testutils.SetupTestRouter()
-	handler := handlers.NewRefundPoliciesHandler(mockService, testutils.NewMockAAAMiddleware())
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewRefundPoliciesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error

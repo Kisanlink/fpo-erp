@@ -7,6 +7,7 @@ import (
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
 	"kisanlink-erp/internal/services"
+	"kisanlink-erp/internal/utils"
 	"kisanlink-erp/tests/testutils"
 
 	"gorm.io/gorm"
@@ -41,6 +42,7 @@ func setupSalesService(t *testing.T) (*services.SalesService, *gorm.DB, func()) 
 		discountsRepo,
 		taxRepo,
 		warehouseRepo,
+		utils.NewLoggerAdapter(utils.GetZapLogger()),
 	)
 
 	cleanup := func() {
