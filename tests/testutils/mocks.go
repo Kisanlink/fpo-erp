@@ -10,6 +10,8 @@ import (
 
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/services"
+
+	"go.uber.org/zap"
 )
 
 // ========================================
@@ -383,3 +385,22 @@ func (m *MockTransaction) SetShouldFail(shouldFail bool, message string) {
 // Note: Repository mocks would go here when testify/mock is added
 // For now, tests can use the real database with SetupTestDB() from database.go
 // This follows the e-commerce pattern of simple SQLite for integration tests
+
+// ========================================
+// Mock Logger
+// ========================================
+
+// MockLogger is a mock implementation of Logger interface for testing
+type MockLogger struct{}
+
+// NewMockLogger creates a new mock logger
+func NewMockLogger() *MockLogger {
+	return &MockLogger{}
+}
+
+func (m *MockLogger) Debug(msg string, fields ...interface{}) {}
+func (m *MockLogger) Info(msg string, fields ...interface{})  {}
+func (m *MockLogger) Warn(msg string, fields ...interface{})  {}
+func (m *MockLogger) Error(msg string, fields ...interface{}) {}
+func (m *MockLogger) Fatal(msg string, fields ...interface{}) {}
+func (m *MockLogger) GetZapLogger() *zap.Logger               { return zap.NewNop() }

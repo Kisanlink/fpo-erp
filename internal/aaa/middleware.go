@@ -578,8 +578,14 @@ func (m *AAAMiddleware) parseToken(tokenString string) (*AAATokenClaims, error) 
 		if claims.UserID == "" {
 			return nil, errors.New("missing user_id in token")
 		}
-		if claims.Username == "" {
-			return nil, errors.New("missing username in token")
+
+		// Validate that either username OR phone number is present
+		// Support phone-based authentication where username may be empty
+		hasUsername := claims.Username != ""
+		hasPhoneNumber := claims.UserContext != nil && claims.UserContext.PhoneNumber != ""
+
+		if !hasUsername && !hasPhoneNumber {
+			return nil, errors.New("missing username or phone_number in token")
 		}
 
 		// Convert JWT roles for debugging
@@ -592,7 +598,11 @@ func (m *AAAMiddleware) parseToken(tokenString string) (*AAATokenClaims, error) 
 		permissions := ExtractPermissions(roles)
 
 		// Log token info for debugging
-		utils.Debug("Token validated for user:", claims.Username)
+		userIdentifier := claims.Username
+		if userIdentifier == "" && claims.UserContext != nil {
+			userIdentifier = claims.UserContext.CountryCode + claims.UserContext.PhoneNumber
+		}
+		utils.Debug("Token validated for user:", userIdentifier)
 		utils.Debug("User role IDs from token:", claims.RoleIDs)
 		utils.Debug("User roles from user_context:", roleCount)
 		utils.Debug("User permissions count:", len(permissions))
