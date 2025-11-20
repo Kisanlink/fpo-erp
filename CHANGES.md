@@ -1,10 +1,428 @@
-# API Changes - Purchase Order Workflow & Rejected Goods Tracking
+# API Changes - Product Variant Multi-Collaborator Support
 
 **Date**: November 20, 2025
-**Version**: 1.2.0
+**Version**: 1.3.0
 **Features**:
+- Multiple Collaborators Per Product Variant
 - Purchase Order "Verified" Status (Quality Inspection Stage)
 - Rejected Goods Return Workflow
+
+---
+
+## NEW: Multiple Collaborators Per Product Variant
+
+### Overview
+
+Product variants can now be associated with **multiple collaborators (vendors/suppliers)**. Previously, each variant could only be linked to a single collaborator. This update allows the same variant to be supplied by multiple vendors, enabling better price comparison and supply chain flexibility.
+
+### Key Changes
+
+**Before**: One variant → One collaborator (1:1 relationship)
+**After**: One variant → Multiple collaborators (1:N relationship)
+
+### Database Schema Changes
+
+**Table**: `product_variants`
+
+| Field | Old Type | New Type | Description |
+|-------|----------|----------|-------------|
+| `collaborator_id` | `VARCHAR(100)` (nullable) | **REMOVED** | Single collaborator ID |
+| `collaborator_ids` | N/A | `JSON` (array of strings) | **NEW**: Multiple collaborator IDs stored as JSON array |
+
+**Migration**: GORM AutoMigrate will automatically handle the schema change when the server restarts. Existing data will be migrated from `collaborator_id` to `collaborator_ids` array.
+
+---
+
+### API Impact
+
+#### 1. Product Variant Response
+
+**Endpoint**: All variant endpoints (GET /api/v1/product-variants/*, etc.)
+
+**Changed Field**:
+```json
+{
+  "id": "PVAR_abc12345",
+  "product_id": "PROD_product1",
+  "variant_name": "1kg Premium Pack",
+  "collaborator_ids": ["CLAB_vendor1", "CLAB_vendor2", "CLAB_vendor3"],
+  "brand_name": "Premium Brand",
+  "sku": "RICE-PREM-1KG",
+  "is_active": true
+}
+```
+
+**Before**: `"collaborator_id": "CLAB_vendor1"` (single string, nullable)
+**After**: `"collaborator_ids": ["CLAB_vendor1", "CLAB_vendor2"]` (array of strings)
+
+#### 2. Create Product Variant Request
+
+**Endpoint**: `POST /api/v1/product-variants`
+
+**Changed Field**:
+```json
+{
+  "variant_name": "1kg Premium Pack",
+  "quantity": "1kg",
+  "pack_size": "Premium Pack",
+  "collaborator_ids": ["CLAB_vendor1", "CLAB_vendor2"],
+  "brand_name": "Premium Brand",
+  "hsn_code": "10063020",
+  "gst_rate": 5.0,
+  "images": ["s3://path/to/image1.jpg", "s3://path/to/image2.jpg"]
+}
+```
+
+**Before**: `"collaborator_id": "CLAB_vendor1"` (single string, optional)
+**After**: `"collaborator_ids": ["CLAB_vendor1", "CLAB_vendor2"]` (array of strings, optional)
+
+#### 3. Add Product to Collaborator
+
+**Endpoint**: `POST /api/v1/collaborators/:id/products`
+
+**Behavior Change**:
+- **Before**: Creating a variant for a collaborator would fail if the product was already associated with that collaborator
+- **After**: System checks if the collaborator ID already exists in the variant's `collaborator_ids` array
+  - If exists: Returns `409 Conflict` error
+  - If not exists: Adds collaborator ID to the existing variant's array
+
+**Example Flow**:
+```javascript
+// Step 1: Vendor A associates Product X
+POST /api/v1/collaborators/CLAB_vendorA/products
+{ "product_id": "PROD_X", "brand_name": "Brand A", ... }
+// Creates variant with collaborator_ids: ["CLAB_vendorA"]
+
+// Step 2: Vendor B associates the same Product X
+POST /api/v1/collaborators/CLAB_vendorB/products
+{ "product_id": "PROD_X", "brand_name": "Brand B", ... }
+// Updates variant with collaborator_ids: ["CLAB_vendorA", "CLAB_vendorB"]
+
+// Step 3: Vendor A tries to associate Product X again
+POST /api/v1/collaborators/CLAB_vendorA/products
+{ "product_id": "PROD_X", ... }
+// Returns 409 Conflict: "product already associated with this collaborator"
+```
+
+#### 4. Get Products by Collaborator
+
+**Endpoint**: `GET /api/v1/collaborators/:id/products`
+
+**Query Change**: Repository now uses PostgreSQL JSON contains operator (`@>`) to search within the `collaborator_ids` array.
+
+**SQL Query**:
+```sql
+-- Before
+WHERE collaborator_id = 'CLAB_vendor1' AND is_active = true
+
+-- After (PostgreSQL)
+WHERE collaborator_ids @> '["CLAB_vendor1"]' AND is_active = true
+```
+
+---
+
+### Frontend Integration Guide
+
+#### 1. Display Multiple Collaborators
+
+**Variant List View**:
+```jsx
+const VariantCollaborators = ({ collaboratorIds }) => {
+  if (!collaboratorIds || collaboratorIds.length === 0) {
+    return <span className="text-muted">No collaborators</span>;
+  }
+
+  return (
+    <div className="collaborator-badges">
+      {collaboratorIds.map(collabId => (
+        <span key={collabId} className="badge badge-primary me-1">
+          {collabId}
+        </span>
+      ))}
+      <span className="text-muted">
+        ({collaboratorIds.length} vendor{collaboratorIds.length > 1 ? 's' : ''})
+      </span>
+    </div>
+  );
+};
+```
+
+#### 2. Create Variant Form
+
+**Update form to accept multiple collaborators**:
+```jsx
+const [collaboratorIds, setCollaboratorIds] = useState([]);
+
+const handleAddCollaborator = (collaboratorId) => {
+  if (!collaboratorIds.includes(collaboratorId)) {
+    setCollaboratorIds([...collaboratorIds, collaboratorId]);
+  }
+};
+
+const handleRemoveCollaborator = (collaboratorId) => {
+  setCollaboratorIds(collaboratorIds.filter(id => id !== collaboratorId));
+};
+
+// In form submission
+const createVariant = async () => {
+  const payload = {
+    variant_name: variantName,
+    quantity: quantity,
+    pack_size: packSize,
+    collaborator_ids: collaboratorIds, // Send as array
+    brand_name: brandName,
+    hsn_code: hsnCode,
+    gst_rate: gstRate
+  };
+
+  const response = await fetch('/api/v1/product-variants', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+};
+```
+
+#### 3. Collaborator Selection UI
+
+**Multi-select dropdown example**:
+```jsx
+<div className="form-group">
+  <label>Suppliers/Vendors</label>
+  <Select
+    isMulti
+    options={collaboratorOptions}
+    value={selectedCollaborators}
+    onChange={setSelectedCollaborators}
+    placeholder="Select vendors that supply this variant..."
+  />
+
+  <div className="selected-vendors mt-2">
+    {selectedCollaborators.map(collab => (
+      <span key={collab.value} className="badge badge-info me-1">
+        {collab.label}
+        <button
+          className="btn-close btn-sm ms-1"
+          onClick={() => handleRemoveCollaborator(collab.value)}
+        />
+      </span>
+    ))}
+  </div>
+</div>
+```
+
+#### 4. Variant Detail Page
+
+**Show all suppliers for a variant**:
+```jsx
+const VariantDetailPage = ({ variant }) => {
+  return (
+    <div className="variant-details">
+      <h3>{variant.variant_name}</h3>
+
+      <div className="section">
+        <h5>Suppliers ({variant.collaborator_ids.length})</h5>
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Vendor ID</th>
+              <th>Vendor Name</th>
+              <th>Price</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {variant.collaborator_ids.map(collabId => (
+              <tr key={collabId}>
+                <td>{collabId}</td>
+                <td>{getCollaboratorName(collabId)}</td>
+                <td>{getLatestPrice(variant.id, collabId)}</td>
+                <td>
+                  <button onClick={() => createPO(collabId, variant.id)}>
+                    Create PO
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+```
+
+---
+
+### Use Cases
+
+#### 1. Price Comparison
+
+**Scenario**: Compare prices from multiple vendors for the same variant
+
+```javascript
+// Get variant with all suppliers
+const variant = await fetchVariant("PVAR_abc123");
+
+// Fetch latest prices from each supplier
+const priceComparison = await Promise.all(
+  variant.collaborator_ids.map(async (collabId) => {
+    const price = await fetchLatestPrice(variant.id, collabId);
+    const collaborator = await fetchCollaborator(collabId);
+
+    return {
+      vendor: collaborator.company_name,
+      vendor_id: collabId,
+      price: price.unit_price,
+      last_updated: price.updated_at
+    };
+  })
+);
+
+// Sort by price (lowest first)
+priceComparison.sort((a, b) => a.price - b.price);
+
+console.log("Best price:", priceComparison[0]);
+```
+
+#### 2. Supply Chain Redundancy
+
+**Scenario**: Maintain backup suppliers for critical products
+
+```javascript
+const ensureSupplyChainRedundancy = (variant) => {
+  if (variant.collaborator_ids.length < 2) {
+    console.warn(`⚠️ Variant ${variant.variant_name} has only ${variant.collaborator_ids.length} supplier(s). Consider adding backup vendors.`);
+  } else {
+    console.log(`✅ Variant ${variant.variant_name} has ${variant.collaborator_ids.length} suppliers (redundancy maintained)`);
+  }
+};
+```
+
+#### 3. Vendor Performance Tracking
+
+**Scenario**: Track which vendors supply which products
+
+```javascript
+const getVendorPerformance = async (vendorId) => {
+  // Get all variants supplied by this vendor
+  const variants = await fetchVariantsByCollaborator(vendorId);
+
+  return {
+    vendor_id: vendorId,
+    total_products: variants.length,
+    product_ids: variants.map(v => v.product_id),
+    variants: variants.map(v => ({
+      id: v.id,
+      name: v.variant_name,
+      sku: v.sku
+    }))
+  };
+};
+```
+
+---
+
+### Breaking Changes
+
+**⚠️ IMPORTANT**: This is a **breaking change** for existing integrations:
+
+1. **Response Field Changed**: `collaborator_id` (string) → `collaborator_ids` (array)
+2. **Request Field Changed**: `collaborator_id` (string) → `collaborator_ids` (array)
+3. **Query Logic Changed**: Repository uses JSON array search instead of simple equality
+
+**Migration Path for Frontend**:
+
+**Step 1**: Update all variant displays to handle arrays:
+```javascript
+// Before
+<span>{variant.collaborator_id}</span>
+
+// After
+<span>
+  {variant.collaborator_ids.length > 0
+    ? variant.collaborator_ids.join(', ')
+    : 'No collaborators'}
+</span>
+```
+
+**Step 2**: Update variant creation forms to send arrays:
+```javascript
+// Before
+{ collaborator_id: selectedVendor }
+
+// After
+{ collaborator_ids: [selectedVendor] }  // Wrap single ID in array
+```
+
+**Step 3**: Update filtering/search logic:
+```javascript
+// Before
+variants.filter(v => v.collaborator_id === vendorId)
+
+// After
+variants.filter(v => v.collaborator_ids.includes(vendorId))
+```
+
+---
+
+### Database Migration Notes
+
+**Automatic Migration**: When the server restarts, GORM will automatically:
+1. Add new `collaborator_ids` column (JSON type)
+2. Migrate existing `collaborator_id` values to `collaborator_ids` array
+3. Keep old `collaborator_id` column for reference (will be removed in future version)
+
+**Manual Migration** (if needed):
+```sql
+-- PostgreSQL: Migrate existing data
+UPDATE product_variants
+SET collaborator_ids = CASE
+  WHEN collaborator_id IS NOT NULL THEN json_build_array(collaborator_id)::jsonb
+  ELSE '[]'::jsonb
+END
+WHERE collaborator_ids IS NULL;
+```
+
+---
+
+### Testing Checklist
+
+#### Backend Verification
+- [x] Code compiles without errors
+- [ ] GORM AutoMigrate adds `collaborator_ids` column on server restart
+- [ ] Can create variant with multiple collaborator IDs
+- [ ] Can query variants by collaborator ID (JSON array search)
+- [ ] Duplicate check works (prevents same collaborator from being added twice)
+- [ ] Webhook integration updated (e-commerce order processing)
+
+#### Frontend Integration
+- [ ] Variant list shows multiple collaborators per variant
+- [ ] Create variant form accepts array of collaborator IDs
+- [ ] Edit variant form allows adding/removing collaborators
+- [ ] Collaborator detail page shows all variants they supply
+- [ ] Purchase order creation works with new structure
+- [ ] Price comparison feature displays all vendor prices
+
+---
+
+### Files Modified
+
+**Models**:
+- `internal/database/models/product_variant.go` - Changed `CollaboratorID` to `CollaboratorIDs` (JSON array)
+
+**Services**:
+- `internal/services/collaborator_product_service.go` - Updated duplicate check and variant creation logic
+- `internal/services/ecommerce_webhook_service.go` - Updated webhook variant creation
+
+**Repositories**:
+- `internal/database/repositories/product_variant_repo.go` - Updated `GetByCollaboratorID()` to use JSON array search
+
+**Total Changes**: 5 files modified, ~20 lines changed
+
+---
+
+## Previous Changes (Version 1.2.0)
 
 ---
 

@@ -505,22 +505,24 @@ definitions:
       barcode:
         type: string
       brand_name:
-        description: Required if collaborator_id provided
+        description: Required if collaborator_ids provided
         type: string
-      collaborator_id:
-        description: 'Optional: for collaborator-specific variants'
-        type: string
+      collaborator_ids:
+        description: 'Optional: multiple collaborators can supply same variant'
+        items:
+          type: string
+        type: array
       description:
         type: string
       dosage_instructions:
         type: string
       gst_rate:
-        description: Required if collaborator_id provided
+        description: Required if collaborator_ids provided
         maximum: 100
         minimum: 0
         type: number
       hsn_code:
-        description: Required if collaborator_id provided
+        description: Required if collaborator_ids provided
         type: string
       images:
         items:
@@ -1292,8 +1294,11 @@ definitions:
         type: string
       brand_name:
         type: string
-      collaborator_id:
-        type: string
+      collaborator_ids:
+        description: Multiple collaborators
+        items:
+          type: string
+        type: array
       created_at:
         type: string
       description:

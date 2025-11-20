@@ -68,14 +68,17 @@ func (s *CollaboratorProductService) AddProductToCollaborator(ctx context.Contex
 	}
 
 	// Check if variant already exists for this collaborator+product combination
-	// Query variants where product_id = X and collaborator_id = Y
+	// Query variants where product_id = X and collaborator_id is in the array
 	existingVariants, err := s.variantRepo.GetByProductID(request.ProductID)
 	if err != nil {
 		return nil, err
 	}
 	for _, variant := range existingVariants {
-		if variant.CollaboratorID != nil && *variant.CollaboratorID == collaboratorID {
-			return nil, errors.NewConflictError("product already associated with this collaborator")
+		// Check if collaboratorID is in the CollaboratorIDs array
+		for _, collabID := range variant.CollaboratorIDs {
+			if collabID == collaboratorID {
+				return nil, errors.NewConflictError("product already associated with this collaborator")
+			}
 		}
 	}
 
@@ -98,7 +101,7 @@ func (s *CollaboratorProductService) AddProductToCollaborator(ctx context.Contex
 	// Create product variant with collaborator fields (unified architecture)
 	variant := models.NewCollaboratorVariant(
 		request.ProductID,
-		collaboratorID,
+		[]string{collaboratorID}, // Wrap in slice to support multiple collaborators
 		variantName,
 		quantity,
 		packSize,
@@ -342,7 +345,7 @@ func (s *CollaboratorProductService) buildCollaboratorProductResponseFromVariant
 ) (*models.CollaboratorProductResponse, error) {
 	response := &models.CollaboratorProductResponse{
 		ID:               variant.ID,
-		CollaboratorID:   *variant.CollaboratorID,
+		CollaboratorID:   collaborator.ID, // Use the collaborator ID from the passed-in collaborator
 		CollaboratorName: collaborator.CompanyName,
 		ProductID:        variant.ProductID,
 		ProductName:      product.Name,
