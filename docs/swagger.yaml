@@ -530,6 +530,11 @@ definitions:
         type: array
       pack_size:
         type: string
+      prices:
+        description: 'Optional: can create variant without prices'
+        items:
+          $ref: '#/definitions/models.VariantPrice'
+        type: array
       quantity:
         type: string
       sku:
@@ -1320,6 +1325,11 @@ definitions:
         type: boolean
       pack_size:
         type: string
+      prices:
+        description: Always included in response
+        items:
+          $ref: '#/definitions/models.VariantPrice'
+        type: array
       product_id:
         type: string
       quantity:
@@ -2173,6 +2183,11 @@ definitions:
         type: boolean
       pack_size:
         type: string
+      prices:
+        description: 'Optional: update prices'
+        items:
+          $ref: '#/definitions/models.VariantPrice'
+        type: array
       quantity:
         type: string
       sku:
@@ -2327,6 +2342,17 @@ definitions:
     - discount_code
     - order_value
     - warehouse_id
+    type: object
+  models.VariantPrice:
+    properties:
+      currency:
+        description: '"INR", "USD", etc.'
+        type: string
+      price:
+        type: number
+      price_type:
+        description: '"retail", "wholesale", "bulk"'
+        type: string
     type: object
   models.WarehouseResponse:
     properties:

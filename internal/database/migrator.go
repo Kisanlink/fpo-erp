@@ -24,7 +24,6 @@ func AutoMigrate(db *gorm.DB) error {
 		// Core entities
 		&models.Warehouse{},
 		&models.Product{},
-		&models.ProductPrice{},
 
 		// Procurement entities
 		&models.Collaborator{},

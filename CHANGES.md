@@ -1,3 +1,775 @@
+# API Changes - Price Type Update (MRP/MSP)
+
+**Date**: November 20, 2025
+**Version**: 1.4.1
+**Breaking Changes**:
+- Changed price types from retail/wholesale/bulk to MRP/MSP
+- Old price types will be rejected with validation error
+
+---
+
+## BREAKING CHANGE: Price Types Changed to MRP/MSP
+
+### Overview
+
+Price types have been changed from generic retail/wholesale/bulk to Indian standard MRP (Maximum Retail Price) and MSP (Minimum Selling Price). This aligns with Indian retail practices where MRP is printed on products and MSP is the minimum price at which a retailer can sell.
+
+### What Changed
+
+**OLD Price Types** (v1.4.0 - no longer accepted):
+- `"retail"` - Retail/consumer price
+- `"wholesale"` - Wholesale price for bulk buyers
+- `"bulk"` - Bulk/distributor price
+
+**NEW Price Types** (v1.4.1 - only accepted):
+- `"MRP"` - Maximum Retail Price (printed price on product)
+- `"MSP"` - Minimum Selling Price (floor price for retailers)
+
+### String Constants
+
+Price types are now defined as string constants in the models package:
+
+```go
+// internal/database/models/product_variant.go
+const (
+    PriceTypeMRP = "MRP"  // Maximum Retail Price
+    PriceTypeMSP = "MSP"  // Minimum Selling Price
+)
+```
+
+### Validation Changes
+
+**Price validation now ONLY accepts "MRP" or "MSP":**
+
+```go
+// Before (v1.4.0)
+validPriceTypes := []string{"retail", "wholesale", "bulk"}
+
+// After (v1.4.1)
+validPriceTypes := []string{"MRP", "MSP"}
+```
+
+**Error Messages:**
+
+**OLD** (v1.4.0):
+```json
+{
+  "status": "error",
+  "message": "Invalid price_type at index 0: must be 'retail', 'wholesale', or 'bulk'"
+}
+```
+
+**NEW** (v1.4.1):
+```json
+{
+  "status": "error",
+  "message": "Invalid price_type at index 0: must be 'MRP' or 'MSP'"
+}
+```
+
+---
+
+### API Examples
+
+#### Create Variant with MRP/MSP
+
+**Endpoint**: `POST /api/v1/product-variants`
+
+**Request Body**:
+```json
+{
+  "variant_name": "1kg Premium Pack",
+  "quantity": "1kg",
+  "pack_size": "Premium Pack",
+  "prices": [
+    {
+      "price_type": "MRP",
+      "price": 150.00,
+      "currency": "INR"
+    },
+    {
+      "price_type": "MSP",
+      "price": 130.00,
+      "currency": "INR"
+    }
+  ],
+  "sku": "PROD-1KG"
+}
+```
+
+**Response**:
+```json
+{
+  "status": "success",
+  "message": "Product variant created successfully",
+  "data": {
+    "id": "PVAR_abc12345",
+    "variant_name": "1kg Premium Pack",
+    "prices": [
+      {
+        "price_type": "MRP",
+        "price": 150.00,
+        "currency": "INR"
+      },
+      {
+        "price_type": "MSP",
+        "price": 130.00,
+        "currency": "INR"
+      }
+    ]
+  }
+}
+```
+
+#### Update Variant Prices
+
+**Endpoint**: `PATCH /api/v1/product-variants/:id`
+
+**Request Body**:
+```json
+{
+  "prices": [
+    {
+      "price_type": "MRP",
+      "price": 175.00,
+      "currency": "INR"
+    },
+    {
+      "price_type": "MSP",
+      "price": 150.00,
+      "currency": "INR"
+    }
+  ]
+}
+```
+
+---
+
+### Sales Behavior Change
+
+**Sales service now looks for MRP price first** (instead of retail):
+
+**Before** (v1.4.0):
+```go
+// Looked for "retail" price
+if price.PriceType == "retail" {
+    return price.Price, nil
+}
+```
+
+**After** (v1.4.1):
+```go
+// Looks for "MRP" price
+if price.PriceType == models.PriceTypeMRP {
+    return price.Price, nil
+}
+```
+
+**Fallback Behavior**: If MRP is not found, uses first available price (MSP).
+
+---
+
+### Frontend Migration Guide
+
+#### Step 1: Update Price Type Values
+
+**Before** (v1.4.0):
+```javascript
+const prices = [
+  { price_type: "retail", price: 150, currency: "INR" },
+  { price_type: "wholesale", price: 130, currency: "INR" }
+];
+```
+
+**After** (v1.4.1):
+```javascript
+const prices = [
+  { price_type: "MRP", price: 150, currency: "INR" },
+  { price_type: "MSP", price: 130, currency: "INR" }
+];
+```
+
+#### Step 2: Update Form Labels
+
+```jsx
+<div className="price-inputs">
+  <div className="form-group">
+    <label>MRP (Maximum Retail Price) ₹</label>
+    <input
+      type="number"
+      value={prices.find(p => p.price_type === 'MRP')?.price || ''}
+      onChange={(e) => handlePriceChange('MRP', e.target.value)}
+    />
+    <small className="text-muted">Price printed on product packaging</small>
+  </div>
+
+  <div className="form-group">
+    <label>MSP (Minimum Selling Price) ₹</label>
+    <input
+      type="number"
+      value={prices.find(p => p.price_type === 'MSP')?.price || ''}
+      onChange={(e) => handlePriceChange('MSP', e.target.value)}
+    />
+    <small className="text-muted">Minimum price for retailers</small>
+  </div>
+</div>
+```
+
+#### Step 3: Update Display Components
+
+```jsx
+const PriceDisplay = ({ prices }) => {
+  const mrp = prices.find(p => p.price_type === 'MRP');
+  const msp = prices.find(p => p.price_type === 'MSP');
+
+  return (
+    <div className="price-info">
+      {mrp && (
+        <div className="mrp">
+          <strong>MRP:</strong> ₹{mrp.price.toLocaleString('en-IN')}
+        </div>
+      )}
+      {msp && (
+        <div className="msp">
+          <strong>MSP:</strong> ₹{msp.price.toLocaleString('en-IN')}
+        </div>
+      )}
+      {mrp && msp && (
+        <div className="margin text-muted">
+          Margin: ₹{(mrp.price - msp.price).toFixed(2)}
+          ({(((mrp.price - msp.price) / mrp.price) * 100).toFixed(1)}%)
+        </div>
+      )}
+    </div>
+  );
+};
+```
+
+---
+
+### Business Logic
+
+#### MRP (Maximum Retail Price)
+- **Definition**: The maximum price at which a product can be sold to consumers in India
+- **Legal Requirement**: Must be printed on product packaging (Legal Metrology Act, 2009)
+- **Use Case**: This is the price customers see on the product
+- **Example**: ₹150 printed on a 1kg rice packet
+
+#### MSP (Minimum Selling Price)
+- **Definition**: The minimum price at which retailers/distributors can sell the product
+- **Use Case**: Protects profit margins, prevents undercutting
+- **Example**: Retailer can sell between ₹130 (MSP) and ₹150 (MRP)
+
+#### Margin Calculation
+- **Margin** = MRP - MSP
+- **Margin %** = ((MRP - MSP) / MRP) × 100
+
+**Example**:
+- MRP = ₹150
+- MSP = ₹130
+- Margin = ₹20 (13.3%)
+
+---
+
+### Breaking Changes Summary
+
+**⚠️ CRITICAL**: This is a **breaking change** requiring immediate updates:
+
+1. **Price Type Values Changed**: `"retail"/"wholesale"/"bulk"` → `"MRP"/"MSP"`
+2. **Only 2 Price Types Supported**: Reduced from 3 to 2 price points
+3. **Validation Will Reject Old Types**: Sending `"retail"` will return 400 error
+4. **Sales Logic Changed**: Uses MRP instead of retail price
+5. **No Backward Compatibility**: Old price types not supported
+
+---
+
+### Migration Checklist
+
+#### Frontend (Required)
+- [ ] Update all price type values from retail/wholesale/bulk to MRP/MSP
+- [ ] Change form labels to "MRP" and "MSP"
+- [ ] Update validation to only allow MRP/MSP
+- [ ] Update display components to show MRP/MSP labels
+- [ ] Update price comparison logic (if any)
+- [ ] Test variant creation with new price types
+- [ ] Test price validation errors
+
+#### Backend (Already Complete)
+- [x] Added PriceTypeMRP and PriceTypeMSP constants
+- [x] Updated validation to only accept MRP/MSP
+- [x] Updated sales service to use MRP
+- [x] Updated error messages
+- [x] Code compiles successfully
+
+---
+
+### Files Modified
+
+**Models**:
+- `internal/database/models/product_variant.go` - Added price type constants and updated comments
+
+**Services**:
+- `internal/services/product_variant_service.go` - Updated validation to accept only MRP/MSP
+- `internal/services/sales_service.go` - Updated getSellingPrice() to use MRP
+
+**Total Changes**: 3 files modified, ~15 lines changed
+
+---
+
+# API Changes - Product Pricing Consolidation
+
+**Date**: November 20, 2025
+**Version**: 1.4.0
+**Breaking Changes**:
+- Removed separate pricing API endpoints (8 endpoints)
+- Pricing now embedded in Product Variant API
+- Simplified pricing model (no price history, current prices only)
+
+---
+
+## BREAKING CHANGE: Pricing API Removed
+
+### Overview
+
+The separate pricing API has been **completely removed** and pricing functionality has been consolidated into the Product Variant API. Prices are now stored directly within variants as a JSON array, eliminating the need for a separate price management system.
+
+### What Changed
+
+**REMOVED: 8 Pricing Endpoints**
+1. `POST /api/v1/prices` - Create price
+2. `GET /api/v1/prices/:id` - Get price by ID
+3. `GET /api/v1/prices` - Get all prices
+4. `GET /api/v1/prices/variant/:id` - Get prices by variant
+5. `GET /api/v1/prices/variant/:id/current` - Get current price
+6. `GET /api/v1/prices/variant/:id/active` - Get active prices
+7. `PATCH /api/v1/prices/:id` - Update price
+8. `DELETE /api/v1/prices/:id` - Delete price
+
+**NEW: Pricing in Variant API**
+
+Prices are now managed through variant endpoints:
+- `POST /api/v1/product-variants` - Create variant with prices
+- `GET /api/v1/product-variants/:id` - Get variant with prices
+- `PATCH /api/v1/product-variants/:id` - Update variant prices
+
+---
+
+### Database Schema Changes
+
+**Table Removed**: `product_prices` table is **no longer auto-migrated**
+
+**Table Modified**: `product_variants`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `prices` | `JSON` | Array of price objects with price_type, price, and currency |
+
+**Price Structure** (stored as JSON):
+```json
+{
+  "prices": [
+    {
+      "price_type": "retail",
+      "price": 100.50,
+      "currency": "INR"
+    },
+    {
+      "price_type": "wholesale",
+      "price": 85.00,
+      "currency": "INR"
+    },
+    {
+      "price_type": "bulk",
+      "price": 75.00,
+      "currency": "INR"
+    }
+  ]
+}
+```
+
+---
+
+### API Changes
+
+#### 1. Create Product Variant (with prices)
+
+**Endpoint**: `POST /api/v1/product-variants`
+
+**Request Body**:
+```json
+{
+  "variant_name": "1kg Premium Pack",
+  "quantity": "1kg",
+  "pack_size": "Premium Pack",
+  "prices": [
+    {
+      "price_type": "retail",
+      "price": 150.00,
+      "currency": "INR"
+    },
+    {
+      "price_type": "wholesale",
+      "price": 130.00,
+      "currency": "INR"
+    }
+  ],
+  "sku": "PROD-1KG",
+  "barcode": "1234567890"
+}
+```
+
+**Note**: Prices are **optional** at creation. You can create a variant without prices.
+
+#### 2. Get Product Variant (includes prices)
+
+**Endpoint**: `GET /api/v1/product-variants/:id`
+
+**Response**:
+```json
+{
+  "status": "success",
+  "message": "Product variant retrieved successfully",
+  "data": {
+    "id": "PVAR_abc12345",
+    "product_id": "PROD_product1",
+    "variant_name": "1kg Premium Pack",
+    "quantity": "1kg",
+    "pack_size": "Premium Pack",
+    "prices": [
+      {
+        "price_type": "retail",
+        "price": 150.00,
+        "currency": "INR"
+      },
+      {
+        "price_type": "wholesale",
+        "price": 130.00,
+        "currency": "INR"
+      }
+    ],
+    "sku": "PROD-1KG",
+    "is_active": true,
+    "created_at": "2025-11-20T10:00:00Z",
+    "updated_at": "2025-11-20T10:00:00Z"
+  }
+}
+```
+
+**Before** (v1.3.0):
+- Variant response did NOT include prices
+- Had to make separate API call to `/api/v1/prices/variant/:id` to get prices
+
+**After** (v1.4.0):
+- Variant response ALWAYS includes `prices` array
+- No additional API calls needed
+
+#### 3. Update Product Variant (update prices)
+
+**Endpoint**: `PATCH /api/v1/product-variants/:id`
+
+**Request Body** (partial update):
+```json
+{
+  "prices": [
+    {
+      "price_type": "retail",
+      "price": 175.00,
+      "currency": "INR"
+    }
+  ]
+}
+```
+
+**Important**:
+- Updating prices **replaces** the entire prices array (no price history)
+- To keep existing prices, send the complete array with modifications
+- Omit `prices` field to leave prices unchanged
+
+---
+
+### Pricing Rules & Validation
+
+#### Valid Price Types
+- `retail` - Retail/consumer price
+- `wholesale` - Wholesale price for bulk buyers
+- `bulk` - Bulk/distributor price
+
+**Note**: Other price types will be rejected with validation error.
+
+#### Validation Rules
+1. **No Duplicates**: Cannot have multiple prices with the same `price_type`
+2. **Positive Prices**: Price must be > 0
+3. **Currency Required**: Currency field cannot be empty
+4. **Optional**: Can create/update variant without prices (empty array)
+
+#### Example Validation Errors
+
+**Duplicate Price Type**:
+```json
+{
+  "status": "error",
+  "message": "Duplicate price_type 'retail' found"
+}
+```
+
+**Invalid Price Type**:
+```json
+{
+  "status": "error",
+  "message": "Invalid price_type at index 0: must be 'retail', 'wholesale', or 'bulk'"
+}
+```
+
+**Negative Price**:
+```json
+{
+  "status": "error",
+  "message": "Price must be greater than 0 for retail"
+}
+```
+
+---
+
+### Migration Path for Frontend
+
+#### Step 1: Remove Old Pricing API Calls
+
+**Before** (v1.3.0):
+```javascript
+// Create variant (WITHOUT prices)
+const variant = await createVariant({
+  variant_name: "1kg Pack",
+  quantity: "1kg",
+  pack_size: "Regular"
+});
+
+// THEN create price separately
+await createPrice({
+  variant_id: variant.id,
+  price_type: "retail",
+  price: 150.00,
+  currency: "INR",
+  effective_from: "2025-11-20"
+});
+```
+
+**After** (v1.4.0):
+```javascript
+// Create variant WITH prices (single API call)
+const variant = await createVariant({
+  variant_name: "1kg Pack",
+  quantity: "1kg",
+  pack_size: "Regular",
+  prices: [
+    {
+      price_type: "retail",
+      price: 150.00,
+      currency: "INR"
+    }
+  ]
+});
+```
+
+#### Step 2: Update Variant Display Components
+
+**Before** (v1.3.0):
+```jsx
+// Fetch variant
+const variant = await fetchVariant(variantId);
+
+// Fetch prices separately
+const prices = await fetchPricesByVariant(variantId);
+
+// Display
+<div>
+  <h3>{variant.variant_name}</h3>
+  <p>Retail Price: ₹{prices.find(p => p.price_type === 'retail')?.price}</p>
+</div>
+```
+
+**After** (v1.4.0):
+```jsx
+// Fetch variant (prices included)
+const variant = await fetchVariant(variantId);
+
+// Display
+<div>
+  <h3>{variant.variant_name}</h3>
+  <p>Retail Price: ₹{variant.prices.find(p => p.price_type === 'retail')?.price || 'N/A'}</p>
+</div>
+```
+
+#### Step 3: Update Price Management UI
+
+**Price Input Form**:
+```jsx
+const PriceInputs = ({ prices, setPrices }) => {
+  const handlePriceChange = (priceType, value) => {
+    const updated = prices.filter(p => p.price_type !== priceType);
+    if (value > 0) {
+      updated.push({
+        price_type: priceType,
+        price: parseFloat(value),
+        currency: "INR"
+      });
+    }
+    setPrices(updated);
+  };
+
+  return (
+    <div className="price-inputs">
+      <div className="form-group">
+        <label>Retail Price (₹)</label>
+        <input
+          type="number"
+          value={prices.find(p => p.price_type === 'retail')?.price || ''}
+          onChange={(e) => handlePriceChange('retail', e.target.value)}
+          step="0.01"
+        />
+      </div>
+
+      <div className="form-group">
+        <label>Wholesale Price (₹)</label>
+        <input
+          type="number"
+          value={prices.find(p => p.price_type === 'wholesale')?.price || ''}
+          onChange={(e) => handlePriceChange('wholesale', e.target.value)}
+          step="0.01"
+        />
+      </div>
+
+      <div className="form-group">
+        <label>Bulk Price (₹)</label>
+        <input
+          type="number"
+          value={prices.find(p => p.price_type === 'bulk')?.price || ''}
+          onChange={(e) => handlePriceChange('bulk', e.target.value)}
+          step="0.01"
+        />
+      </div>
+    </div>
+  );
+};
+```
+
+#### Step 4: Update Price Display Components
+
+**Price Table Component**:
+```jsx
+const PriceTable = ({ prices }) => {
+  if (!prices || prices.length === 0) {
+    return <p className="text-muted">No pricing information available</p>;
+  }
+
+  const priceTypeLabels = {
+    retail: 'Retail Price',
+    wholesale: 'Wholesale Price',
+    bulk: 'Bulk Price'
+  };
+
+  return (
+    <table className="table">
+      <thead>
+        <tr>
+          <th>Price Type</th>
+          <th>Amount</th>
+          <th>Currency</th>
+        </tr>
+      </thead>
+      <tbody>
+        {prices.map(price => (
+          <tr key={price.price_type}>
+            <td>{priceTypeLabels[price.price_type] || price.price_type}</td>
+            <td>₹{price.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+            <td>{price.currency}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+};
+```
+
+---
+
+### Simplified Pricing Model
+
+#### What Was Removed
+- ❌ Price history tracking
+- ❌ Date-based price ranges (effective_from, effective_to)
+- ❌ Separate price activation/deactivation
+- ❌ Price update audit trail
+- ❌ Time-based pricing queries
+
+#### What Remains
+- ✅ Multiple price points per variant (retail, wholesale, bulk)
+- ✅ Currency support
+- ✅ Price validation
+- ✅ Embedded pricing in variant responses
+
+#### Rationale
+The separate pricing system added unnecessary complexity for this use case:
+- Most users don't need price history
+- Price changes can be tracked via variant update history
+- Simpler data model = faster queries and easier maintenance
+- Reduces API calls from 2 (variant + prices) to 1 (variant with prices)
+
+---
+
+### Breaking Changes Summary
+
+**⚠️ CRITICAL**: This is a **major breaking change** requiring frontend updates:
+
+1. **Endpoints Removed**: All 8 pricing endpoints no longer exist (404 error)
+2. **Data Structure Changed**: Prices moved from separate table to JSON field in variants
+3. **No Price History**: Old price data will NOT be migrated (only current/latest prices should be preserved)
+4. **Response Format Changed**: Variant responses now include `prices` array
+5. **Request Format Changed**: Must include `prices` array in variant create/update requests
+
+---
+
+### Migration Checklist
+
+#### Backend (Already Complete)
+- [x] Removed ProductPrice model from auto-migration
+- [x] Updated ProductVariant model with `prices` JSON field
+- [x] Updated ProductVariantService with price validation
+- [x] Updated SalesService to use variant prices (not price repository)
+- [x] Removed price routes from routes.go
+- [x] Removed ProductService dependency on priceRepo
+- [x] Code compiles without errors
+
+#### Frontend (Required)
+- [ ] Remove all calls to `/api/v1/prices/*` endpoints
+- [ ] Update variant creation forms to include prices array
+- [ ] Update variant display components to show embedded prices
+- [ ] Update variant edit forms to manage prices array
+- [ ] Remove price management pages/components
+- [ ] Update sales/order flows to read prices from variants
+- [ ] Test price validation (duplicate types, negative prices, etc.)
+
+---
+
+### Files Modified
+
+**Models**:
+- `internal/database/models/product_variant.go` - Added `Prices []VariantPrice` field
+
+**Services**:
+- `internal/services/product_variant_service.go` - Added `validatePrices()` and `GetPriceByType()` methods
+- `internal/services/sales_service.go` - Changed from `priceRepo` to `variantRepo`, updated `getSellingPrice()` method
+- `internal/services/product_service.go` - Removed `priceRepo` dependency
+
+**Routes**:
+- `internal/api/routes/routes.go` - Removed price-related initialization and route registration
+
+**Database**:
+- `internal/database/migrator.go` - Removed `&models.ProductPrice{}` from auto-migration
+
+**Total Changes**: 5 files modified, ProductPrice table no longer managed
+
+---
+
 # API Changes - Product Variant Multi-Collaborator Support
 
 **Date**: November 20, 2025

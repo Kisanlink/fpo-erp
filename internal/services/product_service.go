@@ -12,16 +12,14 @@ import (
 // ProductService handles product business logic
 type ProductService struct {
 	productRepo *repositories.ProductRepository
-	priceRepo   *repositories.ProductPriceRepository
 	variantRepo *repositories.ProductVariantRepository
 	logger      interfaces.Logger
 }
 
 // NewProductService creates a new product service
-func NewProductService(productRepo *repositories.ProductRepository, priceRepo *repositories.ProductPriceRepository, variantRepo *repositories.ProductVariantRepository, logger interfaces.Logger) *ProductService {
+func NewProductService(productRepo *repositories.ProductRepository, variantRepo *repositories.ProductVariantRepository, logger interfaces.Logger) *ProductService {
 	return &ProductService{
 		productRepo: productRepo,
-		priceRepo:   priceRepo,
 		variantRepo: variantRepo,
 		logger:      logger,
 	}
@@ -244,44 +242,15 @@ func (s *ProductService) GetProductWithPrices(id string) (*models.ProductWithPri
 		return nil, err
 	}
 
-	s.logger.Debug("Fetching variant prices for product",
+	// NOTE: Prices are now embedded in product variants
+	// Users should query individual variants to get their prices
+	// This simplifies the product response and avoids complex aggregation
+	s.logger.Debug("Prices are available at variant level",
 		zap.String("product_id", id))
 
-	// Get product prices (if priceRepo is available)
-	// NOTE: Prices are now variant-specific, not product-specific
-	// Query all variants of the product and aggregate their prices
-	var prices []models.ProductPrice
-	if s.priceRepo != nil && s.variantRepo != nil {
-		// Get all variants for this product
-		variants, err := s.variantRepo.GetByProductID(id)
-		if err != nil {
-			s.logger.Error("Failed to retrieve product variants",
-				zap.Error(err),
-				zap.String("product_id", id))
-			return nil, err
-		}
-
-		s.logger.Debug("Retrieved variants for product",
-			zap.String("product_id", id),
-			zap.Int("variant_count", len(variants)))
-
-		// Get prices for each variant
-		for _, variant := range variants {
-			variantPrices, err := s.priceRepo.GetByVariantID(variant.ID)
-			if err != nil {
-				// Continue to next variant if price query fails
-				s.logger.Warn("Failed to retrieve prices for variant",
-					zap.Error(err),
-					zap.String("variant_id", variant.ID))
-				continue
-			}
-			prices = append(prices, variantPrices...)
-		}
-	}
-
-	// Convert prices to response format
+	// Price responses are now empty - prices moved to variants
 	var priceResponses []models.ProductPriceResponse
-	for _, price := range prices {
+	for _, price := range []models.ProductPrice{} {
 		effectiveTo := ""
 		if price.EffectiveTo != nil {
 			effectiveTo = price.EffectiveTo.Format("2006-01-02T15:04:05Z")

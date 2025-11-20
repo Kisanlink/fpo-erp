@@ -7,6 +7,19 @@ import (
 	"github.com/Kisanlink/kisanlink-db/pkg/core/hash"
 )
 
+// Price type constants
+const (
+	PriceTypeMRP = "MRP" // Maximum Retail Price
+	PriceTypeMSP = "MSP" // Minimum Selling Price
+)
+
+// VariantPrice represents a price point for a variant
+type VariantPrice struct {
+	PriceType string  `json:"price_type"` // "MRP" or "MSP"
+	Price     float64 `json:"price"`
+	Currency  string  `json:"currency"` // "INR", "USD", etc.
+}
+
 // ProductVariant represents different packaging/size variants of a product
 // Can also represent collaborator-specific variants (supplier-specific products)
 type ProductVariant struct {
@@ -37,6 +50,9 @@ type ProductVariant struct {
 	Images             *string  `gorm:"type:json" json:"images"`                            // JSON array of S3 paths
 	DosageInstructions *string  `gorm:"type:text" json:"dosage_instructions"`               // Usage instructions
 	UsageDetails       *string  `gorm:"type:text" json:"usage_details"`                     // Detailed usage
+
+	// Embedded pricing (replaces separate ProductPrice table)
+	Prices []VariantPrice `gorm:"type:json;serializer:json" json:"prices"` // Array of price points
 
 	IsActive bool `gorm:"default:true" json:"is_active"`
 
@@ -93,12 +109,13 @@ type ProductVariantResponse struct {
 	BrandName          *string  `json:"brand_name,omitempty"`
 	HSNCode            *string  `json:"hsn_code,omitempty"`
 	GSTRate            *float64 `json:"gst_rate,omitempty"`
-	Images             []string `json:"images,omitempty"` // Parsed from JSON
-	DosageInstructions *string  `json:"dosage_instructions,omitempty"`
-	UsageDetails       *string  `json:"usage_details,omitempty"`
-	IsActive           bool     `json:"is_active"`
-	CreatedAt          string   `json:"created_at"`
-	UpdatedAt          string   `json:"updated_at"`
+	Images             []string       `json:"images,omitempty"` // Parsed from JSON
+	DosageInstructions *string        `json:"dosage_instructions,omitempty"`
+	UsageDetails       *string        `json:"usage_details,omitempty"`
+	Prices             []VariantPrice `json:"prices"` // Always included in response
+	IsActive           bool           `json:"is_active"`
+	CreatedAt          string         `json:"created_at"`
+	UpdatedAt          string         `json:"updated_at"`
 }
 
 // CreateProductVariantRequest represents the request to create a product variant
@@ -113,9 +130,10 @@ type CreateProductVariantRequest struct {
 	BrandName          *string  `json:"brand_name"`                                 // Required if collaborator_ids provided
 	HSNCode            *string  `json:"hsn_code"`                                   // Required if collaborator_ids provided
 	GSTRate            *float64 `json:"gst_rate" binding:"omitempty,min=0,max=100"` // Required if collaborator_ids provided
-	Images             []string `json:"images"`
-	DosageInstructions *string  `json:"dosage_instructions"`
-	UsageDetails       *string  `json:"usage_details"`
+	Images             []string       `json:"images"`
+	DosageInstructions *string        `json:"dosage_instructions"`
+	UsageDetails       *string        `json:"usage_details"`
+	Prices             []VariantPrice `json:"prices"` // Optional: can create variant without prices
 }
 
 // UpdateProductVariantRequest represents the request to update a product variant
@@ -129,8 +147,9 @@ type UpdateProductVariantRequest struct {
 	BrandName          *string   `json:"brand_name,omitempty"`
 	HSNCode            *string   `json:"hsn_code,omitempty"`
 	GSTRate            *float64  `json:"gst_rate,omitempty"`
-	Images             *[]string `json:"images,omitempty"`
-	DosageInstructions *string   `json:"dosage_instructions,omitempty"`
-	UsageDetails       *string   `json:"usage_details,omitempty"`
-	IsActive           *bool     `json:"is_active,omitempty"`
+	Images             *[]string       `json:"images,omitempty"`
+	DosageInstructions *string         `json:"dosage_instructions,omitempty"`
+	UsageDetails       *string         `json:"usage_details,omitempty"`
+	Prices             *[]VariantPrice `json:"prices,omitempty"` // Optional: update prices
+	IsActive           *bool           `json:"is_active,omitempty"`
 }

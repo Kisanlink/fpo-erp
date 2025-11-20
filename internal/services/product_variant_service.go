@@ -78,11 +78,19 @@ func (s *ProductVariantService) CreateProductVariant(ctx context.Context, produc
 		}
 	}
 
+	// Validate prices if provided
+	if err := s.validatePrices(request.Prices); err != nil {
+		s.logger.Error("Price validation failed",
+			zap.Error(err))
+		return nil, err
+	}
+
 	// Create variant
 	variant := models.NewProductVariant(productID, request.VariantName, request.Quantity, request.PackSize)
 	variant.Description = request.Description
 	variant.SKU = request.SKU
 	variant.Barcode = request.Barcode
+	variant.Prices = request.Prices // Assign validated prices
 
 	// Marshal attachment IDs to JSON
 	if len(request.Images) > 0 {
@@ -248,6 +256,15 @@ func (s *ProductVariantService) UpdateProductVariant(ctx context.Context, id str
 	if request.Barcode != nil {
 		variant.Barcode = request.Barcode
 	}
+	if request.Prices != nil {
+		// Validate prices before updating
+		if err := s.validatePrices(*request.Prices); err != nil {
+			s.logger.Error("Price validation failed during update",
+				zap.Error(err))
+			return nil, err
+		}
+		variant.Prices = *request.Prices
+	}
 	if request.IsActive != nil {
 		variant.IsActive = *request.IsActive
 	}
@@ -305,6 +322,62 @@ func (s *ProductVariantService) DeleteProductVariant(ctx context.Context, id str
 	return nil
 }
 
+// GetPriceByType returns the price for a specific price type from a variant
+func (s *ProductVariantService) GetPriceByType(ctx context.Context, variantID string, priceType string) (*models.VariantPrice, error) {
+	variant, err := s.variantRepo.GetByID(variantID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Search for the price type
+	for _, price := range variant.Prices {
+		if price.PriceType == priceType {
+			return &price, nil
+		}
+	}
+
+	return nil, errors.NewNotFoundError("price type '" + priceType + "' not found for variant")
+}
+
+// validatePrices validates the prices array
+func (s *ProductVariantService) validatePrices(prices []models.VariantPrice) error {
+	if len(prices) == 0 {
+		return nil // Prices are optional
+	}
+
+	validPriceTypes := map[string]bool{
+		models.PriceTypeMRP: true,
+		models.PriceTypeMSP: true,
+	}
+
+	priceTypeSeen := make(map[string]bool)
+
+	for i, price := range prices {
+		// Validate price_type
+		if !validPriceTypes[price.PriceType] {
+			return errors.NewValidationError("Invalid price_type at index " + string(rune(i)) + ": must be 'MRP' or 'MSP'")
+		}
+
+		// Check for duplicate price types
+		if priceTypeSeen[price.PriceType] {
+			return errors.NewValidationError("Duplicate price_type '" + price.PriceType + "' found")
+		}
+		priceTypeSeen[price.PriceType] = true
+
+		// Validate price is positive
+		if price.Price <= 0 {
+			return errors.NewValidationError("Price must be greater than 0 for " + price.PriceType)
+		}
+
+		// Validate currency is not empty
+		if price.Currency == "" {
+			return errors.NewValidationError("Currency is required for " + price.PriceType)
+		}
+	}
+
+	return nil
+}
+
 // buildProductVariantResponse builds a response with product details
 func (s *ProductVariantService) buildProductVariantResponse(variant *models.ProductVariant, product *models.Product) (*models.ProductVariantResponse, error) {
 	// Unmarshal attachment IDs from JSON
@@ -325,6 +398,7 @@ func (s *ProductVariantService) buildProductVariantResponse(variant *models.Prod
 		SKU:         variant.SKU,
 		Barcode:     variant.Barcode,
 		Images:      images,
+		Prices:      variant.Prices, // Include prices in response
 		IsActive:    variant.IsActive,
 		CreatedAt:   variant.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:   variant.UpdatedAt.UTC().Format(time.RFC3339),

@@ -21,7 +21,7 @@ type SalesService struct {
 	salesRepo     *repositories.SalesRepository
 	productRepo   *repositories.ProductRepository
 	inventoryRepo *repositories.InventoryRepository
-	priceRepo     *repositories.ProductPriceRepository
+	variantRepo   *repositories.ProductVariantRepository // Changed from priceRepo
 	discountsRepo *repositories.DiscountsRepository
 	taxRepo       *repositories.TaxRepository
 	taxService    *TaxService
@@ -29,12 +29,12 @@ type SalesService struct {
 	logger        interfaces.Logger
 }
 
-func NewSalesService(salesRepo *repositories.SalesRepository, productRepo *repositories.ProductRepository, inventoryRepo *repositories.InventoryRepository, priceRepo *repositories.ProductPriceRepository, discountsRepo *repositories.DiscountsRepository, taxRepo *repositories.TaxRepository, warehouseRepo *repositories.WarehouseRepository, logger interfaces.Logger) *SalesService {
+func NewSalesService(salesRepo *repositories.SalesRepository, productRepo *repositories.ProductRepository, inventoryRepo *repositories.InventoryRepository, variantRepo *repositories.ProductVariantRepository, discountsRepo *repositories.DiscountsRepository, taxRepo *repositories.TaxRepository, warehouseRepo *repositories.WarehouseRepository, logger interfaces.Logger) *SalesService {
 	return &SalesService{
 		salesRepo:     salesRepo,
 		productRepo:   productRepo,
 		inventoryRepo: inventoryRepo,
-		priceRepo:     priceRepo,
+		variantRepo:   variantRepo, // Changed from priceRepo
 		discountsRepo: discountsRepo,
 		taxRepo:       taxRepo,
 		taxService:    NewTaxService(taxRepo, logger),
@@ -528,23 +528,28 @@ func (s *SalesService) GetTopSellingProducts(limit int) ([]models.TopSellingProd
 	return responses, nil
 }
 
-// getSellingPrice retrieves the current retail price for a variant
+// getSellingPrice retrieves the current MRP (Maximum Retail Price) for a variant from variant.Prices array
 func (s *SalesService) getSellingPrice(variantID string) (float64, error) {
-	// Get the active retail price for the variant
-	price, err := s.priceRepo.GetCurrentPrice(variantID, "retail")
+	// Get the variant with embedded prices
+	variant, err := s.variantRepo.GetByID(variantID)
 	if err != nil {
-		// Try to get any active price if retail price is not found
-		prices, err2 := s.priceRepo.GetActiveByVariantID(variantID)
-		if err2 != nil {
-			return 0, errors.NewNotFoundError("no pricing information found for variant")
-		}
-		if len(prices) == 0 {
-			return 0, errors.NewNotFoundError("no active prices found for variant")
-		}
-		// Use the first active price as fallback
-		return prices[0].Price, nil
+		return 0, err
 	}
-	return price.Price, nil
+
+	// Check if variant has any prices
+	if len(variant.Prices) == 0 {
+		return 0, errors.NewNotFoundError("no pricing information found for variant")
+	}
+
+	// Try to find MRP (Maximum Retail Price) first
+	for _, price := range variant.Prices {
+		if price.PriceType == models.PriceTypeMRP {
+			return price.Price, nil
+		}
+	}
+
+	// If MRP not found, use the first available price as fallback
+	return variant.Prices[0].Price, nil
 }
 
 // isValidPaymentMode validates payment mode (BRD requirement)

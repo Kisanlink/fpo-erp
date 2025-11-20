@@ -29,7 +29,6 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	// Initialize repositories
 	warehouseRepo := repositories.NewWarehouseRepository(db)
 	productRepo := repositories.NewProductRepository(db)
-	priceRepo := repositories.NewProductPriceRepository(db)
 	inventoryRepo := repositories.NewInventoryRepository(db)
 	salesRepo := repositories.NewSalesRepository(db)
 	returnsRepo := repositories.NewReturnsRepository(db)
@@ -79,12 +78,11 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 
 	// Initialize services
 	warehouseService := services.NewWarehouseService(warehouseRepo, addressClient, logger)
-	productService := services.NewProductService(productRepo, priceRepo, productVariantRepo, logger)
-	priceService := services.NewProductPriceService(priceRepo, productRepo, productVariantRepo, logger)
+	productService := services.NewProductService(productRepo, productVariantRepo, logger)
 	inventoryService := services.NewInventoryService(inventoryRepo, warehouseRepo, productRepo, productVariantRepo, addressClient, logger)
 	discountsService := services.NewDiscountsService(discountRepo, productRepo, warehouseRepo, logger)
 	taxService := services.NewTaxService(taxRepo, logger)
-	salesService := services.NewSalesService(salesRepo, productRepo, inventoryRepo, priceRepo, discountRepo, taxRepo, warehouseRepo, logger)
+	salesService := services.NewSalesService(salesRepo, productRepo, inventoryRepo, productVariantRepo, discountRepo, taxRepo, warehouseRepo, logger)
 	returnsService := services.NewReturnsService(returnsRepo, salesRepo, inventoryRepo, logger)
 	attachmentService := services.NewAttachmentService(attachmentRepo, s3Service, logger)
 	refundPoliciesService := services.NewRefundPoliciesService(refundPoliciesRepo, logger)
@@ -129,7 +127,6 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	// Initialize handlers
 	warehouseHandler := handlers.NewWarehouseHandler(warehouseService, aaaMiddleware, logger)
 	productHandler := handlers.NewProductHandler(productService, aaaMiddleware, logger)
-	priceHandler := handlers.NewProductPriceHandler(priceService, aaaMiddleware, logger)
 	inventoryHandler := handlers.NewInventoryHandler(inventoryService, aaaMiddleware, logger)
 	discountsHandler := handlers.NewDiscountsHandler(discountsService, aaaMiddleware, logger)
 	taxHandler := handlers.NewTaxHandler(taxService, aaaMiddleware, logger)
@@ -161,7 +158,6 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	{
 		// Register all handlers
 		warehouseHandler.RegisterRoutes(v1)
-		priceHandler.RegisterRoutes(v1) // Register price routes before product routes to avoid conflicts
 		productHandler.RegisterRoutes(v1)
 		inventoryHandler.RegisterRoutes(v1)
 		discountsHandler.RegisterRoutes(v1)
