@@ -300,6 +300,9 @@ func (s *ProductVariantService) UpdateProductVariant(ctx context.Context, id str
 	if request.UsageDetails != nil {
 		variant.UsageDetails = request.UsageDetails
 	}
+	if request.CollaboratorIDs != nil {
+		variant.CollaboratorIDs = *request.CollaboratorIDs
+	}
 
 	// Save to database
 	s.logger.Debug("Saving updated variant")

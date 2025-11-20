@@ -1,3 +1,222 @@
+# API Changes - Collaborator Management & Unified Variant Architecture
+
+**Date**: November 20, 2025
+**Version**: 1.5.0
+**Breaking Changes**:
+- Removed all `/api/v1/collaborator-products` endpoints (7 endpoints deleted)
+- Deprecated `CollaboratorProduct` model (will be removed in v2.0.0)
+- Unified architecture: All collaborator products now use `ProductVariant` table
+
+**New Features**:
+- Can now update collaborator associations via `PUT /api/v1/variants/{id}`
+- Support for add/remove/delete all collaborators on existing variants
+- Simplified many-to-many relationship via JSON array
+
+---
+
+## BREAKING CHANGE: Unified Variant Architecture - CollaboratorProduct Deprecated
+
+### Overview
+
+All collaborator-specific products are now stored in the `product_variants` table using the `collaborator_ids` field (JSON array). The separate `CollaboratorProduct` model, service, handler, and repository have been removed. This provides a unified architecture where both regular variants and collaborator-specific variants use the same table and endpoints.
+
+### What Changed
+
+**REMOVED Endpoints** (v1.5.0 - no longer available):
+1. ~~`GET /api/v1/collaborator-products/{id}`~~ (removed)
+2. ~~`PUT /api/v1/collaborator-products/{id}`~~ (removed)
+3. ~~`DELETE /api/v1/collaborator-products/{id}`~~ (removed)
+4. ~~`GET /api/v1/collaborators/{id}/products`~~ (removed)
+5. ~~`POST /api/v1/collaborators/{id}/products`~~ (removed)
+6. ~~`DELETE /api/v1/collaborators/{id}/products/{product_id}`~~ (removed)
+7. ~~`GET /api/v1/products/{id}/collaborators`~~ (removed)
+
+**NEW/CORRECT Endpoints** (v1.5.0 - use these instead):
+1. **Get variant by ID**: `GET /api/v1/variants/{id}`
+2. **Update variant** (including collaborators): `PUT /api/v1/variants/{id}`
+3. **Delete variant**: `DELETE /api/v1/variants/{id}`
+4. **Get variant by SKU**: `GET /api/v1/variants/sku/{sku}`
+5. **Get variant by barcode**: `GET /api/v1/variants/barcode/{barcode}`
+6. **Create variant for product**: `POST /api/v1/products/{id}/variants`
+7. **Get all variants for product**: `GET /api/v1/products/{id}/variants`
+
+**NEW Capability** (v1.5.0):
+- `CollaboratorIDs` field added to `UpdateProductVariantRequest`
+- Can now **add, remove, or delete all** collaborators from existing variants via `PUT /api/v1/variants/{id}`
+- Full collaborator association management without needing separate endpoints
+
+### Deleted Files
+
+The following files have been removed:
+- `internal/api/handlers/collaborator_product_handler.go`
+- `internal/services/collaborator_product_service.go`
+- `internal/services/interfaces/collaborator_product_service.go`
+- `internal/database/repositories/collaborator_product_repo.go`
+- `tests/handlers/collaborator_product_handler_test.go`
+
+**Kept for Backward Compatibility**:
+- `internal/database/models/collaborator_product.go` (deprecated, not migrated)
+
+### New Workflow
+
+#### Creating Collaborator-Specific Variants
+
+**Endpoint**: `POST /api/v1/products/{product_id}/variants`
+
+```json
+{
+  "variant_name": "1kg Premium Pack",
+  "quantity": "1kg",
+  "pack_size": "Premium Pack",
+  "collaborator_ids": ["CLAB00000001", "CLAB00000002"],
+  "brand_name": "Vendor Brand",
+  "hsn_code": "12345678",
+  "gst_rate": 18.0,
+  "images": ["s3://bucket/image1.jpg"],
+  "dosage_instructions": "Take 2 tablets daily",
+  "usage_details": "Best used after meals",
+  "prices": [
+    {"price_type": "MRP", "price": 150.00, "currency": "INR"},
+    {"price_type": "MSP", "price": 120.00, "currency": "INR"}
+  ]
+}
+```
+
+#### Adding Collaborators to Existing Variant
+
+**Endpoint**: `PUT /api/v1/variants/{variant_id}`
+
+```json
+{
+  "collaborator_ids": ["CLAB00000001", "CLAB00000002", "CLAB00000003"]
+}
+```
+
+**Result**: Variant now associated with 3 collaborators
+
+#### Removing Specific Collaborators
+
+**Endpoint**: `PUT /api/v1/variants/{variant_id}`
+
+```json
+{
+  "collaborator_ids": ["CLAB00000001"]
+}
+```
+
+**Result**: Only CLAB00000001 remains, others removed
+
+#### Deleting ALL Collaborators
+
+**Endpoint**: `PUT /api/v1/variants/{variant_id}`
+
+```json
+{
+  "collaborator_ids": []
+}
+```
+
+**Result**: Variant no longer associated with any collaborators
+
+#### Getting Collaborator's Products
+
+**Endpoint**: `GET /api/v1/variants?collaborator_id={collaborator_id}`
+
+**Response**: All variants where `collaborator_ids` array contains the specified ID
+
+### Migration Guide for Frontend
+
+**Before (v1.4.x)**:
+```javascript
+// Creating collaborator product
+POST /api/v1/collaborators/CLAB001/products
+{
+  "product_id": "PROD001",
+  "brand_name": "Brand X",
+  "hsn_code": "12345678",
+  "gst_rate": 18.0
+}
+
+// Updating collaborator product
+PUT /api/v1/collaborator-products/CPRD001
+{
+  "brand_name": "New Brand"
+}
+
+// Getting collaborator products
+GET /api/v1/collaborators/CLAB001/products
+```
+
+**After (v1.5.0)**:
+```javascript
+// Creating variant with collaborator
+POST /api/v1/products/PROD001/variants
+{
+  "variant_name": "1kg Pack",
+  "quantity": "1kg",
+  "pack_size": "Standard",
+  "collaborator_ids": ["CLAB001"],
+  "brand_name": "Brand X",
+  "hsn_code": "12345678",
+  "gst_rate": 18.0,
+  "prices": [{"price_type": "MRP", "price": 100, "currency": "INR"}]
+}
+
+// Updating variant (including collaborators)
+PUT /api/v1/variants/PVAR001
+{
+  "brand_name": "New Brand",
+  "collaborator_ids": ["CLAB001", "CLAB002"]  // Can update collaborators too!
+}
+
+// Getting collaborator's variants
+GET /api/v1/variants?collaborator_id=CLAB001
+```
+
+### Technical Changes
+
+**Model Changes**:
+```go
+// UpdateProductVariantRequest - NEW field added
+type UpdateProductVariantRequest struct {
+    // ... existing fields ...
+    CollaboratorIDs *[]string `json:"collaborator_ids,omitempty"` // NEW: Can update collaborators
+}
+```
+
+**Service Changes** (`product_variant_service.go:303-305`):
+```go
+// NEW: Support for updating collaborator associations
+if request.CollaboratorIDs != nil {
+    variant.CollaboratorIDs = *request.CollaboratorIDs
+}
+```
+
+**Route Changes** (`routes.go`):
+- Removed: `collaboratorProductRepo` initialization
+- Removed: `collaboratorProductService` initialization
+- Removed: `collaboratorProductHandler` initialization
+- Removed: `collaboratorProductHandler.RegisterRoutes(v1)`
+
+### Deprecation Notice
+
+The `CollaboratorProduct` model in `internal/database/models/collaborator_product.go` is **deprecated** and will be removed in **v2.0.0**. The file has been kept for backward compatibility but is no longer used by the system.
+
+**Migration Path**:
+- All data should be migrated to `product_variants` table with `collaborator_ids` field
+- Update all API calls to use `/api/v1/variants` and `/api/v1/products/:id/variants` endpoints
+- CollaboratorProduct table will not be auto-migrated (already removed from migrator)
+
+### Benefits of Unified Architecture
+
+1. **Simplified Queries**: Single table for all variants (regular + collaborator)
+2. **Better Performance**: No JOIN needed between tables
+3. **Flexible Associations**: Many-to-many via JSON array
+4. **Easier Maintenance**: One codebase for all variant operations
+5. **Scalable**: Can easily support multiple collaborators per variant
+
+---
+
 # API Changes - Price Type Update (MRP/MSP)
 
 **Date**: November 20, 2025
@@ -73,7 +292,7 @@ validPriceTypes := []string{"MRP", "MSP"}
 
 #### Create Variant with MRP/MSP
 
-**Endpoint**: `POST /api/v1/product-variants`
+**Endpoint**: `POST /api/v1/products/:id/variants`
 
 **Request Body**:
 ```json
@@ -123,7 +342,7 @@ validPriceTypes := []string{"MRP", "MSP"}
 
 #### Update Variant Prices
 
-**Endpoint**: `PATCH /api/v1/product-variants/:id`
+**Endpoint**: `PUT /api/v1/variants/:id`
 
 **Request Body**:
 ```json
@@ -348,9 +567,9 @@ The separate pricing API has been **completely removed** and pricing functionali
 **NEW: Pricing in Variant API**
 
 Prices are now managed through variant endpoints:
-- `POST /api/v1/product-variants` - Create variant with prices
-- `GET /api/v1/product-variants/:id` - Get variant with prices
-- `PATCH /api/v1/product-variants/:id` - Update variant prices
+- `POST /api/v1/products/:id/variants` - Create variant with prices
+- `GET /api/v1/variants/:id` - Get variant with prices
+- `PUT /api/v1/variants/:id` - Update variant prices
 
 ---
 
@@ -393,7 +612,7 @@ Prices are now managed through variant endpoints:
 
 #### 1. Create Product Variant (with prices)
 
-**Endpoint**: `POST /api/v1/product-variants`
+**Endpoint**: `POST /api/v1/products/:id/variants`
 
 **Request Body**:
 ```json
@@ -422,7 +641,7 @@ Prices are now managed through variant endpoints:
 
 #### 2. Get Product Variant (includes prices)
 
-**Endpoint**: `GET /api/v1/product-variants/:id`
+**Endpoint**: `GET /api/v1/variants/:id`
 
 **Response**:
 ```json
@@ -465,7 +684,7 @@ Prices are now managed through variant endpoints:
 
 #### 3. Update Product Variant (update prices)
 
-**Endpoint**: `PATCH /api/v1/product-variants/:id`
+**Endpoint**: `PUT /api/v1/variants/:id`
 
 **Request Body** (partial update):
 ```json
@@ -809,7 +1028,7 @@ Product variants can now be associated with **multiple collaborators (vendors/su
 
 #### 1. Product Variant Response
 
-**Endpoint**: All variant endpoints (GET /api/v1/product-variants/*, etc.)
+**Endpoint**: All variant endpoints (GET /api/v1/variants/*, etc.)
 
 **Changed Field**:
 ```json
@@ -829,7 +1048,7 @@ Product variants can now be associated with **multiple collaborators (vendors/su
 
 #### 2. Create Product Variant Request
 
-**Endpoint**: `POST /api/v1/product-variants`
+**Endpoint**: `POST /api/v1/products/:id/variants`
 
 **Changed Field**:
 ```json
@@ -947,7 +1166,7 @@ const createVariant = async () => {
     gst_rate: gstRate
   };
 
-  const response = await fetch('/api/v1/product-variants', {
+  const response = await fetch(`/api/v1/products/${productId}/variants`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)

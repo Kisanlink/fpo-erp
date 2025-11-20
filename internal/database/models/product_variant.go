@@ -144,6 +144,7 @@ type UpdateProductVariantRequest struct {
 	PackSize           *string   `json:"pack_size,omitempty"`
 	SKU                *string   `json:"sku,omitempty"`
 	Barcode            *string   `json:"barcode,omitempty"`
+	CollaboratorIDs    *[]string `json:"collaborator_ids,omitempty"` // Optional: update collaborator associations
 	BrandName          *string   `json:"brand_name,omitempty"`
 	HSNCode            *string   `json:"hsn_code,omitempty"`
 	GSTRate            *float64  `json:"gst_rate,omitempty"`

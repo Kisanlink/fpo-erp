@@ -40,7 +40,6 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 
 	// Procurement repositories
 	collaboratorRepo := repositories.NewCollaboratorRepository(db)
-	collaboratorProductRepo := repositories.NewCollaboratorProductRepository(db)
 	productVariantRepo := repositories.NewProductVariantRepository(db)
 	purchaseOrderRepo := repositories.NewPurchaseOrderRepository(db)
 	grnRepo := repositories.NewGRNRepository(db)
@@ -102,7 +101,6 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 		cfg.Ecommerce.AuthToken,
 		logger,
 	)
-	collaboratorProductService := services.NewCollaboratorProductService(collaboratorProductRepo, collaboratorRepo, productRepo, productVariantRepo, logger)
 	productVariantService := services.NewProductVariantService(productVariantRepo, productRepo, logger)
 	purchaseOrderService := services.NewPurchaseOrderService(purchaseOrderRepo, collaboratorRepo, warehouseRepo, productRepo, productVariantRepo, grnRepo, inventoryRepo, logger)
 	grnService := services.NewGRNService(grnRepo, purchaseOrderRepo, warehouseRepo, productRepo, inventoryRepo, logger)
@@ -138,7 +136,6 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 
 	// Procurement handlers
 	collaboratorHandler := handlers.NewCollaboratorHandler(collaboratorService, aaaMiddleware, logger)
-	collaboratorProductHandler := handlers.NewCollaboratorProductHandler(collaboratorProductService, aaaMiddleware, logger)
 	productVariantHandler := handlers.NewProductVariantHandler(productVariantService, aaaMiddleware, logger)
 	purchaseOrderHandler := handlers.NewPurchaseOrderHandler(purchaseOrderService, aaaMiddleware, logger)
 	grnHandler := handlers.NewGRNHandler(grnService, aaaMiddleware, logger)
@@ -170,7 +167,6 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 
 		// Procurement handlers
 		collaboratorHandler.RegisterRoutes(v1)
-		collaboratorProductHandler.RegisterRoutes(v1)
 		productVariantHandler.RegisterRoutes(v1)
 		purchaseOrderHandler.RegisterRoutes(v1)
 		grnHandler.RegisterRoutes(v1)
