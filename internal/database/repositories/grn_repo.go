@@ -163,3 +163,59 @@ func (r *GRNRepository) GRNExistsForPO(poID string) (bool, error) {
 	}
 	return count > 0, nil
 }
+
+// GetRejectedItemsByGRN retrieves all rejected items for a GRN
+func (r *GRNRepository) GetRejectedItemsByGRN(grnID string) ([]models.GRNItem, error) {
+	var items []models.GRNItem
+	if err := r.db.Preload("Variant").
+		Preload("PurchaseOrderItem").
+		Where("grn_id = ? AND rejected_quantity > 0", grnID).
+		Find(&items).Error; err != nil {
+		return nil, errors.NewInternalServerError("Failed to retrieve rejected items")
+	}
+	return items, nil
+}
+
+// GetItemByID retrieves a single GRN item by ID
+func (r *GRNRepository) GetItemByID(itemID string) (*models.GRNItem, error) {
+	var item models.GRNItem
+	if err := r.db.Preload("Variant").
+		Preload("PurchaseOrderItem").
+		Where("id = ?", itemID).
+		First(&item).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, errors.NewNotFoundError("GRN item")
+		}
+		return nil, errors.NewInternalServerError("Failed to retrieve GRN item")
+	}
+	return &item, nil
+}
+
+// UpdateItemReturnStatus updates the return status of a GRN item
+func (r *GRNRepository) UpdateItemReturnStatus(itemID string, updates map[string]interface{}) error {
+	if err := r.db.Model(&models.GRNItem{}).
+		Where("id = ?", itemID).
+		Updates(updates).Error; err != nil {
+		return errors.NewInternalServerError("Failed to update item return status")
+	}
+	return nil
+}
+
+// GetTotalRejectedAmountByPO calculates total value of rejected items for a purchase order
+func (r *GRNRepository) GetTotalRejectedAmountByPO(poID string) (float64, error) {
+	var total float64
+
+	// Join GRN → GRN items → PO items to get unit prices
+	err := r.db.Table("grn_items").
+		Select("COALESCE(SUM(grn_items.rejected_quantity * purchase_order_items.unit_price), 0) as total").
+		Joins("JOIN goods_receipt_notes ON grn_items.grn_id = goods_receipt_notes.id").
+		Joins("JOIN purchase_order_items ON grn_items.po_item_id = purchase_order_items.id").
+		Where("goods_receipt_notes.po_id = ?", poID).
+		Row().Scan(&total)
+
+	if err != nil {
+		return 0, errors.NewInternalServerError("Failed to calculate total rejected amount")
+	}
+
+	return total, nil
+}

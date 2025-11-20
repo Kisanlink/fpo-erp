@@ -817,21 +817,36 @@ func (s *PurchaseOrderService) generatePONumber() (string, error) {
 
 // buildPurchaseOrderResponse builds a response with related entity details
 func (s *PurchaseOrderService) buildPurchaseOrderResponse(po *models.PurchaseOrder) (*models.PurchaseOrderResponse, error) {
+	// Calculate total rejected amount from GRN (if GRN exists)
+	totalRejectedAmount, err := s.grnRepo.GetTotalRejectedAmountByPO(po.ID)
+	if err != nil {
+		// Log error but don't fail - treat as 0 if no GRN exists yet
+		s.logger.Warn("Failed to calculate rejected amount for PO",
+			zap.String("po_id", po.ID),
+			zap.Error(err))
+		totalRejectedAmount = 0
+	}
+
+	// Calculate amount owed (Option A: keep TotalAmount unchanged, subtract rejections)
+	amountOwed := po.TotalAmount - totalRejectedAmount
+
 	response := &models.PurchaseOrderResponse{
-		ID:               po.ID,
-		PONumber:         po.PONumber,
-		CollaboratorID:   po.CollaboratorID,
-		CollaboratorName: po.Collaborator.CompanyName,
-		WarehouseID:      po.WarehouseID,
-		WarehouseName:    po.Warehouse.Name,
-		OrderDate:        po.OrderDate.Format("2006-01-02"),
-		ExpectedDelivery: po.ExpectedDelivery.Format("2006-01-02"),
-		Status:           po.Status,
-		TotalAmount:      po.TotalAmount,
-		PaymentStatus:    po.PaymentStatus,
-		PaidAmount:       po.PaidAmount,
-		CreatedAt:        po.CreatedAt.UTC().Format(time.RFC3339),
-		UpdatedAt:        po.UpdatedAt.UTC().Format(time.RFC3339),
+		ID:                  po.ID,
+		PONumber:            po.PONumber,
+		CollaboratorID:      po.CollaboratorID,
+		CollaboratorName:    po.Collaborator.CompanyName,
+		WarehouseID:         po.WarehouseID,
+		WarehouseName:       po.Warehouse.Name,
+		OrderDate:           po.OrderDate.Format("2006-01-02"),
+		ExpectedDelivery:    po.ExpectedDelivery.Format("2006-01-02"),
+		Status:              po.Status,
+		TotalAmount:         po.TotalAmount,
+		TotalRejectedAmount: totalRejectedAmount,
+		AmountOwed:          amountOwed,
+		PaymentStatus:       po.PaymentStatus,
+		PaidAmount:          po.PaidAmount,
+		CreatedAt:           po.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:           po.UpdatedAt.UTC().Format(time.RFC3339),
 	}
 
 	if po.ActualDelivery != nil {

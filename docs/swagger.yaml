@@ -961,6 +961,17 @@ definitions:
         type: integer
       rejected_quantity:
         type: integer
+      return_closed_date:
+        type: string
+      return_received_date:
+        type: string
+      return_remarks:
+        type: string
+      return_sent_date:
+        type: string
+      return_status:
+        description: Return tracking fields
+        type: string
       variant_id:
         type: string
     type: object
@@ -1361,6 +1372,9 @@ definitions:
     properties:
       actual_delivery_date:
         type: string
+      amount_owed:
+        description: TotalAmount - TotalRejectedAmount
+        type: number
       collaborator_id:
         type: string
       collaborator_name:
@@ -1387,6 +1401,9 @@ definitions:
         type: string
       total_amount:
         type: number
+      total_rejected_amount:
+        description: Total value of rejected items from GRN
+        type: number
       updated_at:
         type: string
       warehouse_id:
@@ -1410,6 +1427,54 @@ definitions:
         type: number
       updated_at:
         type: string
+    type: object
+  models.RejectedItemDetail:
+    properties:
+      id:
+        type: string
+      product_name:
+        type: string
+      product_sku:
+        type: string
+      rejected_quantity:
+        type: integer
+      return_closed_date:
+        type: string
+      return_received_date:
+        type: string
+      return_remarks:
+        type: string
+      return_sent_date:
+        type: string
+      return_status:
+        type: string
+      total_value:
+        type: number
+      unit_price:
+        type: number
+      variant_id:
+        type: string
+    type: object
+  models.RejectedItemsResponse:
+    properties:
+      grn_id:
+        type: string
+      grn_number:
+        type: string
+      po_id:
+        type: string
+      po_number:
+        type: string
+      rejected_items:
+        items:
+          $ref: '#/definitions/models.RejectedItemDetail'
+        type: array
+      return_status_breakdown:
+        additionalProperties:
+          type: integer
+        type: object
+      total_rejected_value:
+        type: number
     type: object
   models.ReturnItemResponse:
     properties:
@@ -2014,6 +2079,17 @@ definitions:
         type: string
       remarks:
         type: string
+    type: object
+  models.UpdateItemReturnStatusRequest:
+    properties:
+      return_remarks:
+        description: Optional notes
+        type: string
+      return_status:
+        description: pending, sent, received_by_vendor, closed
+        type: string
+    required:
+    - return_status
     type: object
   models.UpdatePOPaymentRequest:
     properties:
@@ -5183,6 +5259,113 @@ paths:
       security:
       - BearerAuth: []
       summary: Update Goods Receipt Note
+      tags:
+      - GRNs
+  /api/v1/grns/{id}/rejected-items:
+    get:
+      description: Retrieve all rejected items for a GRN with return tracking details
+        (requires authentication)
+      parameters:
+      - description: 'GRN ID (format: GRNX_xxxxxxxx)'
+        example: GRNX_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Rejected items retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.RejectedItemsResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: No rejected items found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Rejected Items for GRN
+      tags:
+      - GRNs
+  /api/v1/grns/items/{item_id}/return-status:
+    patch:
+      consumes:
+      - application/json
+      description: Update the return status of a rejected GRN item (requires authentication)
+      parameters:
+      - description: 'GRN Item ID (format: GRIT_xxxxxxxx)'
+        example: GRIT_12345678
+        in: path
+        name: item_id
+        required: true
+        type: string
+      - description: Return status update data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateItemReturnStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Return status updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.GRNItemResponse'
+              type: object
+        "400":
+          description: Bad request - invalid status transition
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: GRN item not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "422":
+          description: Unprocessable Entity - validation failed
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Update Return Status for Rejected Item
       tags:
       - GRNs
   /api/v1/prices:
