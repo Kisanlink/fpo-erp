@@ -31,6 +31,9 @@ func NewTaxHandler(taxService interfaces.TaxServiceInterface, aaaMiddleware *aaa
 func (h *TaxHandler) RegisterRoutes(router *gin.RouterGroup) {
 	taxes := router.Group("/taxes")
 	{
+		// Apply authentication middleware to all routes
+		taxes.Use(h.aaaMiddleware.Authenticate())
+
 		// CRUD operations
 		taxes.POST("", h.aaaMiddleware.RequireOrgPermission("tax", "create"), h.CreateTax)
 		taxes.GET("", h.aaaMiddleware.RequireOrgPermission("tax", "read"), h.GetAllTaxes)
