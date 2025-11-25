@@ -37,6 +37,16 @@ func (r *SalesRepository) UpdateSaleWithTx(tx *gorm.DB, sale *models.Sale) error
 	return tx.Save(sale).Error
 }
 
+// GetSaleForUpdateWithTx gets a sale with pessimistic lock within a transaction
+func (r *SalesRepository) GetSaleForUpdateWithTx(tx *gorm.DB, id string) (*models.Sale, error) {
+	var sale models.Sale
+	err := tx.Set("gorm:query_option", "FOR UPDATE").
+		Preload("Items").
+		Where("id = ?", id).
+		First(&sale).Error
+	return &sale, err
+}
+
 // Sale operations
 func (r *SalesRepository) CreateSale(sale *models.Sale) error {
 	return r.db.Create(sale).Error

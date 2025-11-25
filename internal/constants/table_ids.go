@@ -33,6 +33,10 @@ const (
 	TableReturnSummary = "RSUM" // Return Summaries
 	TableRefundPolicy  = "RPOL" // Refund Policies
 
+	// Cancellation related
+	TableSaleCancellation     = "CANC" // Sale Cancellations
+	TableSaleCancellationItem = "CITM" // Sale Cancellation Items
+
 	// Payment and attachments
 	TableBankPayment = "BPAY" // Bank Payments
 	TableAttachment  = "ATCH" // Attachments

@@ -266,7 +266,7 @@ func (s *InventoryService) CreateTransaction(batchID string, request *models.Cre
 	// Validate transaction type
 	s.logger.Debug("Validating transaction type",
 		zap.String("transaction_type", request.TransactionType))
-	validTypes := []string{"import", "manual_add", "adjustment", "sale_deduction", "return_add", "transfer_in", "transfer_out"}
+	validTypes := []string{"import", "manual_add", "adjustment", "sale_deduction", "return_add", "transfer_in", "transfer_out", "cancellation_return"}
 	isValidType := false
 	for _, t := range validTypes {
 		if t == request.TransactionType {

@@ -18,28 +18,30 @@ func stringPtr(s string) *string {
 }
 
 type SalesService struct {
-	salesRepo     *repositories.SalesRepository
-	productRepo   *repositories.ProductRepository
-	inventoryRepo *repositories.InventoryRepository
-	priceRepo     *repositories.ProductPriceRepository
-	discountsRepo *repositories.DiscountsRepository
-	taxRepo       *repositories.TaxRepository
-	taxService    *TaxService
-	warehouseRepo *repositories.WarehouseRepository
-	logger        interfaces.Logger
+	salesRepo            *repositories.SalesRepository
+	productRepo          *repositories.ProductRepository
+	inventoryRepo        *repositories.InventoryRepository
+	priceRepo            *repositories.ProductPriceRepository
+	discountsRepo        *repositories.DiscountsRepository
+	taxRepo              *repositories.TaxRepository
+	taxService           *TaxService
+	warehouseRepo        *repositories.WarehouseRepository
+	saleCancellationRepo *repositories.SaleCancellationRepository
+	logger               interfaces.Logger
 }
 
-func NewSalesService(salesRepo *repositories.SalesRepository, productRepo *repositories.ProductRepository, inventoryRepo *repositories.InventoryRepository, priceRepo *repositories.ProductPriceRepository, discountsRepo *repositories.DiscountsRepository, taxRepo *repositories.TaxRepository, warehouseRepo *repositories.WarehouseRepository, logger interfaces.Logger) *SalesService {
+func NewSalesService(salesRepo *repositories.SalesRepository, productRepo *repositories.ProductRepository, inventoryRepo *repositories.InventoryRepository, priceRepo *repositories.ProductPriceRepository, discountsRepo *repositories.DiscountsRepository, taxRepo *repositories.TaxRepository, warehouseRepo *repositories.WarehouseRepository, saleCancellationRepo *repositories.SaleCancellationRepository, logger interfaces.Logger) *SalesService {
 	return &SalesService{
-		salesRepo:     salesRepo,
-		productRepo:   productRepo,
-		inventoryRepo: inventoryRepo,
-		priceRepo:     priceRepo,
-		discountsRepo: discountsRepo,
-		taxRepo:       taxRepo,
-		taxService:    NewTaxService(taxRepo, logger),
-		warehouseRepo: warehouseRepo,
-		logger:        logger,
+		salesRepo:            salesRepo,
+		productRepo:          productRepo,
+		inventoryRepo:        inventoryRepo,
+		priceRepo:            priceRepo,
+		discountsRepo:        discountsRepo,
+		taxRepo:              taxRepo,
+		taxService:           NewTaxService(taxRepo, logger),
+		warehouseRepo:        warehouseRepo,
+		saleCancellationRepo: saleCancellationRepo,
+		logger:               logger,
 	}
 }
 
@@ -635,6 +637,15 @@ func (s *SalesService) mapSaleToResponse(sale *models.Sale) *models.SaleResponse
 		UpdatedAt:   sale.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 
+	// Add cancellation fields if present
+	if sale.CancelledAt != nil {
+		cancelledAtStr := sale.CancelledAt.Format("2006-01-02T15:04:05Z07:00")
+		response.CancelledAt = &cancelledAtStr
+	}
+	if sale.CancellationReason != nil {
+		response.CancellationReason = sale.CancellationReason
+	}
+
 	// Map items
 	for _, item := range sale.Items {
 		response.Items = append(response.Items, models.SaleItemResponse{
@@ -946,4 +957,214 @@ func (s *SalesService) calculateDiscountAmount(discount *models.Discount, orderV
 
 	// For other discount types, use the regular calculation
 	return s.discountsRepo.CalculateDiscount(discount, orderValue)
+}
+
+// CanCancelSale determines if a sale can be cancelled based on its status
+func (s *SalesService) CanCancelSale(sale *models.Sale) (bool, string) {
+	switch sale.Status {
+	case "cancelled":
+		return false, "Sale is already cancelled"
+	case "shipped", "delivered":
+		return false, "Cannot cancel shipped/delivered orders. Use Returns instead."
+	case "returned":
+		return false, "Sale has already been returned"
+	case "pending", "confirmed", "processing":
+		return true, ""
+	default:
+		return false, "Unknown sale status"
+	}
+}
+
+// CancelSale cancels a full sale and returns inventory to original batches
+func (s *SalesService) CancelSale(saleID string, req *models.CancelSaleRequest) (*models.CancelSaleResponse, error) {
+	s.logger.Info("Starting sale cancellation",
+		zap.String("sale_id", saleID),
+		zap.String("reason", req.Reason),
+		zap.String("performed_by", req.PerformedBy))
+
+	// Validate reason - if "other", reason_details is required
+	if req.Reason == models.ReasonOther && (req.ReasonDetails == nil || *req.ReasonDetails == "") {
+		s.logger.Error("Reason details required for 'other' reason",
+			zap.String("sale_id", saleID))
+		return nil, errors.NewValidationError("reason_details is required when reason is 'other'")
+	}
+
+	var response *models.CancelSaleResponse
+
+	// Execute everything within a database transaction
+	err := s.salesRepo.WithTransaction(func(tx *gorm.DB) error {
+		// 1. Lock sale record (SELECT FOR UPDATE)
+		s.logger.Debug("Locking sale record for update",
+			zap.String("sale_id", saleID))
+		sale, err := s.salesRepo.GetSaleForUpdateWithTx(tx, saleID)
+		if err != nil {
+			s.logger.Error("Failed to get sale for update",
+				zap.Error(err),
+				zap.String("sale_id", saleID))
+			if err == gorm.ErrRecordNotFound {
+				return errors.NewNotFoundError("Sale")
+			}
+			return errors.NewInternalServerError("Failed to lock sale")
+		}
+
+		// 2. Check cancellability
+		s.logger.Debug("Checking if sale can be cancelled",
+			zap.String("sale_id", saleID),
+			zap.String("status", sale.Status))
+		canCancel, reason := s.CanCancelSale(sale)
+		if !canCancel {
+			s.logger.Error("Sale cannot be cancelled",
+				zap.String("sale_id", saleID),
+				zap.String("reason", reason))
+			return errors.NewBadRequestError(reason)
+		}
+
+		// 3. Create SaleCancellation record
+		s.logger.Debug("Creating cancellation record",
+			zap.String("sale_id", saleID))
+		cancellation := models.NewSaleCancellation(
+			sale.ID,
+			models.CancellationTypeFull,
+			req.Reason,
+			&req.PerformedBy,
+			req.ReasonDetails,
+			sale.TotalAmount,
+			sale.TotalAmount, // Full cancellation
+		)
+
+		if err := s.saleCancellationRepo.CreateCancellationWithTx(tx, cancellation); err != nil {
+			s.logger.Error("Failed to create cancellation record",
+				zap.Error(err),
+				zap.String("sale_id", saleID))
+			return errors.NewInternalServerError("Failed to create cancellation record")
+		}
+		s.logger.Info("Cancellation record created",
+			zap.String("cancellation_id", cancellation.ID))
+
+		// 4. For each SaleItem: restore inventory
+		s.logger.Debug("Processing sale items for inventory restoration",
+			zap.Int("item_count", len(sale.Items)))
+		var inventoryRestored []models.InventoryRestoredItem
+
+		for i, saleItem := range sale.Items {
+			s.logger.Debug("Processing sale item",
+				zap.Int("item_number", i+1),
+				zap.String("sale_item_id", saleItem.ID),
+				zap.String("batch_id", saleItem.BatchID),
+				zap.Int64("quantity", saleItem.Quantity))
+
+			// Get batch to retrieve variant ID for response
+			batch, err := s.inventoryRepo.GetBatchByID(saleItem.BatchID)
+			if err != nil {
+				s.logger.Error("Failed to get batch",
+					zap.Error(err),
+					zap.String("batch_id", saleItem.BatchID))
+				return errors.NewInternalServerError("Failed to get batch information")
+			}
+
+			// Restore inventory: Create inventory transaction
+			note := "Inventory restored for cancelled sale " + sale.ID
+			transaction := models.NewInventoryTransaction(
+				saleItem.BatchID,
+				"cancellation_return",
+				saleItem.Quantity, // Positive to add back
+				&cancellation.ID,
+				&req.PerformedBy,
+				&note,
+				time.Now(),
+			)
+
+			if err := s.inventoryRepo.CreateTransactionWithTx(tx, transaction); err != nil {
+				s.logger.Error("Failed to create inventory transaction",
+					zap.Error(err),
+					zap.String("batch_id", saleItem.BatchID))
+				return errors.NewInternalServerError("Failed to restore inventory")
+			}
+			s.logger.Debug("Inventory transaction created",
+				zap.String("transaction_id", transaction.ID))
+
+			// Update batch stock level (add back the quantity)
+			if !req.SkipInventoryReturn {
+				if err := s.inventoryRepo.UpdateBatchStockWithTx(tx, saleItem.BatchID, saleItem.Quantity); err != nil {
+					s.logger.Error("Failed to update batch stock",
+						zap.Error(err),
+						zap.String("batch_id", saleItem.BatchID))
+					return errors.NewInternalServerError("Failed to restore batch stock")
+				}
+				s.logger.Info("Inventory restored to batch",
+					zap.String("batch_id", saleItem.BatchID),
+					zap.Int64("quantity_restored", saleItem.Quantity))
+			}
+
+			// Create SaleCancellationItem record
+			cancellationItem := models.NewSaleCancellationItem(
+				cancellation.ID,
+				saleItem.ID,
+				saleItem.BatchID,
+				saleItem.Quantity,
+				saleItem.LineTotal,
+				&transaction.ID,
+			)
+
+			if err := s.saleCancellationRepo.CreateCancellationItemWithTx(tx, cancellationItem); err != nil {
+				s.logger.Error("Failed to create cancellation item",
+					zap.Error(err),
+					zap.String("sale_item_id", saleItem.ID))
+				return errors.NewInternalServerError("Failed to create cancellation item")
+			}
+
+			// Add to restored items list
+			inventoryRestored = append(inventoryRestored, models.InventoryRestoredItem{
+				BatchID:          saleItem.BatchID,
+				VariantID:        batch.VariantID,
+				QuantityRestored: saleItem.Quantity,
+				TransactionID:    transaction.ID,
+			})
+		}
+
+		// 5. Reverse discounts (if any were applied)
+		// TODO: Implement discount reversal logic
+		s.logger.Debug("Discount reversal not yet implemented - skipping")
+
+		// 6. Void tax records (if taxes were applied)
+		// TODO: Implement tax voiding logic
+		s.logger.Debug("Tax voiding not yet implemented - skipping")
+
+		// 7. Update Sale status to "cancelled"
+		s.logger.Debug("Updating sale status to cancelled",
+			zap.String("sale_id", sale.ID))
+		sale.Status = "cancelled"
+		now := time.Now()
+		sale.CancelledAt = &now
+		sale.CancellationReason = &req.Reason
+
+		if err := s.salesRepo.UpdateSaleWithTx(tx, sale); err != nil {
+			s.logger.Error("Failed to update sale status",
+				zap.Error(err),
+				zap.String("sale_id", sale.ID))
+			return errors.NewInternalServerError("Failed to update sale status")
+		}
+
+		// Build response
+		response = &models.CancelSaleResponse{
+			Sale:              *s.mapSaleToResponse(sale),
+			InventoryRestored: inventoryRestored,
+			CancellationID:    cancellation.ID,
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		s.logger.Error("Sale cancellation transaction failed",
+			zap.Error(err),
+			zap.String("sale_id", saleID))
+		return nil, err
+	}
+
+	s.logger.Info("Sale cancellation completed successfully",
+		zap.String("sale_id", saleID),
+		zap.String("cancellation_id", response.CancellationID))
+
+	return response, nil
 }
