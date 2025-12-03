@@ -2,12 +2,14 @@ package aaa
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"time"
 
 	pb "github.com/Kisanlink/aaa-service/v2/pkg/proto"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 )
@@ -19,14 +21,24 @@ type AuthzClient struct {
 }
 
 // NewAuthzClient creates a new authorization client
-func NewAuthzClient(aaaServiceAddr string) (*AuthzClient, error) {
+func NewAuthzClient(aaaServiceAddr string, useTLS bool) (*AuthzClient, error) {
 	// Create connection with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	conn, err := grpc.DialContext(ctx, aaaServiceAddr,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock())
+	var opts []grpc.DialOption
+	if useTLS {
+		// Use system CA pool for TLS
+		tlsConfig := &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+	} else {
+		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	}
+	opts = append(opts, grpc.WithBlock())
+
+	conn, err := grpc.DialContext(ctx, aaaServiceAddr, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to AAA service: %w", err)
 	}

@@ -2,12 +2,14 @@ package aaa
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"log"
 	"time"
 
 	pb "github.com/Kisanlink/aaa-service/v2/pkg/proto"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 )
@@ -47,7 +49,7 @@ func apiKeyInterceptor(apiKey string) grpc.UnaryClientInterceptor {
 
 // NewCatalogGRPCClient creates a new catalog gRPC client targeting the provided address.
 // apiKey is optional - if provided, it will be used for service-to-service authentication.
-func NewCatalogGRPCClient(address string, apiKey string) (*CatalogGRPCClient, error) {
+func NewCatalogGRPCClient(address string, apiKey string, useTLS bool) (*CatalogGRPCClient, error) {
 	if address == "" {
 		return nil, fmt.Errorf("catalog gRPC address is empty")
 	}
@@ -56,10 +58,17 @@ func NewCatalogGRPCClient(address string, apiKey string) (*CatalogGRPCClient, er
 	defer cancel()
 
 	// Create dial options
-	opts := []grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(),
+	var opts []grpc.DialOption
+	if useTLS {
+		// Use system CA pool for TLS
+		tlsConfig := &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+	} else {
+		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
+	opts = append(opts, grpc.WithBlock())
 
 	// Add unary interceptor for x-api-key if configured
 	if apiKey != "" {

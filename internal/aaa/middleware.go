@@ -27,11 +27,11 @@ func NewAAAMiddleware(config *config.Config) (*AAAMiddleware, error) {
 
 	// Only initialize gRPC client if AAA is enabled
 	if config.AAA.Enabled {
-		authzClient, err = NewAuthzClient(config.AAA.GRPCAddress)
+		authzClient, err = NewAuthzClient(config.AAA.GRPCAddress, config.AAA.UseTLS)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create authorization client: %w", err)
 		}
-		utils.Info("AAA middleware initialized with gRPC client")
+		utils.Info("AAA middleware initialized with gRPC client (TLS:", config.AAA.UseTLS, ")")
 	} else {
 		utils.Info("⚠️  AAA middleware initialized in BYPASS mode (disabled)")
 	}

@@ -1,5 +1,4 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Transform: AWS::LanguageExtensions
 Description: 'Kisanlink ERP Application Infrastructure - Multi-tenant deployment for FPO organizations'
 
 Parameters:
@@ -166,9 +165,7 @@ Resources:
   AttachmentsBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName:
-        Fn::ToLower:
-          Fn::Sub: '${FPOIdentifier}-${Environment}-erp-attachments'
+      BucketName: !Sub '${FPOIdentifier}-${Environment}-erp-attachments'
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -852,14 +849,16 @@ Resources:
               Value: !If [IsProduction, 'release', 'debug']
             - Name: SERVER_PUBLIC_URL
               Value: !Sub 'http://${ApplicationLoadBalancer.DNSName}'
-            - Name: POSTGRES_HOST
+            - Name: DB_POSTGRES_HOST
               Value: !GetAtt DBInstance.Endpoint.Address
-            - Name: POSTGRES_PORT
+            - Name: DB_POSTGRES_PORT
               Value: !Sub '${DBInstance.Endpoint.Port}'
-            - Name: POSTGRES_DB
+            - Name: DB_POSTGRES_DBNAME
               Value: !Sub '${FPOIdentifier}_erp'
-            - Name: POSTGRES_USER
+            - Name: DB_POSTGRES_USER
               Value: !Ref DBUsername
+            - Name: DB_AUTO_MIGRATE
+              Value: 'true'
             - Name: POSTGRES_MAX_IDLE_CONNS
               Value: '10'
             - Name: POSTGRES_MAX_OPEN_CONNS
@@ -873,6 +872,8 @@ Resources:
             - Name: AAA_TIMEOUT_SECONDS
               Value: '30'
             - Name: AAA_ENABLED
+              Value: 'true'
+            - Name: AAA_GRPC_USE_TLS
               Value: 'true'
             - Name: AWS_REGION
               Value: !Ref AWSRegion
@@ -902,7 +903,7 @@ Resources:
             - Name: AWS_USE_PATH_STYLE
               Value: 'false'
           Secrets:
-            - Name: POSTGRES_PASSWORD
+            - Name: DB_POSTGRES_PASSWORD
               ValueFrom: !Ref DBPasswordSecret
             - Name: JWT_SECRET
               ValueFrom: !Ref JWTSecretParameter

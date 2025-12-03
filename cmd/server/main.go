@@ -93,7 +93,7 @@ func main() {
 	if cfg.AAA.Enabled && cfg.AAA.GRPCAddress != "" {
 		log.Println("Attempting to seed AAA roles and permissions for ERP module...")
 
-		catalogClient, err := aaa.NewCatalogGRPCClient(cfg.AAA.GRPCAddress, cfg.AAA.APIKey)
+		catalogClient, err := aaa.NewCatalogGRPCClient(cfg.AAA.GRPCAddress, cfg.AAA.APIKey, cfg.AAA.UseTLS)
 		if err != nil {
 			log.Printf("Warning: AAA catalog client initialization failed: %v", err)
 		} else {

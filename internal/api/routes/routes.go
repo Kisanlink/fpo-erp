@@ -63,7 +63,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	var addressClient *aaa.AddressGRPCClient
 	if cfg.AAA.Enabled && cfg.AAA.GRPCAddress != "" {
 		var err error
-		addressClient, err = aaa.NewAddressGRPCClient(cfg.AAA.GRPCAddress)
+		addressClient, err = aaa.NewAddressGRPCClient(cfg.AAA.GRPCAddress, cfg.AAA.UseTLS)
 		if err != nil {
 			panic("Failed to initialize AAA address gRPC client: " + err.Error())
 		}

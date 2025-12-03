@@ -63,6 +63,7 @@ type AAAConfig struct {
 	CacheTTL    int    `mapstructure:"cache_ttl"`
 	GRPCAddress string `mapstructure:"grpc_address"` // gRPC address for authorization (e.g., localhost:50051)
 	Timeout     int    `mapstructure:"timeout_seconds"`
+	UseTLS      bool   `mapstructure:"use_tls"` // Use TLS for gRPC connections (default: false)
 }
 
 type WebhookConfig struct {
@@ -190,6 +191,16 @@ func Load() *Config {
 		}
 	}
 
+	// Parse AAA TLS flag
+	aaaUseTLS := false
+	if aaaUseTLSStr := os.Getenv("AAA_GRPC_USE_TLS"); aaaUseTLSStr != "" {
+		if parsed, err := strconv.ParseBool(aaaUseTLSStr); err == nil {
+			aaaUseTLS = parsed
+		} else {
+			utils.Info("Invalid AAA_GRPC_USE_TLS value, defaulting to false:", aaaUseTLSStr)
+		}
+	}
+
 	// Load all environment variables using os.Getenv directly
 	config := &Config{
 		Server: ServerConfig{
@@ -228,6 +239,7 @@ func Load() *Config {
 			CacheTTL:    aaaCacheTTL,
 			GRPCAddress: os.Getenv("AAA_GRPC_ADDRESS"),
 			Timeout:     aaaTimeout,
+			UseTLS:      aaaUseTLS,
 		},
 		Webhook: WebhookConfig{
 			Secret:          os.Getenv("WEBHOOK_SECRET"),
