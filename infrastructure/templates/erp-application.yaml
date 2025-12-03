@@ -269,7 +269,7 @@ Resources:
       DBInstanceIdentifier: !Sub '${FPOIdentifier}-${Environment}-erp-db'
       DBName: !Sub '${FPOIdentifier}_erp'
       Engine: postgres
-      EngineVersion: '14.13'
+      EngineVersion: '17.4'
       DBInstanceClass: !Ref DBInstanceClass
       AllocatedStorage: !Ref DBAllocatedStorage
       StorageType: gp3
