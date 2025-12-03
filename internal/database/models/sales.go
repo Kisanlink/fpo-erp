@@ -22,6 +22,10 @@ type Sale struct {
 	SaleType    string  `gorm:"type:varchar(20);not null" json:"sale_type"`             // in_store, delivery
 	ApplyTaxes  bool    `gorm:"type:boolean;not null;default:false" json:"apply_taxes"` // Controls tax calculation for this sale
 
+	// Cancellation fields
+	CancelledAt        *time.Time `gorm:"type:timestamptz" json:"cancelled_at,omitempty"`
+	CancellationReason *string    `gorm:"type:varchar(50)" json:"cancellation_reason,omitempty"`
+
 	// Associations
 	Warehouse Warehouse  `gorm:"foreignKey:WarehouseID" json:"warehouse,omitempty"`
 	Items     []SaleItem `gorm:"foreignKey:SaleID" json:"items,omitempty"`
@@ -157,6 +161,10 @@ type SaleResponse struct {
 	PaymentMode string  `json:"payment_mode"`
 	SaleType    string  `json:"sale_type"`
 	ApplyTaxes  bool    `json:"apply_taxes"`
+
+	// Cancellation fields
+	CancelledAt        *string `json:"cancelled_at,omitempty"`
+	CancellationReason *string `json:"cancellation_reason,omitempty"`
 
 	Items     []SaleItemResponse `json:"items,omitempty"`
 	Breakdown *SaleBreakdown     `json:"breakdown,omitempty"` // Detailed breakdown of amounts

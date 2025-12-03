@@ -78,3 +78,12 @@ func (m *MockSalesService) GetTopSellingProducts(limit int) ([]models.TopSelling
 	}
 	return args.Get(0).([]models.TopSellingProductResponse), args.Error(1)
 }
+
+//nolint:typecheck // mock.Mock.Called is available at runtime
+func (m *MockSalesService) CancelSale(saleID string, req *models.CancelSaleRequest) (*models.CancelSaleResponse, error) {
+	args := m.Called(saleID, req)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.CancelSaleResponse), args.Error(1)
+}

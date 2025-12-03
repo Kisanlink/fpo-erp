@@ -680,6 +680,64 @@ func (h *SalesHandler) GetReturnsForSale(c *gin.Context) {
 	utils.OKResponse(c, "Returns for sale retrieved successfully", returns)
 }
 
+// CancelSale handles POST /api/v1/sales/:id/cancel
+// @Summary Cancel Sale
+// @Description Cancel a sale and return inventory to original batches
+// @Tags Sales
+// @Accept json
+// @Produce json
+// @Param id path string true "Sale ID" example(SALE_12345678)
+// @Param request body models.CancelSaleRequest true "Cancellation data"
+// @Success 200 {object} utils.Response{data=models.CancelSaleResponse} "Sale cancelled successfully"
+// @Failure 400 {object} utils.ErrorResponseModel "Bad request"
+// @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 404 {object} utils.ErrorResponseModel "Sale not found"
+// @Failure 409 {object} utils.ErrorResponseModel "Conflict - sale cannot be cancelled"
+// @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
+// @Security BearerAuth
+// @Router /api/v1/sales/{id}/cancel [post]
+func (h *SalesHandler) CancelSale(c *gin.Context) {
+	saleID := c.Param("id")
+	h.logger.Info("Handling cancel sale request",
+		zap.String("sale_id", saleID),
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
+	var req models.CancelSaleRequest
+
+	// Validate request
+	if err := utils.ValidateRequest(c, &req); err != nil {
+		h.logger.Error("Invalid request body for cancel sale",
+			zap.Error(err),
+			zap.String("sale_id", saleID))
+		utils.BadRequestResponse(c, "Invalid request data", err)
+		return
+	}
+
+	h.logger.Debug("Calling sales service to cancel sale",
+		zap.String("sale_id", saleID),
+		zap.String("reason", req.Reason),
+		zap.String("performed_by", req.PerformedBy))
+
+	response, err := h.salesService.CancelSale(saleID, &req)
+	if err != nil {
+		h.logger.Error("Failed to cancel sale via service",
+			zap.Error(err),
+			zap.String("sale_id", saleID),
+			zap.String("reason", req.Reason))
+		utils.HandleServiceError(c, "Failed to cancel sale", err)
+		return
+	}
+
+	h.logger.Info("Sale cancelled successfully via handler",
+		zap.String("sale_id", saleID),
+		zap.String("cancellation_id", response.CancellationID),
+		zap.Int("items_restored", len(response.InventoryRestored)))
+
+	utils.OKResponse(c, "Sale cancelled successfully", response)
+}
+
 // RegisterRoutes registers all sales routes
 func (h *SalesHandler) RegisterRoutes(router *gin.RouterGroup) {
 	sales := router.Group("/sales")
@@ -692,6 +750,9 @@ func (h *SalesHandler) RegisterRoutes(router *gin.RouterGroup) {
 		sales.PUT("/:id", h.aaaMiddleware.RequireOrgPermission("sale", "update"), h.UpdateSale)
 		sales.PATCH("/:id/status", h.aaaMiddleware.RequireOrgPermission("sale", "update"), h.UpdateSaleStatus)
 		sales.DELETE("/:id", h.aaaMiddleware.RequireOrgPermission("sale", "delete"), h.DeleteSale)
+
+		// Cancellation route - requires sale:cancel permission
+		sales.POST("/:id/cancel", h.aaaMiddleware.RequireOrgPermission("sale", "cancel"), h.CancelSale)
 
 		// Read routes - Director=R, CEO=CRUD, Auditor=R, Accountant=R, Tech_Support=R/W (temp), Store_Manager=R, Store_Staff=CRUD
 		sales.GET("", h.aaaMiddleware.RequireOrgPermission("sale", "read"), h.GetAllSales)

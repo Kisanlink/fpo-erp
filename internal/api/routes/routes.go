@@ -47,6 +47,9 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	// Webhook repositories
 	webhookRepo := repositories.NewWebhookRepository(db)
 
+	// Sales cancellation repository
+	saleCancellationRepo := repositories.NewSaleCancellationRepository(db)
+
 	// Initialize S3 service
 	s3Service, err := services.NewS3Service(cfg)
 	if err != nil {
@@ -81,7 +84,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	inventoryService := services.NewInventoryService(inventoryRepo, warehouseRepo, productRepo, productVariantRepo, addressClient, logger)
 	discountsService := services.NewDiscountsService(discountRepo, productRepo, warehouseRepo, logger)
 	taxService := services.NewTaxService(taxRepo, logger)
-	salesService := services.NewSalesService(salesRepo, productRepo, inventoryRepo, productVariantRepo, discountRepo, taxRepo, warehouseRepo, logger)
+	salesService := services.NewSalesService(salesRepo, productRepo, inventoryRepo, productVariantRepo, discountRepo, taxRepo, warehouseRepo, saleCancellationRepo, logger)
 	returnsService := services.NewReturnsService(returnsRepo, salesRepo, inventoryRepo, logger)
 	attachmentService := services.NewAttachmentService(attachmentRepo, s3Service, logger)
 	refundPoliciesService := services.NewRefundPoliciesService(refundPoliciesRepo, logger)

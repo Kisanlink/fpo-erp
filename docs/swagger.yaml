@@ -123,6 +123,43 @@ definitions:
       updated_at:
         type: string
     type: object
+  models.CancelSaleRequest:
+    properties:
+      performed_by:
+        type: string
+      reason:
+        enum:
+        - customer_request
+        - payment_failed
+        - out_of_stock
+        - pricing_error
+        - duplicate_order
+        - fraud_suspected
+        - system_error
+        - other
+        type: string
+      reason_details:
+        maxLength: 1000
+        type: string
+      skip_inventory_return:
+        type: boolean
+    required:
+    - performed_by
+    - reason
+    type: object
+  models.CancelSaleResponse:
+    properties:
+      cancellation_id:
+        type: string
+      financial_adjustments:
+        $ref: '#/definitions/models.FinancialAdjustmentsResponse'
+      inventory_restored:
+        items:
+          $ref: '#/definitions/models.InventoryRestoredItem'
+        type: array
+      sale:
+        $ref: '#/definitions/models.SaleResponse'
+    type: object
   models.CollaboratorProductResponse:
     properties:
       brand_name:
@@ -887,6 +924,15 @@ definitions:
       value:
         type: number
     type: object
+  models.DiscountReversedInfo:
+    properties:
+      amount_reversed:
+        type: number
+      discount_id:
+        type: string
+      usage_decremented:
+        type: boolean
+    type: object
   models.DiscountType:
     enum:
     - flat
@@ -898,6 +944,12 @@ definitions:
     x-enum-comments:
       DiscountTypeFlat: Fixed amount discount
       DiscountTypePercentage: Percentage discount
+    x-enum-descriptions:
+    - Fixed amount discount
+    - Percentage discount
+    - ""
+    - ""
+    - ""
     x-enum-varnames:
     - DiscountTypeFlat
     - DiscountTypePercentage
@@ -939,6 +991,13 @@ definitions:
         type: string
       value:
         type: number
+    type: object
+  models.FinancialAdjustmentsResponse:
+    properties:
+      discount_reversed:
+        $ref: '#/definitions/models.DiscountReversedInfo'
+      tax_voided:
+        $ref: '#/definitions/models.TaxVoidedInfo'
     type: object
   models.GRNItemResponse:
     properties:
@@ -1044,6 +1103,17 @@ definitions:
       variant_id:
         type: string
       warehouse_id:
+        type: string
+    type: object
+  models.InventoryRestoredItem:
+    properties:
+      batch_id:
+        type: string
+      quantity_restored:
+        type: integer
+      transaction_id:
+        type: string
+      variant_id:
         type: string
     type: object
   models.InventoryTransactionResponse:
@@ -1594,6 +1664,11 @@ definitions:
         allOf:
         - $ref: '#/definitions/models.SaleBreakdown'
         description: Detailed breakdown of amounts
+      cancellation_reason:
+        type: string
+      cancelled_at:
+        description: Cancellation fields
+        type: string
       created_at:
         type: string
       farmer_id:
@@ -1760,6 +1835,10 @@ definitions:
       TaxCalculationFixed: Fixed amount per unit
       TaxCalculationPercentage: Percentage of base amount
       TaxCalculationTiered: Tiered calculation
+    x-enum-descriptions:
+    - Percentage of base amount
+    - Fixed amount per unit
+    - Tiered calculation
     x-enum-varnames:
     - TaxCalculationPercentage
     - TaxCalculationFixed
@@ -1941,6 +2020,19 @@ definitions:
       TaxTypeTCS: Tax Collected at Source
       TaxTypeTDS: Tax Deducted at Source
       TaxTypeVAT: Value Added Tax
+    x-enum-descriptions:
+    - Central Goods and Services Tax
+    - State Goods and Services Tax
+    - Integrated Goods and Services Tax
+    - Value Added Tax
+    - Securities Transaction Tax
+    - Tax Deducted at Source
+    - Tax Collected at Source
+    - Excise Duty
+    - Customs Duty
+    - Item-specific tax
+    - Category-based tax
+    - Flat tax amount
     x-enum-varnames:
     - TaxTypeCGST
     - TaxTypeSGST
@@ -1954,6 +2046,13 @@ definitions:
     - TaxTypeItemSpecific
     - TaxTypeCategory
     - TaxTypeFlat
+  models.TaxVoidedInfo:
+    properties:
+      amount_voided:
+        type: number
+      tax_summary_id:
+        type: string
+    type: object
   models.TopSellingProductResponse:
     properties:
       product_id:
@@ -7851,6 +7950,65 @@ paths:
       security:
       - BearerAuth: []
       summary: Update Sale
+      tags:
+      - Sales
+  /api/v1/sales/{id}/cancel:
+    post:
+      consumes:
+      - application/json
+      description: Cancel a sale and return inventory to original batches
+      parameters:
+      - description: Sale ID
+        example: SALE_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Cancellation data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CancelSaleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sale cancelled successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.CancelSaleResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Sale not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "409":
+          description: Conflict - sale cannot be cancelled
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Cancel Sale
       tags:
       - Sales
   /api/v1/sales/{id}/returns:

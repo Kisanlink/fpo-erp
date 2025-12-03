@@ -1,12 +1,11 @@
 AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::LanguageExtensions
 Description: 'Kisanlink ERP Application Infrastructure - Multi-tenant deployment for FPO organizations'
 
 Parameters:
   FPOIdentifier:
     Type: String
-    Description: 'Unique FPO identifier (e.g., fpo001, fpo002)'
-    AllowedPattern: '^fpo[0-9]{3}$'
-    ConstraintDescription: 'Must be in format fpo### (e.g., fpo001)'
+    Description: 'Unique FPO/Organization identifier (e.g., ORGN00000001)'
 
   Environment:
     Type: String
@@ -167,7 +166,9 @@ Resources:
   AttachmentsBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub '${FPOIdentifier}-${Environment}-erp-attachments'
+      BucketName:
+        Fn::ToLower:
+          Fn::Sub: '${FPOIdentifier}-${Environment}-erp-attachments'
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -268,7 +269,7 @@ Resources:
       DBInstanceIdentifier: !Sub '${FPOIdentifier}-${Environment}-erp-db'
       DBName: !Sub '${FPOIdentifier}_erp'
       Engine: postgres
-      EngineVersion: '14.10'
+      EngineVersion: '17.4'
       DBInstanceClass: !Ref DBInstanceClass
       AllocatedStorage: !Ref DBAllocatedStorage
       StorageType: gp3
@@ -763,9 +764,12 @@ Resources:
                   - 'secretsmanager:GetSecretValue'
                   - 'kms:Decrypt'
                 Resource:
-                  - !GetAtt DBPasswordSecret.Arn
-                  - !GetAtt JWTSecretParameter.Arn
-                  - !GetAtt AAAJWTSecretParameter.Arn
+                  - !Ref DBPasswordSecret
+                  - !Ref JWTSecretParameter
+                  - !Ref AAAJWTSecretParameter
+                  - !Ref WebhookSecretParameter
+                  - !Ref EcommerceAuthTokenParameter
+                  - !Ref AAAAPIKeyParameter
       Tags:
         - Key: Name
           Value: !Sub '${FPOIdentifier}-${Environment}-erp-exec-role'
@@ -840,9 +844,10 @@ Resources:
           PortMappings:
             - ContainerPort: !Ref ContainerPort
               Protocol: tcp
+          Essential: true
           Environment:
             - Name: SERVER_HTTP_PORT
-              Value: !Ref ContainerPort
+              Value: !Sub '${ContainerPort}'
             - Name: SERVER_MODE
               Value: !If [IsProduction, 'release', 'debug']
             - Name: SERVER_PUBLIC_URL
@@ -850,7 +855,7 @@ Resources:
             - Name: POSTGRES_HOST
               Value: !GetAtt DBInstance.Endpoint.Address
             - Name: POSTGRES_PORT
-              Value: !GetAtt DBInstance.Endpoint.Port
+              Value: !Sub '${DBInstance.Endpoint.Port}'
             - Name: POSTGRES_DB
               Value: !Sub '${FPOIdentifier}_erp'
             - Name: POSTGRES_USER
@@ -898,17 +903,17 @@ Resources:
               Value: 'false'
           Secrets:
             - Name: POSTGRES_PASSWORD
-              ValueFrom: !GetAtt DBPasswordSecret.Arn
+              ValueFrom: !Ref DBPasswordSecret
             - Name: JWT_SECRET
-              ValueFrom: !GetAtt JWTSecretParameter.Arn
+              ValueFrom: !Ref JWTSecretParameter
             - Name: AAA_JWT_SECRET
-              ValueFrom: !GetAtt AAAJWTSecretParameter.Arn
+              ValueFrom: !Ref AAAJWTSecretParameter
             - Name: WEBHOOK_SECRET
-              ValueFrom: !GetAtt WebhookSecretParameter.Arn
+              ValueFrom: !Ref WebhookSecretParameter
             - Name: ECOMMERCE_GRPC_AUTH_TOKEN
-              ValueFrom: !GetAtt EcommerceAuthTokenParameter.Arn
+              ValueFrom: !Ref EcommerceAuthTokenParameter
             - Name: AAA_API_KEY
-              ValueFrom: !GetAtt AAAAPIKeyParameter.Arn
+              ValueFrom: !Ref AAAAPIKeyParameter
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -935,6 +940,7 @@ Resources:
     Type: AWS::ECS::Service
     DependsOn:
       - ALBListenerHTTP
+      - DBInstance
     Properties:
       ServiceName: !Sub '${FPOIdentifier}-${Environment}-erp-service'
       Cluster: !Ref ECSCluster
@@ -1136,6 +1142,8 @@ Resources:
       Dimensions:
         - Name: TargetGroup
           Value: !GetAtt ALBTargetGroup.TargetGroupFullName
+        - Name: LoadBalancer
+          Value: !GetAtt ApplicationLoadBalancer.LoadBalancerFullName
       AlarmActions:
         - !Ref AlertTopic
       OKActions:
@@ -1231,7 +1239,7 @@ Resources:
               "height": 6,
               "properties": {
                 "metrics": [
-                  [ "AWS/ECS", "CPUUtilization", { "stat": "Average", "label": "CPU Average" } ],
+                  [ "AWS/ECS", "CPUUtilization", "ServiceName", "${FPOIdentifier}-${Environment}-erp-service", "ClusterName", "${FPOIdentifier}-${Environment}-erp-cluster", { "stat": "Average", "label": "CPU Average" } ],
                   [ "...", { "stat": "Maximum", "label": "CPU Maximum" } ]
                 ],
                 "view": "timeSeries",
@@ -1264,7 +1272,7 @@ Resources:
               "height": 6,
               "properties": {
                 "metrics": [
-                  [ "AWS/ECS", "MemoryUtilization", { "stat": "Average", "label": "Memory Average" } ],
+                  [ "AWS/ECS", "MemoryUtilization", "ServiceName", "${FPOIdentifier}-${Environment}-erp-service", "ClusterName", "${FPOIdentifier}-${Environment}-erp-cluster", { "stat": "Average", "label": "Memory Average" } ],
                   [ "...", { "stat": "Maximum", "label": "Memory Maximum" } ]
                 ],
                 "view": "timeSeries",
@@ -1358,7 +1366,7 @@ Resources:
               "height": 6,
               "properties": {
                 "metrics": [
-                  [ "AWS/RDS", "CPUUtilization", { "stat": "Average" } ]
+                  [ "AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", "${FPOIdentifier}-${Environment}-erp-db", { "stat": "Average" } ]
                 ],
                 "view": "timeSeries",
                 "stacked": false,
@@ -1381,7 +1389,7 @@ Resources:
               "height": 6,
               "properties": {
                 "metrics": [
-                  [ "AWS/RDS", "DatabaseConnections", { "stat": "Average", "label": "Active Connections" } ]
+                  [ "AWS/RDS", "DatabaseConnections", "DBInstanceIdentifier", "${FPOIdentifier}-${Environment}-erp-db", { "stat": "Average", "label": "Active Connections" } ]
                 ],
                 "view": "timeSeries",
                 "stacked": false,
@@ -1407,7 +1415,7 @@ Resources:
               "height": 6,
               "properties": {
                 "metrics": [
-                  [ "AWS/RDS", "FreeStorageSpace", { "stat": "Average" } ]
+                  [ "AWS/RDS", "FreeStorageSpace", "DBInstanceIdentifier", "${FPOIdentifier}-${Environment}-erp-db", { "stat": "Average" } ]
                 ],
                 "view": "timeSeries",
                 "stacked": false,
@@ -1438,7 +1446,7 @@ Resources:
               "height": 6,
               "properties": {
                 "metrics": [
-                  [ "AWS/ECS", "ServiceRunningTaskCount", { "stat": "Average", "label": "Running Tasks" } ]
+                  [ "AWS/ECS", "RunningTaskCount", "ServiceName", "${FPOIdentifier}-${Environment}-erp-service", "ClusterName", "${FPOIdentifier}-${Environment}-erp-cluster", { "stat": "Average", "label": "Running Tasks" } ]
                 ],
                 "view": "timeSeries",
                 "stacked": false,
@@ -1455,8 +1463,8 @@ Resources:
               "height": 6,
               "properties": {
                 "metrics": [
-                  [ "AWS/RDS", "ReadLatency", { "stat": "Average", "label": "Read Latency" } ],
-                  [ ".", "WriteLatency", { "stat": "Average", "label": "Write Latency" } ]
+                  [ "AWS/RDS", "ReadLatency", "DBInstanceIdentifier", "${FPOIdentifier}-${Environment}-erp-db", { "stat": "Average", "label": "Read Latency" } ],
+                  [ ".", "WriteLatency", "DBInstanceIdentifier", "${FPOIdentifier}-${Environment}-erp-db", { "stat": "Average", "label": "Write Latency" } ]
                 ],
                 "view": "timeSeries",
                 "stacked": false,
@@ -1541,18 +1549,6 @@ Outputs:
     Value: !Ref AlertTopic
     Export:
       Name: !Sub '${AWS::StackName}-AlertTopicArn'
-
-  AuditLogsBucketName:
-    Description: 'S3 bucket for CloudTrail audit logs'
-    Value: !Ref AuditLogsBucket
-    Export:
-      Name: !Sub '${AWS::StackName}-AuditLogsBucket'
-
-  AuditTrailArn:
-    Description: 'CloudTrail ARN for audit logging'
-    Value: !GetAtt AuditTrail.Arn
-    Export:
-      Name: !Sub '${AWS::StackName}-AuditTrailArn'
 
   DashboardURL:
     Description: 'CloudWatch Dashboard URL'
