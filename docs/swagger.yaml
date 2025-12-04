@@ -6318,7 +6318,7 @@ paths:
       - BearerAuth: []
       summary: Get Aggregated Product Detail
       tags:
-      - Aggregation
+      - Products
   /api/v1/products/{id}/prices/current:
     get:
       description: Retrieve the current active price for a specific product
@@ -6683,7 +6683,7 @@ paths:
       - BearerAuth: []
       summary: Get Aggregated Variant Detail
       tags:
-      - Aggregation
+      - Products
   /api/v1/purchase-orders:
     get:
       description: Retrieve all purchase orders (requires authentication)
@@ -8617,7 +8617,7 @@ paths:
       - BearerAuth: []
       summary: Get Sales Context
       tags:
-      - Aggregation
+      - Sales
   /api/v1/sales/date-range:
     get:
       description: Retrieve sales within a specific date range

@@ -32,7 +32,7 @@ func NewAggregationHandler(service *services.AggregationService, aaaMiddleware *
 // GetProductDetail handles GET /api/v1/products/:id/detail
 // @Summary Get Aggregated Product Detail
 // @Description Retrieves complete product information including variants, prices, inventory availability, and collaborator details in a single call. Reduces API calls by 75%.
-// @Tags Aggregation
+// @Tags Products
 // @Produce json
 // @Param id path string true "Product ID" example(PROD_12345678)
 // @Param include query string false "Comma-separated list of data to include: variants,prices,inventory,collaborators,taxes. Default: all" example(variants,prices,inventory)
@@ -96,7 +96,7 @@ func (h *AggregationHandler) GetProductDetail(c *gin.Context) {
 // GetVariantDetail handles GET /api/v1/products/variants/:id/detail
 // @Summary Get Aggregated Variant Detail
 // @Description Retrieves complete information for a specific product variant including prices, inventory, and parent product/collaborator info.
-// @Tags Aggregation
+// @Tags Products
 // @Produce json
 // @Param id path string true "Variant ID" example(PVAR_12345678)
 // @Param include query string false "Comma-separated list: prices,inventory,product,collaborator,taxes. Default: all" example(prices,inventory)
@@ -147,7 +147,7 @@ func (h *AggregationHandler) GetVariantDetail(c *gin.Context) {
 // GetSalesContext handles GET /api/v1/sales/context
 // @Summary Get Sales Context
 // @Description Retrieves all data needed for sale/checkout operations in a single call including available inventory, prices, taxes, discounts, and payment methods. Reduces API calls by 80-83%.
-// @Tags Aggregation
+// @Tags Sales
 // @Produce json
 // @Param warehouse_id query string false "Filter inventory to specific warehouse" example(WH_001)
 // @Param include_zero_stock query bool false "Include products with zero stock. Default: false" example(false)
