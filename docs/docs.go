@@ -6586,6 +6586,917 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/reports/customers": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Generate a customer report with filtering, pagination, and export options",
+                "produces": [
+                    "application/json",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    "application/pdf"
+                ],
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Generate Customer Report",
+                "parameters": [
+                    {
+                        "enum": [
+                            "json",
+                            "xlsx",
+                            "pdf"
+                        ],
+                        "type": "string",
+                        "default": "json",
+                        "description": "Output format: json, xlsx, pdf",
+                        "name": "format",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Records per page (max: 500)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Records to skip",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search by farmer ID",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by warehouse ID",
+                        "name": "warehouse_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Minimum total purchase value",
+                        "name": "min_purchase_value",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Maximum total purchase value",
+                        "name": "max_purchase_value",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter start date (YYYY-MM-DD)",
+                        "name": "start_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter end date (YYYY-MM-DD)",
+                        "name": "end_date",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Report generated successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.ReportResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/reports/inventory": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Generate an inventory report with filtering, pagination, and export options",
+                "produces": [
+                    "application/json",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    "application/pdf"
+                ],
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Generate Inventory Report",
+                "parameters": [
+                    {
+                        "enum": [
+                            "json",
+                            "xlsx",
+                            "pdf"
+                        ],
+                        "type": "string",
+                        "default": "json",
+                        "description": "Output format: json, xlsx, pdf",
+                        "name": "format",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Records per page (max: 500)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Records to skip",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by warehouse ID",
+                        "name": "warehouse_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by product ID",
+                        "name": "product_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by variant ID",
+                        "name": "variant_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Show only low stock items",
+                        "name": "low_stock",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Show items expiring within 30 days",
+                        "name": "expiring_soon",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include expired items",
+                        "name": "expired",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Minimum quantity filter",
+                        "name": "min_quantity",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum quantity filter",
+                        "name": "max_quantity",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Report generated successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.ReportResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/reports/products": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Generate a product master report with filtering, pagination, and export options",
+                "produces": [
+                    "application/json",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    "application/pdf"
+                ],
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Generate Product Master Report",
+                "parameters": [
+                    {
+                        "enum": [
+                            "json",
+                            "xlsx",
+                            "pdf"
+                        ],
+                        "type": "string",
+                        "default": "json",
+                        "description": "Output format: json, xlsx, pdf",
+                        "name": "format",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Records per page (max: 500)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Records to skip",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search by product name or description",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter products with/without variants",
+                        "name": "has_variants",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by active status",
+                        "name": "is_active",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "created_at",
+                        "description": "Sort field",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ],
+                        "type": "string",
+                        "default": "desc",
+                        "description": "Sort order: asc, desc",
+                        "name": "sort_order",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Report generated successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.ReportResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/reports/purchases": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Generate a purchase orders report with filtering, pagination, and export options",
+                "produces": [
+                    "application/json",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    "application/pdf"
+                ],
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Generate Purchase Report",
+                "parameters": [
+                    {
+                        "enum": [
+                            "json",
+                            "xlsx",
+                            "pdf"
+                        ],
+                        "type": "string",
+                        "default": "json",
+                        "description": "Output format: json, xlsx, pdf",
+                        "name": "format",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Records per page (max: 500)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Records to skip",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by vendor/collaborator ID",
+                        "name": "collaborator_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by warehouse ID",
+                        "name": "warehouse_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "Filter by status (comma-separated)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "Filter by payment status",
+                        "name": "payment_status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search by PO number",
+                        "name": "po_number",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter start date (YYYY-MM-DD)",
+                        "name": "start_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter end date (YYYY-MM-DD)",
+                        "name": "end_date",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Report generated successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.ReportResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/reports/returns": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Generate a returns report with filtering, pagination, and export options",
+                "produces": [
+                    "application/json",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    "application/pdf"
+                ],
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Generate Returns Report",
+                "parameters": [
+                    {
+                        "enum": [
+                            "json",
+                            "xlsx",
+                            "pdf"
+                        ],
+                        "type": "string",
+                        "default": "json",
+                        "description": "Output format: json, xlsx, pdf",
+                        "name": "format",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Records per page (max: 500)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Records to skip",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by original sale ID",
+                        "name": "sale_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by warehouse ID",
+                        "name": "warehouse_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "Filter by status (comma-separated)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Minimum refund amount",
+                        "name": "min_refund",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Maximum refund amount",
+                        "name": "max_refund",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter start date (YYYY-MM-DD)",
+                        "name": "start_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter end date (YYYY-MM-DD)",
+                        "name": "end_date",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Report generated successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.ReportResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/reports/sales": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Generate a sales report with filtering, pagination, and export options",
+                "produces": [
+                    "application/json",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    "application/pdf"
+                ],
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Generate Sales Report",
+                "parameters": [
+                    {
+                        "enum": [
+                            "json",
+                            "xlsx",
+                            "pdf"
+                        ],
+                        "type": "string",
+                        "default": "json",
+                        "description": "Output format: json, xlsx, pdf",
+                        "name": "format",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Records per page (max: 500)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Records to skip",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by warehouse ID",
+                        "name": "warehouse_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by farmer/customer ID",
+                        "name": "farmer_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "Filter by status (comma-separated)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "Filter by payment mode",
+                        "name": "payment_mode",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "Filter by sale type",
+                        "name": "sale_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Minimum sale amount",
+                        "name": "min_amount",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Maximum sale amount",
+                        "name": "max_amount",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter start date (YYYY-MM-DD)",
+                        "name": "start_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter end date (YYYY-MM-DD)",
+                        "name": "end_date",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Report generated successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.ReportResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/reports/vendors": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Generate a vendor master report with filtering, pagination, and export options",
+                "produces": [
+                    "application/json",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    "application/pdf"
+                ],
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Generate Vendor Master Report",
+                "parameters": [
+                    {
+                        "enum": [
+                            "json",
+                            "xlsx",
+                            "pdf"
+                        ],
+                        "type": "string",
+                        "default": "json",
+                        "description": "Output format: json, xlsx, pdf",
+                        "name": "format",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Records per page (max: 500)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Records to skip",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search by company name, contact person, or GST",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by active status",
+                        "name": "is_active",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter vendors with/without GST",
+                        "name": "has_gst",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort field",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ],
+                        "type": "string",
+                        "description": "Sort order: asc, desc",
+                        "name": "sort_order",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Report generated successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.ReportResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponseModel"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/returns": {
             "get": {
                 "security": [
@@ -13762,6 +14673,23 @@ const docTemplate = `{
                 }
             }
         },
+        "models.PaginationInfo": {
+            "type": "object",
+            "properties": {
+                "has_more": {
+                    "type": "boolean"
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
         "models.ProductAvailabilityResponse": {
             "type": "object",
             "properties": {
@@ -14100,6 +15028,26 @@ const docTemplate = `{
                 "updated_at": {
                     "type": "string"
                 }
+            }
+        },
+        "models.ReportResponse": {
+            "type": "object",
+            "properties": {
+                "filters_applied": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "generated_at": {
+                    "type": "string"
+                },
+                "pagination": {
+                    "$ref": "#/definitions/models.PaginationInfo"
+                },
+                "records": {},
+                "report_type": {
+                    "type": "string"
+                },
+                "summary": {}
             }
         },
         "models.ReturnItemResponse": {

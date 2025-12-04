@@ -64,6 +64,8 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 			sale_type TEXT NOT NULL,
 			is_returned INTEGER DEFAULT 0,
 			apply_taxes INTEGER NOT NULL DEFAULT 0,
+			cancelled_at DATETIME,
+			cancellation_reason TEXT,
 			created_at DATETIME,
 			updated_at DATETIME,
 			deleted_at DATETIME,

@@ -1258,6 +1258,17 @@ definitions:
     - external_order_id
     - timestamp
     type: object
+  models.PaginationInfo:
+    properties:
+      has_more:
+        type: boolean
+      limit:
+        type: integer
+      offset:
+        type: integer
+      total:
+        type: integer
+    type: object
   models.ProductAvailabilityResponse:
     properties:
       address:
@@ -1480,6 +1491,20 @@ definitions:
         type: number
       updated_at:
         type: string
+    type: object
+  models.ReportResponse:
+    properties:
+      filters_applied:
+        additionalProperties: true
+        type: object
+      generated_at:
+        type: string
+      pagination:
+        $ref: '#/definitions/models.PaginationInfo'
+      records: {}
+      report_type:
+        type: string
+      summary: {}
     type: object
   models.ReturnItemResponse:
     properties:
@@ -6719,6 +6744,605 @@ paths:
       summary: Update Refund Policy
       tags:
       - Refund Policies
+  /api/v1/reports/customers:
+    get:
+      description: Generate a customer report with filtering, pagination, and export
+        options
+      parameters:
+      - default: json
+        description: 'Output format: json, xlsx, pdf'
+        enum:
+        - json
+        - xlsx
+        - pdf
+        in: query
+        name: format
+        type: string
+      - default: 50
+        description: 'Records per page (max: 500)'
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Records to skip
+        in: query
+        name: offset
+        type: integer
+      - description: Search by farmer ID
+        in: query
+        name: search
+        type: string
+      - description: Filter by warehouse ID
+        in: query
+        name: warehouse_id
+        type: string
+      - description: Minimum total purchase value
+        in: query
+        name: min_purchase_value
+        type: number
+      - description: Maximum total purchase value
+        in: query
+        name: max_purchase_value
+        type: number
+      - description: Filter start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: Filter end date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      - application/pdf
+      responses:
+        "200":
+          description: Report generated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ReportResponse'
+              type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Generate Customer Report
+      tags:
+      - Reports
+  /api/v1/reports/inventory:
+    get:
+      description: Generate an inventory report with filtering, pagination, and export
+        options
+      parameters:
+      - default: json
+        description: 'Output format: json, xlsx, pdf'
+        enum:
+        - json
+        - xlsx
+        - pdf
+        in: query
+        name: format
+        type: string
+      - default: 50
+        description: 'Records per page (max: 500)'
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Records to skip
+        in: query
+        name: offset
+        type: integer
+      - description: Filter by warehouse ID
+        in: query
+        name: warehouse_id
+        type: string
+      - description: Filter by product ID
+        in: query
+        name: product_id
+        type: string
+      - description: Filter by variant ID
+        in: query
+        name: variant_id
+        type: string
+      - description: Show only low stock items
+        in: query
+        name: low_stock
+        type: boolean
+      - description: Show items expiring within 30 days
+        in: query
+        name: expiring_soon
+        type: boolean
+      - description: Include expired items
+        in: query
+        name: expired
+        type: boolean
+      - description: Minimum quantity filter
+        in: query
+        name: min_quantity
+        type: integer
+      - description: Maximum quantity filter
+        in: query
+        name: max_quantity
+        type: integer
+      produces:
+      - application/json
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      - application/pdf
+      responses:
+        "200":
+          description: Report generated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ReportResponse'
+              type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Generate Inventory Report
+      tags:
+      - Reports
+  /api/v1/reports/products:
+    get:
+      description: Generate a product master report with filtering, pagination, and
+        export options
+      parameters:
+      - default: json
+        description: 'Output format: json, xlsx, pdf'
+        enum:
+        - json
+        - xlsx
+        - pdf
+        in: query
+        name: format
+        type: string
+      - default: 50
+        description: 'Records per page (max: 500)'
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Records to skip
+        in: query
+        name: offset
+        type: integer
+      - description: Search by product name or description
+        in: query
+        name: search
+        type: string
+      - description: Filter products with/without variants
+        in: query
+        name: has_variants
+        type: boolean
+      - description: Filter by active status
+        in: query
+        name: is_active
+        type: boolean
+      - default: created_at
+        description: Sort field
+        in: query
+        name: sort_by
+        type: string
+      - default: desc
+        description: 'Sort order: asc, desc'
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sort_order
+        type: string
+      produces:
+      - application/json
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      - application/pdf
+      responses:
+        "200":
+          description: Report generated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ReportResponse'
+              type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Generate Product Master Report
+      tags:
+      - Reports
+  /api/v1/reports/purchases:
+    get:
+      description: Generate a purchase orders report with filtering, pagination, and
+        export options
+      parameters:
+      - default: json
+        description: 'Output format: json, xlsx, pdf'
+        enum:
+        - json
+        - xlsx
+        - pdf
+        in: query
+        name: format
+        type: string
+      - default: 50
+        description: 'Records per page (max: 500)'
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Records to skip
+        in: query
+        name: offset
+        type: integer
+      - description: Filter by vendor/collaborator ID
+        in: query
+        name: collaborator_id
+        type: string
+      - description: Filter by warehouse ID
+        in: query
+        name: warehouse_id
+        type: string
+      - collectionFormat: csv
+        description: Filter by status (comma-separated)
+        in: query
+        items:
+          type: string
+        name: status
+        type: array
+      - collectionFormat: csv
+        description: Filter by payment status
+        in: query
+        items:
+          type: string
+        name: payment_status
+        type: array
+      - description: Search by PO number
+        in: query
+        name: po_number
+        type: string
+      - description: Filter start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: Filter end date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      - application/pdf
+      responses:
+        "200":
+          description: Report generated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ReportResponse'
+              type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Generate Purchase Report
+      tags:
+      - Reports
+  /api/v1/reports/returns:
+    get:
+      description: Generate a returns report with filtering, pagination, and export
+        options
+      parameters:
+      - default: json
+        description: 'Output format: json, xlsx, pdf'
+        enum:
+        - json
+        - xlsx
+        - pdf
+        in: query
+        name: format
+        type: string
+      - default: 50
+        description: 'Records per page (max: 500)'
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Records to skip
+        in: query
+        name: offset
+        type: integer
+      - description: Filter by original sale ID
+        in: query
+        name: sale_id
+        type: string
+      - description: Filter by warehouse ID
+        in: query
+        name: warehouse_id
+        type: string
+      - collectionFormat: csv
+        description: Filter by status (comma-separated)
+        in: query
+        items:
+          type: string
+        name: status
+        type: array
+      - description: Minimum refund amount
+        in: query
+        name: min_refund
+        type: number
+      - description: Maximum refund amount
+        in: query
+        name: max_refund
+        type: number
+      - description: Filter start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: Filter end date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      - application/pdf
+      responses:
+        "200":
+          description: Report generated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ReportResponse'
+              type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Generate Returns Report
+      tags:
+      - Reports
+  /api/v1/reports/sales:
+    get:
+      description: Generate a sales report with filtering, pagination, and export
+        options
+      parameters:
+      - default: json
+        description: 'Output format: json, xlsx, pdf'
+        enum:
+        - json
+        - xlsx
+        - pdf
+        in: query
+        name: format
+        type: string
+      - default: 50
+        description: 'Records per page (max: 500)'
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Records to skip
+        in: query
+        name: offset
+        type: integer
+      - description: Filter by warehouse ID
+        in: query
+        name: warehouse_id
+        type: string
+      - description: Filter by farmer/customer ID
+        in: query
+        name: farmer_id
+        type: string
+      - collectionFormat: csv
+        description: Filter by status (comma-separated)
+        in: query
+        items:
+          type: string
+        name: status
+        type: array
+      - collectionFormat: csv
+        description: Filter by payment mode
+        in: query
+        items:
+          type: string
+        name: payment_mode
+        type: array
+      - collectionFormat: csv
+        description: Filter by sale type
+        in: query
+        items:
+          type: string
+        name: sale_type
+        type: array
+      - description: Minimum sale amount
+        in: query
+        name: min_amount
+        type: number
+      - description: Maximum sale amount
+        in: query
+        name: max_amount
+        type: number
+      - description: Filter start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: Filter end date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      - application/pdf
+      responses:
+        "200":
+          description: Report generated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ReportResponse'
+              type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Generate Sales Report
+      tags:
+      - Reports
+  /api/v1/reports/vendors:
+    get:
+      description: Generate a vendor master report with filtering, pagination, and
+        export options
+      parameters:
+      - default: json
+        description: 'Output format: json, xlsx, pdf'
+        enum:
+        - json
+        - xlsx
+        - pdf
+        in: query
+        name: format
+        type: string
+      - default: 50
+        description: 'Records per page (max: 500)'
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Records to skip
+        in: query
+        name: offset
+        type: integer
+      - description: Search by company name, contact person, or GST
+        in: query
+        name: search
+        type: string
+      - description: Filter by active status
+        in: query
+        name: is_active
+        type: boolean
+      - description: Filter vendors with/without GST
+        in: query
+        name: has_gst
+        type: boolean
+      - description: Sort field
+        in: query
+        name: sort_by
+        type: string
+      - description: 'Sort order: asc, desc'
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sort_order
+        type: string
+      produces:
+      - application/json
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      - application/pdf
+      responses:
+        "200":
+          description: Report generated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ReportResponse'
+              type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Generate Vendor Master Report
+      tags:
+      - Reports
   /api/v1/returns:
     get:
       description: Retrieve all returns with pagination
