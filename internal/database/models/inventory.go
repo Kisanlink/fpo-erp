@@ -15,7 +15,8 @@ type InventoryBatch struct {
 	VariantID     string    `gorm:"type:varchar(100);not null" json:"variant_id"`
 	CostPrice     float64   `gorm:"type:numeric(12,4);not null" json:"cost_price"`
 	ExpiryDate    time.Time `gorm:"type:date;not null" json:"expiry_date"`
-	TotalQuantity int64     `gorm:"type:bigint;not null;check:total_quantity >= 0" json:"total_quantity"`
+	TotalQuantity    int64 `gorm:"type:bigint;not null;check:total_quantity >= 0" json:"total_quantity"`
+	ReservedQuantity int64 `gorm:"type:bigint;not null;default:0;check:reserved_quantity >= 0" json:"reserved_quantity"`
 
 	// Tax Configuration
 	CGSTRate     float64  `gorm:"type:numeric(5,2);default:0" json:"cgst_rate"`
@@ -30,6 +31,11 @@ type InventoryBatch struct {
 
 func (InventoryBatch) TableName() string {
 	return "inventory_batches"
+}
+
+// AvailableQuantity returns the actual sellable quantity (total - reserved)
+func (b *InventoryBatch) AvailableQuantity() int64 {
+	return b.TotalQuantity - b.ReservedQuantity
 }
 
 // InventoryTransaction represents stock movements
@@ -53,12 +59,14 @@ func (InventoryTransaction) TableName() string {
 
 // InventoryBatchResponse represents the API response for inventory batch
 type InventoryBatchResponse struct {
-	ID            string  `json:"id"`
-	WarehouseID   string  `json:"warehouse_id"`
-	VariantID     string  `json:"variant_id"`
-	CostPrice     float64 `json:"cost_price"`
-	ExpiryDate    string  `json:"expiry_date"`
-	TotalQuantity int64   `json:"total_quantity"`
+	ID                string  `json:"id"`
+	WarehouseID       string  `json:"warehouse_id"`
+	VariantID         string  `json:"variant_id"`
+	CostPrice         float64 `json:"cost_price"`
+	ExpiryDate        string  `json:"expiry_date"`
+	TotalQuantity     int64   `json:"total_quantity"`
+	ReservedQuantity  int64   `json:"reserved_quantity"`
+	AvailableQuantity int64   `json:"available_quantity"`
 
 	// Tax Configuration
 	CGSTRate     float64  `json:"cgst_rate"`
@@ -83,6 +91,8 @@ type ProductAvailabilityResponse struct {
 	CostPrice          float64      `json:"cost_price"`
 	ExpiryDate         string       `json:"expiry_date"`
 	TotalQuantity      int64        `json:"total_quantity"`
+	ReservedQuantity   int64        `json:"reserved_quantity"`
+	AvailableQuantity  int64        `json:"available_quantity"`
 
 	// Tax Configuration
 	CGSTRate     float64  `json:"cgst_rate"`
@@ -136,16 +146,17 @@ func NewInventoryBatch(warehouseID, variantID string, costPrice float64, expiryD
 		customTaxIDs = []string{}
 	}
 	return &InventoryBatch{
-		BaseModel:     *baseModel,
-		WarehouseID:   warehouseID,
-		VariantID:     variantID,
-		CostPrice:     costPrice,
-		ExpiryDate:    expiryDate,
-		TotalQuantity: totalQuantity,
-		CGSTRate:      cgstRate,
-		SGSTRate:      sgstRate,
-		CustomTaxIDs:  customTaxIDs,
-		IsTaxExempt:   isTaxExempt,
+		BaseModel:        *baseModel,
+		WarehouseID:      warehouseID,
+		VariantID:        variantID,
+		CostPrice:        costPrice,
+		ExpiryDate:       expiryDate,
+		TotalQuantity:    totalQuantity,
+		ReservedQuantity: 0, // New batches have no reservations
+		CGSTRate:         cgstRate,
+		SGSTRate:         sgstRate,
+		CustomTaxIDs:     customTaxIDs,
+		IsTaxExempt:      isTaxExempt,
 	}
 }
 

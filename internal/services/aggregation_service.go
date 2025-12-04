@@ -309,7 +309,8 @@ func (s *AggregationService) buildVariantDetail(v *models.ProductVariant, req *m
 				}
 
 				stockSummary.TotalQuantity += batch.TotalQuantity
-				stockSummary.AvailableQuantity += batch.TotalQuantity // Assuming all is available
+				stockSummary.ReservedQuantity += batch.ReservedQuantity
+				stockSummary.AvailableQuantity += batch.AvailableQuantity() // Real available = total - reserved
 
 				// Track warehouse stock
 				if ws, exists := warehouseMap[batch.WarehouseID]; exists {
@@ -515,8 +516,8 @@ func (s *AggregationService) GetSalesContext(req *models.SalesContextRequest) (*
 			BatchID:           batch.ID,
 			VariantID:         batch.VariantID,
 			QuantityAvailable: batch.TotalQuantity,
-			QuantityReserved:  0,
-			QuantitySellable:  batch.TotalQuantity,
+			QuantityReserved:  batch.ReservedQuantity,
+			QuantitySellable:  batch.AvailableQuantity(), // Real sellable = total - reserved
 			CostPrice:         batch.CostPrice,
 			ExpiryDate:        batch.ExpiryDate.Format("2006-01-02"),
 			TaxConfig: models.BatchTaxConfig{

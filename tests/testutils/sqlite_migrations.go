@@ -427,6 +427,7 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 			cost_price REAL NOT NULL,
 			expiry_date DATETIME NOT NULL,
 			total_quantity INTEGER NOT NULL,
+			reserved_quantity INTEGER NOT NULL DEFAULT 0,
 			cgst_rate REAL DEFAULT 0,
 			sgst_rate REAL DEFAULT 0,
 			custom_tax_ids TEXT DEFAULT '[]',

@@ -1184,6 +1184,8 @@ definitions:
     type: object
   models.InventoryBatchResponse:
     properties:
+      available_quantity:
+        type: integer
       cgst_rate:
         description: Tax Configuration
         type: number
@@ -1201,6 +1203,8 @@ definitions:
         type: string
       is_tax_exempt:
         type: boolean
+      reserved_quantity:
+        type: integer
       sgst_rate:
         type: number
       total_quantity:
@@ -1458,6 +1462,8 @@ definitions:
         allOf:
         - $ref: '#/definitions/models.AddressInfo'
         description: Embedded address info from AAA
+      available_quantity:
+        type: integer
       cgst_rate:
         description: Tax Configuration
         type: number
@@ -1481,6 +1487,8 @@ definitions:
         type: string
       product_sku:
         type: string
+      reserved_quantity:
+        type: integer
       sgst_rate:
         type: number
       total_quantity:

@@ -91,7 +91,8 @@ func NewSaleCancellation(saleID, cancellationType, reason string, cancelledBy *s
 }
 
 // NewSaleCancellationItem creates a new SaleCancellationItem with initialized fields
-func NewSaleCancellationItem(cancellationID, saleItemID, batchID string, quantityCancelled int64, refundAmount float64, transactionID *string) *SaleCancellationItem {
+// inventoryRestored indicates whether inventory was actually restored to the batch
+func NewSaleCancellationItem(cancellationID, saleItemID, batchID string, quantityCancelled int64, refundAmount float64, transactionID *string, inventoryRestored bool) *SaleCancellationItem {
 	baseModel := base.NewBaseModel(constants.TableSaleCancellationItem, hash.Medium)
 	return &SaleCancellationItem{
 		BaseModel:         *baseModel,
@@ -100,7 +101,7 @@ func NewSaleCancellationItem(cancellationID, saleItemID, batchID string, quantit
 		BatchID:           batchID,
 		QuantityCancelled: quantityCancelled,
 		RefundAmount:      refundAmount,
-		InventoryRestored: true,
+		InventoryRestored: inventoryRestored,
 		TransactionID:     transactionID,
 	}
 }

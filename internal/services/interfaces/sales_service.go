@@ -20,4 +20,5 @@ type SalesServiceInterface interface {
 	CancelSale(saleID string, req *models.CancelSaleRequest) (*models.CancelSaleResponse, error)
 	CancelItems(saleID string, req *models.CancelItemsRequest) (*models.CancelItemsResponse, error)
 	GetCancellations(saleID string) (*models.GetCancellationsResponse, error)
+	CompleteSale(saleID string, performedBy string) (*models.SaleResponse, error)
 }
