@@ -13,6 +13,7 @@ import (
 	"kisanlink-erp/internal/database/repositories"
 	"kisanlink-erp/internal/interfaces"
 	"kisanlink-erp/internal/services"
+	"kisanlink-erp/internal/services/export"
 	"kisanlink-erp/internal/utils"
 
 	pb "github.com/Kisanlink/kisanlink-ecom/proto/gen/go/collaborator/v1"
@@ -127,6 +128,25 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 		addressClient,
 	)
 
+	// Report export services
+	xlsxExporter := export.NewXLSXExporter(logger)
+	pdfExporter := export.NewPDFExporter(logger)
+	exportService := export.NewExportService(xlsxExporter, pdfExporter, logger)
+
+	// Report service
+	reportService := services.NewReportService(
+		db,
+		productRepo,
+		productVariantRepo,
+		collaboratorRepo,
+		inventoryRepo,
+		purchaseOrderRepo,
+		salesRepo,
+		returnsRepo,
+		warehouseRepo,
+		logger,
+	)
+
 	// AAA middleware is now passed as parameter
 
 	// Initialize handlers
@@ -159,6 +179,9 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 		logger,
 	)
 
+	// Report handler
+	reportHandler := handlers.NewReportHandler(reportService, exportService, aaaMiddleware, logger)
+
 	// API v1 routes
 	v1 := router.Group("/api/v1")
 	{
@@ -184,6 +207,9 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 
 		// Webhook handler
 		ecommerceWebhookHandler.RegisterRoutes(v1)
+
+		// Report handler
+		reportHandler.RegisterRoutes(v1)
 	}
 }
 
