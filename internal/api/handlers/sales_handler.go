@@ -125,10 +125,10 @@ func (h *SalesHandler) GetSale(c *gin.Context) {
 
 	sale, err := h.salesService.GetSale(id)
 	if err != nil {
-		h.logger.Error("Sale not found",
+		h.logger.Error("Failed to retrieve sale",
 			zap.Error(err),
 			zap.String("sale_id", id))
-		utils.NotFoundResponse(c, "Sale not found")
+		utils.HandleServiceError(c, "Failed to retrieve sale", err)
 		return
 	}
 
@@ -238,8 +238,15 @@ func (h *SalesHandler) UpdateSale(c *gin.Context) {
 		return
 	}
 
+	// Set performedBy from JWT context for inventory transaction tracking
+	req.PerformedBy = c.GetString("user_id")
+	if req.PerformedBy == "" {
+		req.PerformedBy = "system"
+	}
+
 	h.logger.Debug("Calling sales service to update sale",
-		zap.String("sale_id", id))
+		zap.String("sale_id", id),
+		zap.String("performed_by", req.PerformedBy))
 
 	sale, err := h.salesService.UpdateSale(id, &req)
 	if err != nil {

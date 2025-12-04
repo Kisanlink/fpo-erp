@@ -21,12 +21,11 @@ func TestProductService_CreateProduct_Success(t *testing.T) {
 
 	// Create real repositories
 	productRepo := repositories.NewProductRepository(db)
-	priceRepo := repositories.NewProductPriceRepository(db)
 	variantRepo := repositories.NewProductVariantRepository(db)
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, variantRepo, mockLogger)
 
 	// Create request
 	desc := "Fresh organic tomatoes"
@@ -52,12 +51,11 @@ func TestProductService_CreateProduct_WithoutDescription(t *testing.T) {
 
 	// Create repositories
 	productRepo := repositories.NewProductRepository(db)
-	priceRepo := repositories.NewProductPriceRepository(db)
 	variantRepo := repositories.NewProductVariantRepository(db)
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, variantRepo, mockLogger)
 
 	// Create request without description
 	request := &models.CreateProductRequest{
@@ -88,12 +86,11 @@ func TestProductService_GetProduct_Success(t *testing.T) {
 
 	// Create repositories
 	productRepo := repositories.NewProductRepository(db)
-	priceRepo := repositories.NewProductPriceRepository(db)
 	variantRepo := repositories.NewProductVariantRepository(db)
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, variantRepo, mockLogger)
 
 	// Execute
 	response, err := service.GetProduct(product.ID)
@@ -112,12 +109,11 @@ func TestProductService_GetProduct_NotFound(t *testing.T) {
 
 	// Create repositories
 	productRepo := repositories.NewProductRepository(db)
-	priceRepo := repositories.NewProductPriceRepository(db)
 	variantRepo := repositories.NewProductVariantRepository(db)
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, variantRepo, mockLogger)
 
 	// Execute with non-existent ID
 	_, err := service.GetProduct("non-existent-id")
@@ -145,12 +141,11 @@ func TestProductService_GetAllProducts_Success(t *testing.T) {
 
 	// Create repositories
 	productRepo := repositories.NewProductRepository(db)
-	priceRepo := repositories.NewProductPriceRepository(db)
 	variantRepo := repositories.NewProductVariantRepository(db)
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, variantRepo, mockLogger)
 
 	// Execute
 	responses, err := service.GetAllProducts()
@@ -167,12 +162,11 @@ func TestProductService_GetAllProducts_Empty(t *testing.T) {
 
 	// Create repositories
 	productRepo := repositories.NewProductRepository(db)
-	priceRepo := repositories.NewProductPriceRepository(db)
 	variantRepo := repositories.NewProductVariantRepository(db)
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, variantRepo, mockLogger)
 
 	// Execute
 	responses, err := service.GetAllProducts()
@@ -197,12 +191,11 @@ func TestProductService_UpdateProduct_Success(t *testing.T) {
 
 	// Create repositories
 	productRepo := repositories.NewProductRepository(db)
-	priceRepo := repositories.NewProductPriceRepository(db)
 	variantRepo := repositories.NewProductVariantRepository(db)
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, variantRepo, mockLogger)
 
 	// Update request
 	newName := "Updated Name"
@@ -234,12 +227,11 @@ func TestProductService_UpdateProduct_PartialUpdate(t *testing.T) {
 
 	// Create repositories
 	productRepo := repositories.NewProductRepository(db)
-	priceRepo := repositories.NewProductPriceRepository(db)
 	variantRepo := repositories.NewProductVariantRepository(db)
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, variantRepo, mockLogger)
 
 	// Update only name (description should remain)
 	newName := "Updated Name"
@@ -263,12 +255,11 @@ func TestProductService_UpdateProduct_NotFound(t *testing.T) {
 
 	// Create repositories
 	productRepo := repositories.NewProductRepository(db)
-	priceRepo := repositories.NewProductPriceRepository(db)
 	variantRepo := repositories.NewProductVariantRepository(db)
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, variantRepo, mockLogger)
 
 	// Update request for non-existent product
 	newName := "Updated Name"
@@ -298,12 +289,11 @@ func TestProductService_DeleteProduct_Success(t *testing.T) {
 
 	// Create repositories
 	productRepo := repositories.NewProductRepository(db)
-	priceRepo := repositories.NewProductPriceRepository(db)
 	variantRepo := repositories.NewProductVariantRepository(db)
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, variantRepo, mockLogger)
 
 	// Execute
 	err := service.DeleteProduct(product.ID)
@@ -323,12 +313,11 @@ func TestProductService_DeleteProduct_NotFound(t *testing.T) {
 
 	// Create repositories
 	productRepo := repositories.NewProductRepository(db)
-	priceRepo := repositories.NewProductPriceRepository(db)
 	variantRepo := repositories.NewProductVariantRepository(db)
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, variantRepo, mockLogger)
 
 	// Execute
 	err := service.DeleteProduct("non-existent-id")
@@ -356,12 +345,11 @@ func TestProductService_SearchProducts_Success(t *testing.T) {
 
 	// Create repositories
 	productRepo := repositories.NewProductRepository(db)
-	priceRepo := repositories.NewProductPriceRepository(db)
 	variantRepo := repositories.NewProductVariantRepository(db)
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, variantRepo, mockLogger)
 
 	// Execute search for "Tomato"
 	responses, err := service.SearchProducts("Tomato")
@@ -393,12 +381,11 @@ func TestProductService_SearchProducts_NoResults(t *testing.T) {
 
 	// Create repositories
 	productRepo := repositories.NewProductRepository(db)
-	priceRepo := repositories.NewProductPriceRepository(db)
 	variantRepo := repositories.NewProductVariantRepository(db)
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, variantRepo, mockLogger)
 
 	// Execute search for non-existent product
 	responses, err := service.SearchProducts("Banana")
@@ -432,12 +419,11 @@ func TestProductService_GetProductWithPrices_NoVariants(t *testing.T) {
 
 	// Create repositories
 	productRepo := repositories.NewProductRepository(db)
-	priceRepo := repositories.NewProductPriceRepository(db)
 	variantRepo := repositories.NewProductVariantRepository(db)
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, variantRepo, mockLogger)
 
 	// Execute
 	response, err := service.GetProductWithPrices(product.ID)
@@ -475,12 +461,11 @@ func TestProductService_GetProductWithPrices_WithVariantsAndPrices(t *testing.T)
 
 	// Create repositories
 	productRepo := repositories.NewProductRepository(db)
-	priceRepo := repositories.NewProductPriceRepository(db)
 	variantRepo := repositories.NewProductVariantRepository(db)
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, variantRepo, mockLogger)
 
 	// Execute
 	response, err := service.GetProductWithPrices(product.ID)

@@ -1266,11 +1266,14 @@ definitions:
         $ref: '#/definitions/models.MarginInfo'
       product:
         $ref: '#/definitions/models.ProductInfoForSales'
-      quantity_available:
-        type: integer
       quantity_reserved:
+        description: Reserved by pending sales
         type: integer
       quantity_sellable:
+        description: Available for new sales (total - reserved)
+        type: integer
+      quantity_total:
+        description: Total inventory (renamed from QuantityAvailable for clarity)
         type: integer
       selling_price:
         $ref: '#/definitions/models.SellingPriceInfo'

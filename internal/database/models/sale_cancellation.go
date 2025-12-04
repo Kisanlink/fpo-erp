@@ -37,6 +37,8 @@ type SaleCancellation struct {
 	CancelledAt      time.Time `gorm:"type:timestamptz;not null;default:now()" json:"cancelled_at"`
 
 	// Financial impact
+	// OriginalAmount: Sale total BEFORE this cancellation (not the initial sale total)
+	// For multi-cancellation scenarios, this tracks the state at each cancellation
 	OriginalAmount   float64 `gorm:"type:numeric(14,4);not null" json:"original_amount"`
 	CancelledAmount  float64 `gorm:"type:numeric(14,4);not null" json:"cancelled_amount"`
 	DiscountReversed float64 `gorm:"type:numeric(14,4);default:0" json:"discount_reversed"`

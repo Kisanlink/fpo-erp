@@ -343,14 +343,13 @@ func (s *PurchaseOrderService) UpdatePurchaseOrderStatus(ctx context.Context, id
 		return nil, errors.NewBadRequestError(fmt.Sprintf("invalid status transition from %s to %s", po.Status, request.Status))
 	}
 
-	// Set actual delivery date if status is delivered
+	// Set actual delivery date if status is delivered (required for accurate inventory aging)
 	var actualDelivery time.Time
 	if request.Status == "delivered" {
-		if request.ActualDelivery != nil {
-			actualDelivery = *request.ActualDelivery
-		} else {
-			actualDelivery = time.Now().UTC()
+		if request.ActualDelivery == nil {
+			return nil, errors.NewBadRequestError("actual_delivery_date is required when marking order as delivered")
 		}
+		actualDelivery = *request.ActualDelivery
 	}
 
 	// Pattern Detection: Auto-create GRN if status = "verified" and delivery details provided
@@ -673,7 +672,8 @@ func (s *PurchaseOrderService) processDeliveryItems(ctx context.Context, po *mod
 		}
 
 		// Update PO status and delivery date
-		po.Status = "delivered"
+		// Auto-GRN triggers on "verified" status, so keep status as "verified"
+		po.Status = "verified"
 		po.ActualDelivery = &actualDelivery
 		if err := s.poRepo.UpdateWithTx(tx, po); err != nil {
 			return err

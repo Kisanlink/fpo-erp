@@ -8,6 +8,16 @@ import (
 	"github.com/Kisanlink/kisanlink-db/pkg/core/hash"
 )
 
+// Transaction type constants for inventory movements
+const (
+	TransactionTypeReservation        = "reservation"         // Stock reserved for pending sale
+	TransactionTypeReservationRelease = "reservation_release" // Pending sale cancelled, reservation released
+	TransactionTypeSale               = "sale"                // Sale completed, stock deducted
+	TransactionTypeCancellationReturn = "cancellation_return" // Completed sale cancelled, stock restored
+	TransactionTypePurchase           = "purchase"            // GRN received, stock added
+	TransactionTypeImport             = "import"              // Manual batch creation
+)
+
 // InventoryBatch represents a batch of inventory with specific cost and expiry
 type InventoryBatch struct {
 	base.BaseModel
@@ -16,7 +26,7 @@ type InventoryBatch struct {
 	CostPrice     float64   `gorm:"type:numeric(12,4);not null" json:"cost_price"`
 	ExpiryDate    time.Time `gorm:"type:date;not null" json:"expiry_date"`
 	TotalQuantity    int64 `gorm:"type:bigint;not null;check:total_quantity >= 0" json:"total_quantity"`
-	ReservedQuantity int64 `gorm:"type:bigint;not null;default:0;check:reserved_quantity >= 0" json:"reserved_quantity"`
+	ReservedQuantity int64 `gorm:"type:bigint;not null;default:0;check:reserved_quantity >= 0 AND reserved_quantity <= total_quantity" json:"reserved_quantity"`
 
 	// Tax Configuration
 	CGSTRate     float64  `gorm:"type:numeric(5,2);default:0" json:"cgst_rate"`

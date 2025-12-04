@@ -513,11 +513,11 @@ func (s *AggregationService) GetSalesContext(req *models.SalesContextRequest) (*
 		}
 
 		inventoryItem := models.InventoryWithPricing{
-			BatchID:           batch.ID,
-			VariantID:         batch.VariantID,
-			QuantityAvailable: batch.TotalQuantity,
-			QuantityReserved:  batch.ReservedQuantity,
-			QuantitySellable:  batch.AvailableQuantity(), // Real sellable = total - reserved
+			BatchID:          batch.ID,
+			VariantID:        batch.VariantID,
+			QuantityTotal:    batch.TotalQuantity,        // Total inventory in batch
+			QuantityReserved: batch.ReservedQuantity,     // Reserved by pending sales
+			QuantitySellable: batch.AvailableQuantity(),  // Real sellable = total - reserved
 			CostPrice:         batch.CostPrice,
 			ExpiryDate:        batch.ExpiryDate.Format("2006-01-02"),
 			TaxConfig: models.BatchTaxConfig{

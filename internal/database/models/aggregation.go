@@ -201,13 +201,13 @@ type WarehouseInfo struct {
 
 // InventoryWithPricing represents inventory batch with pricing and product info
 type InventoryWithPricing struct {
-	BatchID           string               `json:"batch_id"`
-	VariantID         string               `json:"variant_id"`
-	Variant           VariantInfoForSales  `json:"variant"`
-	Product           ProductInfoForSales  `json:"product"`
-	QuantityAvailable int64                `json:"quantity_available"`
-	QuantityReserved  int64                `json:"quantity_reserved"`
-	QuantitySellable  int64                `json:"quantity_sellable"`
+	BatchID          string               `json:"batch_id"`
+	VariantID        string               `json:"variant_id"`
+	Variant          VariantInfoForSales  `json:"variant"`
+	Product          ProductInfoForSales  `json:"product"`
+	QuantityTotal    int64                `json:"quantity_total"`    // Total inventory (renamed from QuantityAvailable for clarity)
+	QuantityReserved int64                `json:"quantity_reserved"` // Reserved by pending sales
+	QuantitySellable int64                `json:"quantity_sellable"` // Available for new sales (total - reserved)
 	CostPrice         float64              `json:"cost_price"`
 	ExpiryDate        string               `json:"expiry_date"`
 	ManufacturingDate *string              `json:"manufacturing_date,omitempty"`

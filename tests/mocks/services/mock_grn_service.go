@@ -60,3 +60,19 @@ func (m *MockGRNService) UpdateGRN(ctx context.Context, id string, request *mode
 	}
 	return args.Get(0).(*models.GRNResponse), args.Error(1)
 }
+
+func (m *MockGRNService) GetRejectedItems(ctx context.Context, grnID string) (*models.RejectedItemsResponse, error) {
+	args := m.Called(ctx, grnID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.RejectedItemsResponse), args.Error(1)
+}
+
+func (m *MockGRNService) UpdateItemReturnStatus(ctx context.Context, itemID string, request *models.UpdateItemReturnStatusRequest) (*models.GRNItemResponse, error) {
+	args := m.Called(ctx, itemID, request)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.GRNItemResponse), args.Error(1)
+}
