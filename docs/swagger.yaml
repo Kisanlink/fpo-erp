@@ -1,5 +1,20 @@
 basePath: /
 definitions:
+  models.ActiveTaxInfo:
+    properties:
+      cgst_rate:
+        type: number
+      id:
+        type: string
+      is_active:
+        type: boolean
+      name:
+        type: string
+      sgst_rate:
+        type: number
+      tax_type:
+        type: string
+    type: object
   models.AddressInfo:
     properties:
       country:
@@ -28,6 +43,15 @@ definitions:
         type: string
       vtc:
         description: Village/Town/City
+        type: string
+    type: object
+  models.AlternatePriceInfo:
+    properties:
+      min_quantity:
+        type: integer
+      price:
+        type: number
+      price_type:
         type: string
     type: object
   models.AppliedTax:
@@ -123,6 +147,81 @@ definitions:
       updated_at:
         type: string
     type: object
+  models.BatchTaxConfig:
+    properties:
+      cgst_rate:
+        type: number
+      custom_taxes:
+        items:
+          type: string
+        type: array
+      hsn_code:
+        type: string
+      is_tax_exempt:
+        type: boolean
+      sgst_rate:
+        type: number
+      total_gst_rate:
+        type: number
+    type: object
+  models.CancelItemDetail:
+    properties:
+      quantity:
+        minimum: 1
+        type: integer
+      sale_item_id:
+        type: string
+    required:
+    - quantity
+    - sale_item_id
+    type: object
+  models.CancelItemsRequest:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/models.CancelItemDetail'
+        minItems: 1
+        type: array
+      performed_by:
+        type: string
+      reason:
+        enum:
+        - customer_request
+        - payment_failed
+        - out_of_stock
+        - pricing_error
+        - duplicate_order
+        - fraud_suspected
+        - system_error
+        - other
+        type: string
+      reason_details:
+        maxLength: 1000
+        type: string
+    required:
+    - items
+    - performed_by
+    - reason
+    type: object
+  models.CancelItemsResponse:
+    properties:
+      cancellation_id:
+        type: string
+      financial_adjustments:
+        $ref: '#/definitions/models.FinancialAdjustmentsResponse'
+      inventory_restored:
+        items:
+          $ref: '#/definitions/models.InventoryRestoredItem'
+        type: array
+      items_cancelled:
+        items:
+          $ref: '#/definitions/models.CancelledItemInfo'
+        type: array
+      new_sale_total:
+        type: number
+      sale:
+        $ref: '#/definitions/models.SaleResponse'
+    type: object
   models.CancelSaleRequest:
     properties:
       performed_by:
@@ -160,44 +259,37 @@ definitions:
       sale:
         $ref: '#/definitions/models.SaleResponse'
     type: object
-  models.CollaboratorProductResponse:
+  models.CancelledItemInfo:
     properties:
-      brand_name:
-        type: string
-      collaborator_id:
-        type: string
-      collaborator_name:
-        type: string
-      created_at:
-        type: string
-      dosage_instructions:
-        type: string
-      gst_rate:
+      amount_refunded:
         type: number
-      hsn_code:
+      quantity_cancelled:
+        type: integer
+      sale_item_id:
+        type: string
+    type: object
+  models.CollaboratorBasicInfo:
+    properties:
+      company_name:
         type: string
       id:
         type: string
-      images:
-        description: Parsed from JSON
-        items:
-          type: string
-        type: array
+    type: object
+  models.CollaboratorInfo:
+    properties:
+      address:
+        $ref: '#/definitions/models.AddressInfo'
+      company_name:
+        type: string
+      contact_person:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
       is_active:
         type: boolean
-      product:
-        allOf:
-        - $ref: '#/definitions/models.ProductSummary'
-        description: Embedded product info
-      product_id:
-        type: string
-      product_name:
-        type: string
-      product_sku:
-        type: string
-      updated_at:
-        type: string
-      usage_details:
+      phone:
         type: string
     type: object
   models.CollaboratorResponse:
@@ -285,34 +377,6 @@ definitions:
     required:
     - amount
     - payment_method
-    type: object
-  models.CreateCollaboratorProductRequest:
-    properties:
-      brand_name:
-        type: string
-      dosage_instructions:
-        type: string
-      gst_rate:
-        maximum: 100
-        minimum: 0
-        type: number
-      hsn_code:
-        description: HSN codes are 8 digits
-        type: string
-      images:
-        description: Array of S3 paths
-        items:
-          type: string
-        type: array
-      product_id:
-        type: string
-      usage_details:
-        type: string
-    required:
-    - brand_name
-    - gst_rate
-    - hsn_code
-    - product_id
     type: object
   models.CreateCollaboratorRequest:
     properties:
@@ -861,6 +925,31 @@ definitions:
       discount_type:
         type: string
     type: object
+  models.DiscountPolicy:
+    properties:
+      applicable_categories:
+        items:
+          type: string
+        type: array
+      discount_type:
+        type: string
+      discount_value:
+        type: number
+      end_date:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      min_amount:
+        type: number
+      min_quantity:
+        type: integer
+      name:
+        type: string
+      start_date:
+        type: string
+    type: object
   models.DiscountResponse:
     properties:
       applicable_categories:
@@ -944,12 +1033,6 @@ definitions:
     x-enum-comments:
       DiscountTypeFlat: Fixed amount discount
       DiscountTypePercentage: Percentage discount
-    x-enum-descriptions:
-    - Fixed amount discount
-    - Percentage discount
-    - ""
-    - ""
-    - ""
     x-enum-varnames:
     - DiscountTypeFlat
     - DiscountTypePercentage
@@ -1075,6 +1158,30 @@ definitions:
       warehouse_name:
         type: string
     type: object
+  models.GetCancellationsResponse:
+    properties:
+      cancellations:
+        items:
+          $ref: '#/definitions/models.SaleCancellationResponse'
+        type: array
+      sale_id:
+        type: string
+      total_count:
+        type: integer
+    type: object
+  models.GlobalTaxConfig:
+    properties:
+      active_taxes:
+        items:
+          $ref: '#/definitions/models.ActiveTaxInfo'
+        type: array
+      default_cgst_rate:
+        type: number
+      default_sgst_rate:
+        type: number
+      tax_calculation_method:
+        type: string
+    type: object
   models.InventoryBatchResponse:
     properties:
       cgst_rate:
@@ -1134,6 +1241,52 @@ definitions:
         type: string
       transaction_type:
         type: string
+    type: object
+  models.InventoryWithPricing:
+    properties:
+      alternate_prices:
+        items:
+          $ref: '#/definitions/models.AlternatePriceInfo'
+        type: array
+      batch_id:
+        type: string
+      batch_number:
+        type: string
+      cost_price:
+        type: number
+      expiry_date:
+        type: string
+      manufacturing_date:
+        type: string
+      margin:
+        $ref: '#/definitions/models.MarginInfo'
+      product:
+        $ref: '#/definitions/models.ProductInfoForSales'
+      quantity_available:
+        type: integer
+      quantity_reserved:
+        type: integer
+      quantity_sellable:
+        type: integer
+      selling_price:
+        $ref: '#/definitions/models.SellingPriceInfo'
+      tax_config:
+        $ref: '#/definitions/models.BatchTaxConfig'
+      variant:
+        $ref: '#/definitions/models.VariantInfoForSales'
+      variant_id:
+        type: string
+    type: object
+  models.MarginInfo:
+    properties:
+      cost_price:
+        type: number
+      margin_amount:
+        type: number
+      margin_percentage:
+        type: number
+      selling_price:
+        type: number
     type: object
   models.MostReturnedProductResponse:
     properties:
@@ -1276,6 +1429,29 @@ definitions:
     - external_order_id
     - timestamp
     type: object
+  models.PaymentMethodInfo:
+    properties:
+      credit_days:
+        type: integer
+      id:
+        type: string
+      is_active:
+        type: boolean
+      name:
+        type: string
+      type:
+        description: cash, card, upi, credit
+        type: string
+    type: object
+  models.PriceInfo:
+    properties:
+      effective_from:
+        type: string
+      effective_to:
+        type: string
+      price:
+        type: number
+    type: object
   models.ProductAvailabilityResponse:
     properties:
       address:
@@ -1318,6 +1494,71 @@ definitions:
       warehouse_name:
         type: string
     type: object
+  models.ProductBasicInfo:
+    properties:
+      category:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  models.ProductDetailResponse:
+    properties:
+      collaborator:
+        $ref: '#/definitions/models.CollaboratorInfo'
+      metadata:
+        $ref: '#/definitions/models.ProductMetadata'
+      product:
+        $ref: '#/definitions/models.ProductInfo'
+      variants:
+        items:
+          $ref: '#/definitions/models.VariantDetail'
+        type: array
+    type: object
+  models.ProductInfo:
+    properties:
+      category:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      name:
+        type: string
+      organization_id:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  models.ProductInfoForSales:
+    properties:
+      category:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  models.ProductMetadata:
+    properties:
+      active_variants:
+        type: integer
+      consistency_token:
+        type: string
+      read_timestamp:
+        type: string
+      total_stock_value:
+        type: number
+      total_variants:
+        type: integer
+    type: object
   models.ProductPriceResponse:
     properties:
       created_at:
@@ -1352,15 +1593,6 @@ definitions:
       name:
         type: string
       updated_at:
-        type: string
-    type: object
-  models.ProductSummary:
-    properties:
-      description:
-        type: string
-      id:
-        type: string
-      name:
         type: string
     type: object
   models.ProductVariantResponse:
@@ -1496,6 +1728,25 @@ definitions:
       warehouse_name:
         type: string
     type: object
+  models.RefundPolicyInfo:
+    properties:
+      conditions:
+        items:
+          type: string
+        type: array
+      description:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      name:
+        type: string
+      refund_percentage:
+        type: number
+      valid_days:
+        type: integer
+    type: object
   models.RefundPolicyResponse:
     properties:
       created_at:
@@ -1561,6 +1812,13 @@ definitions:
       total_rejected_value:
         type: number
     type: object
+  models.ResponseMetadata:
+    properties:
+      consistency_token:
+        type: string
+      read_timestamp:
+        type: string
+    type: object
   models.ReturnItemResponse:
     properties:
       batch_id:
@@ -1623,6 +1881,60 @@ definitions:
       total_savings:
         description: Total discount savings
         type: number
+    type: object
+  models.SaleCancellationItemResponse:
+    properties:
+      batch_id:
+        type: string
+      cancellation_id:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      inventory_restored:
+        type: boolean
+      quantity_cancelled:
+        type: integer
+      refund_amount:
+        type: number
+      sale_item_id:
+        type: string
+      transaction_id:
+        type: string
+    type: object
+  models.SaleCancellationResponse:
+    properties:
+      cancellation_type:
+        type: string
+      cancelled_amount:
+        type: number
+      cancelled_at:
+        type: string
+      cancelled_by:
+        type: string
+      created_at:
+        type: string
+      discount_reversed:
+        type: number
+      id:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/models.SaleCancellationItemResponse'
+        type: array
+      original_amount:
+        type: number
+      reason:
+        type: string
+      reason_details:
+        type: string
+      sale_id:
+        type: string
+      tax_reversed:
+        type: number
+      updated_at:
+        type: string
     type: object
   models.SaleItemResponse:
     properties:
@@ -1694,6 +2006,86 @@ definitions:
         type: string
       warehouse_id:
         type: string
+    type: object
+  models.SalesContextMetadata:
+    properties:
+      consistency_token:
+        type: string
+      expires_at:
+        type: string
+      read_timestamp:
+        type: string
+      total_batches:
+        type: integer
+      total_products:
+        type: integer
+      total_stock_value:
+        type: number
+      total_variants:
+        type: integer
+      warehouse_capacity_used_percent:
+        type: number
+    type: object
+  models.SalesContextResponse:
+    properties:
+      available_inventory:
+        items:
+          $ref: '#/definitions/models.InventoryWithPricing'
+        type: array
+      discount_policies:
+        items:
+          $ref: '#/definitions/models.DiscountPolicy'
+        type: array
+      global_tax_configuration:
+        $ref: '#/definitions/models.GlobalTaxConfig'
+      metadata:
+        $ref: '#/definitions/models.SalesContextMetadata'
+      payment_methods:
+        items:
+          $ref: '#/definitions/models.PaymentMethodInfo'
+        type: array
+      refund_policies:
+        items:
+          $ref: '#/definitions/models.RefundPolicyInfo'
+        type: array
+      warehouse:
+        $ref: '#/definitions/models.WarehouseInfo'
+    type: object
+  models.SellingPriceInfo:
+    properties:
+      currency:
+        type: string
+      effective_from:
+        type: string
+      effective_to:
+        type: string
+      is_active:
+        type: boolean
+      price:
+        type: number
+      price_id:
+        type: string
+      price_type:
+        type: string
+    type: object
+  models.StockSummary:
+    properties:
+      available_quantity:
+        type: integer
+      earliest_expiry:
+        type: string
+      in_stock:
+        type: boolean
+      max_cost_price:
+        type: number
+      min_cost_price:
+        type: number
+      reserved_quantity:
+        type: integer
+      total_quantity:
+        type: integer
+      warehouse_count:
+        type: integer
     type: object
   models.TaxApplicationResponse:
     properties:
@@ -1835,14 +2227,23 @@ definitions:
       TaxCalculationFixed: Fixed amount per unit
       TaxCalculationPercentage: Percentage of base amount
       TaxCalculationTiered: Tiered calculation
-    x-enum-descriptions:
-    - Percentage of base amount
-    - Fixed amount per unit
-    - Tiered calculation
     x-enum-varnames:
     - TaxCalculationPercentage
     - TaxCalculationFixed
     - TaxCalculationTiered
+  models.TaxConfiguration:
+    properties:
+      cgst_rate:
+        type: number
+      custom_tax_ids:
+        items:
+          type: string
+        type: array
+      is_tax_exempt:
+        type: boolean
+      sgst_rate:
+        type: number
+    type: object
   models.TaxResponse:
     properties:
       applicable_categories:
@@ -2020,19 +2421,6 @@ definitions:
       TaxTypeTCS: Tax Collected at Source
       TaxTypeTDS: Tax Deducted at Source
       TaxTypeVAT: Value Added Tax
-    x-enum-descriptions:
-    - Central Goods and Services Tax
-    - State Goods and Services Tax
-    - Integrated Goods and Services Tax
-    - Value Added Tax
-    - Securities Transaction Tax
-    - Tax Deducted at Source
-    - Tax Collected at Source
-    - Excise Duty
-    - Customs Duty
-    - Item-specific tax
-    - Category-based tax
-    - Flat tax amount
     x-enum-varnames:
     - TaxTypeCGST
     - TaxTypeSGST
@@ -2095,25 +2483,6 @@ definitions:
         type: string
     required:
     - id
-    type: object
-  models.UpdateCollaboratorProductRequest:
-    properties:
-      brand_name:
-        type: string
-      dosage_instructions:
-        type: string
-      gst_rate:
-        type: number
-      hsn_code:
-        type: string
-      images:
-        items:
-          type: string
-        type: array
-      is_active:
-        type: boolean
-      usage_details:
-        type: string
     type: object
   models.UpdateCollaboratorRequest:
     properties:
@@ -2266,6 +2635,11 @@ definitions:
         type: string
       brand_name:
         type: string
+      collaborator_ids:
+        description: 'Optional: update collaborator associations'
+        items:
+          type: string
+        type: array
       description:
         type: string
       dosage_instructions:
@@ -2442,6 +2816,144 @@ definitions:
     - order_value
     - warehouse_id
     type: object
+  models.VariantDetail:
+    properties:
+      barcode:
+        type: string
+      brand_name:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      dosage_instructions:
+        type: string
+      external_id:
+        type: string
+      gst_rate:
+        type: number
+      hsn_code:
+        type: string
+      id:
+        type: string
+      images:
+        items:
+          type: string
+        type: array
+      is_active:
+        type: boolean
+      pack_size:
+        type: string
+      prices:
+        $ref: '#/definitions/models.VariantPrices'
+      product_id:
+        type: string
+      quantity:
+        type: string
+      sku:
+        type: string
+      stock_summary:
+        $ref: '#/definitions/models.StockSummary'
+      tax_configuration:
+        $ref: '#/definitions/models.TaxConfiguration'
+      updated_at:
+        type: string
+      usage_details:
+        type: string
+      variant_name:
+        type: string
+      warehouse_stock:
+        items:
+          $ref: '#/definitions/models.WarehouseStock'
+        type: array
+    type: object
+  models.VariantDetailResponse:
+    properties:
+      metadata:
+        $ref: '#/definitions/models.ResponseMetadata'
+      variant:
+        $ref: '#/definitions/models.VariantDetailWithProduct'
+    type: object
+  models.VariantDetailWithProduct:
+    properties:
+      barcode:
+        type: string
+      brand_name:
+        type: string
+      collaborator:
+        $ref: '#/definitions/models.CollaboratorBasicInfo'
+      created_at:
+        type: string
+      description:
+        type: string
+      dosage_instructions:
+        type: string
+      external_id:
+        type: string
+      gst_rate:
+        type: number
+      hsn_code:
+        type: string
+      id:
+        type: string
+      images:
+        items:
+          type: string
+        type: array
+      is_active:
+        type: boolean
+      pack_size:
+        type: string
+      prices:
+        $ref: '#/definitions/models.VariantPrices'
+      product:
+        $ref: '#/definitions/models.ProductBasicInfo'
+      product_id:
+        type: string
+      quantity:
+        type: string
+      sku:
+        type: string
+      stock_summary:
+        $ref: '#/definitions/models.StockSummary'
+      tax_configuration:
+        $ref: '#/definitions/models.TaxConfiguration'
+      updated_at:
+        type: string
+      usage_details:
+        type: string
+      variant_name:
+        type: string
+      warehouse_stock:
+        items:
+          $ref: '#/definitions/models.WarehouseStock'
+        type: array
+    type: object
+  models.VariantInfoForSales:
+    properties:
+      barcode:
+        type: string
+      brand_name:
+        type: string
+      hsn_code:
+        type: string
+      id:
+        type: string
+      images:
+        items:
+          type: string
+        type: array
+      is_active:
+        type: boolean
+      pack_size:
+        type: string
+      quantity:
+        type: string
+      sku:
+        type: string
+      variant_name:
+        type: string
+    type: object
   models.VariantPrice:
     properties:
       currency:
@@ -2450,7 +2962,35 @@ definitions:
       price:
         type: number
       price_type:
-        description: '"retail", "wholesale", "bulk"'
+        description: '"MRP" or "MSP"'
+        type: string
+    type: object
+  models.VariantPrices:
+    properties:
+      bulk_price:
+        $ref: '#/definitions/models.PriceInfo'
+      currency:
+        type: string
+      has_active_price:
+        type: boolean
+      retail_price:
+        $ref: '#/definitions/models.PriceInfo'
+      wholesale_price:
+        $ref: '#/definitions/models.PriceInfo'
+    type: object
+  models.WarehouseInfo:
+    properties:
+      address:
+        $ref: '#/definitions/models.AddressInfo'
+      contact_phone:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      name:
+        type: string
+      organization_id:
         type: string
     type: object
   models.WarehouseResponse:
@@ -2466,6 +3006,21 @@ definitions:
       name:
         type: string
       updated_at:
+        type: string
+    type: object
+  models.WarehouseStock:
+    properties:
+      batch_count:
+        type: integer
+      cost_price:
+        type: number
+      expiry_date:
+        type: string
+      quantity:
+        type: integer
+      warehouse_id:
+        type: string
+      warehouse_name:
         type: string
     type: object
   models.WebhookAddress:
@@ -2558,56 +3113,29 @@ definitions:
     - external_variant_id
     - received_quantity
     type: object
-  models.WebhookEvent:
+  models.WebhookEventResponse:
     properties:
       created_at:
         type: string
-      created_by:
-        type: string
-      deleted_at:
-        type: string
-      deleted_by:
-        type: string
       error_message:
-        description: Error details if failed
         type: string
       event_id:
-        description: Event identification
         type: string
       event_type:
-        description: order.created, order.confirmed, etc.
         type: string
       external_order_id:
-        description: Reference tracking
         type: string
       id:
-        type: string
-      payload_hash:
-        description: Payload tracking
         type: string
       processed_at:
         type: string
       purchase_order_id:
-        description: Created/Updated PO ID
-        type: string
-      request_body:
-        description: Full JSON payload for debugging
         type: string
       signature_valid:
-        description: HMAC signature verification result
         type: boolean
-      source_ip:
-        description: Webhook metadata
-        type: string
       status:
-        description: Processing status
         type: string
       updated_at:
-        type: string
-      updated_by:
-        type: string
-      user_agent:
-        description: Request user agent
         type: string
     type: object
   models.WebhookFPO:
@@ -3805,155 +4333,6 @@ paths:
       summary: Get Low Stock Batches
       tags:
       - Inventory
-  /api/v1/collaborator-products/{id}:
-    delete:
-      description: Delete collaborator-product association by ID (soft delete, requires
-        authentication)
-      parameters:
-      - description: 'Collaborator Product ID (format: CPRD_xxxxxxxx)'
-        example: CPRD_12345678
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Association deleted successfully
-          schema:
-            $ref: '#/definitions/utils.Response'
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "404":
-          description: Association not found
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Delete Collaborator Product
-      tags:
-      - Collaborator Products
-    get:
-      description: Retrieve a specific collaborator-product association
-      parameters:
-      - description: 'Collaborator Product ID (format: CPRD_xxxxxxxx)'
-        example: CPRD_12345678
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Association retrieved successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/models.CollaboratorProductResponse'
-              type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "404":
-          description: Association not found
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      summary: Get Collaborator Product
-      tags:
-      - Collaborator Products
-    put:
-      consumes:
-      - application/json
-      description: Update collaborator-product metadata (requires authentication)
-      parameters:
-      - description: 'Collaborator Product ID (format: CPRD_xxxxxxxx)'
-        example: CPRD_12345678
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Updated metadata
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/models.UpdateCollaboratorProductRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Association updated successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/models.CollaboratorProductResponse'
-              type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "404":
-          description: Association not found
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Update Collaborator Product
-      tags:
-      - Collaborator Products
   /api/v1/collaborators:
     get:
       description: Retrieve all collaborators (requires authentication)
@@ -4196,160 +4575,6 @@ paths:
       summary: Update Collaborator
       tags:
       - Collaborators
-  /api/v1/collaborators/{id}/products:
-    get:
-      description: Retrieve all products for a specific collaborator
-      parameters:
-      - description: 'Collaborator ID (format: CLAB_xxxxxxxx)'
-        example: CLAB_12345678
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Products retrieved successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.Response'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/models.CollaboratorProductResponse'
-                  type: array
-              type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "404":
-          description: Collaborator not found
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      summary: Get Products by Collaborator
-      tags:
-      - Collaborator Products
-    post:
-      consumes:
-      - application/json
-      description: Associate a product with a collaborator (requires authentication)
-      parameters:
-      - description: 'Collaborator ID (format: CLAB_xxxxxxxx)'
-        example: CLAB_12345678
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Product association data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/models.CreateCollaboratorProductRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Product added successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/models.CollaboratorProductResponse'
-              type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Add Product to Collaborator
-      tags:
-      - Collaborator Products
-  /api/v1/collaborators/{id}/products/{product_id}:
-    delete:
-      description: Remove product association from collaborator (soft delete, requires
-        authentication)
-      parameters:
-      - description: 'Collaborator ID (format: CLAB_xxxxxxxx)'
-        example: CLAB_12345678
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: 'Product ID (format: PROD_xxxxxxxx)'
-        example: PROD_12345678
-        in: path
-        name: product_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Product removed successfully
-          schema:
-            $ref: '#/definitions/utils.Response'
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "404":
-          description: Association not found
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Remove Product from Collaborator
-      tags:
-      - Collaborator Products
   /api/v1/collaborators/{id}/purchase-orders:
     get:
       description: Retrieve all purchase orders for a specific collaborator
@@ -6019,32 +6244,66 @@ paths:
       summary: Update Product
       tags:
       - Products
-  /api/v1/products/{id}/collaborators:
+  /api/v1/products/{id}/detail:
     get:
-      description: Retrieve all collaborators for a specific product
+      description: Retrieves complete product information including variants, prices,
+        inventory availability, and collaborator details in a single call. Reduces
+        API calls by 75%.
       parameters:
-      - description: 'Product ID (format: PROD_xxxxxxxx)'
+      - description: Product ID
         example: PROD_12345678
         in: path
         name: id
         required: true
         type: string
+      - description: 'Comma-separated list of data to include: variants,prices,inventory,collaborators,taxes.
+          Default: all'
+        example: variants,prices,inventory
+        in: query
+        name: include
+        type: string
+      - description: Filter inventory by specific warehouse
+        example: WH_001
+        in: query
+        name: warehouse_id
+        type: string
+      - description: 'Filter prices: retail, wholesale, bulk, or all. Default: all'
+        example: retail
+        in: query
+        name: price_type
+        type: string
+      - description: 'Show only active variants. Default: true'
+        example: true
+        in: query
+        name: active_only
+        type: boolean
+      - description: 'Show only variants with available stock. Default: false'
+        example: false
+        in: query
+        name: in_stock_only
+        type: boolean
       produces:
       - application/json
       responses:
         "200":
-          description: Collaborators retrieved successfully
+          description: Product details retrieved successfully
           schema:
             allOf:
             - $ref: '#/definitions/utils.Response'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/models.CollaboratorProductResponse'
-                  type: array
+                  $ref: '#/definitions/models.ProductDetailResponse'
               type: object
         "400":
-          description: Bad request
+          description: Bad request - invalid parameters
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "404":
@@ -6055,9 +6314,11 @@ paths:
           description: Internal server error
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
-      summary: Get Collaborators by Product
+      security:
+      - BearerAuth: []
+      summary: Get Aggregated Product Detail
       tags:
-      - Collaborator Products
+      - Aggregation
   /api/v1/products/{id}/prices/current:
     get:
       description: Retrieve the current active price for a specific product
@@ -6364,6 +6625,65 @@ paths:
       summary: Search Products
       tags:
       - Products
+  /api/v1/products/variants/{id}/detail:
+    get:
+      description: Retrieves complete information for a specific product variant including
+        prices, inventory, and parent product/collaborator info.
+      parameters:
+      - description: Variant ID
+        example: PVAR_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 'Comma-separated list: prices,inventory,product,collaborator,taxes.
+          Default: all'
+        example: prices,inventory
+        in: query
+        name: include
+        type: string
+      - description: Filter inventory by specific warehouse
+        example: WH_001
+        in: query
+        name: warehouse_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Variant details retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.VariantDetailResponse'
+              type: object
+        "400":
+          description: Bad request - invalid parameters
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Variant not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Aggregated Variant Detail
+      tags:
+      - Aggregation
   /api/v1/purchase-orders:
     get:
       description: Retrieve all purchase orders (requires authentication)
@@ -8011,6 +8331,110 @@ paths:
       summary: Cancel Sale
       tags:
       - Sales
+  /api/v1/sales/{id}/cancel-items:
+    post:
+      consumes:
+      - application/json
+      description: Cancel specific items in a sale (partial cancellation)
+      parameters:
+      - description: Sale ID
+        example: SALE_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Items to cancel
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CancelItemsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Items cancelled successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.CancelItemsResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Sale not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "409":
+          description: Conflict - items cannot be cancelled
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Cancel Specific Items
+      tags:
+      - Sales
+  /api/v1/sales/{id}/cancellations:
+    get:
+      consumes:
+      - application/json
+      description: Get cancellation history for a sale
+      parameters:
+      - description: Sale ID
+        example: SALE_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Cancellations retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.GetCancellationsResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Sale not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Sale Cancellations
+      tags:
+      - Sales
   /api/v1/sales/{id}/returns:
     get:
       description: Retrieve all returns associated with a specific sale
@@ -8131,6 +8555,69 @@ paths:
       summary: Update Sale Status
       tags:
       - Sales
+  /api/v1/sales/context:
+    get:
+      description: Retrieves all data needed for sale/checkout operations in a single
+        call including available inventory, prices, taxes, discounts, and payment
+        methods. Reduces API calls by 80-83%.
+      parameters:
+      - description: Filter inventory to specific warehouse
+        example: WH_001
+        in: query
+        name: warehouse_id
+        type: string
+      - description: 'Include products with zero stock. Default: false'
+        example: false
+        in: query
+        name: include_zero_stock
+        type: boolean
+      - description: 'Price type to use: retail, wholesale, bulk. Default: retail'
+        example: retail
+        in: query
+        name: price_type
+        type: string
+      - description: 'ISO date for price effective date. Default: now'
+        example: "2024-11-21"
+        in: query
+        name: effective_date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sales context retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.SalesContextResponse'
+              type: object
+        "400":
+          description: Bad request - invalid parameters
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Warehouse not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Sales Context
+      tags:
+      - Aggregation
   /api/v1/sales/date-range:
     get:
       description: Retrieve sales within a specific date range
@@ -10187,7 +10674,7 @@ paths:
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/models.WebhookEvent'
+                    $ref: '#/definitions/models.WebhookEventResponse'
                   type: array
               type: object
         "401":

@@ -340,6 +340,43 @@ func (r *TaxRepository) GetTaxSummaryBySale(saleID string) (*models.TaxSummary, 
 	return &taxSummary, nil
 }
 
+// GetTaxSummaryBySaleWithTx retrieves tax summary for a sale within a transaction
+func (r *TaxRepository) GetTaxSummaryBySaleWithTx(tx *gorm.DB, saleID string) (*models.TaxSummary, error) {
+	var taxSummary models.TaxSummary
+	if err := tx.Where("sale_id = ?", saleID).First(&taxSummary).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil // Not found is OK for voiding
+		}
+		return nil, errors.NewInternalServerError("Failed to retrieve tax summary")
+	}
+	return &taxSummary, nil
+}
+
+// GetTaxApplicationsBySaleWithTx retrieves tax applications for a sale within a transaction
+func (r *TaxRepository) GetTaxApplicationsBySaleWithTx(tx *gorm.DB, saleID string) ([]models.TaxApplication, error) {
+	var taxApps []models.TaxApplication
+	if err := tx.Where("sale_id = ?", saleID).Find(&taxApps).Error; err != nil {
+		return nil, errors.NewInternalServerError("Failed to retrieve tax applications")
+	}
+	return taxApps, nil
+}
+
+// DeleteTaxSummaryBySaleWithTx deletes tax summary for a sale within a transaction
+func (r *TaxRepository) DeleteTaxSummaryBySaleWithTx(tx *gorm.DB, saleID string) error {
+	if err := tx.Where("sale_id = ?", saleID).Delete(&models.TaxSummary{}).Error; err != nil {
+		return errors.NewInternalServerError("Failed to delete tax summary")
+	}
+	return nil
+}
+
+// DeleteTaxApplicationsBySaleWithTx deletes tax applications for a sale within a transaction
+func (r *TaxRepository) DeleteTaxApplicationsBySaleWithTx(tx *gorm.DB, saleID string) error {
+	if err := tx.Where("sale_id = ?", saleID).Delete(&models.TaxApplication{}).Error; err != nil {
+		return errors.NewInternalServerError("Failed to delete tax applications")
+	}
+	return nil
+}
+
 // GetTaxSummaryByReturn retrieves tax summary for a return
 func (r *TaxRepository) GetTaxSummaryByReturn(returnID string) (*models.TaxSummary, error) {
 	var taxSummary models.TaxSummary

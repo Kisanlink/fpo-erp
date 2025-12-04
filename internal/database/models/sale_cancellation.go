@@ -178,3 +178,41 @@ type TaxVoidedInfo struct {
 	TaxSummaryID string  `json:"tax_summary_id"`
 	AmountVoided float64 `json:"amount_voided"`
 }
+
+// CancelItemsRequest represents the request to cancel specific items in a sale
+type CancelItemsRequest struct {
+	Reason        string             `json:"reason" binding:"required,oneof=customer_request payment_failed out_of_stock pricing_error duplicate_order fraud_suspected system_error other"`
+	ReasonDetails *string            `json:"reason_details" binding:"omitempty,max=1000"`
+	PerformedBy   string             `json:"performed_by" binding:"required"`
+	Items         []CancelItemDetail `json:"items" binding:"required,min=1,dive"`
+}
+
+// CancelItemDetail represents details for cancelling a specific item
+type CancelItemDetail struct {
+	SaleItemID string `json:"sale_item_id" binding:"required"`
+	Quantity   int64  `json:"quantity" binding:"required,min=1"`
+}
+
+// CancelItemsResponse represents the response after cancelling specific items
+type CancelItemsResponse struct {
+	Sale                 SaleResponse                  `json:"sale"`
+	ItemsCancelled       []CancelledItemInfo           `json:"items_cancelled"`
+	InventoryRestored    []InventoryRestoredItem       `json:"inventory_restored"`
+	FinancialAdjustments *FinancialAdjustmentsResponse `json:"financial_adjustments,omitempty"`
+	CancellationID       string                        `json:"cancellation_id"`
+	NewSaleTotal         float64                       `json:"new_sale_total"`
+}
+
+// CancelledItemInfo represents information about a cancelled item
+type CancelledItemInfo struct {
+	SaleItemID        string  `json:"sale_item_id"`
+	QuantityCancelled int64   `json:"quantity_cancelled"`
+	AmountRefunded    float64 `json:"amount_refunded"`
+}
+
+// GetCancellationsResponse represents the response for getting cancellation history
+type GetCancellationsResponse struct {
+	SaleID        string                       `json:"sale_id"`
+	Cancellations []SaleCancellationResponse   `json:"cancellations"`
+	TotalCount    int                          `json:"total_count"`
+}

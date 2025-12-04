@@ -42,6 +42,8 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.Sale{},
 		&models.SaleItem{},
 		&models.SaleSummary{},
+		&models.SaleCancellation{},
+		&models.SaleCancellationItem{},
 
 		// Returns entities
 		&models.Return{},
@@ -74,5 +76,13 @@ func AutoMigrate(db *gorm.DB) error {
 	}
 
 	log.Println("Database auto-migration completed successfully")
+
+	// Phase 3: Create application performance indexes
+	// Indexes are optimization - don't fail startup if some fail
+	if err := CreateApplicationIndexes(db); err != nil {
+		log.Printf("⚠️  Warning: Index creation had issues: %v", err)
+		// Continue - indexes are performance optimization, not critical
+	}
+
 	return nil
 }

@@ -1128,12 +1128,123 @@ func (s *SalesService) CancelSale(saleID string, req *models.CancelSaleRequest) 
 		}
 
 		// 5. Reverse discounts (if any were applied)
-		// TODO: Implement discount reversal logic
-		s.logger.Debug("Discount reversal not yet implemented - skipping")
+		s.logger.Debug("Checking for discounts to reverse", zap.String("sale_id", sale.ID))
+		var discountReversedInfo *models.DiscountReversedInfo
+		discountUsages, err := s.discountsRepo.GetDiscountUsageBySaleWithTx(tx, sale.ID)
+		if err != nil {
+			s.logger.Warn("Failed to get discount usages for sale",
+				zap.Error(err),
+				zap.String("sale_id", sale.ID))
+			// Non-critical - continue with cancellation
+		} else if len(discountUsages) > 0 {
+			s.logger.Info("Found discounts to reverse",
+				zap.String("sale_id", sale.ID),
+				zap.Int("discount_count", len(discountUsages)))
+
+			var totalDiscountReversed float64
+			var lastDiscountID string
+			for _, usage := range discountUsages {
+				// Decrement usage count for the discount
+				if err := s.discountsRepo.DecrementUsageWithTx(tx, usage.DiscountID); err != nil {
+					s.logger.Warn("Failed to decrement discount usage",
+						zap.Error(err),
+						zap.String("discount_id", usage.DiscountID))
+					// Non-critical - continue
+				} else {
+					s.logger.Debug("Decremented discount usage",
+						zap.String("discount_id", usage.DiscountID))
+				}
+				totalDiscountReversed += usage.Amount
+				lastDiscountID = usage.DiscountID
+			}
+
+			// Delete the discount usage records
+			if err := s.discountsRepo.DeleteDiscountUsagesBySaleWithTx(tx, sale.ID); err != nil {
+				s.logger.Warn("Failed to delete discount usage records",
+					zap.Error(err),
+					zap.String("sale_id", sale.ID))
+				// Non-critical - continue
+			} else {
+				s.logger.Debug("Deleted discount usage records",
+					zap.String("sale_id", sale.ID))
+			}
+
+			// Update cancellation record with discount reversal info
+			cancellation.DiscountReversed = totalDiscountReversed
+			if err := s.saleCancellationRepo.UpdateCancellationWithTx(tx, cancellation); err != nil {
+				s.logger.Warn("Failed to update cancellation with discount info",
+					zap.Error(err),
+					zap.String("cancellation_id", cancellation.ID))
+				// Non-critical - continue
+			}
+
+			// Build discount reversal info for response
+			discountReversedInfo = &models.DiscountReversedInfo{
+				DiscountID:       lastDiscountID, // Use last discount ID (if multiple, frontend should query for full details)
+				AmountReversed:   totalDiscountReversed,
+				UsageDecremented: true,
+			}
+			s.logger.Info("Discount reversal completed",
+				zap.Float64("total_reversed", totalDiscountReversed))
+		}
 
 		// 6. Void tax records (if taxes were applied)
-		// TODO: Implement tax voiding logic
-		s.logger.Debug("Tax voiding not yet implemented - skipping")
+		s.logger.Debug("Checking for taxes to void", zap.String("sale_id", sale.ID))
+		var taxVoidedInfo *models.TaxVoidedInfo
+		taxSummary, err := s.taxRepo.GetTaxSummaryBySaleWithTx(tx, sale.ID)
+		if err != nil {
+			s.logger.Warn("Failed to get tax summary for sale",
+				zap.Error(err),
+				zap.String("sale_id", sale.ID))
+			// Non-critical - continue with cancellation
+		} else if taxSummary != nil && taxSummary.TotalTaxAmount > 0 {
+			s.logger.Info("Found taxes to void",
+				zap.String("sale_id", sale.ID),
+				zap.Float64("total_tax_amount", taxSummary.TotalTaxAmount))
+
+			// Store tax summary ID and amount before deleting
+			taxSummaryID := taxSummary.ID
+			totalTaxVoided := taxSummary.TotalTaxAmount
+
+			// Delete tax applications for this sale
+			if err := s.taxRepo.DeleteTaxApplicationsBySaleWithTx(tx, sale.ID); err != nil {
+				s.logger.Warn("Failed to delete tax applications",
+					zap.Error(err),
+					zap.String("sale_id", sale.ID))
+				// Non-critical - continue
+			} else {
+				s.logger.Debug("Deleted tax applications",
+					zap.String("sale_id", sale.ID))
+			}
+
+			// Delete tax summary for this sale
+			if err := s.taxRepo.DeleteTaxSummaryBySaleWithTx(tx, sale.ID); err != nil {
+				s.logger.Warn("Failed to delete tax summary",
+					zap.Error(err),
+					zap.String("sale_id", sale.ID))
+				// Non-critical - continue
+			} else {
+				s.logger.Debug("Deleted tax summary",
+					zap.String("sale_id", sale.ID))
+			}
+
+			// Update cancellation record with tax reversal info
+			cancellation.TaxReversed = totalTaxVoided
+			if err := s.saleCancellationRepo.UpdateCancellationWithTx(tx, cancellation); err != nil {
+				s.logger.Warn("Failed to update cancellation with tax info",
+					zap.Error(err),
+					zap.String("cancellation_id", cancellation.ID))
+				// Non-critical - continue
+			}
+
+			// Build tax voided info for response
+			taxVoidedInfo = &models.TaxVoidedInfo{
+				TaxSummaryID: taxSummaryID,
+				AmountVoided: totalTaxVoided,
+			}
+			s.logger.Info("Tax voiding completed",
+				zap.Float64("total_voided", totalTaxVoided))
+		}
 
 		// 7. Update Sale status to "cancelled"
 		s.logger.Debug("Updating sale status to cancelled",
@@ -1150,11 +1261,21 @@ func (s *SalesService) CancelSale(saleID string, req *models.CancelSaleRequest) 
 			return errors.NewInternalServerError("Failed to update sale status")
 		}
 
+		// Build financial adjustments if any
+		var financialAdjustments *models.FinancialAdjustmentsResponse
+		if discountReversedInfo != nil || taxVoidedInfo != nil {
+			financialAdjustments = &models.FinancialAdjustmentsResponse{
+				DiscountReversed: discountReversedInfo,
+				TaxVoided:        taxVoidedInfo,
+			}
+		}
+
 		// Build response
 		response = &models.CancelSaleResponse{
-			Sale:              *s.mapSaleToResponse(sale),
-			InventoryRestored: inventoryRestored,
-			CancellationID:    cancellation.ID,
+			Sale:                 *s.mapSaleToResponse(sale),
+			InventoryRestored:    inventoryRestored,
+			FinancialAdjustments: financialAdjustments,
+			CancellationID:       cancellation.ID,
 		}
 
 		return nil
@@ -1168,6 +1289,275 @@ func (s *SalesService) CancelSale(saleID string, req *models.CancelSaleRequest) 
 	}
 
 	s.logger.Info("Sale cancellation completed successfully",
+		zap.String("sale_id", saleID),
+		zap.String("cancellation_id", response.CancellationID))
+
+	return response, nil
+}
+
+// GetCancellations retrieves all cancellations for a sale
+func (s *SalesService) GetCancellations(saleID string) (*models.GetCancellationsResponse, error) {
+	s.logger.Info("Getting cancellations for sale", zap.String("sale_id", saleID))
+
+	// Verify sale exists
+	sale, err := s.salesRepo.GetSaleByID(saleID)
+	if err != nil {
+		s.logger.Error("Failed to get sale", zap.Error(err), zap.String("sale_id", saleID))
+		return nil, errors.NewNotFoundError("Sale")
+	}
+
+	// Get all cancellations for this sale
+	cancellations, err := s.saleCancellationRepo.GetCancellationsBySaleID(sale.ID)
+	if err != nil {
+		s.logger.Error("Failed to get cancellations", zap.Error(err), zap.String("sale_id", saleID))
+		return nil, errors.NewInternalServerError("Failed to retrieve cancellations")
+	}
+
+	// Map to response
+	var cancellationResponses []models.SaleCancellationResponse
+	for _, c := range cancellations {
+		var itemResponses []models.SaleCancellationItemResponse
+		for _, item := range c.Items {
+			itemResponses = append(itemResponses, models.SaleCancellationItemResponse{
+				ID:                item.ID,
+				CancellationID:    item.CancellationID,
+				SaleItemID:        item.SaleItemID,
+				BatchID:           item.BatchID,
+				QuantityCancelled: item.QuantityCancelled,
+				RefundAmount:      item.RefundAmount,
+				InventoryRestored: item.InventoryRestored,
+				TransactionID:     item.TransactionID,
+				CreatedAt:         item.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			})
+		}
+
+		cancellationResponses = append(cancellationResponses, models.SaleCancellationResponse{
+			ID:               c.ID,
+			SaleID:           c.SaleID,
+			CancellationType: c.CancellationType,
+			CancelledBy:      c.CancelledBy,
+			Reason:           c.Reason,
+			ReasonDetails:    c.ReasonDetails,
+			CancelledAt:      c.CancelledAt.Format("2006-01-02T15:04:05Z07:00"),
+			OriginalAmount:   c.OriginalAmount,
+			CancelledAmount:  c.CancelledAmount,
+			DiscountReversed: c.DiscountReversed,
+			TaxReversed:      c.TaxReversed,
+			Items:            itemResponses,
+			CreatedAt:        c.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			UpdatedAt:        c.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		})
+	}
+
+	s.logger.Info("Retrieved cancellations successfully",
+		zap.String("sale_id", saleID),
+		zap.Int("count", len(cancellations)))
+
+	return &models.GetCancellationsResponse{
+		SaleID:        saleID,
+		Cancellations: cancellationResponses,
+		TotalCount:    len(cancellations),
+	}, nil
+}
+
+// CancelItems cancels specific items in a sale (partial cancellation)
+func (s *SalesService) CancelItems(saleID string, req *models.CancelItemsRequest) (*models.CancelItemsResponse, error) {
+	s.logger.Info("Starting partial sale cancellation",
+		zap.String("sale_id", saleID),
+		zap.String("reason", req.Reason),
+		zap.Int("items_count", len(req.Items)))
+
+	// Validate reason - if "other", reason_details is required
+	if req.Reason == models.ReasonOther && (req.ReasonDetails == nil || *req.ReasonDetails == "") {
+		s.logger.Error("Reason details required for 'other' reason", zap.String("sale_id", saleID))
+		return nil, errors.NewValidationError("reason_details is required when reason is 'other'")
+	}
+
+	var response *models.CancelItemsResponse
+
+	err := s.salesRepo.WithTransaction(func(tx *gorm.DB) error {
+		// 1. Lock sale record (SELECT FOR UPDATE)
+		sale, err := s.salesRepo.GetSaleForUpdateWithTx(tx, saleID)
+		if err != nil {
+			s.logger.Error("Failed to get sale for update", zap.Error(err), zap.String("sale_id", saleID))
+			if err == gorm.ErrRecordNotFound {
+				return errors.NewNotFoundError("Sale")
+			}
+			return errors.NewInternalServerError("Failed to lock sale")
+		}
+
+		// 2. Check if sale can have items cancelled
+		if sale.Status == "cancelled" {
+			return errors.NewBadRequestError("Sale is already fully cancelled")
+		}
+		if sale.Status == "shipped" || sale.Status == "delivered" {
+			return errors.NewBadRequestError("Cannot cancel items from shipped/delivered orders. Use Returns instead.")
+		}
+		if sale.Status == "returned" {
+			return errors.NewBadRequestError("Sale has already been returned")
+		}
+
+		// 3. Build a map of sale items for quick lookup
+		saleItemMap := make(map[string]*models.SaleItem)
+		for i := range sale.Items {
+			saleItemMap[sale.Items[i].ID] = &sale.Items[i]
+		}
+
+		// 4. Validate all requested items
+		var totalCancelledAmount float64
+		for _, itemReq := range req.Items {
+			saleItem, exists := saleItemMap[itemReq.SaleItemID]
+			if !exists {
+				return errors.NewBadRequestError("Sale item " + itemReq.SaleItemID + " not found in this sale")
+			}
+			if itemReq.Quantity > saleItem.Quantity {
+				return errors.NewBadRequestError("Cannot cancel more than available quantity for item " + itemReq.SaleItemID)
+			}
+		}
+
+		// 5. Create SaleCancellation record (partial)
+		cancellation := models.NewSaleCancellation(
+			sale.ID,
+			models.CancellationTypePartial,
+			req.Reason,
+			&req.PerformedBy,
+			req.ReasonDetails,
+			sale.TotalAmount,
+			0, // Will be calculated
+		)
+
+		if err := s.saleCancellationRepo.CreateCancellationWithTx(tx, cancellation); err != nil {
+			s.logger.Error("Failed to create cancellation record", zap.Error(err))
+			return errors.NewInternalServerError("Failed to create cancellation record")
+		}
+
+		// 6. Process each item
+		var inventoryRestored []models.InventoryRestoredItem
+		var cancelledItems []models.CancelledItemInfo
+
+		for _, itemReq := range req.Items {
+			saleItem := saleItemMap[itemReq.SaleItemID]
+
+			// Calculate refund amount for this item
+			pricePerUnit := saleItem.LineTotal / float64(saleItem.Quantity)
+			refundAmount := pricePerUnit * float64(itemReq.Quantity)
+			totalCancelledAmount += refundAmount
+
+			// Get batch for variant ID
+			batch, err := s.inventoryRepo.GetBatchByID(saleItem.BatchID)
+			if err != nil {
+				s.logger.Warn("Failed to get batch for item", zap.Error(err), zap.String("batch_id", saleItem.BatchID))
+			}
+
+			// Restore inventory
+			note := "Inventory restored for partial cancellation " + cancellation.ID
+			transaction := models.NewInventoryTransaction(
+				saleItem.BatchID,
+				"cancellation_return",
+				itemReq.Quantity,
+				&cancellation.ID,
+				&req.PerformedBy,
+				&note,
+				time.Now(),
+			)
+
+			if err := s.inventoryRepo.CreateTransactionWithTx(tx, transaction); err != nil {
+				s.logger.Error("Failed to create inventory transaction", zap.Error(err))
+				return errors.NewInternalServerError("Failed to restore inventory")
+			}
+
+			if err := s.inventoryRepo.UpdateBatchStockWithTx(tx, saleItem.BatchID, itemReq.Quantity); err != nil {
+				s.logger.Error("Failed to update batch stock", zap.Error(err))
+				return errors.NewInternalServerError("Failed to restore inventory")
+			}
+
+			// Create cancellation item record
+			cancellationItem := models.NewSaleCancellationItem(
+				cancellation.ID,
+				saleItem.ID,
+				saleItem.BatchID,
+				itemReq.Quantity,
+				refundAmount,
+				&transaction.ID,
+			)
+
+			if err := s.saleCancellationRepo.CreateCancellationItemWithTx(tx, cancellationItem); err != nil {
+				s.logger.Error("Failed to create cancellation item", zap.Error(err))
+				return errors.NewInternalServerError("Failed to create cancellation item")
+			}
+
+			// Update sale item quantity if partial
+			if itemReq.Quantity < saleItem.Quantity {
+				newQuantity := saleItem.Quantity - itemReq.Quantity
+				newLineTotal := pricePerUnit * float64(newQuantity)
+				if err := tx.Model(&models.SaleItem{}).Where("id = ?", saleItem.ID).Updates(map[string]interface{}{
+					"quantity":   newQuantity,
+					"line_total": newLineTotal,
+				}).Error; err != nil {
+					s.logger.Error("Failed to update sale item quantity", zap.Error(err))
+					return errors.NewInternalServerError("Failed to update sale item")
+				}
+			} else {
+				// Full item cancelled - soft delete
+				if err := tx.Delete(&models.SaleItem{}, "id = ?", saleItem.ID).Error; err != nil {
+					s.logger.Error("Failed to delete sale item", zap.Error(err))
+					return errors.NewInternalServerError("Failed to remove cancelled item")
+				}
+			}
+
+			// Add to response lists
+			if batch != nil {
+				inventoryRestored = append(inventoryRestored, models.InventoryRestoredItem{
+					BatchID:          saleItem.BatchID,
+					VariantID:        batch.VariantID,
+					QuantityRestored: itemReq.Quantity,
+					TransactionID:    transaction.ID,
+				})
+			}
+
+			cancelledItems = append(cancelledItems, models.CancelledItemInfo{
+				SaleItemID:        saleItem.ID,
+				QuantityCancelled: itemReq.Quantity,
+				AmountRefunded:    refundAmount,
+			})
+		}
+
+		// 7. Update cancellation with total amount
+		cancellation.CancelledAmount = totalCancelledAmount
+		if err := s.saleCancellationRepo.UpdateCancellationWithTx(tx, cancellation); err != nil {
+			s.logger.Warn("Failed to update cancellation amount", zap.Error(err))
+		}
+
+		// 8. Update sale total
+		newSaleTotal := sale.TotalAmount - totalCancelledAmount
+		if err := tx.Model(&models.Sale{}).Where("id = ?", sale.ID).Updates(map[string]interface{}{
+			"total_amount": newSaleTotal,
+			"status":       "partially_cancelled",
+		}).Error; err != nil {
+			s.logger.Error("Failed to update sale total", zap.Error(err))
+			return errors.NewInternalServerError("Failed to update sale")
+		}
+		sale.TotalAmount = newSaleTotal
+		sale.Status = "partially_cancelled"
+
+		// Build response
+		response = &models.CancelItemsResponse{
+			Sale:              *s.mapSaleToResponse(sale),
+			ItemsCancelled:    cancelledItems,
+			InventoryRestored: inventoryRestored,
+			CancellationID:    cancellation.ID,
+			NewSaleTotal:      newSaleTotal,
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		s.logger.Error("Partial sale cancellation failed", zap.Error(err), zap.String("sale_id", saleID))
+		return nil, err
+	}
+
+	s.logger.Info("Partial sale cancellation completed successfully",
 		zap.String("sale_id", saleID),
 		zap.String("cancellation_id", response.CancellationID))
 

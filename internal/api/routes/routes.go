@@ -37,6 +37,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	taxRepo := repositories.NewTaxRepository(db)
 	refundPoliciesRepo := repositories.NewRefundPoliciesRepository(db)
 	bankPaymentsRepo := repositories.NewBankPaymentsRepository(db)
+	priceRepo := repositories.NewProductPriceRepository(db)
 
 	// Procurement repositories
 	collaboratorRepo := repositories.NewCollaboratorRepository(db)
@@ -105,6 +106,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 		logger,
 	)
 	productVariantService := services.NewProductVariantService(productVariantRepo, productRepo, logger)
+	priceService := services.NewProductPriceService(priceRepo, productRepo, productVariantRepo, logger)
 	purchaseOrderService := services.NewPurchaseOrderService(purchaseOrderRepo, collaboratorRepo, warehouseRepo, productRepo, productVariantRepo, grnRepo, inventoryRepo, logger)
 	grnService := services.NewGRNService(grnRepo, purchaseOrderRepo, warehouseRepo, productRepo, inventoryRepo, logger)
 
@@ -121,6 +123,19 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 		inventoryRepo,
 		purchaseOrderRepo,
 		addressClient,
+	)
+
+	// Aggregation service (for frontend API optimization)
+	aggregationService := services.NewAggregationService(
+		productRepo,
+		productVariantRepo,
+		inventoryRepo,
+		warehouseRepo,
+		collaboratorRepo,
+		discountRepo,
+		taxRepo,
+		refundPoliciesRepo,
+		logger,
 	)
 
 	// AAA middleware is now passed as parameter
@@ -140,6 +155,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	// Procurement handlers
 	collaboratorHandler := handlers.NewCollaboratorHandler(collaboratorService, aaaMiddleware, logger)
 	productVariantHandler := handlers.NewProductVariantHandler(productVariantService, aaaMiddleware, logger)
+	priceHandler := handlers.NewProductPriceHandler(priceService, aaaMiddleware, logger)
 	purchaseOrderHandler := handlers.NewPurchaseOrderHandler(purchaseOrderService, aaaMiddleware, logger)
 	grnHandler := handlers.NewGRNHandler(grnService, aaaMiddleware, logger)
 
@@ -152,6 +168,9 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 		aaaMiddleware,
 		logger,
 	)
+
+	// Aggregation handler (for frontend API optimization - reduces API calls by 75-85%)
+	aggregationHandler := handlers.NewAggregationHandler(aggregationService, aaaMiddleware, logger)
 
 	// API v1 routes
 	v1 := router.Group("/api/v1")
@@ -171,11 +190,15 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 		// Procurement handlers
 		collaboratorHandler.RegisterRoutes(v1)
 		productVariantHandler.RegisterRoutes(v1)
+		priceHandler.RegisterRoutes(v1)
 		purchaseOrderHandler.RegisterRoutes(v1)
 		grnHandler.RegisterRoutes(v1)
 
 		// Webhook handler
 		ecommerceWebhookHandler.RegisterRoutes(v1)
+
+		// Aggregation handler (frontend API optimization)
+		aggregationHandler.RegisterRoutes(v1)
 	}
 }
 

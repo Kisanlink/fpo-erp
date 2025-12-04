@@ -18,4 +18,6 @@ type SalesServiceInterface interface {
 	GetTotalSalesAmount(startDate, endDate time.Time) (float64, error)
 	GetTopSellingProducts(limit int) ([]models.TopSellingProductResponse, error)
 	CancelSale(saleID string, req *models.CancelSaleRequest) (*models.CancelSaleResponse, error)
+	CancelItems(saleID string, req *models.CancelItemsRequest) (*models.CancelItemsResponse, error)
+	GetCancellations(saleID string) (*models.GetCancellationsResponse, error)
 }
