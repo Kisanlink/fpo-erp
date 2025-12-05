@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"mime/multipart"
 	"time"
@@ -17,14 +18,16 @@ import (
 // AttachmentService handles attachment business logic
 type AttachmentService struct {
 	attachmentRepo *repositories.AttachmentRepository
+	variantRepo    *repositories.ProductVariantRepository
 	s3Service      *S3Service
 	logger         interfaces.Logger
 }
 
 // NewAttachmentService creates a new attachment service
-func NewAttachmentService(attachmentRepo *repositories.AttachmentRepository, s3Service *S3Service, logger interfaces.Logger) *AttachmentService {
+func NewAttachmentService(attachmentRepo *repositories.AttachmentRepository, variantRepo *repositories.ProductVariantRepository, s3Service *S3Service, logger interfaces.Logger) *AttachmentService {
 	return &AttachmentService{
 		attachmentRepo: attachmentRepo,
+		variantRepo:    variantRepo,
 		s3Service:      s3Service,
 		logger:         logger,
 	}
@@ -95,18 +98,24 @@ func (s *AttachmentService) UploadAttachment(ctx context.Context, file *multipar
 		zap.String("entity_type", entityType),
 		zap.String("entity_id", entityID))
 
-	// Build response
-	return &models.AttachmentResponse{
-		ID:         attachment.ID,
-		EntityType: attachment.EntityType,
-		EntityID:   attachment.EntityID,
-		FilePath:   attachment.FilePath,
-		FileType:   attachment.FileType,
-		UploadedBy: attachment.UploadedBy,
-		UploadedAt: attachment.UploadedAt.UTC().Format(time.RFC3339),
-		CreatedAt:  attachment.CreatedAt.UTC().Format(time.RFC3339),
-		UpdatedAt:  attachment.UpdatedAt.UTC().Format(time.RFC3339),
-	}, nil
+	// Auto-update variant images if entity_type is "variant"
+	if entityType == "variant" && s.variantRepo != nil {
+		if err := s.addImageToVariant(entityID, s3Key); err != nil {
+			s.logger.Warn("Failed to auto-update variant images",
+				zap.Error(err),
+				zap.String("variant_id", entityID),
+				zap.String("s3_key", s3Key))
+			// Don't fail the upload, just log the warning
+		} else {
+			s.logger.Info("Auto-updated variant images",
+				zap.String("variant_id", entityID),
+				zap.String("s3_key", s3Key))
+		}
+	}
+
+	// Build response with presigned URL
+	response := s.buildAttachmentResponse(ctx, attachment)
+	return &response, nil
 }
 
 // GetAttachment retrieves an attachment by ID
@@ -120,52 +129,32 @@ func (s *AttachmentService) GetAttachment(id string) (*models.Attachment, error)
 }
 
 // GetAttachments retrieves attachments with optional filters
-func (s *AttachmentService) GetAttachments(entityType, entityID *string, limit, offset int) ([]models.AttachmentResponse, error) {
+func (s *AttachmentService) GetAttachments(ctx context.Context, entityType, entityID *string, limit, offset int) ([]models.AttachmentResponse, error) {
 	attachments, err := s.attachmentRepo.GetAll(entityType, entityID, limit, offset)
 	if err != nil {
 		return nil, errors.NewInternalServerError("failed to retrieve attachments")
 	}
 
-	// Build response
+	// Build response with presigned URLs
 	responses := make([]models.AttachmentResponse, len(attachments))
 	for i, att := range attachments {
-		responses[i] = models.AttachmentResponse{
-			ID:         att.ID,
-			EntityType: att.EntityType,
-			EntityID:   att.EntityID,
-			FilePath:   att.FilePath,
-			FileType:   att.FileType,
-			UploadedBy: att.UploadedBy,
-			UploadedAt: att.UploadedAt.UTC().Format(time.RFC3339),
-			CreatedAt:  att.CreatedAt.UTC().Format(time.RFC3339),
-			UpdatedAt:  att.UpdatedAt.UTC().Format(time.RFC3339),
-		}
+		responses[i] = s.buildAttachmentResponse(ctx, &att)
 	}
 
 	return responses, nil
 }
 
 // GetAttachmentsByEntity retrieves all attachments for a specific entity
-func (s *AttachmentService) GetAttachmentsByEntity(entityType, entityID string) ([]models.AttachmentResponse, error) {
+func (s *AttachmentService) GetAttachmentsByEntity(ctx context.Context, entityType, entityID string) ([]models.AttachmentResponse, error) {
 	attachments, err := s.attachmentRepo.GetByEntity(entityType, entityID)
 	if err != nil {
 		return nil, errors.NewInternalServerError("failed to retrieve attachments")
 	}
 
-	// Build response
+	// Build response with presigned URLs
 	responses := make([]models.AttachmentResponse, len(attachments))
 	for i, att := range attachments {
-		responses[i] = models.AttachmentResponse{
-			ID:         att.ID,
-			EntityType: att.EntityType,
-			EntityID:   att.EntityID,
-			FilePath:   att.FilePath,
-			FileType:   att.FileType,
-			UploadedBy: att.UploadedBy,
-			UploadedAt: att.UploadedAt.UTC().Format(time.RFC3339),
-			CreatedAt:  att.CreatedAt.UTC().Format(time.RFC3339),
-			UpdatedAt:  att.UpdatedAt.UTC().Format(time.RFC3339),
-		}
+		responses[i] = s.buildAttachmentResponse(ctx, &att)
 	}
 
 	return responses, nil
@@ -176,7 +165,7 @@ func (s *AttachmentService) DeleteAttachment(ctx context.Context, id string) err
 	s.logger.Info("Deleting attachment",
 		zap.String("attachment_id", id))
 
-	// Get attachment to get the S3 URL
+	// Get attachment to get the S3 key
 	attachment, err := s.attachmentRepo.GetByID(id)
 	if err != nil {
 		s.logger.Error("Failed to retrieve attachment for deletion",
@@ -185,16 +174,31 @@ func (s *AttachmentService) DeleteAttachment(ctx context.Context, id string) err
 		return errors.NewNotFoundError("attachment not found")
 	}
 
-	// Delete file from S3
-	if err := s.s3Service.DeleteFile(ctx, attachment.FilePath); err != nil {
+	// Delete file from S3 using key directly
+	if err := s.s3Service.DeleteFileByKey(ctx, attachment.FilePath); err != nil {
 		s.logger.Error("Failed to delete file from S3",
 			zap.Error(err),
-			zap.String("s3_path", attachment.FilePath))
+			zap.String("s3_key", attachment.FilePath))
 		return errors.NewInternalServerError("failed to delete file from S3")
 	}
 
 	s.logger.Debug("S3 file deleted",
-		zap.String("s3_path", attachment.FilePath))
+		zap.String("s3_key", attachment.FilePath))
+
+	// Remove image from variant if entity_type is "variant"
+	if attachment.EntityType == "variant" && s.variantRepo != nil {
+		if err := s.removeImageFromVariant(attachment.EntityID, attachment.FilePath); err != nil {
+			s.logger.Warn("Failed to remove image from variant",
+				zap.Error(err),
+				zap.String("variant_id", attachment.EntityID),
+				zap.String("s3_key", attachment.FilePath))
+			// Don't fail the deletion, just log the warning
+		} else {
+			s.logger.Info("Removed image from variant",
+				zap.String("variant_id", attachment.EntityID),
+				zap.String("s3_key", attachment.FilePath))
+		}
+	}
 
 	// Delete attachment record
 	if err := s.attachmentRepo.Delete(id); err != nil {
@@ -235,8 +239,8 @@ func (s *AttachmentService) GenerateDownloadURL(ctx context.Context, id string, 
 		return "", errors.NewNotFoundError("attachment not found")
 	}
 
-	// Generate presigned URL
-	url, err := s.s3Service.GeneratePresignedURL(ctx, attachment.FilePath, expiration)
+	// Generate presigned URL using S3 key directly
+	url, err := s.s3Service.GeneratePresignedURLForKey(ctx, attachment.FilePath, expiration)
 	if err != nil {
 		return "", errors.NewInternalServerError("failed to generate download URL")
 	}
@@ -252,8 +256,8 @@ func (s *AttachmentService) GetAttachmentInfo(ctx context.Context, id string) (*
 		return nil, errors.NewNotFoundError("attachment not found")
 	}
 
-	// Get file info from S3
-	fileInfo, err := s.s3Service.GetFileInfo(ctx, attachment.FilePath)
+	// Get file info from S3 using key directly
+	fileInfo, err := s.s3Service.GetFileInfoByKey(ctx, attachment.FilePath)
 	if err != nil {
 		return nil, errors.NewInternalServerError("failed to get file info")
 	}
@@ -283,6 +287,121 @@ func (s *AttachmentService) validateFile(file *multipart.FileHeader) error {
 	// Check file type
 	if err := s.s3Service.ValidateFileType(file.Filename); err != nil {
 		return errors.NewBadRequestError(err.Error())
+	}
+
+	return nil
+}
+
+// buildAttachmentResponse builds an AttachmentResponse with presigned URL
+func (s *AttachmentService) buildAttachmentResponse(ctx context.Context, att *models.Attachment) models.AttachmentResponse {
+	response := models.AttachmentResponse{
+		ID:         att.ID,
+		EntityType: att.EntityType,
+		EntityID:   att.EntityID,
+		FilePath:   att.FilePath,
+		FileType:   att.FileType,
+		UploadedBy: att.UploadedBy,
+		UploadedAt: att.UploadedAt.UTC().Format(time.RFC3339),
+		CreatedAt:  att.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:  att.UpdatedAt.UTC().Format(time.RFC3339),
+	}
+
+	// Generate presigned URL (1 hour expiration)
+	if url, err := s.s3Service.GeneratePresignedURLForKey(ctx, att.FilePath, time.Hour); err == nil {
+		response.DownloadURL = url
+	}
+
+	return response
+}
+
+// addImageToVariant adds an S3 key to the variant's images JSON array
+func (s *AttachmentService) addImageToVariant(variantID, s3Key string) error {
+	// Get the variant
+	variant, err := s.variantRepo.GetByID(variantID)
+	if err != nil {
+		return fmt.Errorf("variant not found: %w", err)
+	}
+
+	// Parse existing images
+	var images []string
+	if variant.Images != nil && *variant.Images != "" {
+		if err := json.Unmarshal([]byte(*variant.Images), &images); err != nil {
+			// If parsing fails, start fresh
+			images = []string{}
+		}
+	}
+
+	// Check if image already exists (avoid duplicates)
+	for _, img := range images {
+		if img == s3Key {
+			return nil // Already exists, no update needed
+		}
+	}
+
+	// Add new image
+	images = append(images, s3Key)
+
+	// Marshal back to JSON
+	imagesJSON, err := json.Marshal(images)
+	if err != nil {
+		return fmt.Errorf("failed to marshal images: %w", err)
+	}
+
+	// Update variant
+	imagesStr := string(imagesJSON)
+	variant.Images = &imagesStr
+
+	if err := s.variantRepo.Update(variant); err != nil {
+		return fmt.Errorf("failed to update variant: %w", err)
+	}
+
+	return nil
+}
+
+// removeImageFromVariant removes an S3 key from the variant's images JSON array
+func (s *AttachmentService) removeImageFromVariant(variantID, s3Key string) error {
+	// Get the variant
+	variant, err := s.variantRepo.GetByID(variantID)
+	if err != nil {
+		return fmt.Errorf("variant not found: %w", err)
+	}
+
+	// Parse existing images
+	var images []string
+	if variant.Images != nil && *variant.Images != "" {
+		if err := json.Unmarshal([]byte(*variant.Images), &images); err != nil {
+			// If parsing fails, nothing to remove
+			return nil
+		}
+	}
+
+	// Find and remove the image
+	found := false
+	newImages := make([]string, 0, len(images))
+	for _, img := range images {
+		if img == s3Key {
+			found = true
+			continue
+		}
+		newImages = append(newImages, img)
+	}
+
+	if !found {
+		return nil // Image wasn't in the array, nothing to do
+	}
+
+	// Marshal back to JSON
+	imagesJSON, err := json.Marshal(newImages)
+	if err != nil {
+		return fmt.Errorf("failed to marshal images: %w", err)
+	}
+
+	// Update variant
+	imagesStr := string(imagesJSON)
+	variant.Images = &imagesStr
+
+	if err := s.variantRepo.Update(variant); err != nil {
+		return fmt.Errorf("failed to update variant: %w", err)
 	}
 
 	return nil

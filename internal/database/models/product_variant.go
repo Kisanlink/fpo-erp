@@ -93,7 +93,8 @@ type ProductVariantResponse struct {
 	BrandName          *string  `json:"brand_name,omitempty"`
 	HSNCode            *string  `json:"hsn_code,omitempty"`
 	GSTRate            *float64 `json:"gst_rate,omitempty"`
-	Images             []string `json:"images,omitempty"` // Parsed from JSON
+	Images             []string `json:"images,omitempty"`     // S3 paths (for reference)
+	ImageURLs          []string `json:"image_urls,omitempty"` // Presigned URLs (valid for 1 hour)
 	DosageInstructions *string  `json:"dosage_instructions,omitempty"`
 	UsageDetails       *string  `json:"usage_details,omitempty"`
 	IsActive           bool     `json:"is_active"`

@@ -130,7 +130,7 @@ func (s *S3Service) DownloadFile(ctx context.Context, s3URL string) (io.ReadClos
 	return result.Body, aws.ToString(result.ContentType), nil
 }
 
-// DeleteFile deletes a file from S3
+// DeleteFile deletes a file from S3 (expects s3://bucket/key format)
 func (s *S3Service) DeleteFile(ctx context.Context, s3URL string) error {
 	// Extract key from S3 URL
 	key := strings.TrimPrefix(s3URL, fmt.Sprintf("s3://%s/", s.bucket))
@@ -138,6 +138,11 @@ func (s *S3Service) DeleteFile(ctx context.Context, s3URL string) error {
 		return errors.NewBadRequestError("Invalid S3 URL format")
 	}
 
+	return s.DeleteFileByKey(ctx, key)
+}
+
+// DeleteFileByKey deletes a file from S3 using the key directly (without s3://bucket/ prefix)
+func (s *S3Service) DeleteFileByKey(ctx context.Context, key string) error {
 	// Delete object from S3
 	_, err := s.client.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(s.bucket),
@@ -150,7 +155,7 @@ func (s *S3Service) DeleteFile(ctx context.Context, s3URL string) error {
 	return nil
 }
 
-// GeneratePresignedURL generates a presigned URL for file access
+// GeneratePresignedURL generates a presigned URL for file access (expects s3://bucket/key format)
 func (s *S3Service) GeneratePresignedURL(ctx context.Context, s3URL string, expiration time.Duration) (string, error) {
 	// Extract key from S3 URL
 	key := strings.TrimPrefix(s3URL, fmt.Sprintf("s3://%s/", s.bucket))
@@ -158,6 +163,11 @@ func (s *S3Service) GeneratePresignedURL(ctx context.Context, s3URL string, expi
 		return "", errors.NewBadRequestError("Invalid S3 URL format")
 	}
 
+	return s.GeneratePresignedURLForKey(ctx, key, expiration)
+}
+
+// GeneratePresignedURLForKey generates a presigned URL for a given S3 key (without s3://bucket/ prefix)
+func (s *S3Service) GeneratePresignedURLForKey(ctx context.Context, key string, expiration time.Duration) (string, error) {
 	// Create presigned URL
 	presignClient := s3.NewPresignClient(s.client)
 	request, err := presignClient.PresignGetObject(ctx, &s3.GetObjectInput{
@@ -195,7 +205,7 @@ func (s *S3Service) FileExists(ctx context.Context, s3URL string) (bool, error) 
 	return true, nil
 }
 
-// GetFileInfo gets information about a file in S3
+// GetFileInfo gets information about a file in S3 (expects s3://bucket/key format)
 func (s *S3Service) GetFileInfo(ctx context.Context, s3URL string) (*FileInfo, error) {
 	// Extract key from S3 URL
 	key := strings.TrimPrefix(s3URL, fmt.Sprintf("s3://%s/", s.bucket))
@@ -203,6 +213,11 @@ func (s *S3Service) GetFileInfo(ctx context.Context, s3URL string) (*FileInfo, e
 		return nil, errors.NewBadRequestError("Invalid S3 URL format")
 	}
 
+	return s.GetFileInfoByKey(ctx, key)
+}
+
+// GetFileInfoByKey gets information about a file in S3 using the key directly (without s3://bucket/ prefix)
+func (s *S3Service) GetFileInfoByKey(ctx context.Context, key string) (*FileInfo, error) {
 	// Get object metadata
 	result, err := s.client.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String(s.bucket),

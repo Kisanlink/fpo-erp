@@ -17,7 +17,47 @@ func RunPreMigrationFixes(db *gorm.DB) error {
 		return fmt.Errorf("failed to fix product table name: %w", err)
 	}
 
+	if err := fixAttachmentFileTypeColumn(db); err != nil {
+		return fmt.Errorf("failed to fix attachment file_type column: %w", err)
+	}
+
 	log.Println("Pre-migration fixes completed successfully")
+	return nil
+}
+
+// fixAttachmentFileTypeColumn increases the file_type column size to accommodate long MIME types
+// Example: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet (71 chars)
+func fixAttachmentFileTypeColumn(db *gorm.DB) error {
+	if !db.Migrator().HasTable("attachments") {
+		log.Println("Attachments table does not exist yet - will be created by AutoMigrate")
+		return nil
+	}
+
+	log.Println("Checking attachments.file_type column size...")
+
+	// Check current column size
+	var columnType string
+	query := `
+		SELECT character_maximum_length::text
+		FROM information_schema.columns
+		WHERE table_name = 'attachments' AND column_name = 'file_type'
+	`
+	if err := db.Raw(query).Scan(&columnType).Error; err != nil {
+		log.Printf("Could not check column size: %v - skipping", err)
+		return nil
+	}
+
+	if columnType == "150" {
+		log.Println("attachments.file_type already has correct size (150)")
+		return nil
+	}
+
+	log.Printf("Altering attachments.file_type from varchar(%s) to varchar(150)...", columnType)
+	if err := db.Exec("ALTER TABLE attachments ALTER COLUMN file_type TYPE varchar(150)").Error; err != nil {
+		return fmt.Errorf("failed to alter file_type column: %w", err)
+	}
+
+	log.Println("Successfully updated attachments.file_type column size")
 	return nil
 }
 

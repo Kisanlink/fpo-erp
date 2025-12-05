@@ -1,6 +1,10 @@
 package services
 
 import (
+	"context"
+	"encoding/json"
+	"time"
+
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
 	"kisanlink-erp/internal/errors"
@@ -14,15 +18,17 @@ type ProductService struct {
 	productRepo *repositories.ProductRepository
 	priceRepo   *repositories.ProductPriceRepository
 	variantRepo *repositories.ProductVariantRepository
+	s3Service   *S3Service
 	logger      interfaces.Logger
 }
 
 // NewProductService creates a new product service
-func NewProductService(productRepo *repositories.ProductRepository, priceRepo *repositories.ProductPriceRepository, variantRepo *repositories.ProductVariantRepository, logger interfaces.Logger) *ProductService {
+func NewProductService(productRepo *repositories.ProductRepository, priceRepo *repositories.ProductPriceRepository, variantRepo *repositories.ProductVariantRepository, s3Service *S3Service, logger interfaces.Logger) *ProductService {
 	return &ProductService{
 		productRepo: productRepo,
 		priceRepo:   priceRepo,
 		variantRepo: variantRepo,
+		s3Service:   s3Service,
 		logger:      logger,
 	}
 }
@@ -61,8 +67,8 @@ func (s *ProductService) CreateProduct(request *models.CreateProductRequest) (*m
 	return response, nil
 }
 
-// GetProduct retrieves a product by ID
-func (s *ProductService) GetProduct(id string) (*models.ProductResponse, error) {
+// GetProduct retrieves a product by ID with variants preloaded
+func (s *ProductService) GetProduct(ctx context.Context, id string) (*models.ProductResponse, error) {
 	s.logger.Info("Retrieving product",
 		zap.String("product_id", id))
 
@@ -74,13 +80,7 @@ func (s *ProductService) GetProduct(id string) (*models.ProductResponse, error) 
 		return nil, err
 	}
 
-	response := &models.ProductResponse{
-		ID:          product.ID,
-		Name:        product.Name,
-		Description: product.Description,
-		CreatedAt:   product.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt:   product.UpdatedAt.Format("2006-01-02T15:04:05Z"),
-	}
+	response := s.buildProductResponse(ctx, product)
 
 	s.logger.Debug("Product retrieved successfully",
 		zap.String("product_id", id),
@@ -89,8 +89,8 @@ func (s *ProductService) GetProduct(id string) (*models.ProductResponse, error) 
 	return response, nil
 }
 
-// GetAllProducts retrieves all products
-func (s *ProductService) GetAllProducts() ([]models.ProductResponse, error) {
+// GetAllProducts retrieves all products with variants preloaded
+func (s *ProductService) GetAllProducts(ctx context.Context) ([]models.ProductResponse, error) {
 	s.logger.Info("Retrieving all products")
 
 	products, err := s.productRepo.GetAll()
@@ -102,14 +102,8 @@ func (s *ProductService) GetAllProducts() ([]models.ProductResponse, error) {
 
 	var responses []models.ProductResponse
 	for _, product := range products {
-		response := models.ProductResponse{
-			ID:          product.ID,
-			Name:        product.Name,
-			Description: product.Description,
-			CreatedAt:   product.CreatedAt.Format("2006-01-02T15:04:05Z"),
-			UpdatedAt:   product.UpdatedAt.Format("2006-01-02T15:04:05Z"),
-		}
-		responses = append(responses, response)
+		response := s.buildProductResponse(ctx, &product)
+		responses = append(responses, *response)
 	}
 
 	s.logger.Info("Retrieved all products successfully",
@@ -323,4 +317,73 @@ func (s *ProductService) GetProductWithPrices(id string) (*models.ProductWithPri
 		zap.Int("price_count", len(priceResponses)))
 
 	return response, nil
+}
+
+// buildProductResponse builds a product response with variants and presigned image URLs
+func (s *ProductService) buildProductResponse(ctx context.Context, product *models.Product) *models.ProductResponse {
+	response := &models.ProductResponse{
+		ID:          product.ID,
+		Name:        product.Name,
+		Description: product.Description,
+		CreatedAt:   product.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt:   product.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+	}
+
+	// Preload variants with presigned image URLs
+	if s.variantRepo != nil {
+		variants, err := s.variantRepo.GetByProductID(product.ID)
+		if err == nil && len(variants) > 0 {
+			var variantResponses []models.ProductVariantResponse
+			for _, variant := range variants {
+				variantResponse := s.buildVariantResponse(ctx, &variant)
+				variantResponses = append(variantResponses, variantResponse)
+			}
+			response.Variants = variantResponses
+		}
+	}
+
+	return response
+}
+
+// buildVariantResponse builds a variant response with presigned image URLs
+func (s *ProductService) buildVariantResponse(ctx context.Context, variant *models.ProductVariant) models.ProductVariantResponse {
+	// Unmarshal image paths from JSON
+	var images []string
+	if variant.Images != nil && *variant.Images != "" {
+		if err := json.Unmarshal([]byte(*variant.Images), &images); err == nil {
+			// Successfully unmarshaled
+		}
+	}
+
+	// Generate presigned URLs for each image
+	var imageURLs []string
+	if s.s3Service != nil && len(images) > 0 {
+		for _, imagePath := range images {
+			if url, err := s.s3Service.GeneratePresignedURLForKey(ctx, imagePath, time.Hour); err == nil {
+				imageURLs = append(imageURLs, url)
+			}
+		}
+	}
+
+	return models.ProductVariantResponse{
+		ID:                 variant.ID,
+		ProductID:          variant.ProductID,
+		VariantName:        variant.VariantName,
+		Description:        variant.Description,
+		Quantity:           variant.Quantity,
+		PackSize:           variant.PackSize,
+		SKU:                variant.SKU,
+		Barcode:            variant.Barcode,
+		CollaboratorID:     variant.CollaboratorID,
+		BrandName:          variant.BrandName,
+		HSNCode:            variant.HSNCode,
+		GSTRate:            variant.GSTRate,
+		Images:             images,
+		ImageURLs:          imageURLs,
+		DosageInstructions: variant.DosageInstructions,
+		UsageDetails:       variant.UsageDetails,
+		IsActive:           variant.IsActive,
+		CreatedAt:          variant.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:          variant.UpdatedAt.UTC().Format(time.RFC3339),
+	}
 }

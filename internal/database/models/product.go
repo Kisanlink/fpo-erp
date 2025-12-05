@@ -38,11 +38,12 @@ func (Product) TableName() string {
 
 // ProductResponse represents the API response for product
 type ProductResponse struct {
-	ID          string  `json:"id"`
-	Name        string  `json:"name"`
-	Description *string `json:"description"`
-	CreatedAt   string  `json:"created_at"`
-	UpdatedAt   string  `json:"updated_at"`
+	ID          string                   `json:"id"`
+	Name        string                   `json:"name"`
+	Description *string                  `json:"description"`
+	Variants    []ProductVariantResponse `json:"variants,omitempty"` // Preloaded variants with image URLs
+	CreatedAt   string                   `json:"created_at"`
+	UpdatedAt   string                   `json:"updated_at"`
 }
 
 // CreateProductRequest represents the request to create a product

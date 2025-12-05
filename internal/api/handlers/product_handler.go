@@ -111,7 +111,7 @@ func (h *ProductHandler) GetProduct(c *gin.Context) {
 		zap.String("product_id", id))
 
 	// Get product
-	response, err := h.productService.GetProduct(id)
+	response, err := h.productService.GetProduct(c.Request.Context(), id)
 	if err != nil {
 		h.logger.Error("Product not found",
 			zap.Error(err),
@@ -146,7 +146,7 @@ func (h *ProductHandler) GetAllProducts(c *gin.Context) {
 		zap.String("path", c.Request.URL.Path))
 
 	// Get all products
-	response, err := h.productService.GetAllProducts()
+	response, err := h.productService.GetAllProducts(c.Request.Context())
 	if err != nil {
 		h.logger.Error("Service error retrieving all products",
 			zap.Error(err))

@@ -18,6 +18,7 @@ import (
 type ProductVariantService struct {
 	variantRepo *repositories.ProductVariantRepository
 	productRepo *repositories.ProductRepository
+	s3Service   *S3Service
 	logger      interfaces.Logger
 }
 
@@ -25,11 +26,13 @@ type ProductVariantService struct {
 func NewProductVariantService(
 	variantRepo *repositories.ProductVariantRepository,
 	productRepo *repositories.ProductRepository,
+	s3Service *S3Service,
 	logger interfaces.Logger,
 ) *ProductVariantService {
 	return &ProductVariantService{
 		variantRepo: variantRepo,
 		productRepo: productRepo,
+		s3Service:   s3Service,
 		logger:      logger,
 	}
 }
@@ -104,7 +107,7 @@ func (s *ProductVariantService) CreateProductVariant(ctx context.Context, produc
 	s.logger.Info("Product variant created successfully",
 		zap.String("variant_id", variant.ID))
 
-	return s.buildProductVariantResponse(variant, product)
+	return s.buildProductVariantResponse(ctx, variant, product)
 }
 
 // GetProductVariant retrieves a product variant by ID
@@ -120,7 +123,7 @@ func (s *ProductVariantService) GetProductVariant(ctx context.Context, id string
 		return nil, err
 	}
 
-	return s.buildProductVariantResponse(variant, product)
+	return s.buildProductVariantResponse(ctx, variant, product)
 }
 
 // GetVariantsByProduct retrieves all variants for a product
@@ -143,7 +146,7 @@ func (s *ProductVariantService) GetVariantsByProduct(ctx context.Context, produc
 
 	var responses []models.ProductVariantResponse
 	for _, variant := range variants {
-		response, err := s.buildProductVariantResponse(&variant, product)
+		response, err := s.buildProductVariantResponse(ctx, &variant, product)
 		if err != nil {
 			continue // Skip on error
 		}
@@ -166,7 +169,7 @@ func (s *ProductVariantService) GetVariantBySKU(ctx context.Context, sku string)
 		return nil, err
 	}
 
-	return s.buildProductVariantResponse(variant, product)
+	return s.buildProductVariantResponse(ctx, variant, product)
 }
 
 // GetVariantByBarcode retrieves a product variant by barcode
@@ -182,7 +185,7 @@ func (s *ProductVariantService) GetVariantByBarcode(ctx context.Context, barcode
 		return nil, err
 	}
 
-	return s.buildProductVariantResponse(variant, product)
+	return s.buildProductVariantResponse(ctx, variant, product)
 }
 
 // UpdateProductVariant updates a product variant
@@ -277,7 +280,7 @@ func (s *ProductVariantService) UpdateProductVariant(ctx context.Context, id str
 		return nil, err
 	}
 
-	return s.buildProductVariantResponse(variant, product)
+	return s.buildProductVariantResponse(ctx, variant, product)
 }
 
 // DeleteProductVariant deletes a product variant (soft delete)
@@ -305,13 +308,23 @@ func (s *ProductVariantService) DeleteProductVariant(ctx context.Context, id str
 	return nil
 }
 
-// buildProductVariantResponse builds a response with product details
-func (s *ProductVariantService) buildProductVariantResponse(variant *models.ProductVariant, product *models.Product) (*models.ProductVariantResponse, error) {
-	// Unmarshal attachment IDs from JSON
+// buildProductVariantResponse builds a response with product details and presigned image URLs
+func (s *ProductVariantService) buildProductVariantResponse(ctx context.Context, variant *models.ProductVariant, product *models.Product) (*models.ProductVariantResponse, error) {
+	// Unmarshal image paths from JSON
 	var images []string
 	if variant.Images != nil && *variant.Images != "" {
 		if err := json.Unmarshal([]byte(*variant.Images), &images); err == nil {
 			// Successfully unmarshaled
+		}
+	}
+
+	// Generate presigned URLs for each image
+	var imageURLs []string
+	if s.s3Service != nil && len(images) > 0 {
+		for _, imagePath := range images {
+			if url, err := s.s3Service.GeneratePresignedURLForKey(ctx, imagePath, time.Hour); err == nil {
+				imageURLs = append(imageURLs, url)
+			}
 		}
 	}
 
@@ -325,6 +338,7 @@ func (s *ProductVariantService) buildProductVariantResponse(variant *models.Prod
 		SKU:         variant.SKU,
 		Barcode:     variant.Barcode,
 		Images:      images,
+		ImageURLs:   imageURLs,
 		IsActive:    variant.IsActive,
 		CreatedAt:   variant.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:   variant.UpdatedAt.UTC().Format(time.RFC3339),

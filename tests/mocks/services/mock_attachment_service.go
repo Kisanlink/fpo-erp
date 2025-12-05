@@ -31,16 +31,16 @@ func (m *MockAttachmentService) GetAttachment(id string) (*models.Attachment, er
 	return args.Get(0).(*models.Attachment), args.Error(1)
 }
 
-func (m *MockAttachmentService) GetAttachments(entityType, entityID *string, limit, offset int) ([]models.AttachmentResponse, error) {
-	args := m.Called(entityType, entityID, limit, offset)
+func (m *MockAttachmentService) GetAttachments(ctx context.Context, entityType, entityID *string, limit, offset int) ([]models.AttachmentResponse, error) {
+	args := m.Called(ctx, entityType, entityID, limit, offset)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]models.AttachmentResponse), args.Error(1)
 }
 
-func (m *MockAttachmentService) GetAttachmentsByEntity(entityType, entityID string) ([]models.AttachmentResponse, error) {
-	args := m.Called(entityType, entityID)
+func (m *MockAttachmentService) GetAttachmentsByEntity(ctx context.Context, entityType, entityID string) ([]models.AttachmentResponse, error) {
+	args := m.Called(ctx, entityType, entityID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

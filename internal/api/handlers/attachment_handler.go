@@ -240,7 +240,7 @@ func (h *AttachmentHandler) GetAttachments(c *gin.Context) {
 		zap.Int("limit", limit),
 		zap.Int("offset", offset))
 
-	attachments, err := h.attachmentService.GetAttachments(entityTypePtr, entityIDPtr, limit, offset)
+	attachments, err := h.attachmentService.GetAttachments(c.Request.Context(), entityTypePtr, entityIDPtr, limit, offset)
 
 	// 4. Service Error
 	if err != nil {
@@ -465,7 +465,7 @@ func (h *AttachmentHandler) GetAttachmentsByEntity(c *gin.Context) {
 		zap.String("entity_type", entityType),
 		zap.String("entity_id", entityID))
 
-	attachments, err := h.attachmentService.GetAttachmentsByEntity(entityType, entityID)
+	attachments, err := h.attachmentService.GetAttachmentsByEntity(c.Request.Context(), entityType, entityID)
 
 	// 4. Service Error
 	if err != nil {

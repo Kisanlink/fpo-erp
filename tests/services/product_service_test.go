@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"testing"
 
 	"kisanlink-erp/internal/database/models"
@@ -26,7 +27,7 @@ func TestProductService_CreateProduct_Success(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
 
 	// Create request
 	desc := "Fresh organic tomatoes"
@@ -57,7 +58,7 @@ func TestProductService_CreateProduct_WithoutDescription(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
 
 	// Create request without description
 	request := &models.CreateProductRequest{
@@ -93,10 +94,10 @@ func TestProductService_GetProduct_Success(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
 
 	// Execute
-	response, err := service.GetProduct(product.ID)
+	response, err := service.GetProduct(context.Background(), product.ID)
 
 	// Assert
 	testutils.AssertNoError(t, err, "GetProduct should succeed")
@@ -117,10 +118,10 @@ func TestProductService_GetProduct_NotFound(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
 
 	// Execute with non-existent ID
-	_, err := service.GetProduct("non-existent-id")
+	_, err := service.GetProduct(context.Background(), "non-existent-id")
 
 	// Assert
 	testutils.AssertError(t, err, "Should fail when product not found")
@@ -150,10 +151,10 @@ func TestProductService_GetAllProducts_Success(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
 
 	// Execute
-	responses, err := service.GetAllProducts()
+	responses, err := service.GetAllProducts(context.Background())
 
 	// Assert
 	testutils.AssertNoError(t, err, "GetAllProducts should succeed")
@@ -172,10 +173,10 @@ func TestProductService_GetAllProducts_Empty(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
 
 	// Execute
-	responses, err := service.GetAllProducts()
+	responses, err := service.GetAllProducts(context.Background())
 
 	// Assert
 	testutils.AssertNoError(t, err, "GetAllProducts should succeed even when empty")
@@ -202,7 +203,7 @@ func TestProductService_UpdateProduct_Success(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
 
 	// Update request
 	newName := "Updated Name"
@@ -239,7 +240,7 @@ func TestProductService_UpdateProduct_PartialUpdate(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
 
 	// Update only name (description should remain)
 	newName := "Updated Name"
@@ -268,7 +269,7 @@ func TestProductService_UpdateProduct_NotFound(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
 
 	// Update request for non-existent product
 	newName := "Updated Name"
@@ -303,7 +304,7 @@ func TestProductService_DeleteProduct_Success(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
 
 	// Execute
 	err := service.DeleteProduct(product.ID)
@@ -328,7 +329,7 @@ func TestProductService_DeleteProduct_NotFound(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
 
 	// Execute
 	err := service.DeleteProduct("non-existent-id")
@@ -361,7 +362,7 @@ func TestProductService_SearchProducts_Success(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
 
 	// Execute search for "Tomato"
 	responses, err := service.SearchProducts("Tomato")
@@ -398,7 +399,7 @@ func TestProductService_SearchProducts_NoResults(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
 
 	// Execute search for non-existent product
 	responses, err := service.SearchProducts("Banana")
@@ -437,7 +438,7 @@ func TestProductService_GetProductWithPrices_NoVariants(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
 
 	// Execute
 	response, err := service.GetProductWithPrices(product.ID)
@@ -480,7 +481,7 @@ func TestProductService_GetProductWithPrices_WithVariantsAndPrices(t *testing.T)
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
 
 	// Execute
 	response, err := service.GetProductWithPrices(product.ID)

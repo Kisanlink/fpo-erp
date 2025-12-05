@@ -83,14 +83,14 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 
 	// Initialize services
 	warehouseService := services.NewWarehouseService(warehouseRepo, addressClient, logger)
-	productService := services.NewProductService(productRepo, priceRepo, productVariantRepo, logger)
+	productService := services.NewProductService(productRepo, priceRepo, productVariantRepo, s3Service, logger)
 	priceService := services.NewProductPriceService(priceRepo, productRepo, productVariantRepo, logger)
 	inventoryService := services.NewInventoryService(inventoryRepo, warehouseRepo, productRepo, productVariantRepo, addressClient, logger)
 	discountsService := services.NewDiscountsService(discountRepo, productRepo, warehouseRepo, logger)
 	taxService := services.NewTaxService(taxRepo, logger)
 	salesService := services.NewSalesService(salesRepo, productRepo, inventoryRepo, priceRepo, discountRepo, taxRepo, warehouseRepo, saleCancellationRepo, logger)
 	returnsService := services.NewReturnsService(returnsRepo, salesRepo, inventoryRepo, logger)
-	attachmentService := services.NewAttachmentService(attachmentRepo, s3Service, logger)
+	attachmentService := services.NewAttachmentService(attachmentRepo, productVariantRepo, s3Service, logger)
 	refundPoliciesService := services.NewRefundPoliciesService(refundPoliciesRepo, logger)
 	bankPaymentsService := services.NewBankPaymentsService(bankPaymentsRepo, salesRepo, returnsRepo, logger)
 
@@ -109,7 +109,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 		logger,
 	)
 	collaboratorProductService := services.NewCollaboratorProductService(collaboratorProductRepo, collaboratorRepo, productRepo, productVariantRepo, logger)
-	productVariantService := services.NewProductVariantService(productVariantRepo, productRepo, logger)
+	productVariantService := services.NewProductVariantService(productVariantRepo, productRepo, s3Service, logger)
 	purchaseOrderService := services.NewPurchaseOrderService(purchaseOrderRepo, collaboratorRepo, warehouseRepo, productRepo, productVariantRepo, grnRepo, inventoryRepo, logger)
 	grnService := services.NewGRNService(grnRepo, purchaseOrderRepo, warehouseRepo, productRepo, inventoryRepo, logger)
 

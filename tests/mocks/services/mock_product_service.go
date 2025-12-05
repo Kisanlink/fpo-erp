@@ -1,6 +1,8 @@
 package services
 
 import (
+	"context"
+
 	"kisanlink-erp/internal/database/models"
 
 	"github.com/stretchr/testify/mock"
@@ -19,16 +21,16 @@ func (m *MockProductService) CreateProduct(request *models.CreateProductRequest)
 	return args.Get(0).(*models.ProductResponse), args.Error(1)
 }
 
-func (m *MockProductService) GetProduct(id string) (*models.ProductResponse, error) {
-	args := m.Called(id)
+func (m *MockProductService) GetProduct(ctx context.Context, id string) (*models.ProductResponse, error) {
+	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*models.ProductResponse), args.Error(1)
 }
 
-func (m *MockProductService) GetAllProducts() ([]models.ProductResponse, error) {
-	args := m.Called()
+func (m *MockProductService) GetAllProducts(ctx context.Context) ([]models.ProductResponse, error) {
+	args := m.Called(ctx)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

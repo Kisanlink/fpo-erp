@@ -211,7 +211,7 @@ func TestAttachmentHandler_GetAttachments_Success(t *testing.T) {
 		},
 	}
 
-	mockService.On("GetAttachments", (*string)(nil), (*string)(nil), 10, 0).Return(expectedAttachments, nil)
+	mockService.On("GetAttachments", mock.Anything, (*string)(nil), (*string)(nil), 10, 0).Return(expectedAttachments, nil)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -235,7 +235,7 @@ func TestAttachmentHandler_GetAttachments_WithFilters(t *testing.T) {
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
 	handler := handlers.NewAttachmentHandler(mockService, mockAAA, mockLogger)
 
-	mockService.On("GetAttachments", stringPtr("logo"), stringPtr("CLAB00000001"), 10, 0).Return([]models.AttachmentResponse{}, nil)
+	mockService.On("GetAttachments", mock.Anything, stringPtr("logo"), stringPtr("CLAB00000001"), 10, 0).Return([]models.AttachmentResponse{}, nil)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -254,7 +254,7 @@ func TestAttachmentHandler_GetAttachments_WithPagination(t *testing.T) {
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
 	handler := handlers.NewAttachmentHandler(mockService, mockAAA, mockLogger)
 
-	mockService.On("GetAttachments", (*string)(nil), (*string)(nil), 20, 10).Return([]models.AttachmentResponse{}, nil)
+	mockService.On("GetAttachments", mock.Anything, (*string)(nil), (*string)(nil), 20, 10).Return([]models.AttachmentResponse{}, nil)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -455,7 +455,7 @@ func TestAttachmentHandler_GetAttachmentsByEntity_Success(t *testing.T) {
 		},
 	}
 
-	mockService.On("GetAttachmentsByEntity", "logo", "CLAB00000001").Return(expectedAttachments, nil)
+	mockService.On("GetAttachmentsByEntity", mock.Anything, "logo", "CLAB00000001").Return(expectedAttachments, nil)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -483,7 +483,7 @@ func TestAttachmentHandler_GetAttachmentsByEntity_ServiceError(t *testing.T) {
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
 	handler := handlers.NewAttachmentHandler(mockService, mockAAA, mockLogger)
 
-	mockService.On("GetAttachmentsByEntity", "logo", "CLAB99999999").Return(nil, assert.AnError)
+	mockService.On("GetAttachmentsByEntity", mock.Anything, "logo", "CLAB99999999").Return(nil, assert.AnError)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)

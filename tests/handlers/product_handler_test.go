@@ -363,7 +363,7 @@ func TestProductHandler_GetProduct_Success(t *testing.T) {
 		Name:        "Organic Rice",
 		Description: &desc,
 	}
-	mockService.On("GetProduct", "PROD00000001").
+	mockService.On("GetProduct", mock.Anything, "PROD00000001").
 		Return(expectedResponse, nil)
 
 	// Create request
@@ -387,7 +387,7 @@ func TestProductHandler_GetProduct_NotFound(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
-	mockService.On("GetProduct", "PROD99999999").
+	mockService.On("GetProduct", mock.Anything, "PROD99999999").
 		Return(nil, errors.New("product not found"))
 
 	// Create request
