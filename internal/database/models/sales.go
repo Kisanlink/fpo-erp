@@ -17,7 +17,7 @@ type Sale struct {
 	Status      string    `gorm:"type:varchar(20);not null" json:"status"`
 
 	// BRD Requirements
-	FarmerID    *string `gorm:"type:varchar(100)" json:"farmer_id"`                     // Optional farmer identifier
+	CustomerID  *string `gorm:"type:varchar(100)" json:"customer_id"`                   // Optional customer/farmer identifier
 	PaymentMode string  `gorm:"type:varchar(20);not null" json:"payment_mode"`          // cash, upi, online
 	SaleType    string  `gorm:"type:varchar(20);not null" json:"sale_type"`             // in_store, delivery
 	ApplyTaxes  bool    `gorm:"type:boolean;not null;default:false" json:"apply_taxes"` // Controls tax calculation for this sale
@@ -80,7 +80,7 @@ func (SaleSummary) TableName() string {
 }
 
 // NewSale creates a new Sale with initialized fields
-func NewSale(warehouseID string, saleDate time.Time, totalAmount float64, status string, farmerID *string, paymentMode, saleType string, applyTaxes bool) *Sale {
+func NewSale(warehouseID string, saleDate time.Time, totalAmount float64, status string, customerID *string, paymentMode, saleType string, applyTaxes bool) *Sale {
 	baseModel := base.NewBaseModel(constants.TableSale, hash.Medium)
 	return &Sale{
 		BaseModel:   *baseModel,
@@ -88,7 +88,7 @@ func NewSale(warehouseID string, saleDate time.Time, totalAmount float64, status
 		SaleDate:    saleDate,
 		TotalAmount: totalAmount,
 		Status:      status,
-		FarmerID:    farmerID,
+		CustomerID:  customerID,
 		PaymentMode: paymentMode,
 		SaleType:    saleType,
 		ApplyTaxes:  applyTaxes,
@@ -157,7 +157,7 @@ type SaleResponse struct {
 	Status      string  `json:"status"`
 
 	// BRD Requirements
-	FarmerID    *string `json:"farmer_id,omitempty"`
+	CustomerID  *string `json:"customer_id,omitempty"`
 	PaymentMode string  `json:"payment_mode"`
 	SaleType    string  `json:"sale_type"`
 	ApplyTaxes  bool    `json:"apply_taxes"`
@@ -231,7 +231,7 @@ type CreateSaleRequest struct {
 	SaleDate    *string `json:"sale_date"`
 
 	// BRD Requirements
-	FarmerID    *string `json:"farmer_id"`                       // Optional farmer identifier
+	CustomerID  *string `json:"customer_id"`                     // Optional customer/farmer identifier
 	PaymentMode string  `json:"payment_mode" binding:"required"` // cash, upi, online
 	SaleType    string  `json:"sale_type" binding:"required"`    // in_store, delivery
 	ApplyTaxes  *bool   `json:"apply_taxes"`                     // Controls tax calculation (default: false)

@@ -285,7 +285,7 @@ func (h *ReportHandler) GetPurchaseReport(c *gin.Context) {
 // @Param limit query integer false "Records per page (max: 500)" default(50)
 // @Param offset query integer false "Records to skip" default(0)
 // @Param warehouse_id query string false "Filter by warehouse ID"
-// @Param farmer_id query string false "Filter by farmer/customer ID"
+// @Param customer_id query string false "Filter by customer ID"
 // @Param status query []string false "Filter by status (comma-separated)"
 // @Param payment_mode query []string false "Filter by payment mode"
 // @Param sale_type query []string false "Filter by sale type"

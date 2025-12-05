@@ -178,7 +178,7 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 			zap.String("payment_mode", req.PaymentMode),
 			zap.String("sale_type", req.SaleType),
 			zap.Bool("apply_taxes", applyTaxes))
-		sale := models.NewSale(req.WarehouseID, saleDate, 0, "pending", req.FarmerID, req.PaymentMode, req.SaleType, applyTaxes)
+		sale := models.NewSale(req.WarehouseID, saleDate, 0, "pending", req.CustomerID, req.PaymentMode, req.SaleType, applyTaxes)
 		s.logger.Info("Sale created",
 			zap.String("sale_id", sale.ID),
 			zap.Bool("apply_taxes", sale.ApplyTaxes))
@@ -629,7 +629,7 @@ func (s *SalesService) mapSaleToResponse(sale *models.Sale) *models.SaleResponse
 		TotalAmount: sale.TotalAmount,
 		Status:      sale.Status,
 		// BRD Requirements
-		FarmerID:    sale.FarmerID,
+		CustomerID:  sale.CustomerID,
 		PaymentMode: sale.PaymentMode,
 		SaleType:    sale.SaleType,
 		ApplyTaxes:  sale.ApplyTaxes,

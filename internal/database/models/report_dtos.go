@@ -66,7 +66,7 @@ type PurchaseReportFilter struct {
 type SalesReportFilter struct {
 	BaseReportFilter
 	WarehouseID string   `form:"warehouse_id"`
-	FarmerID    string   `form:"farmer_id"`
+	CustomerID  string   `form:"customer_id"`
 	Status      []string `form:"status"`
 	PaymentMode []string `form:"payment_mode"`
 	SaleType    []string `form:"sale_type"`
@@ -194,7 +194,7 @@ type VendorReportRecord struct {
 
 // CustomerReportRecord for customer report rows
 type CustomerReportRecord struct {
-	FarmerID         string  `json:"farmer_id"`
+	CustomerID       string  `json:"customer_id"`
 	TotalPurchases   int64   `json:"total_purchases"`
 	TotalAmount      float64 `json:"total_amount"`
 	LastPurchaseDate string  `json:"last_purchase_date"`
@@ -252,7 +252,7 @@ type SalesReportRecord struct {
 	WarehouseName      string  `json:"warehouse_name"`
 	SaleDate           string  `json:"sale_date"`
 	Status             string  `json:"status"`
-	FarmerID           *string `json:"farmer_id,omitempty"`
+	CustomerID         *string `json:"customer_id,omitempty"`
 	PaymentMode        string  `json:"payment_mode"`
 	SaleType           string  `json:"sale_type"`
 	TotalAmount        float64 `json:"total_amount"`

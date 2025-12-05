@@ -21,6 +21,10 @@ func RunPreMigrationFixes(db *gorm.DB) error {
 		return fmt.Errorf("failed to fix attachment file_type column: %w", err)
 	}
 
+	if err := renameFarmerIDToCustomerID(db); err != nil {
+		return fmt.Errorf("failed to rename farmer_id to customer_id: %w", err)
+	}
+
 	log.Println("Pre-migration fixes completed successfully")
 	return nil
 }
@@ -58,6 +62,41 @@ func fixAttachmentFileTypeColumn(db *gorm.DB) error {
 	}
 
 	log.Println("Successfully updated attachments.file_type column size")
+	return nil
+}
+
+// renameFarmerIDToCustomerID renames the farmer_id column to customer_id in the sales table
+// This is a more generic naming convention for customer identifier
+func renameFarmerIDToCustomerID(db *gorm.DB) error {
+	if !db.Migrator().HasTable("sales") {
+		log.Println("Sales table does not exist yet - will be created by AutoMigrate")
+		return nil
+	}
+
+	// Check if farmer_id column exists
+	var columnExists bool
+	query := `
+		SELECT EXISTS (
+			SELECT 1 FROM information_schema.columns
+			WHERE table_name = 'sales' AND column_name = 'farmer_id'
+		)
+	`
+	if err := db.Raw(query).Scan(&columnExists).Error; err != nil {
+		log.Printf("Could not check for farmer_id column: %v - skipping", err)
+		return nil
+	}
+
+	if !columnExists {
+		log.Println("sales.farmer_id column does not exist - already renamed or never existed")
+		return nil
+	}
+
+	log.Println("Renaming sales.farmer_id to sales.customer_id...")
+	if err := db.Exec("ALTER TABLE sales RENAME COLUMN farmer_id TO customer_id").Error; err != nil {
+		return fmt.Errorf("failed to rename farmer_id column: %w", err)
+	}
+
+	log.Println("Successfully renamed sales.farmer_id to sales.customer_id")
 	return nil
 }
 

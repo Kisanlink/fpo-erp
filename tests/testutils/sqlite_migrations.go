@@ -59,7 +59,7 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 			sale_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			total_amount REAL NOT NULL,
 			status TEXT NOT NULL,
-			farmer_id TEXT,
+			customer_id TEXT,
 			payment_mode TEXT NOT NULL,
 			sale_type TEXT NOT NULL,
 			is_returned INTEGER DEFAULT 0,

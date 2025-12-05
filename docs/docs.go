@@ -7279,8 +7279,8 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Filter by farmer/customer ID",
-                        "name": "farmer_id",
+                        "description": "Filter by customer ID",
+                        "name": "customer_id",
                         "in": "query"
                     },
                     {
@@ -12949,6 +12949,10 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
+                "download_url": {
+                    "description": "Presigned S3 URL (valid for 1 hour)",
+                    "type": "string"
+                },
                 "entity_id": {
                     "description": "Entity ID (CLAB_xxx, PO_xxx, etc.)",
                     "type": "string"
@@ -13826,12 +13830,12 @@ const docTemplate = `{
                     "description": "Manual discount by code (second priority)",
                     "type": "string"
                 },
-                "discount_id": {
-                    "description": "Manual discount by ID (highest priority)",
+                "customer_id": {
+                    "description": "BRD Requirements",
                     "type": "string"
                 },
-                "farmer_id": {
-                    "description": "BRD Requirements",
+                "discount_id": {
+                    "description": "Manual discount by ID (highest priority)",
                     "type": "string"
                 },
                 "items": {
@@ -14807,6 +14811,13 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string"
+                },
+                "variants": {
+                    "description": "Preloaded variants with image URLs",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ProductVariantResponse"
+                    }
                 }
             }
         },
@@ -14854,8 +14865,15 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "image_urls": {
+                    "description": "Presigned URLs (valid for 1 hour)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "images": {
-                    "description": "Parsed from JSON",
+                    "description": "S3 paths (for reference)",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -15216,7 +15234,7 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
-                "farmer_id": {
+                "customer_id": {
                     "description": "BRD Requirements",
                     "type": "string"
                 },

@@ -67,10 +67,10 @@ func (h *SalesHandler) CreateSale(c *gin.Context) {
 		zap.Bool("apply_taxes", req.ApplyTaxes != nil && *req.ApplyTaxes),
 		zap.Int("items_count", len(req.Items)))
 
-	// Log farmer_id if present
-	if req.FarmerID != nil {
-		h.logger.Debug("Sale includes farmer tracking",
-			zap.String("farmer_id", *req.FarmerID))
+	// Log customer_id if present
+	if req.CustomerID != nil {
+		h.logger.Debug("Sale includes customer tracking",
+			zap.String("customer_id", *req.CustomerID))
 	}
 
 	sale, err := h.salesService.CreateSale(&req)

@@ -237,7 +237,7 @@ func (s *ReportService) GenerateCustomerReport(filter *models.CustomerReportFilt
 
 	// Build query
 	query := s.db.Model(&models.Sale{}).Select(`
-		sales.farmer_id,
+		sales.customer_id,
 		COUNT(*) as total_purchases,
 		SUM(sales.total_amount) as total_amount,
 		MAX(sales.sale_date) as last_purchase_date,
@@ -246,14 +246,14 @@ func (s *ReportService) GenerateCustomerReport(filter *models.CustomerReportFilt
 		COUNT(*) as purchase_count
 	`).
 		Joins("JOIN warehouses ON warehouses.id = sales.warehouse_id").
-		Where("sales.farmer_id IS NOT NULL AND sales.farmer_id != ''").
+		Where("sales.customer_id IS NOT NULL AND sales.customer_id != ''").
 		Where("sales.status != 'cancelled'").
-		Group("sales.farmer_id, sales.warehouse_id, warehouses.name")
+		Group("sales.customer_id, sales.warehouse_id, warehouses.name")
 
 	// Apply filters
 	builder := utils.NewReportQueryBuilder(query)
 	if filter.Search != "" {
-		builder.Build().Where("sales.farmer_id ILIKE ?", "%"+filter.Search+"%")
+		builder.Build().Where("sales.customer_id ILIKE ?", "%"+filter.Search+"%")
 	}
 	builder.ApplyStringFilter("sales.warehouse_id", filter.WarehouseID)
 	builder.ApplyRangeFilter("SUM(sales.total_amount)", filter.MinPurchaseValue, filter.MaxPurchaseValue)
@@ -262,9 +262,9 @@ func (s *ReportService) GenerateCustomerReport(filter *models.CustomerReportFilt
 	// Get total count
 	var total int64
 	countQuery := s.db.Model(&models.Sale{}).
-		Where("farmer_id IS NOT NULL AND farmer_id != ''").
+		Where("customer_id IS NOT NULL AND customer_id != ''").
 		Where("status != 'cancelled'").
-		Distinct("farmer_id")
+		Distinct("customer_id")
 	countQuery.Count(&total)
 
 	// Apply pagination
@@ -281,12 +281,12 @@ func (s *ReportService) GenerateCustomerReport(filter *models.CustomerReportFilt
 	// Calculate summary
 	var summary models.CustomerReportSummary
 	s.db.Model(&models.Sale{}).
-		Where("farmer_id IS NOT NULL AND farmer_id != ''").
+		Where("customer_id IS NOT NULL AND customer_id != ''").
 		Where("status != 'cancelled'").
-		Distinct("farmer_id").
+		Distinct("customer_id").
 		Count(&summary.TotalCustomers)
 	s.db.Model(&models.Sale{}).
-		Where("farmer_id IS NOT NULL").
+		Where("customer_id IS NOT NULL").
 		Where("status != 'cancelled'").
 		Select("COALESCE(SUM(total_amount), 0)").
 		Scan(&summary.TotalRevenue)
@@ -504,7 +504,7 @@ func (s *ReportService) GenerateSalesReport(filter *models.SalesReportFilter) (*
 		warehouses.name as warehouse_name,
 		sales.sale_date,
 		sales.status,
-		sales.farmer_id,
+		sales.customer_id,
 		sales.payment_mode,
 		sales.sale_type,
 		sales.total_amount,
@@ -524,7 +524,7 @@ func (s *ReportService) GenerateSalesReport(filter *models.SalesReportFilter) (*
 	// Apply filters
 	builder := utils.NewReportQueryBuilder(query)
 	builder.ApplyStringFilter("sales.warehouse_id", filter.WarehouseID)
-	builder.ApplyStringFilter("sales.farmer_id", filter.FarmerID)
+	builder.ApplyStringFilter("sales.customer_id", filter.CustomerID)
 	builder.ApplyStatusFilter("sales.status", filter.Status)
 	builder.ApplyStatusFilter("sales.payment_mode", filter.PaymentMode)
 	builder.ApplyStatusFilter("sales.sale_type", filter.SaleType)

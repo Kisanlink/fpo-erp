@@ -30,7 +30,7 @@ func TestSalesHandler_CreateSale_Success(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
-	farmerID := "FARMER_123"
+	customerID := "CUST_123"
 	applyTaxes := false
 	expectedResponse := &models.SaleResponse{
 		ID:          "SALE00000001",
@@ -38,7 +38,7 @@ func TestSalesHandler_CreateSale_Success(t *testing.T) {
 		SaleDate:    time.Now().Format(time.RFC3339),
 		TotalAmount: 1500.00,
 		Status:      "completed",
-		FarmerID:    &farmerID,
+		CustomerID:  &customerID,
 		PaymentMode: "cash",
 		SaleType:    "in_store",
 		ApplyTaxes:  applyTaxes,
@@ -49,7 +49,7 @@ func TestSalesHandler_CreateSale_Success(t *testing.T) {
 	// Create request
 	reqBody := models.CreateSaleRequest{
 		WarehouseID: "WRHS00000001",
-		FarmerID:    &farmerID,
+		CustomerID:  &customerID,
 		PaymentMode: "cash",
 		SaleType:    "in_store",
 		ApplyTaxes:  &applyTaxes,
@@ -251,14 +251,14 @@ func TestSalesHandler_GetSale_Success(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
-	farmerID := "FARMER_123"
+	customerID := "CUST_123"
 	expectedResponse := &models.SaleResponse{
 		ID:          "SALE00000001",
 		WarehouseID: "WRHS00000001",
 		SaleDate:    time.Now().Format(time.RFC3339),
 		TotalAmount: 1500.00,
 		Status:      "completed",
-		FarmerID:    &farmerID,
+		CustomerID:  &customerID,
 		PaymentMode: "cash",
 		SaleType:    "in_store",
 		ApplyTaxes:  false,
