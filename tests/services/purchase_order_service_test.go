@@ -771,8 +771,10 @@ func TestPurchaseOrderService_UpdateStatus_AcceptAll_Success(t *testing.T) {
 
 	acceptAll := true
 	defaultExpiry := time.Now().UTC().Add(90 * 24 * time.Hour).Format("2006-01-02")
+	actualDelivery := time.Now().UTC()
 	request := &models.UpdatePOStatusRequest{
 		Status:            "verified",
+		ActualDelivery:    &actualDelivery,
 		AcceptAll:         &acceptAll,
 		DefaultExpiryDate: &defaultExpiry,
 	}
@@ -805,9 +807,11 @@ func TestPurchaseOrderService_UpdateStatus_AcceptAll_MissingExpiryDate(t *testin
 	createTestPOItem(t, db, po.ID, variant.ID, 100, 25.50)
 
 	acceptAll := true
+	actualDelivery := time.Now().UTC()
 	request := &models.UpdatePOStatusRequest{
-		Status:    "verified",
-		AcceptAll: &acceptAll,
+		Status:         "verified",
+		ActualDelivery: &actualDelivery,
+		AcceptAll:      &acceptAll,
 		// Missing DefaultExpiryDate
 	}
 
@@ -839,8 +843,10 @@ func TestPurchaseOrderService_UpdateStatus_GRNAlreadyExists(t *testing.T) {
 
 	acceptAll := true
 	defaultExpiry := time.Now().UTC().Add(90 * 24 * time.Hour).Format("2006-01-02")
+	actualDelivery := time.Now().UTC()
 	request := &models.UpdatePOStatusRequest{
 		Status:            "verified",
+		ActualDelivery:    &actualDelivery,
 		AcceptAll:         &acceptAll,
 		DefaultExpiryDate: &defaultExpiry,
 	}
@@ -874,8 +880,10 @@ func TestPurchaseOrderService_UpdateStatus_AcceptReject_AllAccepted(t *testing.T
 
 	acceptTrue := true
 	expiryDate := time.Now().UTC().Add(90 * 24 * time.Hour).Format("2006-01-02")
+	actualDelivery := time.Now().UTC()
 	request := &models.UpdatePOStatusRequest{
-		Status: "verified",
+		Status:         "verified",
+		ActualDelivery: &actualDelivery,
 		Items: []models.DeliveryItemRequest{
 			{
 				POItemID:   item1.ID,
@@ -922,8 +930,10 @@ func TestPurchaseOrderService_UpdateStatus_AcceptReject_Partial(t *testing.T) {
 	acceptTrue := true
 	acceptFalse := false
 	expiryDate := time.Now().UTC().Add(90 * 24 * time.Hour).Format("2006-01-02")
+	actualDelivery := time.Now().UTC()
 	request := &models.UpdatePOStatusRequest{
-		Status: "verified",
+		Status:         "verified",
+		ActualDelivery: &actualDelivery,
 		Items: []models.DeliveryItemRequest{
 			{
 				POItemID:   item1.ID,
@@ -966,8 +976,10 @@ func TestPurchaseOrderService_UpdateStatus_AcceptReject_AllRejected(t *testing.T
 
 	acceptFalse := false
 	expiryDate := time.Now().UTC().Add(90 * 24 * time.Hour).Format("2006-01-02")
+	actualDelivery := time.Now().UTC()
 	request := &models.UpdatePOStatusRequest{
-		Status: "verified",
+		Status:         "verified",
+		ActualDelivery: &actualDelivery,
 		Items: []models.DeliveryItemRequest{
 			{
 				POItemID:   item.ID,
@@ -1010,8 +1022,10 @@ func TestPurchaseOrderService_UpdateStatus_DetailedQuantities_PartialAcceptance(
 	receivedQty := int64(100)
 	acceptedQty := int64(80) // Partial acceptance
 	expiryDate := time.Now().UTC().Add(90 * 24 * time.Hour).Format("2006-01-02")
+	actualDelivery := time.Now().UTC()
 	request := &models.UpdatePOStatusRequest{
-		Status: "verified",
+		Status:         "verified",
+		ActualDelivery: &actualDelivery,
 		Items: []models.DeliveryItemRequest{
 			{
 				POItemID:         item.ID,
@@ -1051,8 +1065,10 @@ func TestPurchaseOrderService_UpdateStatus_DetailedQuantities_FullAcceptance(t *
 	receivedQty := int64(100)
 	acceptedQty := int64(100) // Full acceptance
 	expiryDate := time.Now().UTC().Add(90 * 24 * time.Hour).Format("2006-01-02")
+	actualDelivery := time.Now().UTC()
 	request := &models.UpdatePOStatusRequest{
-		Status: "verified",
+		Status:         "verified",
+		ActualDelivery: &actualDelivery,
 		Items: []models.DeliveryItemRequest{
 			{
 				POItemID:         item.ID,
@@ -1092,8 +1108,10 @@ func TestPurchaseOrderService_UpdateStatus_DetailedQuantities_AcceptedExceedsRec
 	receivedQty := int64(80)
 	acceptedQty := int64(100) // Accepted > Received - INVALID
 	expiryDate := time.Now().UTC().Add(90 * 24 * time.Hour).Format("2006-01-02")
+	actualDelivery := time.Now().UTC()
 	request := &models.UpdatePOStatusRequest{
-		Status: "verified",
+		Status:         "verified",
+		ActualDelivery: &actualDelivery,
 		Items: []models.DeliveryItemRequest{
 			{
 				POItemID:         item.ID,
@@ -1127,8 +1145,10 @@ func TestPurchaseOrderService_UpdateStatus_DetailedQuantities_ReceivedExceedsOrd
 	receivedQty := int64(150) // Received > Ordered - INVALID
 	acceptedQty := int64(100)
 	expiryDate := time.Now().UTC().Add(90 * 24 * time.Hour).Format("2006-01-02")
+	actualDelivery := time.Now().UTC()
 	request := &models.UpdatePOStatusRequest{
-		Status: "verified",
+		Status:         "verified",
+		ActualDelivery: &actualDelivery,
 		Items: []models.DeliveryItemRequest{
 			{
 				POItemID:         item.ID,
@@ -1160,8 +1180,10 @@ func TestPurchaseOrderService_UpdateStatus_InvalidExpiryDateFormat(t *testing.T)
 	item := createTestPOItem(t, db, po.ID, variant.ID, 100, 25.50)
 
 	acceptTrue := true
+	actualDelivery := time.Now().UTC()
 	request := &models.UpdatePOStatusRequest{
-		Status: "verified",
+		Status:         "verified",
+		ActualDelivery: &actualDelivery,
 		Items: []models.DeliveryItemRequest{
 			{
 				POItemID:   item.ID,
@@ -1193,8 +1215,10 @@ func TestPurchaseOrderService_UpdateStatus_DuplicateItemIDs(t *testing.T) {
 
 	acceptTrue := true
 	expiryDate := time.Now().UTC().Add(90 * 24 * time.Hour).Format("2006-01-02")
+	actualDelivery := time.Now().UTC()
 	request := &models.UpdatePOStatusRequest{
-		Status: "verified",
+		Status:         "verified",
+		ActualDelivery: &actualDelivery,
 		Items: []models.DeliveryItemRequest{
 			{
 				POItemID:   item.ID,
@@ -1228,8 +1252,10 @@ func TestPurchaseOrderService_UpdateStatus_ItemNotInPO(t *testing.T) {
 
 	acceptTrue := true
 	expiryDate := time.Now().UTC().Add(90 * 24 * time.Hour).Format("2006-01-02")
+	actualDelivery := time.Now().UTC()
 	request := &models.UpdatePOStatusRequest{
-		Status: "verified",
+		Status:         "verified",
+		ActualDelivery: &actualDelivery,
 		Items: []models.DeliveryItemRequest{
 			{
 				POItemID:   "INVALID-ITEM-ID",

@@ -61,7 +61,7 @@ type SaleCancellationItem struct {
 	BatchID           string  `gorm:"type:varchar(100);not null" json:"batch_id"`
 	QuantityCancelled int64   `gorm:"type:bigint;not null;check:quantity_cancelled > 0" json:"quantity_cancelled"`
 	RefundAmount      float64 `gorm:"type:numeric(14,4);not null" json:"refund_amount"`
-	InventoryRestored bool    `gorm:"type:boolean;not null;default:true" json:"inventory_restored"`
+	InventoryRestored bool    `gorm:"type:boolean;not null;default:false" json:"inventory_restored"`
 	TransactionID     *string `gorm:"type:varchar(100)" json:"transaction_id"` // Inventory transaction ID
 
 	// Associations
@@ -215,7 +215,7 @@ type CancelledItemInfo struct {
 
 // GetCancellationsResponse represents the response for getting cancellation history
 type GetCancellationsResponse struct {
-	SaleID        string                       `json:"sale_id"`
-	Cancellations []SaleCancellationResponse   `json:"cancellations"`
-	TotalCount    int                          `json:"total_count"`
+	SaleID        string                     `json:"sale_id"`
+	Cancellations []SaleCancellationResponse `json:"cancellations"`
+	TotalCount    int                        `json:"total_count"`
 }

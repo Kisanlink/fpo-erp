@@ -1109,6 +1109,83 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 		return err
 	}
 
+	// SaleCancellation table
+	// Drop table first to ensure schema is correct
+	if err := db.Exec(`DROP TABLE IF EXISTS sale_cancellations`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE TABLE sale_cancellations (
+			id TEXT PRIMARY KEY,
+			sale_id TEXT NOT NULL,
+			cancellation_type TEXT NOT NULL,
+			cancelled_by TEXT,
+			reason TEXT NOT NULL,
+			reason_details TEXT,
+			cancelled_at DATETIME NOT NULL,
+			original_amount REAL NOT NULL,
+			cancelled_amount REAL NOT NULL,
+			discount_reversed REAL DEFAULT 0,
+			tax_reversed REAL DEFAULT 0,
+			created_at DATETIME,
+			updated_at DATETIME,
+			deleted_at DATETIME,
+			created_by TEXT,
+			updated_by TEXT,
+			deleted_by TEXT
+		)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Create index for sale_cancellations
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_sale_cancellation_sale_id ON sale_cancellations(sale_id)
+	`).Error; err != nil {
+		return err
+	}
+
+	// SaleCancellationItem table
+	// Drop table first to ensure schema is correct
+	if err := db.Exec(`DROP TABLE IF EXISTS sale_cancellation_items`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE TABLE sale_cancellation_items (
+			id TEXT PRIMARY KEY,
+			cancellation_id TEXT NOT NULL,
+			sale_item_id TEXT NOT NULL,
+			batch_id TEXT NOT NULL,
+			quantity_cancelled INTEGER NOT NULL,
+			refund_amount REAL NOT NULL,
+			inventory_restored INTEGER NOT NULL DEFAULT 0,
+			transaction_id TEXT,
+			created_at DATETIME,
+			updated_at DATETIME,
+			deleted_at DATETIME,
+			created_by TEXT,
+			updated_by TEXT,
+			deleted_by TEXT
+		)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Create indexes for sale_cancellation_items
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_sale_cancellation_item_cancellation ON sale_cancellation_items(cancellation_id)
+	`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_sale_cancellation_item_sale_item ON sale_cancellation_items(sale_item_id)
+	`).Error; err != nil {
+		return err
+	}
+
 	// WebhookDeliveryAttempt table
 	// Drop table first to ensure schema is correct
 	if err := db.Exec(`DROP TABLE IF EXISTS webhook_delivery_attempts`).Error; err != nil {

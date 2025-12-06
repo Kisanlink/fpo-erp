@@ -459,20 +459,16 @@ func TestProductService_GetProductWithPrices_WithVariantsAndPrices(t *testing.T)
 	product := testutils.FixtureProduct("Tomato")
 	db.Create(product)
 
-	// Create variant
+	// Create variant with embedded prices (new architecture - prices in variant.Prices JSON)
 	variant := testutils.FixtureProductVariant(product.ID, "1kg")
-	db.Create(variant)
-
-	// Create price for variant
-	isActive := true
-	price := &models.ProductPrice{
-		VariantID: variant.ID,
-		PriceType: "retail",
-		Price:     100.0,
-		Currency:  "INR",
-		IsActive:  &isActive,
+	variant.Prices = []models.VariantPrice{
+		{
+			PriceType: models.PriceTypeMRP,
+			Price:     100.0,
+			Currency:  "INR",
+		},
 	}
-	result := db.Create(price)
+	db.Create(variant)
 
 	// Create repositories
 	productRepo := repositories.NewProductRepository(db)
@@ -483,22 +479,22 @@ func TestProductService_GetProductWithPrices_WithVariantsAndPrices(t *testing.T)
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
 	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
 
-	// Execute
+	// Execute - GetProductWithPrices returns empty prices (prices moved to variants)
 	response, err := service.GetProductWithPrices(product.ID)
 
-	// Assert
+	// Assert product is returned successfully
 	testutils.AssertNoError(t, err, "GetProductWithPrices should succeed")
 	testutils.AssertNotNil(t, response, "Response should not be nil")
+	testutils.AssertEqual(t, response.ID, product.ID, "Product ID should match")
 
-	// If ProductPrice migration failed (SQLite incompatibility), skip price assertions
-	if result.Error != nil {
-		t.Logf("NOTE: ProductPrice creation failed (likely SQLite incompatibility): %v", result.Error)
-		t.Log("Skipping price-related assertions")
-		return
-	}
+	// GetProductWithPrices intentionally returns empty prices (prices are at variant level)
+	testutils.AssertEqual(t, len(response.Prices), 0, "Product-level prices should be empty (moved to variants)")
 
-	testutils.AssertEqual(t, len(response.Prices), 1, "Should have 1 price")
-	if len(response.Prices) > 0 {
-		testutils.AssertEqual(t, response.Prices[0].VariantID, variant.ID, "Variant ID mismatch")
-	}
+	// Verify prices are accessible through variant
+	var fetchedVariant models.ProductVariant
+	err = db.Where("id = ?", variant.ID).First(&fetchedVariant).Error
+	testutils.AssertNoError(t, err, "Should fetch variant")
+	testutils.AssertEqual(t, len(fetchedVariant.Prices), 1, "Variant should have 1 embedded price")
+	testutils.AssertEqual(t, fetchedVariant.Prices[0].PriceType, models.PriceTypeMRP, "Price type should be MRP")
+	testutils.AssertEqual(t, fetchedVariant.Prices[0].Price, 100.0, "Price should be 100.0")
 }
