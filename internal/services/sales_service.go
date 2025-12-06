@@ -253,6 +253,12 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 						zap.Error(err))
 					return err
 				}
+				// Nil check: CalculateBatchTax should never return nil without error, but guard against it
+				if taxCalculation == nil {
+					s.logger.Error("Tax calculation returned nil without error",
+						zap.String("batch_id", batch.ID))
+					return errors.NewInternalServerError("Tax calculation failed: nil result")
+				}
 				s.logger.Debug("Tax calculation completed",
 					zap.Float64("cgst_amount", taxCalculation.CGSTAmount),
 					zap.Float64("sgst_amount", taxCalculation.SGSTAmount),
@@ -1621,15 +1627,13 @@ func (s *SalesService) CancelItems(saleID string, req *models.CancelItemsRequest
 		}
 
 		// 2. Check if sale can have items cancelled
+		// Valid statuses are: pending, completed, cancelled (see models/sales.go)
 		if sale.Status == models.SaleStatusCancelled {
 			return errors.NewBadRequestError("Sale is already fully cancelled")
 		}
-		if sale.Status == "shipped" || sale.Status == "delivered" {
-			return errors.NewBadRequestError("Cannot cancel items from shipped/delivered orders. Use Returns instead.")
-		}
-		if sale.Status == "returned" {
-			return errors.NewBadRequestError("Sale has already been returned")
-		}
+		// Note: Only pending and completed sales can have items cancelled
+		// - pending: releases reservation
+		// - completed: restores stock
 
 		// 3. Build a map of sale items for quick lookup
 		saleItemMap := make(map[string]*models.SaleItem)
@@ -1675,6 +1679,14 @@ func (s *SalesService) CancelItems(saleID string, req *models.CancelItemsRequest
 
 		for _, itemReq := range req.Items {
 			saleItem := saleItemMap[itemReq.SaleItemID]
+
+			// Guard against division by zero (data integrity check)
+			if saleItem.Quantity <= 0 {
+				s.logger.Error("Invalid sale item: quantity is zero or negative",
+					zap.String("sale_item_id", saleItem.ID),
+					zap.Int64("quantity", saleItem.Quantity))
+				return errors.NewInternalServerError("Data integrity error: sale item has invalid quantity")
+			}
 
 			// Calculate refund amount for this item (including proportional taxes)
 			basePricePerUnit := saleItem.LineTotal / float64(saleItem.Quantity)
@@ -1792,8 +1804,9 @@ func (s *SalesService) CancelItems(saleID string, req *models.CancelItemsRequest
 				}
 			}
 
-			// Add to response lists
-			if batch != nil {
+			// Add to response lists - only include in InventoryRestored if stock was actually restored
+			// (not for pending sales where only reservation was released)
+			if inventoryWasRestored && batch != nil {
 				inventoryRestored = append(inventoryRestored, models.InventoryRestoredItem{
 					BatchID:          saleItem.BatchID,
 					VariantID:        batch.VariantID,
@@ -1811,6 +1824,60 @@ func (s *SalesService) CancelItems(saleID string, req *models.CancelItemsRequest
 
 		// 7. Update cancellation with total amount
 		cancellation.CancelledAmount = totalCancelledAmount
+
+		// 7a. Calculate proportional discount/tax reversal for partial cancellation
+		var financialAdjustments *models.FinancialAdjustmentsResponse
+		if totalCancelledAmount > 0 && sale.TotalAmount > 0 {
+			cancelRatio := totalCancelledAmount / sale.TotalAmount
+
+			// Calculate proportional discount reversal (don't decrement usage - sale is still active)
+			discountUsages, err := s.discountsRepo.GetDiscountUsageBySaleWithTx(tx, sale.ID)
+			if err != nil {
+				s.logger.Warn("Failed to get discount usages for partial cancellation", zap.Error(err))
+			} else if len(discountUsages) > 0 {
+				var totalDiscountAmount float64
+				var lastDiscountID string
+				for _, usage := range discountUsages {
+					totalDiscountAmount += usage.Amount
+					lastDiscountID = usage.DiscountID
+				}
+				proportionalDiscount := totalDiscountAmount * cancelRatio
+				cancellation.DiscountReversed = proportionalDiscount
+
+				if financialAdjustments == nil {
+					financialAdjustments = &models.FinancialAdjustmentsResponse{}
+				}
+				financialAdjustments.DiscountReversed = &models.DiscountReversedInfo{
+					DiscountID:       lastDiscountID,
+					AmountReversed:   proportionalDiscount,
+					UsageDecremented: false, // Partial cancellation doesn't decrement usage
+				}
+				s.logger.Debug("Calculated proportional discount reversal",
+					zap.Float64("cancel_ratio", cancelRatio),
+					zap.Float64("proportional_discount", proportionalDiscount))
+			}
+
+			// Calculate proportional tax reversal (don't delete records - sale is still active)
+			taxSummary, err := s.taxRepo.GetTaxSummaryBySaleWithTx(tx, sale.ID)
+			if err != nil {
+				s.logger.Warn("Failed to get tax summary for partial cancellation", zap.Error(err))
+			} else if taxSummary != nil && taxSummary.TotalTaxAmount > 0 {
+				proportionalTax := taxSummary.TotalTaxAmount * cancelRatio
+				cancellation.TaxReversed = proportionalTax
+
+				if financialAdjustments == nil {
+					financialAdjustments = &models.FinancialAdjustmentsResponse{}
+				}
+				financialAdjustments.TaxVoided = &models.TaxVoidedInfo{
+					TaxSummaryID: taxSummary.ID,
+					AmountVoided: proportionalTax,
+				}
+				s.logger.Debug("Calculated proportional tax reversal",
+					zap.Float64("cancel_ratio", cancelRatio),
+					zap.Float64("proportional_tax", proportionalTax))
+			}
+		}
+
 		if err := s.saleCancellationRepo.UpdateCancellationWithTx(tx, cancellation); err != nil {
 			s.logger.Warn("Failed to update cancellation amount", zap.Error(err))
 		}
@@ -1821,16 +1888,24 @@ func (s *SalesService) CancelItems(saleID string, req *models.CancelItemsRequest
 			s.logger.Error("Failed to update sale total", zap.Error(err))
 			return errors.NewInternalServerError("Failed to update sale")
 		}
-		sale.TotalAmount = newSaleTotal
 		// Note: Status remains unchanged for partial cancellations (pending/completed)
 
-		// Build response
+		// 9. Re-fetch sale to get updated items (avoids stale data in response)
+		updatedSale, err := s.salesRepo.GetSaleForUpdateWithTx(tx, sale.ID)
+		if err != nil {
+			s.logger.Warn("Failed to re-fetch sale for response, using original data", zap.Error(err))
+			updatedSale = sale
+			updatedSale.TotalAmount = newSaleTotal
+		}
+
+		// Build response with fresh data
 		response = &models.CancelItemsResponse{
-			Sale:              *s.mapSaleToResponse(sale),
-			ItemsCancelled:    cancelledItems,
-			InventoryRestored: inventoryRestored,
-			CancellationID:    cancellation.ID,
-			NewSaleTotal:      newSaleTotal,
+			Sale:                 *s.mapSaleToResponse(updatedSale),
+			ItemsCancelled:       cancelledItems,
+			InventoryRestored:    inventoryRestored,
+			FinancialAdjustments: financialAdjustments,
+			CancellationID:       cancellation.ID,
+			NewSaleTotal:         newSaleTotal,
 		}
 
 		return nil

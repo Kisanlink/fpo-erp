@@ -1,3 +1,375 @@
+# Frontend Implementation Guide - Version 1.6.0
+
+**Date**: December 2025
+**Version**: 1.6.0
+**Breaking Changes**:
+- Inventory response now includes `reserved_quantity` and `available_quantity` fields
+- Sales workflow changed to two-step: `CreateSale` (reserves stock) → `CompleteSale` (deducts stock)
+- New `pending` sale status added
+
+**New Features**:
+- Aggregation API endpoints (reduces API calls by 75-85%)
+- Partial sale cancellation (cancel specific items)
+- Complete sale endpoint for pending sales
+- Cancellation history tracking
+
+---
+
+## FRONTEND CHANGES OVERVIEW
+
+The backend has been updated with major changes that require frontend implementation:
+
+1. **NEW Aggregation API** - Reduces API calls by 75-85%
+2. **Reserved Stock System** - Two-step sales workflow (BREAKING)
+3. **Partial Sale Cancellation** - Cancel specific items from a sale
+4. **Updated Inventory Response** - New `reserved_quantity` and `available_quantity` fields
+
+---
+
+## 1. NEW AGGREGATION API ENDPOINTS
+
+### Purpose
+Combine multiple API calls into single requests for better performance.
+
+### 1.1 Get Product Detail (Replaces 4+ API calls)
+
+**Endpoint**: `GET /api/v1/products/:id/detail`
+
+**Query Parameters**:
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `include` | string | `"all"` | Comma-separated: `variants,prices,inventory,collaborators,taxes` |
+| `warehouse_id` | string | - | Filter inventory by warehouse |
+| `price_type` | string | `"all"` | Filter: `retail`, `wholesale`, `bulk`, `all` |
+| `active_only` | bool | `true` | Show only active variants |
+| `in_stock_only` | bool | `false` | Show only in-stock variants |
+
+**Response Structure**:
+```json
+{
+  "status": "success",
+  "data": {
+    "product": {
+      "id": "PROD00000001",
+      "name": "Organic Tomato Seeds",
+      "description": "High-quality tomato seeds",
+      "category": "Seeds",
+      "is_active": true
+    },
+    "collaborator": {
+      "id": "CLAB00000001",
+      "company_name": "ABC Seeds Ltd",
+      "contact_person": "John Doe"
+    },
+    "variants": [
+      {
+        "id": "PVAR00000001",
+        "variant_name": "500g Pack",
+        "sku": "TOM-500G",
+        "quantity": "500g",
+        "is_active": true,
+        "prices": {
+          "currency": "INR",
+          "has_active_price": true,
+          "retail_price": { "price": 150.00, "effective_from": "2024-01-01" },
+          "wholesale_price": { "price": 130.00, "effective_from": "2024-01-01" }
+        },
+        "stock_summary": {
+          "total_quantity": 100,
+          "available_quantity": 80,
+          "reserved_quantity": 20,
+          "in_stock": true,
+          "warehouse_count": 2,
+          "earliest_expiry": "2025-06-30"
+        }
+      }
+    ],
+    "metadata": {
+      "total_variants": 3,
+      "active_variants": 2,
+      "total_stock_value": 15000.00,
+      "read_timestamp": "2024-12-05T10:30:00Z"
+    }
+  }
+}
+```
+
+### 1.2 Get Variant Detail
+
+**Endpoint**: `GET /api/v1/products/variants/:id/detail`
+
+**Query Parameters**:
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `include` | string | `"all"` | `prices,inventory,product,collaborator,taxes` |
+| `warehouse_id` | string | - | Filter inventory by warehouse |
+
+### 1.3 Get Sales Context (Replaces 5+ API calls)
+
+**Endpoint**: `GET /api/v1/sales/context`
+
+**Query Parameters**:
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `warehouse_id` | string | - | Filter by warehouse |
+| `include_zero_stock` | bool | `false` | Include out-of-stock items |
+| `price_type` | string | `"retail"` | Price type filter |
+| `effective_date` | string | now | ISO date for prices |
+
+**Response Structure**:
+```json
+{
+  "status": "success",
+  "data": {
+    "warehouse": {
+      "id": "WARH00000001",
+      "name": "Main Warehouse",
+      "is_active": true
+    },
+    "available_inventory": [
+      {
+        "batch_id": "BATC00000001",
+        "variant_id": "PVAR00000001",
+        "variant": {
+          "id": "PVAR00000001",
+          "variant_name": "500g Pack",
+          "sku": "TOM-500G"
+        },
+        "product": {
+          "id": "PROD00000001",
+          "name": "Tomato Seeds",
+          "category": "Seeds"
+        },
+        "quantity_total": 100,
+        "quantity_reserved": 20,
+        "quantity_sellable": 80,
+        "cost_price": 100.00,
+        "expiry_date": "2025-06-30",
+        "selling_price": {
+          "price": 150.00,
+          "price_type": "retail",
+          "currency": "INR"
+        },
+        "margin": {
+          "cost_price": 100.00,
+          "selling_price": 150.00,
+          "margin_amount": 50.00,
+          "margin_percentage": 33.33
+        }
+      }
+    ],
+    "discount_policies": [],
+    "refund_policies": [],
+    "payment_methods": [],
+    "metadata": {
+      "total_products": 50,
+      "total_variants": 120,
+      "total_batches": 300,
+      "read_timestamp": "2024-12-05T10:30:00Z"
+    }
+  }
+}
+```
+
+---
+
+## 2. RESERVED STOCK SYSTEM (BREAKING CHANGE)
+
+### What Changed
+Sales now follow a **two-step workflow**:
+1. `CreateSale` → Creates **pending** sale, **reserves** stock
+2. `CompleteSale` → Converts to **completed** sale, **deducts** stock
+
+### 2.1 Inventory Response Changes
+
+**OLD Response**:
+```json
+{
+  "batch_id": "BATC00000001",
+  "total_quantity": 100
+}
+```
+
+**NEW Response**:
+```json
+{
+  "batch_id": "BATC00000001",
+  "total_quantity": 100,
+  "reserved_quantity": 20,
+  "available_quantity": 80
+}
+```
+
+**⚠️ IMPORTANT**: Use `available_quantity` (NOT `total_quantity`) for stock checks!
+
+### 2.2 Sale Status Updates
+
+**Sale Statuses**:
+- `pending` - Sale created, stock reserved (**NEW**)
+- `completed` - Sale confirmed, stock deducted
+- `cancelled` - Sale cancelled, stock released/restored
+
+### 2.3 New "Complete Sale" API
+
+**Endpoint**: `POST /api/v1/sales/:id/complete`
+
+**Request**:
+```json
+{
+  "performed_by": "USER_12345678"
+}
+```
+
+**Response**: Returns updated `SaleResponse` with `status: "completed"`
+
+### 2.4 UI Changes Required
+
+1. **Inventory Display**:
+   - Show "Available: X" instead of just "Stock: X"
+   - Optionally show "Reserved: Y" in inventory views
+   - Use `available_quantity` for "Add to Cart" availability checks
+
+2. **Sales List**:
+   - Add "Complete Sale" button for `pending` status sales
+   - Show status badge: `pending` (yellow), `completed` (green), `cancelled` (red)
+
+3. **Checkout Flow**:
+   - After `CreateSale`, show confirmation that stock is reserved
+   - Provide option to "Complete Sale" or "Cancel"
+
+---
+
+## 3. PARTIAL SALE CANCELLATION
+
+### New Capability
+Cancel **specific items** from a sale (not just full sale cancellation).
+
+### 3.1 Cancel Items Endpoint
+
+**Endpoint**: `POST /api/v1/sales/:id/cancel-items`
+
+**Request**:
+```json
+{
+  "reason": "customer_request",
+  "reason_details": "Customer changed their mind about seeds",
+  "performed_by": "USER_12345678",
+  "items": [
+    {
+      "sale_item_id": "SITM00000001",
+      "quantity": 5
+    },
+    {
+      "sale_item_id": "SITM00000002",
+      "quantity": 2
+    }
+  ]
+}
+```
+
+**Valid Reasons**: `customer_request`, `payment_failed`, `out_of_stock`, `pricing_error`, `duplicate_order`, `fraud_suspected`, `system_error`, `other`
+
+**Response**:
+```json
+{
+  "status": "success",
+  "data": {
+    "sale": { },
+    "items_cancelled": [
+      {
+        "sale_item_id": "SITM00000001",
+        "quantity_cancelled": 5,
+        "amount_refunded": 750.00
+      }
+    ],
+    "inventory_restored": [
+      {
+        "batch_id": "BATC00000001",
+        "variant_id": "PVAR00000001",
+        "quantity_restored": 5,
+        "transaction_id": "INVT00000123"
+      }
+    ],
+    "financial_adjustments": {
+      "discount_reversed": {
+        "discount_id": "DISC00000001",
+        "amount_reversed": 50.00
+      }
+    },
+    "cancellation_id": "SCLX00000001",
+    "new_sale_total": 500.00
+  }
+}
+```
+
+### 3.2 Get Cancellation History
+
+**Endpoint**: `GET /api/v1/sales/:id/cancellations`
+
+**Response**:
+```json
+{
+  "status": "success",
+  "data": {
+    "sale_id": "SALE00000001",
+    "cancellations": [
+      {
+        "id": "SCLX00000001",
+        "cancellation_type": "partial",
+        "reason": "customer_request",
+        "cancelled_at": "2024-12-05T10:30:00Z",
+        "original_amount": 1250.00,
+        "cancelled_amount": 750.00,
+        "items": []
+      }
+    ],
+    "total_count": 1
+  }
+}
+```
+
+### 3.3 UI Changes Required
+
+1. **Sale Detail View**:
+   - Add "Cancel Items" button (in addition to "Cancel Sale")
+   - Show cancellation history section
+   - Display per-item "Cancel" option with quantity selector
+
+2. **Cancellation Modal**:
+   - Select items and quantities to cancel
+   - Select reason from dropdown
+   - Optional reason details text field
+   - Show calculated refund amount
+
+---
+
+## 4. MIGRATION CHECKLIST FOR FRONTEND
+
+### High Priority (Breaking Changes)
+
+- [ ] Update all inventory displays to use `available_quantity` instead of `total_quantity`
+- [ ] Add `reserved_quantity` display where appropriate
+- [ ] Add "Complete Sale" flow for pending sales
+- [ ] Update sale status handling (add `pending` status)
+
+### Medium Priority (New Features)
+
+- [ ] Integrate aggregation endpoints to reduce API calls:
+  - [ ] Product detail page → `GET /products/:id/detail`
+  - [ ] Sales context → `GET /sales/context`
+- [ ] Add partial cancellation UI
+- [ ] Add cancellation history view
+
+### Low Priority (Enhancements)
+
+- [ ] Show stock reservation info during checkout
+- [ ] Add real-time stock updates using reserved quantities
+- [ ] Add margin display in sales context (if needed)
+
+---
+
+---
+
 # API Changes - Collaborator Management & Unified Variant Architecture
 
 **Date**: November 20, 2025

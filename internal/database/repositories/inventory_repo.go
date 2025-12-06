@@ -301,13 +301,20 @@ func (r *InventoryRepository) ReserveBatchStockWithTx(tx *gorm.DB, batchID strin
 
 	// If no rows affected, either batch doesn't exist or insufficient stock
 	if result.RowsAffected == 0 {
-		// Check if batch exists to provide better error message
-		var exists bool
-		if err := tx.Model(&models.InventoryBatch{}).Select("1").Where("id = ?", batchID).Find(&exists).Error; err == nil && !exists {
-			return errors.NewNotFoundError("Inventory batch")
+		// Re-fetch batch to provide accurate error message
+		var batch models.InventoryBatch
+		if err := tx.Where("id = ?", batchID).First(&batch).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return errors.NewNotFoundError("Inventory batch")
+			}
+			return errors.NewInternalServerError("Failed to check batch status")
 		}
-		log.Printf("[ERROR] Insufficient available stock for reservation: batch=%s, requested=%d", batchID, quantity)
-		return errors.NewBadRequestError("Insufficient available stock for reservation")
+		// Batch exists, so insufficient stock - provide detailed error
+		available := batch.TotalQuantity - batch.ReservedQuantity
+		log.Printf("[ERROR] Insufficient available stock for reservation: batch=%s, requested=%d, available=%d",
+			batchID, quantity, available)
+		return errors.NewBadRequestError(fmt.Sprintf(
+			"Insufficient available stock: requested %d, available %d", quantity, available))
 	}
 	return nil
 }

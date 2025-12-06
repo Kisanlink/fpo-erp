@@ -1,6 +1,8 @@
 package repositories
 
 import (
+	"fmt"
+
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/errors"
 
@@ -218,4 +220,24 @@ func (r *GRNRepository) GetTotalRejectedAmountByPO(poID string) (float64, error)
 	}
 
 	return total, nil
+}
+
+// GetLastGRNNumberForYear returns the highest sequence number used for GRNs in a given year
+// GRN format is GRN-YYYY-NNNN, this extracts and returns the max NNNN value
+func (r *GRNRepository) GetLastGRNNumberForYear(year int) (int, error) {
+	var maxNumber int
+	prefix := fmt.Sprintf("GRN-%d-", year)
+
+	// Use SUBSTR to extract the sequence number and find the maximum
+	// Works for format GRN-YYYY-NNNN where NNNN starts at position 10
+	err := r.db.Table("goods_receipt_notes").
+		Select("COALESCE(MAX(CAST(SUBSTR(grn_number, 10, 4) AS INTEGER)), 0)").
+		Where("grn_number LIKE ?", prefix+"%").
+		Row().Scan(&maxNumber)
+
+	if err != nil {
+		return 0, nil // Return 0 on error (will start from 1)
+	}
+
+	return maxNumber, nil
 }

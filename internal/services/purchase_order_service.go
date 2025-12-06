@@ -354,6 +354,15 @@ func (s *PurchaseOrderService) UpdatePurchaseOrderStatus(ctx context.Context, id
 
 	// Pattern Detection: Auto-create GRN if status = "verified" and delivery details provided
 	if request.Status == "verified" && (request.AcceptAll != nil || len(request.Items) > 0) {
+		// For auto-GRN on verified status, we need a valid delivery date
+		// Use provided date, or fall back to PO's existing delivery date
+		if request.ActualDelivery != nil {
+			actualDelivery = *request.ActualDelivery
+		} else if po.ActualDelivery != nil {
+			actualDelivery = *po.ActualDelivery
+		} else {
+			return nil, errors.NewBadRequestError("actual_delivery_date is required for GRN creation")
+		}
 		s.logger.Info("Auto-GRN trigger detected",
 			zap.String("po_id", po.ID),
 			zap.Bool("accept_all", request.AcceptAll != nil && *request.AcceptAll))
@@ -781,19 +790,41 @@ func (s *PurchaseOrderService) calculateQualityStatus(items []models.DeliveryIte
 func (s *PurchaseOrderService) generateGRNNumber() (string, error) {
 	year := time.Now().UTC().Year()
 
-	// Try to find the next available number
-	for i := 1; i <= 9999; i++ {
-		grnNumber := fmt.Sprintf("GRN-%d-%04d", year, i)
-		exists, err := s.grnRepo.GRNNumberExists(grnNumber)
-		if err != nil {
-			return "", err
-		}
-		if !exists {
-			return grnNumber, nil
-		}
+	// Get the last used number for this year (O(1) instead of O(n))
+	lastNumber, err := s.grnRepo.GetLastGRNNumberForYear(year)
+	if err != nil {
+		// Fall back to checking if number exists
+		lastNumber = 0
 	}
 
-	return "", errors.NewInternalServerError("failed to generate unique GRN number")
+	nextNumber := lastNumber + 1
+	if nextNumber > 9999 {
+		return "", errors.NewInternalServerError("GRN number limit reached for year")
+	}
+
+	grnNumber := fmt.Sprintf("GRN-%d-%04d", year, nextNumber)
+
+	// Verify uniqueness (handles edge cases like manual insertions)
+	exists, err := s.grnRepo.GRNNumberExists(grnNumber)
+	if err != nil {
+		return "", err
+	}
+	if exists {
+		// Rare edge case: manually inserted GRN, fall back to sequential search
+		for i := nextNumber + 1; i <= 9999; i++ {
+			grnNumber = fmt.Sprintf("GRN-%d-%04d", year, i)
+			exists, err = s.grnRepo.GRNNumberExists(grnNumber)
+			if err != nil {
+				return "", err
+			}
+			if !exists {
+				return grnNumber, nil
+			}
+		}
+		return "", errors.NewInternalServerError("failed to generate unique GRN number")
+	}
+
+	return grnNumber, nil
 }
 
 // generatePONumber generates a unique PO number in format: PO-YYYY-NNNN
