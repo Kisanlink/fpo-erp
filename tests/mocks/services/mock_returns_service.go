@@ -29,12 +29,12 @@ func (m *MockReturnsService) GetReturn(id string) (*models.ReturnResponse, error
 	return args.Get(0).(*models.ReturnResponse), args.Error(1)
 }
 
-func (m *MockReturnsService) GetAllReturns(limit, offset int) ([]models.ReturnResponse, error) {
+func (m *MockReturnsService) GetAllReturns(limit, offset int) ([]models.ReturnResponse, int64, error) {
 	args := m.Called(limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, 0, args.Error(2)
 	}
-	return args.Get(0).([]models.ReturnResponse), args.Error(1)
+	return args.Get(0).([]models.ReturnResponse), args.Get(1).(int64), args.Error(2)
 }
 
 func (m *MockReturnsService) UpdateReturn(id string, req *models.UpdateReturnRequest) (*models.ReturnResponse, error) {

@@ -63,38 +63,66 @@ func (r *TaxRepository) GetTaxesByIDs(ids []string) ([]models.Tax, error) {
 }
 
 // GetAllTaxes retrieves all taxes with pagination
-func (r *TaxRepository) GetAllTaxes(limit, offset int) ([]models.Tax, error) {
+func (r *TaxRepository) GetAllTaxes(limit, offset int) ([]models.Tax, int64, error) {
 	var taxes []models.Tax
-	if err := r.db.Limit(limit).Offset(offset).Order("priority DESC, created_at DESC").Find(&taxes).Error; err != nil {
-		return nil, errors.NewInternalServerError("Failed to retrieve taxes")
+	var total int64
+
+	// Get total count
+	if err := r.db.Model(&models.Tax{}).Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count taxes")
 	}
-	return taxes, nil
+
+	// Get paginated records
+	if err := r.db.Limit(limit).Offset(offset).Order("priority DESC, created_at DESC").Find(&taxes).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve taxes")
+	}
+	return taxes, total, nil
 }
 
 // GetActiveTaxes retrieves all currently active taxes
-func (r *TaxRepository) GetActiveTaxes() ([]models.Tax, error) {
+func (r *TaxRepository) GetActiveTaxes(limit, offset int) ([]models.Tax, int64, error) {
 	var taxes []models.Tax
+	var total int64
 	now := time.Now()
 
-	if err := r.db.Where("is_active = ? AND valid_from <= ? AND (valid_until IS NULL OR valid_until > ?)",
-		true, now, now).Order("priority DESC, stacking_order ASC").Find(&taxes).Error; err != nil {
-		return nil, errors.NewInternalServerError("Failed to retrieve active taxes")
+	query := r.db.Where("is_active = ? AND valid_from <= ? AND (valid_until IS NULL OR valid_until > ?)",
+		true, now, now)
+
+	// Get total count
+	if err := query.Model(&models.Tax{}).Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count active taxes")
 	}
-	return taxes, nil
+
+	// Get paginated records
+	if err := query.Limit(limit).Offset(offset).Order("priority DESC, stacking_order ASC").Find(&taxes).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve active taxes")
+	}
+	return taxes, total, nil
 }
 
 // GetTaxesByType retrieves taxes by type
-func (r *TaxRepository) GetTaxesByType(taxType models.TaxType) ([]models.Tax, error) {
+func (r *TaxRepository) GetTaxesByType(taxType models.TaxType, limit, offset int) ([]models.Tax, int64, error) {
 	var taxes []models.Tax
-	if err := r.db.Where("tax_type = ?", taxType).Order("priority DESC").Find(&taxes).Error; err != nil {
-		return nil, errors.NewInternalServerError("Failed to retrieve taxes by type")
+	var total int64
+
+	query := r.db.Where("tax_type = ?", taxType)
+
+	// Get total count
+	if err := query.Model(&models.Tax{}).Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count taxes by type")
 	}
-	return taxes, nil
+
+	// Get paginated records
+	if err := query.Limit(limit).Offset(offset).Order("priority DESC").Find(&taxes).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve taxes by type")
+	}
+	return taxes, total, nil
 }
 
 // GetTaxesByStatus retrieves taxes by status
-func (r *TaxRepository) GetTaxesByStatus(status string) ([]models.Tax, error) {
+func (r *TaxRepository) GetTaxesByStatus(status string, limit, offset int) ([]models.Tax, int64, error) {
 	var taxes []models.Tax
+	var total int64
 	now := time.Now()
 
 	var query *gorm.DB
@@ -109,13 +137,19 @@ func (r *TaxRepository) GetTaxesByStatus(status string) ([]models.Tax, error) {
 	case "scheduled":
 		query = r.db.Where("is_active = ? AND valid_from > ?", true, now)
 	default:
-		return nil, errors.NewBadRequestError("Invalid status")
+		return nil, 0, errors.NewBadRequestError("Invalid status")
 	}
 
-	if err := query.Order("priority DESC").Find(&taxes).Error; err != nil {
-		return nil, errors.NewInternalServerError("Failed to retrieve taxes by status")
+	// Get total count
+	if err := query.Model(&models.Tax{}).Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count taxes by status")
 	}
-	return taxes, nil
+
+	// Get paginated records
+	if err := query.Limit(limit).Offset(offset).Order("priority DESC").Find(&taxes).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve taxes by status")
+	}
+	return taxes, total, nil
 }
 
 // UpdateTax updates an existing tax

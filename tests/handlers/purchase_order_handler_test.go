@@ -172,8 +172,8 @@ func TestPurchaseOrderHandler_GetAllPurchaseOrders_Success(t *testing.T) {
 			TotalAmount:      25000.00,
 		},
 	}
-	mockService.On("GetAllPurchaseOrders", mock.Anything).
-		Return(expectedResponse, nil)
+	mockService.On("GetAllPurchaseOrders", mock.Anything, 50, 0).
+		Return(expectedResponse, int64(2), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/purchase-orders", nil)
@@ -201,8 +201,8 @@ func TestPurchaseOrderHandler_GetAllPurchaseOrders_EmptyList(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
-	mockService.On("GetAllPurchaseOrders", mock.Anything).
-		Return([]models.PurchaseOrderResponse{}, nil)
+	mockService.On("GetAllPurchaseOrders", mock.Anything, 50, 0).
+		Return([]models.PurchaseOrderResponse{}, int64(0), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/purchase-orders", nil)
@@ -225,8 +225,8 @@ func TestPurchaseOrderHandler_GetAllPurchaseOrders_ServiceError(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
-	mockService.On("GetAllPurchaseOrders", mock.Anything).
-		Return(nil, errors.New("database connection failed"))
+	mockService.On("GetAllPurchaseOrders", mock.Anything, 50, 0).
+		Return(nil, int64(0), errors.New("database connection failed"))
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/purchase-orders", nil)
@@ -331,8 +331,8 @@ func TestPurchaseOrderHandler_GetPendingDeliveries_Success(t *testing.T) {
 			ExpectedDelivery: "2025-01-22",
 		},
 	}
-	mockService.On("GetPendingDeliveries", mock.Anything).
-		Return(expectedResponse, nil)
+	mockService.On("GetPendingDeliveries", mock.Anything, 50, 0).
+		Return(expectedResponse, int64(2), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/purchase-orders/pending-deliveries", nil)
@@ -360,8 +360,8 @@ func TestPurchaseOrderHandler_GetPendingDeliveries_EmptyList(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
-	mockService.On("GetPendingDeliveries", mock.Anything).
-		Return([]models.PurchaseOrderResponse{}, nil)
+	mockService.On("GetPendingDeliveries", mock.Anything, 50, 0).
+		Return([]models.PurchaseOrderResponse{}, int64(0), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/purchase-orders/pending-deliveries", nil)
@@ -395,8 +395,8 @@ func TestPurchaseOrderHandler_GetPurchaseOrdersByStatus_Success(t *testing.T) {
 			Status:   "delivered",
 		},
 	}
-	mockService.On("GetPurchaseOrdersByStatus", mock.Anything, "delivered").
-		Return(expectedResponse, nil)
+	mockService.On("GetPurchaseOrdersByStatus", mock.Anything, "delivered", 50, 0).
+		Return(expectedResponse, int64(1), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/purchase-orders/status/delivered", nil)
@@ -429,8 +429,8 @@ func TestPurchaseOrderHandler_GetPurchaseOrdersByStatus_MultipleStatuses(t *test
 			handler.RegisterRoutes(router.Group("/api/v1"))
 
 			// Mock expectations
-			mockService.On("GetPurchaseOrdersByStatus", mock.Anything, status).
-				Return([]models.PurchaseOrderResponse{}, nil)
+			mockService.On("GetPurchaseOrdersByStatus", mock.Anything, status, 50, 0).
+				Return([]models.PurchaseOrderResponse{}, int64(0), nil)
 
 			// Create request
 			req := httptest.NewRequest("GET", "/api/v1/purchase-orders/status/"+status, nil)
@@ -758,8 +758,8 @@ func TestPurchaseOrderHandler_GetPurchaseOrdersByCollaborator_Success(t *testing
 			Status:           "confirmed",
 		},
 	}
-	mockService.On("GetPurchaseOrdersByCollaborator", mock.Anything, "CLAB00000001").
-		Return(expectedResponse, nil)
+	mockService.On("GetPurchaseOrdersByCollaborator", mock.Anything, "CLAB00000001", 50, 0).
+		Return(expectedResponse, int64(2), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/collaborators/CLAB00000001/purchase-orders", nil)
@@ -787,8 +787,8 @@ func TestPurchaseOrderHandler_GetPurchaseOrdersByCollaborator_EmptyList(t *testi
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
-	mockService.On("GetPurchaseOrdersByCollaborator", mock.Anything, "CLAB00000999").
-		Return([]models.PurchaseOrderResponse{}, nil)
+	mockService.On("GetPurchaseOrdersByCollaborator", mock.Anything, "CLAB00000999", 50, 0).
+		Return([]models.PurchaseOrderResponse{}, int64(0), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/collaborators/CLAB00000999/purchase-orders", nil)
@@ -811,8 +811,8 @@ func TestPurchaseOrderHandler_GetPurchaseOrdersByCollaborator_ServiceError(t *te
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
-	mockService.On("GetPurchaseOrdersByCollaborator", mock.Anything, "CLAB00000001").
-		Return(nil, errors.New("database error"))
+	mockService.On("GetPurchaseOrdersByCollaborator", mock.Anything, "CLAB00000001", 50, 0).
+		Return(nil, int64(0), errors.New("database error"))
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/collaborators/CLAB00000001/purchase-orders", nil)

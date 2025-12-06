@@ -7,8 +7,8 @@ import (
 type DiscountsServiceInterface interface {
 	CreateDiscount(req *models.CreateDiscountRequest) (*models.DiscountResponse, error)
 	GetDiscount(id string) (*models.DiscountResponse, error)
-	GetAllDiscounts(limit, offset int) ([]models.DiscountResponse, error)
-	GetActiveDiscounts() ([]models.DiscountResponse, error)
+	GetAllDiscounts(limit, offset int) ([]models.DiscountResponse, int64, error)
+	GetActiveDiscounts(limit, offset int) ([]models.DiscountResponse, int64, error)
 	UpdateDiscount(id string, req *models.UpdateDiscountRequest) (*models.DiscountResponse, error)
 	DeleteDiscount(id string) error
 	GetDiscountsByType(discountType models.DiscountType) ([]models.DiscountResponse, error)

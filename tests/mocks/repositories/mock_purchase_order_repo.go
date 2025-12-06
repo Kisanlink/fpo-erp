@@ -70,39 +70,39 @@ func (m *MockPurchaseOrderRepository) GetByPONumber(poNumber string) (*models.Pu
 }
 
 // GetAll mocks the GetAll method
-func (m *MockPurchaseOrderRepository) GetAll() ([]models.PurchaseOrder, error) {
-	args := m.Called()
+func (m *MockPurchaseOrderRepository) GetAll(limit, offset int) ([]models.PurchaseOrder, int64, error) {
+	args := m.Called(limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, 0, args.Error(2)
 	}
-	return args.Get(0).([]models.PurchaseOrder), args.Error(1)
+	return args.Get(0).([]models.PurchaseOrder), args.Get(1).(int64), args.Error(2)
 }
 
 // GetByCollaborator mocks the GetByCollaborator method
-func (m *MockPurchaseOrderRepository) GetByCollaborator(collaboratorID string) ([]models.PurchaseOrder, error) {
-	args := m.Called(collaboratorID)
+func (m *MockPurchaseOrderRepository) GetByCollaborator(collaboratorID string, limit, offset int) ([]models.PurchaseOrder, int64, error) {
+	args := m.Called(collaboratorID, limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, 0, args.Error(2)
 	}
-	return args.Get(0).([]models.PurchaseOrder), args.Error(1)
+	return args.Get(0).([]models.PurchaseOrder), args.Get(1).(int64), args.Error(2)
 }
 
 // GetByStatus mocks the GetByStatus method
-func (m *MockPurchaseOrderRepository) GetByStatus(status string) ([]models.PurchaseOrder, error) {
-	args := m.Called(status)
+func (m *MockPurchaseOrderRepository) GetByStatus(status string, limit, offset int) ([]models.PurchaseOrder, int64, error) {
+	args := m.Called(status, limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, 0, args.Error(2)
 	}
-	return args.Get(0).([]models.PurchaseOrder), args.Error(1)
+	return args.Get(0).([]models.PurchaseOrder), args.Get(1).(int64), args.Error(2)
 }
 
 // GetPendingDeliveries mocks the GetPendingDeliveries method
-func (m *MockPurchaseOrderRepository) GetPendingDeliveries() ([]models.PurchaseOrder, error) {
-	args := m.Called()
+func (m *MockPurchaseOrderRepository) GetPendingDeliveries(limit, offset int) ([]models.PurchaseOrder, int64, error) {
+	args := m.Called(limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, 0, args.Error(2)
 	}
-	return args.Get(0).([]models.PurchaseOrder), args.Error(1)
+	return args.Get(0).([]models.PurchaseOrder), args.Get(1).(int64), args.Error(2)
 }
 
 // Update mocks the Update method

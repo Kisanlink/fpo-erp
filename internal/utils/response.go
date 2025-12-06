@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // Response represents a standard API response
@@ -22,6 +23,24 @@ type ErrorResponseModel struct {
 	Message   string `json:"message,omitempty" example:"Error occurred"`
 	Error     string `json:"error,omitempty" example:"Detailed error message"`
 	Timestamp string `json:"timestamp" example:"2024-01-15T10:30:00Z"`
+}
+
+// PaginatedResponse represents a paginated API response
+type PaginatedResponse struct {
+	Data       interface{}    `json:"data"`
+	Pagination PaginationMeta `json:"pagination"`
+	RequestID  string         `json:"request_id"`
+	Success    bool           `json:"success"`
+	Timestamp  string         `json:"timestamp"`
+}
+
+// PaginatedResponseModel represents a paginated response structure for Swagger documentation
+type PaginatedResponseModel struct {
+	Data       interface{}    `json:"data"`
+	Pagination PaginationMeta `json:"pagination"`
+	RequestID  string         `json:"request_id" example:"34bc4e39-a3d7-4c18-99d9-3645139e3bd8"`
+	Success    bool           `json:"success" example:"true"`
+	Timestamp  string         `json:"timestamp" example:"2024-01-15T10:30:00Z"`
 }
 
 // SuccessResponse sends a success response
@@ -84,4 +103,28 @@ func UnauthorizedResponse(c *gin.Context, message string) {
 // ForbiddenResponse sends a 403 Forbidden response
 func ForbiddenResponse(c *gin.Context, message string) {
 	ErrorResponse(c, http.StatusForbidden, message, nil)
+}
+
+// PaginatedOKResponse sends a 200 OK response with pagination metadata
+func PaginatedOKResponse(c *gin.Context, data interface{}, total int64, limit, offset int) {
+	response := PaginatedResponse{
+		Data:       data,
+		Pagination: NewPaginationMeta(limit, offset, total),
+		RequestID:  uuid.New().String(),
+		Success:    true,
+		Timestamp:  time.Now().UTC().Format(time.RFC3339),
+	}
+	c.JSON(http.StatusOK, response)
+}
+
+// PaginatedSuccessResponse sends a paginated success response with custom status code
+func PaginatedSuccessResponse(c *gin.Context, statusCode int, data interface{}, total int64, limit, offset int) {
+	response := PaginatedResponse{
+		Data:       data,
+		Pagination: NewPaginationMeta(limit, offset, total),
+		RequestID:  uuid.New().String(),
+		Success:    true,
+		Timestamp:  time.Now().UTC().Format(time.RFC3339),
+	}
+	c.JSON(statusCode, response)
 }

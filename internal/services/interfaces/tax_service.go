@@ -9,10 +9,10 @@ import (
 type TaxServiceInterface interface {
 	CreateTax(req *models.CreateTaxRequest, userID string) (*models.TaxResponse, error)
 	GetTax(id string) (*models.TaxResponse, error)
-	GetAllTaxes(limit, offset int) ([]models.TaxResponse, error)
-	GetActiveTaxes() ([]models.TaxResponse, error)
-	GetTaxesByType(taxType models.TaxType) ([]models.TaxResponse, error)
-	GetTaxesByStatus(status string) ([]models.TaxResponse, error)
+	GetAllTaxes(limit, offset int) ([]models.TaxResponse, int64, error)
+	GetActiveTaxes(limit, offset int) ([]models.TaxResponse, int64, error)
+	GetTaxesByType(taxType models.TaxType, limit, offset int) ([]models.TaxResponse, int64, error)
+	GetTaxesByStatus(status string, limit, offset int) ([]models.TaxResponse, int64, error)
 	UpdateTax(id string, req *models.UpdateTaxRequest, userID string) (*models.TaxResponse, error)
 	DeleteTax(id string) error
 	CalculateTax(req *models.TaxCalculationRequest) (*models.TaxCalculationResponse, error)

@@ -28,36 +28,36 @@ func (m *MockTaxService) GetTax(id string) (*models.TaxResponse, error) {
 	return args.Get(0).(*models.TaxResponse), args.Error(1)
 }
 
-func (m *MockTaxService) GetAllTaxes(limit, offset int) ([]models.TaxResponse, error) {
+func (m *MockTaxService) GetAllTaxes(limit, offset int) ([]models.TaxResponse, int64, error) {
 	args := m.Called(limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, 0, args.Error(2)
 	}
-	return args.Get(0).([]models.TaxResponse), args.Error(1)
+	return args.Get(0).([]models.TaxResponse), args.Get(1).(int64), args.Error(2)
 }
 
-func (m *MockTaxService) GetActiveTaxes() ([]models.TaxResponse, error) {
-	args := m.Called()
+func (m *MockTaxService) GetActiveTaxes(limit, offset int) ([]models.TaxResponse, int64, error) {
+	args := m.Called(limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, 0, args.Error(2)
 	}
-	return args.Get(0).([]models.TaxResponse), args.Error(1)
+	return args.Get(0).([]models.TaxResponse), args.Get(1).(int64), args.Error(2)
 }
 
-func (m *MockTaxService) GetTaxesByType(taxType models.TaxType) ([]models.TaxResponse, error) {
-	args := m.Called(taxType)
+func (m *MockTaxService) GetTaxesByType(taxType models.TaxType, limit, offset int) ([]models.TaxResponse, int64, error) {
+	args := m.Called(taxType, limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, 0, args.Error(2)
 	}
-	return args.Get(0).([]models.TaxResponse), args.Error(1)
+	return args.Get(0).([]models.TaxResponse), args.Get(1).(int64), args.Error(2)
 }
 
-func (m *MockTaxService) GetTaxesByStatus(status string) ([]models.TaxResponse, error) {
-	args := m.Called(status)
+func (m *MockTaxService) GetTaxesByStatus(status string, limit, offset int) ([]models.TaxResponse, int64, error) {
+	args := m.Called(status, limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, 0, args.Error(2)
 	}
-	return args.Get(0).([]models.TaxResponse), args.Error(1)
+	return args.Get(0).([]models.TaxResponse), args.Get(1).(int64), args.Error(2)
 }
 
 func (m *MockTaxService) UpdateTax(id string, req *models.UpdateTaxRequest, userID string) (*models.TaxResponse, error) {

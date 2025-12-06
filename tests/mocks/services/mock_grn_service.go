@@ -29,20 +29,20 @@ func (m *MockGRNService) GetGRN(ctx context.Context, id string) (*models.GRNResp
 	return args.Get(0).(*models.GRNResponse), args.Error(1)
 }
 
-func (m *MockGRNService) GetAllGRNs(ctx context.Context) ([]models.GRNResponse, error) {
-	args := m.Called(ctx)
+func (m *MockGRNService) GetAllGRNs(ctx context.Context, limit, offset int) ([]models.GRNResponse, int64, error) {
+	args := m.Called(ctx, limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, args.Get(1).(int64), args.Error(2)
 	}
-	return args.Get(0).([]models.GRNResponse), args.Error(1)
+	return args.Get(0).([]models.GRNResponse), args.Get(1).(int64), args.Error(2)
 }
 
-func (m *MockGRNService) GetGRNsByWarehouse(ctx context.Context, warehouseID string) ([]models.GRNResponse, error) {
-	args := m.Called(ctx, warehouseID)
+func (m *MockGRNService) GetGRNsByWarehouse(ctx context.Context, warehouseID string, limit, offset int) ([]models.GRNResponse, int64, error) {
+	args := m.Called(ctx, warehouseID, limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, args.Get(1).(int64), args.Error(2)
 	}
-	return args.Get(0).([]models.GRNResponse), args.Error(1)
+	return args.Get(0).([]models.GRNResponse), args.Get(1).(int64), args.Error(2)
 }
 
 func (m *MockGRNService) GetGRNByPurchaseOrder(ctx context.Context, poID string) (*models.GRNResponse, error) {

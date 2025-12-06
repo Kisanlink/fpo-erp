@@ -41,7 +41,7 @@ func TestAttachmentHandler_UploadAttachment_Success(t *testing.T) {
 		EntityID:   "CLAB00000001",
 		FilePath:   "logos/test.png",
 		FileType:   "image/png",
-		UploadedBy: stringPtr("USER_12345678"),
+		UploadedBy: testutils.StringPtr("USER_12345678"),
 		UploadedAt: "2025-11-10T10:00:00Z",
 	}
 
@@ -235,7 +235,7 @@ func TestAttachmentHandler_GetAttachments_WithFilters(t *testing.T) {
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
 	handler := handlers.NewAttachmentHandler(mockService, mockAAA, mockLogger)
 
-	mockService.On("GetAttachments", mock.Anything, stringPtr("logo"), stringPtr("CLAB00000001"), 10, 0).Return([]models.AttachmentResponse{}, nil)
+	mockService.On("GetAttachments", mock.Anything, testutils.StringPtr("logo"), testutils.StringPtr("CLAB00000001"), 10, 0).Return([]models.AttachmentResponse{}, nil)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -396,7 +396,7 @@ func TestAttachmentHandler_GetAttachmentInfo_Success(t *testing.T) {
 		FilePath:   "logos/test.png",
 		FileType:   "image/png",
 		FileSize:   1024,
-		UploadedBy: stringPtr("USER_12345678"),
+		UploadedBy: testutils.StringPtr("USER_12345678"),
 		UploadedAt: "2025-11-10T10:00:00Z",
 	}
 

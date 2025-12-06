@@ -20,7 +20,7 @@ repos:
 
   # Go linting with golangci-lint
   - repo: https://github.com/golangci/golangci-lint
-    rev: v1.54.2
+    rev: v2.7.1
     hooks:
       - id: golangci-lint
         name: Go Lint
@@ -39,7 +39,7 @@ repos:
 
   # General hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v6.0.0
     hooks:
       - id: check-added-large-files
         name: Check for large files
@@ -68,7 +68,7 @@ repos:
 
   # Commit message format
   - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v3.0.0
+    rev: v4.3.0
     hooks:
       - id: conventional-pre-commit
         name: Conventional Commit

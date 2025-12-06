@@ -176,8 +176,8 @@ func TestCollaboratorHandler_GetAllCollaborators_Success(t *testing.T) {
 			IsActive:      true,
 		},
 	}
-	mockService.On("GetAllCollaborators", mock.Anything, mock.Anything).
-		Return(expectedResponse, nil)
+	mockService.On("GetAllCollaborators", mock.Anything, mock.Anything, mock.AnythingOfType("int"), mock.AnythingOfType("int")).
+		Return(expectedResponse, int64(len(expectedResponse)), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/collaborators", nil)
@@ -205,8 +205,8 @@ func TestCollaboratorHandler_GetAllCollaborators_EmptyList(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
-	mockService.On("GetAllCollaborators", mock.Anything, mock.Anything).
-		Return([]models.CollaboratorResponse{}, nil)
+	mockService.On("GetAllCollaborators", mock.Anything, mock.Anything, mock.AnythingOfType("int"), mock.AnythingOfType("int")).
+		Return([]models.CollaboratorResponse{}, int64(0), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/collaborators", nil)
@@ -236,8 +236,8 @@ func TestCollaboratorHandler_GetActiveCollaborators_Success(t *testing.T) {
 			IsActive:    true,
 		},
 	}
-	mockService.On("GetActiveCollaborators", mock.Anything, mock.Anything).
-		Return(expectedResponse, nil)
+	mockService.On("GetActiveCollaborators", mock.Anything, mock.Anything, mock.AnythingOfType("int"), mock.AnythingOfType("int")).
+		Return(expectedResponse, int64(len(expectedResponse)), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/collaborators/active", nil)
@@ -268,8 +268,8 @@ func TestCollaboratorHandler_SearchCollaborators_Success(t *testing.T) {
 			IsActive:      true,
 		},
 	}
-	mockService.On("SearchCollaborators", mock.Anything, "Test", mock.Anything).
-		Return(expectedResponse, nil)
+	mockService.On("SearchCollaborators", mock.Anything, "Test", mock.Anything, mock.AnythingOfType("int"), mock.AnythingOfType("int")).
+		Return(expectedResponse, int64(len(expectedResponse)), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/collaborators/search?q=Test", nil)
@@ -292,8 +292,8 @@ func TestCollaboratorHandler_SearchCollaborators_NoResults(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
-	mockService.On("SearchCollaborators", mock.Anything, "NonExistent", mock.Anything).
-		Return([]models.CollaboratorResponse{}, nil)
+	mockService.On("SearchCollaborators", mock.Anything, "NonExistent", mock.Anything, mock.AnythingOfType("int"), mock.AnythingOfType("int")).
+		Return([]models.CollaboratorResponse{}, int64(0), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/collaborators/search?q=NonExistent", nil)

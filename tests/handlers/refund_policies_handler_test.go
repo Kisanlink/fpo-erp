@@ -174,8 +174,8 @@ func TestRefundPoliciesHandler_GetAllRefundPolicies_Success(t *testing.T) {
 			RestockingFee: 10.0,
 		},
 	}
-	mockService.On("GetAllRefundPolicies", 10, 0).
-		Return(expectedResponse, nil)
+	mockService.On("GetAllRefundPolicies", 50, 0).
+		Return(expectedResponse, int64(2), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/refund-policies", nil)
@@ -203,8 +203,8 @@ func TestRefundPoliciesHandler_GetAllRefundPolicies_EmptyList(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
-	mockService.On("GetAllRefundPolicies", 10, 0).
-		Return([]models.RefundPolicyResponse{}, nil)
+	mockService.On("GetAllRefundPolicies", 50, 0).
+		Return([]models.RefundPolicyResponse{}, int64(0), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/refund-policies", nil)
@@ -227,8 +227,8 @@ func TestRefundPoliciesHandler_GetAllRefundPolicies_ServiceError(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
-	mockService.On("GetAllRefundPolicies", 10, 0).
-		Return(nil, errors.New("database error"))
+	mockService.On("GetAllRefundPolicies", 50, 0).
+		Return(nil, int64(0), errors.New("database error"))
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/refund-policies", nil)

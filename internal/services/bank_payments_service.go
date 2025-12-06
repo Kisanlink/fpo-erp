@@ -83,10 +83,10 @@ func (s *BankPaymentsService) GetBankPayment(id string) (*models.BankPaymentResp
 }
 
 // GetAllBankPayments retrieves all bank payments with pagination
-func (s *BankPaymentsService) GetAllBankPayments(limit, offset int) ([]models.BankPaymentResponse, error) {
-	payments, err := s.bankPaymentsRepo.GetAllBankPayments(limit, offset)
+func (s *BankPaymentsService) GetAllBankPayments(limit, offset int) ([]models.BankPaymentResponse, int64, error) {
+	payments, total, err := s.bankPaymentsRepo.GetAllBankPayments(limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []models.BankPaymentResponse
@@ -94,7 +94,7 @@ func (s *BankPaymentsService) GetAllBankPayments(limit, offset int) ([]models.Ba
 		responses = append(responses, *s.mapBankPaymentToResponse(&payment))
 	}
 
-	return responses, nil
+	return responses, total, nil
 }
 
 // GetBankPaymentsBySaleID retrieves bank payments for a specific sale

@@ -116,11 +116,12 @@ func TestSalesService_GetAllSales_Success(t *testing.T) {
 	createTestSale(t, db, warehouse.ID, 2000.00, "pending")
 
 	// Execute
-	responses, err := service.GetAllSales(100, 0)
+	responses, total, err := service.GetAllSales(100, 0)
 
 	// Assert
 	testutils.AssertNoError(t, err, "GetAllSales should succeed")
 	testutils.AssertEqual(t, len(responses), 2, "Should return 2 sales")
+	testutils.AssertEqual(t, int(total), 2, "Total should be 2")
 }
 
 func TestSalesService_GetAllSales_Empty(t *testing.T) {
@@ -128,11 +129,12 @@ func TestSalesService_GetAllSales_Empty(t *testing.T) {
 	defer cleanup()
 
 	// Execute
-	responses, err := service.GetAllSales(100, 0)
+	responses, total, err := service.GetAllSales(100, 0)
 
 	// Assert
 	testutils.AssertNoError(t, err, "GetAllSales should succeed")
 	testutils.AssertEqual(t, len(responses), 0, "Should return empty list")
+	testutils.AssertEqual(t, int(total), 0, "Total should be 0")
 }
 
 func TestSalesService_GetAllSales_Pagination(t *testing.T) {
@@ -146,14 +148,16 @@ func TestSalesService_GetAllSales_Pagination(t *testing.T) {
 	}
 
 	// Execute - Get first 3
-	page1, err := service.GetAllSales(3, 0)
+	page1, total1, err := service.GetAllSales(3, 0)
 	testutils.AssertNoError(t, err, "GetAllSales should succeed")
 	testutils.AssertEqual(t, len(page1), 3, "Should return 3 sales")
+	testutils.AssertEqual(t, int(total1), 5, "Total should be 5")
 
 	// Execute - Get next 2
-	page2, err := service.GetAllSales(3, 3)
+	page2, total2, err := service.GetAllSales(3, 3)
 	testutils.AssertNoError(t, err, "GetAllSales should succeed")
 	testutils.AssertEqual(t, len(page2), 2, "Should return 2 sales")
+	testutils.AssertEqual(t, int(total2), 5, "Total should be 5")
 }
 
 // =============================================================================
@@ -285,11 +289,12 @@ func TestSalesService_GetSalesByDateRange_Success(t *testing.T) {
 	// Execute - Get sales from last 7 days
 	startDate := now.Add(-7 * 24 * time.Hour)
 	endDate := now
-	responses, err := service.GetSalesByDateRange(startDate, endDate)
+	responses, total, err := service.GetSalesByDateRange(startDate, endDate, 10, 0)
 
 	// Assert
 	testutils.AssertNoError(t, err, "GetSalesByDateRange should succeed")
 	testutils.AssertEqual(t, len(responses), 2, "Should return 2 sales (within 7 days)")
+	testutils.AssertEqual(t, int(total), 2, "Total should be 2")
 }
 
 func TestSalesService_GetSalesByDateRange_Empty(t *testing.T) {
@@ -307,11 +312,12 @@ func TestSalesService_GetSalesByDateRange_Empty(t *testing.T) {
 	// Execute - Get sales from last 7 days
 	startDate := time.Now().UTC().Add(-7 * 24 * time.Hour)
 	endDate := time.Now().UTC()
-	responses, err := service.GetSalesByDateRange(startDate, endDate)
+	responses, total, err := service.GetSalesByDateRange(startDate, endDate, 10, 0)
 
 	// Assert
 	testutils.AssertNoError(t, err, "GetSalesByDateRange should succeed")
 	testutils.AssertEqual(t, len(responses), 0, "Should return empty list")
+	testutils.AssertEqual(t, int(total), 0, "Total should be 0")
 }
 
 // TODO: Fix date range query - currently returns 0 results (skipped for now)
@@ -331,11 +337,12 @@ func TestSalesService_GetSalesByStatus_Pending(t *testing.T) {
 	createTestSale(t, db, warehouse.ID, 3000.00, "completed")
 
 	// Execute
-	responses, err := service.GetSalesByStatus("pending")
+	responses, total, err := service.GetSalesByStatus("pending", 10, 0)
 
 	// Assert
 	testutils.AssertNoError(t, err, "GetSalesByStatus should succeed")
 	testutils.AssertEqual(t, len(responses), 2, "Should return 2 pending sales")
+	testutils.AssertEqual(t, int(total), 2, "Total should be 2")
 	for _, resp := range responses {
 		testutils.AssertEqual(t, resp.Status, "pending", "All sales should be pending")
 	}
@@ -351,11 +358,12 @@ func TestSalesService_GetSalesByStatus_Completed(t *testing.T) {
 	createTestSale(t, db, warehouse.ID, 2000.00, "pending")
 
 	// Execute
-	responses, err := service.GetSalesByStatus("completed")
+	responses, total, err := service.GetSalesByStatus("completed", 10, 0)
 
 	// Assert
 	testutils.AssertNoError(t, err, "GetSalesByStatus should succeed")
 	testutils.AssertEqual(t, len(responses), 1, "Should return 1 completed sale")
+	testutils.AssertEqual(t, int(total), 1, "Total should be 1")
 	testutils.AssertEqual(t, responses[0].Status, "completed", "Sale should be completed")
 }
 
@@ -368,11 +376,12 @@ func TestSalesService_GetSalesByStatus_Empty(t *testing.T) {
 	createTestSale(t, db, warehouse.ID, 1000.00, "completed")
 
 	// Execute
-	responses, err := service.GetSalesByStatus("cancelled")
+	responses, total, err := service.GetSalesByStatus("cancelled", 10, 0)
 
 	// Assert
 	testutils.AssertNoError(t, err, "GetSalesByStatus should succeed")
 	testutils.AssertEqual(t, len(responses), 0, "Should return empty list")
+	testutils.AssertEqual(t, int(total), 0, "Total should be 0")
 }
 
 // =============================================================================

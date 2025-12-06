@@ -103,10 +103,10 @@ func (s *TaxService) GetTax(id string) (*models.TaxResponse, error) {
 }
 
 // GetAllTaxes retrieves all taxes with pagination
-func (s *TaxService) GetAllTaxes(limit, offset int) ([]models.TaxResponse, error) {
-	taxes, err := s.taxRepo.GetAllTaxes(limit, offset)
+func (s *TaxService) GetAllTaxes(limit, offset int) ([]models.TaxResponse, int64, error) {
+	taxes, total, err := s.taxRepo.GetAllTaxes(limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []models.TaxResponse
@@ -114,14 +114,14 @@ func (s *TaxService) GetAllTaxes(limit, offset int) ([]models.TaxResponse, error
 		responses = append(responses, *tax.ToResponse())
 	}
 
-	return responses, nil
+	return responses, total, nil
 }
 
 // GetActiveTaxes retrieves all currently active taxes
-func (s *TaxService) GetActiveTaxes() ([]models.TaxResponse, error) {
-	taxes, err := s.taxRepo.GetActiveTaxes()
+func (s *TaxService) GetActiveTaxes(limit, offset int) ([]models.TaxResponse, int64, error) {
+	taxes, total, err := s.taxRepo.GetActiveTaxes(limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []models.TaxResponse
@@ -129,14 +129,14 @@ func (s *TaxService) GetActiveTaxes() ([]models.TaxResponse, error) {
 		responses = append(responses, *tax.ToResponse())
 	}
 
-	return responses, nil
+	return responses, total, nil
 }
 
 // GetTaxesByType retrieves taxes by type
-func (s *TaxService) GetTaxesByType(taxType models.TaxType) ([]models.TaxResponse, error) {
-	taxes, err := s.taxRepo.GetTaxesByType(taxType)
+func (s *TaxService) GetTaxesByType(taxType models.TaxType, limit, offset int) ([]models.TaxResponse, int64, error) {
+	taxes, total, err := s.taxRepo.GetTaxesByType(taxType, limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []models.TaxResponse
@@ -144,14 +144,14 @@ func (s *TaxService) GetTaxesByType(taxType models.TaxType) ([]models.TaxRespons
 		responses = append(responses, *tax.ToResponse())
 	}
 
-	return responses, nil
+	return responses, total, nil
 }
 
 // GetTaxesByStatus retrieves taxes by status
-func (s *TaxService) GetTaxesByStatus(status string) ([]models.TaxResponse, error) {
-	taxes, err := s.taxRepo.GetTaxesByStatus(status)
+func (s *TaxService) GetTaxesByStatus(status string, limit, offset int) ([]models.TaxResponse, int64, error) {
+	taxes, total, err := s.taxRepo.GetTaxesByStatus(status, limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []models.TaxResponse
@@ -159,7 +159,7 @@ func (s *TaxService) GetTaxesByStatus(status string) ([]models.TaxResponse, erro
 		responses = append(responses, *tax.ToResponse())
 	}
 
-	return responses, nil
+	return responses, total, nil
 }
 
 // UpdateTax updates an existing tax

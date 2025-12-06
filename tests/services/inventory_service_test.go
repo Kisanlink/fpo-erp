@@ -287,11 +287,12 @@ func TestInventoryService_GetBatchesByWarehouse_Success(t *testing.T) {
 	db.Create(batch2)
 
 	// Execute
-	results, err := service.GetBatchesByWarehouse(warehouse.ID)
+	results, total, err := service.GetBatchesByWarehouse(warehouse.ID, 10, 0)
 
 	// Assert
 	testutils.AssertNoError(t, err, "GetBatchesByWarehouse should succeed")
 	testutils.AssertEqual(t, len(results), 2, "Should return 2 batches")
+	testutils.AssertEqual(t, total, int64(2), "Total should be 2")
 }
 
 func TestInventoryService_GetBatchesByWarehouse_Empty(t *testing.T) {
@@ -303,11 +304,12 @@ func TestInventoryService_GetBatchesByWarehouse_Empty(t *testing.T) {
 	db.Create(warehouse)
 
 	// Execute
-	results, err := service.GetBatchesByWarehouse(warehouse.ID)
+	results, total, err := service.GetBatchesByWarehouse(warehouse.ID, 10, 0)
 
 	// Assert
 	testutils.AssertNoError(t, err, "GetBatchesByWarehouse should succeed")
 	testutils.AssertEqual(t, len(results), 0, "Should return empty list")
+	testutils.AssertEqual(t, total, int64(0), "Total should be 0")
 }
 
 func TestInventoryService_GetBatchesByWarehouse_WarehouseNotFound(t *testing.T) {
@@ -315,7 +317,7 @@ func TestInventoryService_GetBatchesByWarehouse_WarehouseNotFound(t *testing.T) 
 	defer cleanup()
 
 	// Execute
-	_, err := service.GetBatchesByWarehouse("non-existent-warehouse")
+	_, _, err := service.GetBatchesByWarehouse("non-existent-warehouse", 10, 0)
 
 	// Assert
 	testutils.AssertError(t, err, "Should fail when warehouse not found")
@@ -345,11 +347,12 @@ func TestInventoryService_GetBatchesByVariant_Success(t *testing.T) {
 	db.Create(batch2)
 
 	// Execute
-	results, err := service.GetBatchesByVariant(variant.ID)
+	results, total, err := service.GetBatchesByVariant(variant.ID, 10, 0)
 
 	// Assert
 	testutils.AssertNoError(t, err, "GetBatchesByVariant should succeed")
 	testutils.AssertEqual(t, len(results), 2, "Should return 2 batches across warehouses")
+	testutils.AssertEqual(t, total, int64(2), "Total should be 2")
 }
 
 func TestInventoryService_GetBatchesByVariant_Multiple(t *testing.T) {
@@ -373,11 +376,12 @@ func TestInventoryService_GetBatchesByVariant_Multiple(t *testing.T) {
 	}
 
 	// Execute
-	results, err := service.GetBatchesByVariant(variant.ID)
+	results, total, err := service.GetBatchesByVariant(variant.ID, 10, 0)
 
 	// Assert
 	testutils.AssertNoError(t, err, "GetBatchesByVariant should succeed")
 	testutils.AssertEqual(t, len(results), 3, "Should return 3 batches")
+	testutils.AssertEqual(t, total, int64(3), "Total should be 3")
 }
 
 func TestInventoryService_GetBatchesByVariant_VariantNotFound(t *testing.T) {
@@ -385,7 +389,7 @@ func TestInventoryService_GetBatchesByVariant_VariantNotFound(t *testing.T) {
 	defer cleanup()
 
 	// Execute
-	_, err := service.GetBatchesByVariant("non-existent-variant")
+	_, _, err := service.GetBatchesByVariant("non-existent-variant", 10, 0)
 
 	// Assert
 	testutils.AssertError(t, err, "Should fail when variant not found")
@@ -414,11 +418,12 @@ func TestInventoryService_GetExpiringBatches_Success(t *testing.T) {
 	db.Create(batch2)
 
 	// Execute - get batches expiring within 30 days
-	results, err := service.GetExpiringBatches(30)
+	results, total, err := service.GetExpiringBatches(30, 10, 0)
 
 	// Assert
 	testutils.AssertNoError(t, err, "GetExpiringBatches should succeed")
 	testutils.AssertEqual(t, len(results), 1, "Should return 1 batch expiring within 30 days")
+	testutils.AssertEqual(t, total, int64(1), "Total should be 1")
 	testutils.AssertEqual(t, results[0].ID, batch1.ID, "Should return the batch expiring in 10 days")
 }
 
@@ -441,11 +446,12 @@ func TestInventoryService_GetExpiringBatches_Empty(t *testing.T) {
 	db.Create(batch)
 
 	// Execute - get batches expiring within 30 days
-	results, err := service.GetExpiringBatches(30)
+	results, total, err := service.GetExpiringBatches(30, 10, 0)
 
 	// Assert
 	testutils.AssertNoError(t, err, "GetExpiringBatches should succeed")
 	testutils.AssertEqual(t, len(results), 0, "Should return empty list when no batches expiring soon")
+	testutils.AssertEqual(t, total, int64(0), "Total should be 0")
 }
 
 func TestInventoryService_GetLowStockBatches_Success(t *testing.T) {
@@ -471,11 +477,12 @@ func TestInventoryService_GetLowStockBatches_Success(t *testing.T) {
 	db.Create(batch2)
 
 	// Execute - get batches with stock <= 10
-	results, err := service.GetLowStockBatches(10)
+	results, total, err := service.GetLowStockBatches(10, 10, 0)
 
 	// Assert
 	testutils.AssertNoError(t, err, "GetLowStockBatches should succeed")
 	testutils.AssertEqual(t, len(results), 1, "Should return 1 low stock batch")
+	testutils.AssertEqual(t, total, int64(1), "Total should be 1")
 	testutils.AssertEqual(t, results[0].ID, batch1.ID, "Should return the batch with 5 units")
 }
 
@@ -498,11 +505,12 @@ func TestInventoryService_GetLowStockBatches_Empty(t *testing.T) {
 	db.Create(batch)
 
 	// Execute - get batches with stock <= 10
-	results, err := service.GetLowStockBatches(10)
+	results, total, err := service.GetLowStockBatches(10, 10, 0)
 
 	// Assert
 	testutils.AssertNoError(t, err, "GetLowStockBatches should succeed")
 	testutils.AssertEqual(t, len(results), 0, "Should return empty list when all batches above threshold")
+	testutils.AssertEqual(t, total, int64(0), "Total should be 0")
 }
 
 // =============================================================================
@@ -691,11 +699,12 @@ func TestInventoryService_GetTransactionsByBatch_Success(t *testing.T) {
 	db.Create(transaction2)
 
 	// Execute
-	results, err := service.GetTransactionsByBatch(batch.ID)
+	results, total, err := service.GetTransactionsByBatch(batch.ID, 10, 0)
 
 	// Assert
 	testutils.AssertNoError(t, err, "GetTransactionsByBatch should succeed")
 	testutils.AssertEqual(t, len(results), 2, "Should return 2 transactions")
+	testutils.AssertEqual(t, total, int64(2), "Total should be 2")
 }
 
 func TestInventoryService_GetTransactionsByBatch_Ordered(t *testing.T) {
@@ -729,11 +738,12 @@ func TestInventoryService_GetTransactionsByBatch_Ordered(t *testing.T) {
 	db.Create(transaction3)
 
 	// Execute
-	results, err := service.GetTransactionsByBatch(batch.ID)
+	results, total, err := service.GetTransactionsByBatch(batch.ID, 10, 0)
 
 	// Assert
 	testutils.AssertNoError(t, err, "GetTransactionsByBatch should succeed")
 	testutils.AssertEqual(t, len(results), 3, "Should return 3 transactions")
+	testutils.AssertEqual(t, total, int64(3), "Total should be 3")
 	// Verify ordered by occurred_at DESC (newest first)
 	testutils.AssertEqual(t, results[0].ID, transaction3.ID, "First result should be newest transaction")
 	testutils.AssertEqual(t, results[2].ID, transaction1.ID, "Last result should be oldest transaction")
@@ -759,11 +769,12 @@ func TestInventoryService_GetTransactionsByBatch_Empty(t *testing.T) {
 	// Don't create any transactions
 
 	// Execute
-	results, err := service.GetTransactionsByBatch(batch.ID)
+	results, total, err := service.GetTransactionsByBatch(batch.ID, 10, 0)
 
 	// Assert
 	testutils.AssertNoError(t, err, "GetTransactionsByBatch should succeed")
 	testutils.AssertEqual(t, len(results), 0, "Should return empty list when no transactions")
+	testutils.AssertEqual(t, total, int64(0), "Total should be 0")
 }
 
 // =============================================================================
@@ -1015,11 +1026,12 @@ func TestInventoryService_GetExpiringBatches_BoundaryDate(t *testing.T) {
 	db.Create(batch)
 
 	// Execute - get batches expiring within 30 days
-	results, err := service.GetExpiringBatches(30)
+	results, total, err := service.GetExpiringBatches(30, 10, 0)
 
 	// Assert
 	testutils.AssertNoError(t, err, "GetExpiringBatches should succeed")
 	testutils.AssertEqual(t, len(results), 1, "Should include batch expiring in exactly 30 days")
+	testutils.AssertEqual(t, total, int64(1), "Total should be 1")
 }
 
 func TestInventoryService_GetLowStockBatches_ExactThreshold(t *testing.T) {
@@ -1040,11 +1052,12 @@ func TestInventoryService_GetLowStockBatches_ExactThreshold(t *testing.T) {
 	db.Create(batch)
 
 	// Execute - get batches with stock <= 10
-	results, err := service.GetLowStockBatches(10)
+	results, total, err := service.GetLowStockBatches(10, 10, 0)
 
 	// Assert
 	testutils.AssertNoError(t, err, "GetLowStockBatches should succeed")
 	testutils.AssertEqual(t, len(results), 1, "Should include batch with stock exactly at threshold")
+	testutils.AssertEqual(t, total, int64(1), "Total should be 1")
 }
 
 func TestInventoryService_CreateTransaction_ZeroQuantityChange(t *testing.T) {
@@ -1109,11 +1122,12 @@ func TestInventoryService_GetAllProductsAvailability_Success(t *testing.T) {
 
 	// Execute with context and mock JWT token
 	ctx := context.Background()
-	results, err := service.GetAllProductsAvailability(ctx, "mock-jwt-token")
+	results, total, err := service.GetAllProductsAvailability(ctx, "mock-jwt-token", 10, 0)
 
 	// Assert
 	testutils.AssertNoError(t, err, "GetAllProductsAvailability should succeed")
 	testutils.AssertTrue(t, len(results) > 0, "Should return at least 1 availability record")
+	testutils.AssertTrue(t, total > 0, "Total should be greater than 0")
 	testutils.AssertEqual(t, results[0].VariantID, variant.ID, "VariantID should match")
 	testutils.AssertEqual(t, results[0].WarehouseID, warehouse.ID, "WarehouseID should match")
 	testutils.AssertEqual(t, results[0].WarehouseName, warehouse.Name, "WarehouseName should match")
@@ -1141,10 +1155,11 @@ func TestInventoryService_GetAllProductsAvailability_AddressServiceError(t *test
 
 	// Execute
 	ctx := context.Background()
-	results, err := service.GetAllProductsAvailability(ctx, "mock-jwt-token")
+	results, total, err := service.GetAllProductsAvailability(ctx, "mock-jwt-token", 10, 0)
 
 	// Assert - should succeed even if address cannot be fetched
 	testutils.AssertNoError(t, err, "GetAllProductsAvailability should succeed without address")
 	testutils.AssertTrue(t, len(results) > 0, "Should return at least 1 availability record")
+	testutils.AssertTrue(t, total > 0, "Total should be greater than 0")
 	testutils.AssertEqual(t, results[0].WarehouseName, warehouse.Name, "WarehouseName should match")
 }

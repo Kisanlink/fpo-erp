@@ -154,11 +154,12 @@ func TestProductService_GetAllProducts_Success(t *testing.T) {
 	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
 
 	// Execute
-	responses, err := service.GetAllProducts(context.Background())
+	responses, total, err := service.GetAllProducts(context.Background(), 50, 0)
 
 	// Assert
 	testutils.AssertNoError(t, err, "GetAllProducts should succeed")
 	testutils.AssertEqual(t, len(responses), 3, "Should return all 3 products")
+	testutils.AssertEqual(t, int(total), 3, "Total count should be 3")
 }
 
 func TestProductService_GetAllProducts_Empty(t *testing.T) {
@@ -176,11 +177,12 @@ func TestProductService_GetAllProducts_Empty(t *testing.T) {
 	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
 
 	// Execute
-	responses, err := service.GetAllProducts(context.Background())
+	responses, total, err := service.GetAllProducts(context.Background(), 50, 0)
 
 	// Assert
 	testutils.AssertNoError(t, err, "GetAllProducts should succeed even when empty")
 	testutils.AssertEqual(t, len(responses), 0, "Should return empty array")
+	testutils.AssertEqual(t, int(total), 0, "Total count should be 0")
 }
 
 // ========================================

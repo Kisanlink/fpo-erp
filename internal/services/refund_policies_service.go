@@ -62,10 +62,10 @@ func (s *RefundPoliciesService) GetRefundPolicy(id string) (*models.RefundPolicy
 }
 
 // GetAllRefundPolicies retrieves all refund policies with pagination
-func (s *RefundPoliciesService) GetAllRefundPolicies(limit, offset int) ([]models.RefundPolicyResponse, error) {
-	policies, err := s.refundPoliciesRepo.GetAllRefundPolicies(limit, offset)
+func (s *RefundPoliciesService) GetAllRefundPolicies(limit, offset int) ([]models.RefundPolicyResponse, int64, error) {
+	policies, total, err := s.refundPoliciesRepo.GetAllRefundPolicies(limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []models.RefundPolicyResponse
@@ -73,7 +73,7 @@ func (s *RefundPoliciesService) GetAllRefundPolicies(limit, offset int) ([]model
 		responses = append(responses, *s.mapRefundPolicyToResponse(&policy))
 	}
 
-	return responses, nil
+	return responses, total, nil
 }
 
 // UpdateRefundPolicy updates a refund policy

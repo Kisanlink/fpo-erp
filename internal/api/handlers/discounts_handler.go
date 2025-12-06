@@ -142,9 +142,9 @@ func (h *DiscountsHandler) GetDiscount(c *gin.Context) {
 // @Description Retrieve all discounts with pagination
 // @Tags Discounts
 // @Produce json
-// @Param limit query integer false "Number of records to return (default: 10)" example(10)
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
 // @Param offset query integer false "Number of records to skip (default: 0)" example(0)
-// @Success 200 {object} utils.Response{data=[]models.DiscountResponse} "Discounts retrieved successfully"
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.DiscountResponse} "Discounts retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
@@ -155,46 +155,25 @@ func (h *DiscountsHandler) GetDiscount(c *gin.Context) {
 // @Router /api/v1/discounts [get]
 func (h *DiscountsHandler) GetAllDiscounts(c *gin.Context) {
 	// 1. Entry Log
-	limitStr := c.DefaultQuery("limit", "10")
-	offsetStr := c.DefaultQuery("offset", "0")
+	params := utils.GetPaginationParams(c)
 	h.logger.Info("Getting all discounts",
 		zap.String("method", c.Request.Method),
 		zap.String("path", c.Request.URL.Path),
-		zap.String("limit", limitStr),
-		zap.String("offset", offsetStr))
-
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil {
-		// 2. Validation Error Log
-		h.logger.Error("Validation failed for get all discounts",
-			zap.Error(err),
-			zap.String("limit", limitStr))
-		utils.BadRequestResponse(c, "Invalid limit parameter", err)
-		return
-	}
-
-	offset, err := strconv.Atoi(offsetStr)
-	if err != nil {
-		// 2. Validation Error Log
-		h.logger.Error("Validation failed for get all discounts",
-			zap.Error(err),
-			zap.String("offset", offsetStr))
-		utils.BadRequestResponse(c, "Invalid offset parameter", err)
-		return
-	}
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
 
 	// 3. Service Call Log
 	h.logger.Debug("Calling GetAllDiscounts service",
-		zap.Int("limit", limit),
-		zap.Int("offset", offset))
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
 
-	discounts, err := h.discountsService.GetAllDiscounts(limit, offset)
+	discounts, total, err := h.discountsService.GetAllDiscounts(params.Limit, params.Offset)
 	if err != nil {
 		// 4. Service Error Log
 		h.logger.Error("Failed to retrieve discounts",
 			zap.Error(err),
-			zap.Int("limit", limit),
-			zap.Int("offset", offset))
+			zap.Int("limit", params.Limit),
+			zap.Int("offset", params.Offset))
 		utils.HandleServiceError(c, "Failed to retrieve discounts", err)
 		return
 	}
@@ -202,18 +181,21 @@ func (h *DiscountsHandler) GetAllDiscounts(c *gin.Context) {
 	// 5. Success Log
 	h.logger.Info("Discounts retrieved successfully",
 		zap.Int("count", len(discounts)),
-		zap.Int("limit", limit),
-		zap.Int("offset", offset))
+		zap.Int64("total", total),
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
 
-	utils.OKResponse(c, "Discounts retrieved successfully", discounts)
+	utils.PaginatedOKResponse(c, discounts, total, params.Limit, params.Offset)
 }
 
 // GetActiveDiscounts handles GET /api/v1/discounts/active
 // @Summary Get Active Discounts
-// @Description Retrieve all currently active discounts
+// @Description Retrieve all currently active discounts with pagination
 // @Tags Discounts
 // @Produce json
-// @Success 200 {object} utils.Response{data=[]models.DiscountResponse} "Active discounts retrieved successfully"
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.DiscountResponse} "Active discounts retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
@@ -224,27 +206,37 @@ func (h *DiscountsHandler) GetAllDiscounts(c *gin.Context) {
 // @Router /api/v1/discounts/active [get]
 func (h *DiscountsHandler) GetActiveDiscounts(c *gin.Context) {
 	// 1. Entry Log
+	params := utils.GetPaginationParams(c)
 	h.logger.Info("Getting active discounts",
 		zap.String("method", c.Request.Method),
-		zap.String("path", c.Request.URL.Path))
+		zap.String("path", c.Request.URL.Path),
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
 
 	// 3. Service Call Log
-	h.logger.Debug("Calling GetActiveDiscounts service")
+	h.logger.Debug("Calling GetActiveDiscounts service",
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
 
-	discounts, err := h.discountsService.GetActiveDiscounts()
+	discounts, total, err := h.discountsService.GetActiveDiscounts(params.Limit, params.Offset)
 	if err != nil {
 		// 4. Service Error Log
 		h.logger.Error("Failed to retrieve active discounts",
-			zap.Error(err))
+			zap.Error(err),
+			zap.Int("limit", params.Limit),
+			zap.Int("offset", params.Offset))
 		utils.HandleServiceError(c, "Failed to retrieve active discounts", err)
 		return
 	}
 
 	// 5. Success Log
 	h.logger.Info("Active discounts retrieved successfully",
-		zap.Int("count", len(discounts)))
+		zap.Int("count", len(discounts)),
+		zap.Int64("total", total),
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
 
-	utils.OKResponse(c, "Active discounts retrieved successfully", discounts)
+	utils.PaginatedOKResponse(c, discounts, total, params.Limit, params.Offset)
 }
 
 // UpdateDiscount handles PUT /api/v1/discounts/:id

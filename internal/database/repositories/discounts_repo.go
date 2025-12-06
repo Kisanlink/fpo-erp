@@ -53,22 +53,38 @@ func (r *DiscountsRepository) GetDiscountByCode(code string) (*models.Discount, 
 }
 
 // GetAllDiscounts retrieves all discounts with pagination
-func (r *DiscountsRepository) GetAllDiscounts(limit, offset int) ([]models.Discount, error) {
+func (r *DiscountsRepository) GetAllDiscounts(limit, offset int) ([]models.Discount, int64, error) {
 	var discounts []models.Discount
-	if err := r.db.Limit(limit).Offset(offset).Order("created_at DESC").Find(&discounts).Error; err != nil {
-		return nil, errors.NewInternalServerError("Failed to retrieve discounts")
+	var total int64
+
+	// Get total count
+	if err := r.db.Model(&models.Discount{}).Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count discounts")
 	}
-	return discounts, nil
+
+	// Get paginated records
+	if err := r.db.Order("created_at DESC").Limit(limit).Offset(offset).Find(&discounts).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve discounts")
+	}
+	return discounts, total, nil
 }
 
 // GetActiveDiscounts retrieves all active discounts
-func (r *DiscountsRepository) GetActiveDiscounts() ([]models.Discount, error) {
+func (r *DiscountsRepository) GetActiveDiscounts(limit, offset int) ([]models.Discount, int64, error) {
 	var discounts []models.Discount
+	var total int64
 	now := time.Now()
-	if err := r.db.Where("is_active = ? AND valid_from <= ? AND valid_until >= ?", true, now, now).Order("priority DESC, created_at DESC").Find(&discounts).Error; err != nil {
-		return nil, errors.NewInternalServerError("Failed to retrieve active discounts")
+
+	// Get total count
+	if err := r.db.Model(&models.Discount{}).Where("is_active = ? AND valid_from <= ? AND valid_until >= ?", true, now, now).Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count active discounts")
 	}
-	return discounts, nil
+
+	// Get paginated records
+	if err := r.db.Where("is_active = ? AND valid_from <= ? AND valid_until >= ?", true, now, now).Order("priority DESC, created_at DESC").Limit(limit).Offset(offset).Find(&discounts).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve active discounts")
+	}
+	return discounts, total, nil
 }
 
 // UpdateDiscount updates a discount
@@ -422,10 +438,20 @@ func (r *DiscountsRepository) areCategoryIDsExcluded(jsonArrayStr string, catego
 
 // Additional utility methods for advanced discount operations
 
+// GetAllActiveDiscountsForValidation retrieves all active discounts without pagination for internal validation
+func (r *DiscountsRepository) GetAllActiveDiscountsForValidation() ([]models.Discount, error) {
+	var discounts []models.Discount
+	now := time.Now()
+	if err := r.db.Where("is_active = ? AND valid_from <= ? AND valid_until >= ?", true, now, now).Order("priority DESC, created_at DESC").Find(&discounts).Error; err != nil {
+		return nil, errors.NewInternalServerError("Failed to retrieve active discounts")
+	}
+	return discounts, nil
+}
+
 // GetApplicableDiscountsForOrder retrieves all applicable discounts for a given order
 func (r *DiscountsRepository) GetApplicableDiscountsForOrder(orderValue float64, productIDs []string, categoryIDs []string, warehouseID string) ([]models.Discount, error) {
 	// Get all active discounts
-	activeDiscounts, err := r.GetActiveDiscounts()
+	activeDiscounts, err := r.GetAllActiveDiscountsForValidation()
 	if err != nil {
 		return nil, err
 	}

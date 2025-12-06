@@ -10,7 +10,7 @@ import (
 type ReturnsServiceInterface interface {
 	CreateReturn(req *models.CreateReturnRequest) (*models.ReturnResponse, error)
 	GetReturn(id string) (*models.ReturnResponse, error)
-	GetAllReturns(limit, offset int) ([]models.ReturnResponse, error)
+	GetAllReturns(limit, offset int) ([]models.ReturnResponse, int64, error)
 	UpdateReturn(id string, req *models.UpdateReturnRequest) (*models.ReturnResponse, error)
 	DeleteReturn(id string) error
 	GetReturnsByCustomer(customerID string) ([]models.ReturnResponse, error)

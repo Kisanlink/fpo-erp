@@ -198,7 +198,7 @@ func TestDiscountsHandler_GetAllDiscounts_Success(t *testing.T) {
 		},
 	}
 
-	mockService.On("GetAllDiscounts", 10, 0).Return(expectedDiscounts, nil)
+	mockService.On("GetAllDiscounts", 50, 0).Return(expectedDiscounts, int64(2), nil)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -211,8 +211,8 @@ func TestDiscountsHandler_GetAllDiscounts_Success(t *testing.T) {
 
 	var response map[string]interface{}
 	json.Unmarshal(w.Body.Bytes(), &response)
-	assert.Equal(t, "Discounts retrieved successfully", response["message"])
 	assert.NotNil(t, response["data"])
+	assert.NotNil(t, response["pagination"])
 }
 
 // TestDiscountsHandler_GetAllDiscounts_WithPagination tests pagination
@@ -222,7 +222,7 @@ func TestDiscountsHandler_GetAllDiscounts_WithPagination(t *testing.T) {
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
 	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
-	mockService.On("GetAllDiscounts", 10, 20).Return([]models.DiscountResponse{}, nil)
+	mockService.On("GetAllDiscounts", 10, 20).Return([]models.DiscountResponse{}, int64(0), nil)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -249,7 +249,7 @@ func TestDiscountsHandler_GetActiveDiscounts_Success(t *testing.T) {
 		},
 	}
 
-	mockService.On("GetActiveDiscounts").Return(expectedDiscounts, nil)
+	mockService.On("GetActiveDiscounts", 50, 0).Return(expectedDiscounts, int64(1), nil)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -268,7 +268,7 @@ func TestDiscountsHandler_GetActiveDiscounts_ServiceError(t *testing.T) {
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
 	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
-	mockService.On("GetActiveDiscounts").Return(nil, assert.AnError)
+	mockService.On("GetActiveDiscounts", 50, 0).Return(nil, int64(0), assert.AnError)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -289,7 +289,7 @@ func TestDiscountsHandler_UpdateDiscount_Success(t *testing.T) {
 
 	value := 25.0
 	request := &models.UpdateDiscountRequest{
-		Name:  stringPtr("Updated Summer Sale"),
+		Name:  testutils.StringPtr("Updated Summer Sale"),
 		Value: &value,
 	}
 
@@ -322,7 +322,7 @@ func TestDiscountsHandler_UpdateDiscount_ServiceError(t *testing.T) {
 	handler := handlers.NewDiscountsHandler(mockService, mockAAA, mockLogger)
 
 	request := &models.UpdateDiscountRequest{
-		Name: stringPtr("Updated Name"),
+		Name: testutils.StringPtr("Updated Name"),
 	}
 
 	mockService.On("UpdateDiscount", "DISC00000001", mock.AnythingOfType("*models.UpdateDiscountRequest")).Return(nil, assert.AnError)

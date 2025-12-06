@@ -97,15 +97,17 @@ func (s *CollaboratorService) GetCollaborator(ctx context.Context, id string, jw
 	return s.buildCollaboratorResponse(ctx, collaborator, jwtToken)
 }
 
-// GetAllCollaborators retrieves all collaborators
-func (s *CollaboratorService) GetAllCollaborators(ctx context.Context, jwtToken string) ([]models.CollaboratorResponse, error) {
-	s.logger.Info("Retrieving all collaborators")
+// GetAllCollaborators retrieves all collaborators with pagination
+func (s *CollaboratorService) GetAllCollaborators(ctx context.Context, jwtToken string, limit, offset int) ([]models.CollaboratorResponse, int64, error) {
+	s.logger.Info("Retrieving all collaborators",
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
 
-	collaborators, err := s.collaboratorRepo.GetAll()
+	collaborators, total, err := s.collaboratorRepo.GetAllPaginated(limit, offset)
 	if err != nil {
 		s.logger.Error("Failed to retrieve all collaborators",
 			zap.Error(err))
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []models.CollaboratorResponse
@@ -121,20 +123,23 @@ func (s *CollaboratorService) GetAllCollaborators(ctx context.Context, jwtToken 
 	}
 
 	s.logger.Info("Retrieved all collaborators successfully",
-		zap.Int("count", len(responses)))
+		zap.Int("count", len(responses)),
+		zap.Int64("total", total))
 
-	return responses, nil
+	return responses, total, nil
 }
 
-// GetActiveCollaborators retrieves all active collaborators
-func (s *CollaboratorService) GetActiveCollaborators(ctx context.Context, jwtToken string) ([]models.CollaboratorResponse, error) {
-	s.logger.Info("Retrieving active collaborators")
+// GetActiveCollaborators retrieves all active collaborators with pagination
+func (s *CollaboratorService) GetActiveCollaborators(ctx context.Context, jwtToken string, limit, offset int) ([]models.CollaboratorResponse, int64, error) {
+	s.logger.Info("Retrieving active collaborators",
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
 
-	collaborators, err := s.collaboratorRepo.GetActiveCollaborators()
+	collaborators, total, err := s.collaboratorRepo.GetActiveCollaboratorsPaginated(limit, offset)
 	if err != nil {
 		s.logger.Error("Failed to retrieve active collaborators",
 			zap.Error(err))
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []models.CollaboratorResponse
@@ -150,9 +155,10 @@ func (s *CollaboratorService) GetActiveCollaborators(ctx context.Context, jwtTok
 	}
 
 	s.logger.Info("Retrieved active collaborators successfully",
-		zap.Int("count", len(responses)))
+		zap.Int("count", len(responses)),
+		zap.Int64("total", total))
 
-	return responses, nil
+	return responses, total, nil
 }
 
 // UpdateCollaborator updates a collaborator
@@ -186,17 +192,19 @@ func (s *CollaboratorService) DeleteCollaborator(ctx context.Context, id string,
 	return s.deleteCollaboratorViaEcommerce(ctx, id, organizationID, jwtToken)
 }
 
-// SearchCollaborators searches collaborators by name
-func (s *CollaboratorService) SearchCollaborators(ctx context.Context, query string, jwtToken string) ([]models.CollaboratorResponse, error) {
+// SearchCollaborators searches collaborators by name with pagination
+func (s *CollaboratorService) SearchCollaborators(ctx context.Context, query string, jwtToken string, limit, offset int) ([]models.CollaboratorResponse, int64, error) {
 	s.logger.Info("Searching collaborators",
-		zap.String("query", query))
+		zap.String("query", query),
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
 
-	collaborators, err := s.collaboratorRepo.SearchByName(query)
+	collaborators, total, err := s.collaboratorRepo.SearchByNamePaginated(query, limit, offset)
 	if err != nil {
 		s.logger.Error("Failed to search collaborators",
 			zap.Error(err),
 			zap.String("query", query))
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []models.CollaboratorResponse
@@ -213,9 +221,10 @@ func (s *CollaboratorService) SearchCollaborators(ctx context.Context, query str
 
 	s.logger.Info("Collaborator search completed",
 		zap.String("query", query),
-		zap.Int("results", len(responses)))
+		zap.Int("results", len(responses)),
+		zap.Int64("total", total))
 
-	return responses, nil
+	return responses, total, nil
 }
 
 // createCollaboratorViaEcommerce syncs collaborator creation with the e-commerce service

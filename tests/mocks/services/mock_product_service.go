@@ -29,12 +29,12 @@ func (m *MockProductService) GetProduct(ctx context.Context, id string) (*models
 	return args.Get(0).(*models.ProductResponse), args.Error(1)
 }
 
-func (m *MockProductService) GetAllProducts(ctx context.Context) ([]models.ProductResponse, error) {
-	args := m.Called(ctx)
+func (m *MockProductService) GetAllProducts(ctx context.Context, limit, offset int) ([]models.ProductResponse, int64, error) {
+	args := m.Called(ctx, limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, 0, args.Error(2)
 	}
-	return args.Get(0).([]models.ProductResponse), args.Error(1)
+	return args.Get(0).([]models.ProductResponse), args.Get(1).(int64), args.Error(2)
 }
 
 func (m *MockProductService) UpdateProduct(id string, request *models.UpdateProductRequest) (*models.ProductResponse, error) {

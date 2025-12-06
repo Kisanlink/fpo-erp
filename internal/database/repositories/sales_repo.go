@@ -58,10 +58,18 @@ func (r *SalesRepository) GetSaleByID(id string) (*models.Sale, error) {
 	return &sale, err
 }
 
-func (r *SalesRepository) GetAllSales(limit, offset int) ([]models.Sale, error) {
+func (r *SalesRepository) GetAllSales(limit, offset int) ([]models.Sale, int64, error) {
 	var sales []models.Sale
-	err := r.db.Preload("Items").Limit(limit).Offset(offset).Find(&sales).Error
-	return sales, err
+	var total int64
+
+	// Get total count
+	if err := r.db.Model(&models.Sale{}).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Get paginated records
+	err := r.db.Preload("Items").Order("created_at DESC").Limit(limit).Offset(offset).Find(&sales).Error
+	return sales, total, err
 }
 
 func (r *SalesRepository) UpdateSale(sale *models.Sale) error {
@@ -72,16 +80,38 @@ func (r *SalesRepository) DeleteSale(id string) error {
 	return r.db.Delete(&models.Sale{}, "id = ?", id).Error
 }
 
-func (r *SalesRepository) GetSalesByDateRange(startDate, endDate time.Time) ([]models.Sale, error) {
+func (r *SalesRepository) GetSalesByDateRange(startDate, endDate time.Time, limit, offset int) ([]models.Sale, int64, error) {
 	var sales []models.Sale
-	err := r.db.Preload("Items").Where("sale_date BETWEEN ? AND ?", startDate, endDate).Find(&sales).Error
-	return sales, err
+	var total int64
+
+	query := r.db.Model(&models.Sale{}).Where("sale_date BETWEEN ? AND ?", startDate, endDate)
+
+	// Get total count
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Get paginated records
+	err := r.db.Preload("Items").Where("sale_date BETWEEN ? AND ?", startDate, endDate).
+		Order("sale_date DESC").Limit(limit).Offset(offset).Find(&sales).Error
+	return sales, total, err
 }
 
-func (r *SalesRepository) GetSalesByStatus(status string) ([]models.Sale, error) {
+func (r *SalesRepository) GetSalesByStatus(status string, limit, offset int) ([]models.Sale, int64, error) {
 	var sales []models.Sale
-	err := r.db.Preload("Items").Where("status = ?", status).Find(&sales).Error
-	return sales, err
+	var total int64
+
+	query := r.db.Model(&models.Sale{}).Where("status = ?", status)
+
+	// Get total count
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Get paginated records
+	err := r.db.Preload("Items").Where("status = ?", status).
+		Order("created_at DESC").Limit(limit).Offset(offset).Find(&sales).Error
+	return sales, total, err
 }
 
 // SaleItem operations

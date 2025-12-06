@@ -138,9 +138,9 @@ func (h *ReturnsHandler) GetReturn(c *gin.Context) {
 // @Description Retrieve all returns with pagination
 // @Tags Returns
 // @Produce json
-// @Param limit query integer false "Number of records to return (default: 10)" example(10)
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
 // @Param offset query integer false "Number of records to skip (default: 0)" example(0)
-// @Success 200 {object} utils.Response{data=[]models.ReturnResponse} "Returns retrieved successfully"
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.ReturnResponse} "Returns retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
@@ -155,27 +155,15 @@ func (h *ReturnsHandler) GetAllReturns(c *gin.Context) {
 		zap.String("method", c.Request.Method),
 		zap.String("path", c.Request.URL.Path))
 
-	limitStr := c.DefaultQuery("limit", "10")
-	offsetStr := c.DefaultQuery("offset", "0")
-
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil {
-		utils.BadRequestResponse(c, "Invalid limit parameter", err)
-		return
-	}
-
-	offset, err := strconv.Atoi(offsetStr)
-	if err != nil {
-		utils.BadRequestResponse(c, "Invalid offset parameter", err)
-		return
-	}
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
 
 	// 3. Service Call Log
 	h.logger.Debug("Calling service to get all returns",
-		zap.Int("limit", limit),
-		zap.Int("offset", offset))
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
 
-	returns, err := h.returnsService.GetAllReturns(limit, offset)
+	returns, total, err := h.returnsService.GetAllReturns(params.Limit, params.Offset)
 	if err != nil {
 		// 4. Service Error Log
 		h.logger.Error("Service error getting all returns",
@@ -186,9 +174,10 @@ func (h *ReturnsHandler) GetAllReturns(c *gin.Context) {
 
 	// 5. Success Log
 	h.logger.Info("All returns retrieved successfully",
-		zap.Int("count", len(returns)))
+		zap.Int("count", len(returns)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "Returns retrieved successfully", returns)
+	utils.PaginatedOKResponse(c, returns, total, params.Limit, params.Offset)
 }
 
 // UpdateReturn handles PUT /api/v1/returns/:id

@@ -226,8 +226,8 @@ func TestGRNHandler_GetAllGRNs_Success(t *testing.T) {
 			QualityStatus: "partial",
 		},
 	}
-	mockService.On("GetAllGRNs", mock.Anything).
-		Return(expectedResponse, nil)
+	mockService.On("GetAllGRNs", mock.Anything, 50, 0).
+		Return(expectedResponse, int64(2), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/grns", nil)
@@ -244,6 +244,7 @@ func TestGRNHandler_GetAllGRNs_Success(t *testing.T) {
 	json.Unmarshal(w.Body.Bytes(), &response)
 	assert.Equal(t, true, response["success"])
 	assert.NotNil(t, response["data"])
+	assert.NotNil(t, response["pagination"])
 }
 
 func TestGRNHandler_GetAllGRNs_EmptyList(t *testing.T) {
@@ -255,8 +256,8 @@ func TestGRNHandler_GetAllGRNs_EmptyList(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
-	mockService.On("GetAllGRNs", mock.Anything).
-		Return([]models.GRNResponse{}, nil)
+	mockService.On("GetAllGRNs", mock.Anything, 50, 0).
+		Return([]models.GRNResponse{}, int64(0), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/grns", nil)
@@ -289,8 +290,8 @@ func TestGRNHandler_GetGRNsByWarehouse_Success(t *testing.T) {
 			QualityStatus: "accepted",
 		},
 	}
-	mockService.On("GetGRNsByWarehouse", mock.Anything, "WHSE00000001").
-		Return(expectedResponse, nil)
+	mockService.On("GetGRNsByWarehouse", mock.Anything, "WHSE00000001", 50, 0).
+		Return(expectedResponse, int64(1), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/warehouses/WHSE00000001/grns", nil)
@@ -313,8 +314,8 @@ func TestGRNHandler_GetGRNsByWarehouse_EmptyList(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
-	mockService.On("GetGRNsByWarehouse", mock.Anything, "WHSE00000002").
-		Return([]models.GRNResponse{}, nil)
+	mockService.On("GetGRNsByWarehouse", mock.Anything, "WHSE00000002", 50, 0).
+		Return([]models.GRNResponse{}, int64(0), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/warehouses/WHSE00000002/grns", nil)
@@ -337,8 +338,8 @@ func TestGRNHandler_GetGRNsByWarehouse_ServiceError(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
-	mockService.On("GetGRNsByWarehouse", mock.Anything, "WHSE99999999").
-		Return(nil, errors.New("warehouse not found"))
+	mockService.On("GetGRNsByWarehouse", mock.Anything, "WHSE99999999", 50, 0).
+		Return(nil, int64(0), errors.New("warehouse not found"))
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/warehouses/WHSE99999999/grns", nil)

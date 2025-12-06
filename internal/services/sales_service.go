@@ -437,10 +437,10 @@ func (s *SalesService) GetSale(id string) (*models.SaleResponse, error) {
 }
 
 // GetAllSales retrieves all sales with pagination
-func (s *SalesService) GetAllSales(limit, offset int) ([]models.SaleResponse, error) {
-	sales, err := s.salesRepo.GetAllSales(limit, offset)
+func (s *SalesService) GetAllSales(limit, offset int) ([]models.SaleResponse, int64, error) {
+	sales, total, err := s.salesRepo.GetAllSales(limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []models.SaleResponse
@@ -448,7 +448,7 @@ func (s *SalesService) GetAllSales(limit, offset int) ([]models.SaleResponse, er
 		responses = append(responses, *s.mapSaleToResponse(&sale))
 	}
 
-	return responses, nil
+	return responses, total, nil
 }
 
 // UpdateSale updates a sale
@@ -476,10 +476,10 @@ func (s *SalesService) DeleteSale(id string) error {
 }
 
 // GetSalesByDateRange retrieves sales within a date range
-func (s *SalesService) GetSalesByDateRange(startDate, endDate time.Time) ([]models.SaleResponse, error) {
-	sales, err := s.salesRepo.GetSalesByDateRange(startDate, endDate)
+func (s *SalesService) GetSalesByDateRange(startDate, endDate time.Time, limit, offset int) ([]models.SaleResponse, int64, error) {
+	sales, total, err := s.salesRepo.GetSalesByDateRange(startDate, endDate, limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []models.SaleResponse
@@ -487,14 +487,14 @@ func (s *SalesService) GetSalesByDateRange(startDate, endDate time.Time) ([]mode
 		responses = append(responses, *s.mapSaleToResponse(&sale))
 	}
 
-	return responses, nil
+	return responses, total, nil
 }
 
 // GetSalesByStatus retrieves sales by status
-func (s *SalesService) GetSalesByStatus(status string) ([]models.SaleResponse, error) {
-	sales, err := s.salesRepo.GetSalesByStatus(status)
+func (s *SalesService) GetSalesByStatus(status string, limit, offset int) ([]models.SaleResponse, int64, error) {
+	sales, total, err := s.salesRepo.GetSalesByStatus(status, limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []models.SaleResponse
@@ -502,7 +502,7 @@ func (s *SalesService) GetSalesByStatus(status string) ([]models.SaleResponse, e
 		responses = append(responses, *s.mapSaleToResponse(&sale))
 	}
 
-	return responses, nil
+	return responses, total, nil
 }
 
 // GetTotalSalesAmount calculates total sales amount for a date range

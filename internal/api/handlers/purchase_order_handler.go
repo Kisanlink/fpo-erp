@@ -137,10 +137,12 @@ func (h *PurchaseOrderHandler) GetPurchaseOrder(c *gin.Context) {
 
 // GetAllPurchaseOrders handles GET /api/v1/purchase-orders
 // @Summary Get All Purchase Orders
-// @Description Retrieve all purchase orders (requires authentication)
+// @Description Retrieve all purchase orders with pagination (requires authentication)
 // @Tags Purchase Orders
 // @Produce json
-// @Success 200 {object} utils.Response{data=[]models.PurchaseOrderResponse} "Purchase orders retrieved successfully"
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.PurchaseOrderResponse} "Purchase orders retrieved successfully"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
@@ -154,11 +156,16 @@ func (h *PurchaseOrderHandler) GetAllPurchaseOrders(c *gin.Context) {
 		zap.String("method", c.Request.Method),
 		zap.String("path", c.Request.URL.Path))
 
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
+
 	// 3. Service Call Log
-	h.logger.Debug("Calling GetAllPurchaseOrders service")
+	h.logger.Debug("Calling GetAllPurchaseOrders service",
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
 
 	// Get all purchase orders
-	response, err := h.poService.GetAllPurchaseOrders(c.Request.Context())
+	response, total, err := h.poService.GetAllPurchaseOrders(c.Request.Context(), params.Limit, params.Offset)
 	if err != nil {
 		// 4. Service Error Log
 		h.logger.Error("Failed to retrieve purchase orders",
@@ -169,18 +176,21 @@ func (h *PurchaseOrderHandler) GetAllPurchaseOrders(c *gin.Context) {
 
 	// 5. Success Log
 	h.logger.Info("Purchase orders retrieved successfully",
-		zap.Int("count", len(response)))
+		zap.Int("count", len(response)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "Purchase orders retrieved successfully", response)
+	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
 }
 
 // GetPurchaseOrdersByCollaborator handles GET /api/v1/collaborators/:id/purchase-orders
 // @Summary Get Purchase Orders by Collaborator
-// @Description Retrieve all purchase orders for a specific collaborator
+// @Description Retrieve all purchase orders for a specific collaborator with pagination
 // @Tags Purchase Orders
 // @Produce json
 // @Param id path string true "Collaborator ID (format: CLAB_xxxxxxxx)" example(CLAB_12345678)
-// @Success 200 {object} utils.Response{data=[]models.PurchaseOrderResponse} "Purchase orders retrieved successfully"
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.PurchaseOrderResponse} "Purchase orders retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 404 {object} utils.ErrorResponseModel "Collaborator not found"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
@@ -201,12 +211,17 @@ func (h *PurchaseOrderHandler) GetPurchaseOrdersByCollaborator(c *gin.Context) {
 		return
 	}
 
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
+
 	// 3. Service Call Log
 	h.logger.Debug("Calling GetPurchaseOrdersByCollaborator service",
-		zap.String("collaborator_id", collaboratorID))
+		zap.String("collaborator_id", collaboratorID),
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
 
 	// Get purchase orders
-	response, err := h.poService.GetPurchaseOrdersByCollaborator(c.Request.Context(), collaboratorID)
+	response, total, err := h.poService.GetPurchaseOrdersByCollaborator(c.Request.Context(), collaboratorID, params.Limit, params.Offset)
 	if err != nil {
 		// 4. Service Error Log
 		h.logger.Error("Failed to retrieve purchase orders",
@@ -219,18 +234,21 @@ func (h *PurchaseOrderHandler) GetPurchaseOrdersByCollaborator(c *gin.Context) {
 	// 5. Success Log
 	h.logger.Info("Purchase orders retrieved successfully",
 		zap.String("collaborator_id", collaboratorID),
-		zap.Int("count", len(response)))
+		zap.Int("count", len(response)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "Purchase orders retrieved successfully", response)
+	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
 }
 
 // GetPurchaseOrdersByStatus handles GET /api/v1/purchase-orders/status/:status
 // @Summary Get Purchase Orders by Status
-// @Description Retrieve all purchase orders with a specific status
+// @Description Retrieve all purchase orders with a specific status with pagination
 // @Tags Purchase Orders
 // @Produce json
 // @Param status path string true "Status" Enums(placed, confirmed, out_for_delivery, delivered, paid)
-// @Success 200 {object} utils.Response{data=[]models.PurchaseOrderResponse} "Purchase orders retrieved successfully"
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.PurchaseOrderResponse} "Purchase orders retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Router /api/v1/purchase-orders/status/{status} [get]
@@ -250,12 +268,17 @@ func (h *PurchaseOrderHandler) GetPurchaseOrdersByStatus(c *gin.Context) {
 		return
 	}
 
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
+
 	// 3. Service Call Log
 	h.logger.Debug("Calling GetPurchaseOrdersByStatus service",
-		zap.String("status", status))
+		zap.String("status", status),
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
 
 	// Get purchase orders
-	response, err := h.poService.GetPurchaseOrdersByStatus(c.Request.Context(), status)
+	response, total, err := h.poService.GetPurchaseOrdersByStatus(c.Request.Context(), status, params.Limit, params.Offset)
 	if err != nil {
 		// 4. Service Error Log
 		h.logger.Error("Failed to retrieve purchase orders",
@@ -268,17 +291,20 @@ func (h *PurchaseOrderHandler) GetPurchaseOrdersByStatus(c *gin.Context) {
 	// 5. Success Log
 	h.logger.Info("Purchase orders retrieved successfully",
 		zap.String("status", status),
-		zap.Int("count", len(response)))
+		zap.Int("count", len(response)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "Purchase orders retrieved successfully", response)
+	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
 }
 
 // GetPendingDeliveries handles GET /api/v1/purchase-orders/pending-deliveries
 // @Summary Get Pending Deliveries
-// @Description Retrieve all purchase orders with pending deliveries
+// @Description Retrieve all purchase orders with pending deliveries with pagination
 // @Tags Purchase Orders
 // @Produce json
-// @Success 200 {object} utils.Response{data=[]models.PurchaseOrderResponse} "Pending deliveries retrieved successfully"
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.PurchaseOrderResponse} "Pending deliveries retrieved successfully"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Router /api/v1/purchase-orders/pending-deliveries [get]
 func (h *PurchaseOrderHandler) GetPendingDeliveries(c *gin.Context) {
@@ -287,11 +313,16 @@ func (h *PurchaseOrderHandler) GetPendingDeliveries(c *gin.Context) {
 		zap.String("method", c.Request.Method),
 		zap.String("path", c.Request.URL.Path))
 
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
+
 	// 3. Service Call Log
-	h.logger.Debug("Calling GetPendingDeliveries service")
+	h.logger.Debug("Calling GetPendingDeliveries service",
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
 
 	// Get pending deliveries
-	response, err := h.poService.GetPendingDeliveries(c.Request.Context())
+	response, total, err := h.poService.GetPendingDeliveries(c.Request.Context(), params.Limit, params.Offset)
 	if err != nil {
 		// 4. Service Error Log
 		h.logger.Error("Failed to retrieve pending deliveries",
@@ -302,9 +333,10 @@ func (h *PurchaseOrderHandler) GetPendingDeliveries(c *gin.Context) {
 
 	// 5. Success Log
 	h.logger.Info("Pending deliveries retrieved successfully",
-		zap.Int("count", len(response)))
+		zap.Int("count", len(response)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "Pending deliveries retrieved successfully", response)
+	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
 }
 
 // UpdatePurchaseOrderStatus handles PATCH /api/v1/purchase-orders/:id/status

@@ -174,10 +174,12 @@ func (s *InventoryService) GetBatch(id string) (*models.InventoryBatchResponse, 
 	return response, nil
 }
 
-// GetBatchesByWarehouse retrieves all batches for a warehouse
-func (s *InventoryService) GetBatchesByWarehouse(warehouseID string) ([]models.InventoryBatchResponse, error) {
+// GetBatchesByWarehouse retrieves all batches for a warehouse (paginated)
+func (s *InventoryService) GetBatchesByWarehouse(warehouseID string, limit, offset int) ([]models.InventoryBatchResponse, int64, error) {
 	s.logger.Info("Retrieving batches by warehouse",
-		zap.String("warehouse_id", warehouseID))
+		zap.String("warehouse_id", warehouseID),
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
 
 	// Validate warehouse exists
 	s.logger.Debug("Validating warehouse exists")
@@ -186,15 +188,15 @@ func (s *InventoryService) GetBatchesByWarehouse(warehouseID string) ([]models.I
 		s.logger.Error("Warehouse not found",
 			zap.Error(err),
 			zap.String("warehouse_id", warehouseID))
-		return nil, errors.NewNotFoundError("Warehouse")
+		return nil, 0, errors.NewNotFoundError("Warehouse")
 	}
 
-	batches, err := s.inventoryRepo.GetBatchesByWarehouse(warehouseID)
+	batches, total, err := s.inventoryRepo.GetBatchesByWarehouse(warehouseID, limit, offset)
 	if err != nil {
 		s.logger.Error("Failed to retrieve batches by warehouse",
 			zap.Error(err),
 			zap.String("warehouse_id", warehouseID))
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []models.InventoryBatchResponse
@@ -205,15 +207,18 @@ func (s *InventoryService) GetBatchesByWarehouse(warehouseID string) ([]models.I
 
 	s.logger.Info("Batches retrieved successfully",
 		zap.String("warehouse_id", warehouseID),
-		zap.Int("count", len(responses)))
+		zap.Int("count", len(responses)),
+		zap.Int64("total", total))
 
-	return responses, nil
+	return responses, total, nil
 }
 
-// GetBatchesByVariant retrieves all batches for a product variant
-func (s *InventoryService) GetBatchesByVariant(variantID string) ([]models.InventoryBatchResponse, error) {
+// GetBatchesByVariant retrieves all batches for a product variant (paginated)
+func (s *InventoryService) GetBatchesByVariant(variantID string, limit, offset int) ([]models.InventoryBatchResponse, int64, error) {
 	s.logger.Info("Retrieving batches by variant",
-		zap.String("variant_id", variantID))
+		zap.String("variant_id", variantID),
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
 
 	// Validate variant exists
 	s.logger.Debug("Validating variant exists")
@@ -222,15 +227,15 @@ func (s *InventoryService) GetBatchesByVariant(variantID string) ([]models.Inven
 		s.logger.Error("Variant not found",
 			zap.Error(err),
 			zap.String("variant_id", variantID))
-		return nil, errors.NewNotFoundError("Variant")
+		return nil, 0, errors.NewNotFoundError("Variant")
 	}
 
-	batches, err := s.inventoryRepo.GetBatchesByVariant(variantID)
+	batches, total, err := s.inventoryRepo.GetBatchesByVariant(variantID, limit, offset)
 	if err != nil {
 		s.logger.Error("Failed to retrieve batches by variant",
 			zap.Error(err),
 			zap.String("variant_id", variantID))
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []models.InventoryBatchResponse
@@ -241,9 +246,10 @@ func (s *InventoryService) GetBatchesByVariant(variantID string) ([]models.Inven
 
 	s.logger.Info("Batches retrieved successfully",
 		zap.String("variant_id", variantID),
-		zap.Int("count", len(responses)))
+		zap.Int("count", len(responses)),
+		zap.Int64("total", total))
 
-	return responses, nil
+	return responses, total, nil
 }
 
 // CreateTransaction creates a new inventory transaction
@@ -319,10 +325,12 @@ func (s *InventoryService) CreateTransaction(batchID string, request *models.Cre
 	return response, nil
 }
 
-// GetTransactionsByBatch retrieves all transactions for a batch
-func (s *InventoryService) GetTransactionsByBatch(batchID string) ([]models.InventoryTransactionResponse, error) {
+// GetTransactionsByBatch retrieves all transactions for a batch (paginated)
+func (s *InventoryService) GetTransactionsByBatch(batchID string, limit, offset int) ([]models.InventoryTransactionResponse, int64, error) {
 	s.logger.Info("Retrieving transactions by batch",
-		zap.String("batch_id", batchID))
+		zap.String("batch_id", batchID),
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
 
 	// Validate batch exists
 	s.logger.Debug("Validating batch exists")
@@ -330,15 +338,15 @@ func (s *InventoryService) GetTransactionsByBatch(batchID string) ([]models.Inve
 		s.logger.Error("Batch not found",
 			zap.Error(err),
 			zap.String("batch_id", batchID))
-		return nil, errors.NewNotFoundError("Inventory batch")
+		return nil, 0, errors.NewNotFoundError("Inventory batch")
 	}
 
-	transactions, err := s.inventoryRepo.GetTransactionsByBatch(batchID)
+	transactions, total, err := s.inventoryRepo.GetTransactionsByBatch(batchID, limit, offset)
 	if err != nil {
 		s.logger.Error("Failed to retrieve transactions",
 			zap.Error(err),
 			zap.String("batch_id", batchID))
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []models.InventoryTransactionResponse
@@ -357,22 +365,25 @@ func (s *InventoryService) GetTransactionsByBatch(batchID string) ([]models.Inve
 
 	s.logger.Info("Transactions retrieved successfully",
 		zap.String("batch_id", batchID),
-		zap.Int("count", len(responses)))
+		zap.Int("count", len(responses)),
+		zap.Int64("total", total))
 
-	return responses, nil
+	return responses, total, nil
 }
 
-// GetExpiringBatches retrieves batches that expire within a given timeframe
-func (s *InventoryService) GetExpiringBatches(days int) ([]models.InventoryBatchResponse, error) {
+// GetExpiringBatches retrieves batches that expire within a given timeframe (paginated)
+func (s *InventoryService) GetExpiringBatches(days int, limit, offset int) ([]models.InventoryBatchResponse, int64, error) {
 	s.logger.Info("Retrieving expiring batches",
-		zap.Int("days", days))
+		zap.Int("days", days),
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
 
-	batches, err := s.inventoryRepo.GetExpiringBatches(days)
+	batches, total, err := s.inventoryRepo.GetExpiringBatches(days, limit, offset)
 	if err != nil {
 		s.logger.Error("Failed to retrieve expiring batches",
 			zap.Error(err),
 			zap.Int("days", days))
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []models.InventoryBatchResponse
@@ -383,22 +394,25 @@ func (s *InventoryService) GetExpiringBatches(days int) ([]models.InventoryBatch
 
 	s.logger.Info("Expiring batches retrieved successfully",
 		zap.Int("days", days),
-		zap.Int("count", len(responses)))
+		zap.Int("count", len(responses)),
+		zap.Int64("total", total))
 
-	return responses, nil
+	return responses, total, nil
 }
 
-// GetLowStockBatches retrieves batches with low stock
-func (s *InventoryService) GetLowStockBatches(threshold int64) ([]models.InventoryBatchResponse, error) {
+// GetLowStockBatches retrieves batches with low stock (paginated)
+func (s *InventoryService) GetLowStockBatches(threshold int64, limit, offset int) ([]models.InventoryBatchResponse, int64, error) {
 	s.logger.Info("Retrieving low stock batches",
-		zap.Int64("threshold", threshold))
+		zap.Int64("threshold", threshold),
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
 
-	batches, err := s.inventoryRepo.GetLowStockBatches(threshold)
+	batches, total, err := s.inventoryRepo.GetLowStockBatches(threshold, limit, offset)
 	if err != nil {
 		s.logger.Error("Failed to retrieve low stock batches",
 			zap.Error(err),
 			zap.Int64("threshold", threshold))
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []models.InventoryBatchResponse
@@ -409,20 +423,23 @@ func (s *InventoryService) GetLowStockBatches(threshold int64) ([]models.Invento
 
 	s.logger.Info("Low stock batches retrieved successfully",
 		zap.Int64("threshold", threshold),
-		zap.Int("count", len(responses)))
+		zap.Int("count", len(responses)),
+		zap.Int64("total", total))
 
-	return responses, nil
+	return responses, total, nil
 }
 
-// GetAllProductsAvailability retrieves all products available across all warehouses
-func (s *InventoryService) GetAllProductsAvailability(ctx context.Context, jwtToken string) ([]models.ProductAvailabilityResponse, error) {
-	s.logger.Info("Retrieving all products availability across warehouses")
+// GetAllProductsAvailability retrieves all products available across all warehouses (paginated)
+func (s *InventoryService) GetAllProductsAvailability(ctx context.Context, jwtToken string, limit, offset int) ([]models.ProductAvailabilityResponse, int64, error) {
+	s.logger.Info("Retrieving all products availability across warehouses",
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
 
-	batches, err := s.inventoryRepo.GetAllBatches()
+	batches, total, err := s.inventoryRepo.GetAllBatchesPaginated(limit, offset)
 	if err != nil {
 		s.logger.Error("Failed to retrieve all batches",
 			zap.Error(err))
-		return nil, err
+		return nil, 0, err
 	}
 
 	s.logger.Debug("Processing batches for availability response",
@@ -488,9 +505,10 @@ func (s *InventoryService) GetAllProductsAvailability(ctx context.Context, jwtTo
 	}
 
 	s.logger.Info("All products availability retrieved successfully",
-		zap.Int("count", len(responses)))
+		zap.Int("count", len(responses)),
+		zap.Int64("total", total))
 
-	return responses, nil
+	return responses, total, nil
 }
 
 // batchToResponse converts a batch model to response model

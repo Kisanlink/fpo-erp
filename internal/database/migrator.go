@@ -1,8 +1,9 @@
 package database
 
 import (
-	"kisanlink-erp/internal/database/models"
 	"log"
+
+	"kisanlink-erp/internal/database/models"
 
 	"gorm.io/gorm"
 )

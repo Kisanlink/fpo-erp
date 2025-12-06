@@ -27,12 +27,12 @@ func (m *MockBankPaymentsService) GetBankPayment(id string) (*models.BankPayment
 	return args.Get(0).(*models.BankPaymentResponse), args.Error(1)
 }
 
-func (m *MockBankPaymentsService) GetAllBankPayments(limit, offset int) ([]models.BankPaymentResponse, error) {
+func (m *MockBankPaymentsService) GetAllBankPayments(limit, offset int) ([]models.BankPaymentResponse, int64, error) {
 	args := m.Called(limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, 0, args.Error(2)
 	}
-	return args.Get(0).([]models.BankPaymentResponse), args.Error(1)
+	return args.Get(0).([]models.BankPaymentResponse), args.Get(1).(int64), args.Error(2)
 }
 
 func (m *MockBankPaymentsService) GetBankPaymentsBySaleID(saleID string) ([]models.BankPaymentResponse, error) {

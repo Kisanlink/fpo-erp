@@ -37,13 +37,21 @@ func (r *WarehouseRepository) GetByID(id string) (*models.Warehouse, error) {
 	return &warehouse, nil
 }
 
-// GetAll retrieves all warehouses
-func (r *WarehouseRepository) GetAll() ([]models.Warehouse, error) {
+// GetAll retrieves all warehouses with pagination
+func (r *WarehouseRepository) GetAll(limit, offset int) ([]models.Warehouse, int64, error) {
 	var warehouses []models.Warehouse
-	if err := r.db.Find(&warehouses).Error; err != nil {
-		return nil, errors.NewInternalServerError("Failed to retrieve warehouses")
+	var total int64
+
+	// Get total count
+	if err := r.db.Model(&models.Warehouse{}).Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count warehouses")
 	}
-	return warehouses, nil
+
+	// Get paginated records
+	if err := r.db.Limit(limit).Offset(offset).Order("created_at DESC").Find(&warehouses).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve warehouses")
+	}
+	return warehouses, total, nil
 }
 
 // Update updates a warehouse

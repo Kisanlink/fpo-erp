@@ -1,8 +1,9 @@
 package repositories
 
 import (
-	"kisanlink-erp/internal/database/models"
 	"time"
+
+	"kisanlink-erp/internal/database/models"
 
 	"github.com/stretchr/testify/mock"
 	"gorm.io/gorm"
@@ -41,21 +42,21 @@ func (m *MockInventoryRepository) GetBatchByID(id string) (*models.InventoryBatc
 }
 
 // GetBatchesByWarehouse mocks the GetBatchesByWarehouse method
-func (m *MockInventoryRepository) GetBatchesByWarehouse(warehouseID string) ([]models.InventoryBatch, error) {
-	args := m.Called(warehouseID)
+func (m *MockInventoryRepository) GetBatchesByWarehouse(warehouseID string, limit, offset int) ([]models.InventoryBatch, int64, error) {
+	args := m.Called(warehouseID, limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, args.Get(1).(int64), args.Error(2)
 	}
-	return args.Get(0).([]models.InventoryBatch), args.Error(1)
+	return args.Get(0).([]models.InventoryBatch), args.Get(1).(int64), args.Error(2)
 }
 
 // GetBatchesByVariant mocks the GetBatchesByVariant method
-func (m *MockInventoryRepository) GetBatchesByVariant(variantID string) ([]models.InventoryBatch, error) {
-	args := m.Called(variantID)
+func (m *MockInventoryRepository) GetBatchesByVariant(variantID string, limit, offset int) ([]models.InventoryBatch, int64, error) {
+	args := m.Called(variantID, limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, args.Get(1).(int64), args.Error(2)
 	}
-	return args.Get(0).([]models.InventoryBatch), args.Error(1)
+	return args.Get(0).([]models.InventoryBatch), args.Get(1).(int64), args.Error(2)
 }
 
 // GetBatchesByVariantOrderedByExpiry mocks the GetBatchesByVariantOrderedByExpiry method
@@ -98,21 +99,21 @@ func (m *MockInventoryRepository) DeleteBatch(id string) error {
 }
 
 // GetExpiringBatches mocks the GetExpiringBatches method
-func (m *MockInventoryRepository) GetExpiringBatches(days int) ([]models.InventoryBatch, error) {
-	args := m.Called(days)
+func (m *MockInventoryRepository) GetExpiringBatches(days int, limit, offset int) ([]models.InventoryBatch, int64, error) {
+	args := m.Called(days, limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, args.Get(1).(int64), args.Error(2)
 	}
-	return args.Get(0).([]models.InventoryBatch), args.Error(1)
+	return args.Get(0).([]models.InventoryBatch), args.Get(1).(int64), args.Error(2)
 }
 
 // GetLowStockBatches mocks the GetLowStockBatches method
-func (m *MockInventoryRepository) GetLowStockBatches(threshold int64) ([]models.InventoryBatch, error) {
-	args := m.Called(threshold)
+func (m *MockInventoryRepository) GetLowStockBatches(threshold int64, limit, offset int) ([]models.InventoryBatch, int64, error) {
+	args := m.Called(threshold, limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, args.Get(1).(int64), args.Error(2)
 	}
-	return args.Get(0).([]models.InventoryBatch), args.Error(1)
+	return args.Get(0).([]models.InventoryBatch), args.Get(1).(int64), args.Error(2)
 }
 
 // CreateTransaction mocks the CreateTransaction method
@@ -128,12 +129,12 @@ func (m *MockInventoryRepository) CreateTransactionWithTx(tx *gorm.DB, transacti
 }
 
 // GetTransactionsByBatch mocks the GetTransactionsByBatch method
-func (m *MockInventoryRepository) GetTransactionsByBatch(batchID string) ([]models.InventoryTransaction, error) {
-	args := m.Called(batchID)
+func (m *MockInventoryRepository) GetTransactionsByBatch(batchID string, limit, offset int) ([]models.InventoryTransaction, int64, error) {
+	args := m.Called(batchID, limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, args.Get(1).(int64), args.Error(2)
 	}
-	return args.Get(0).([]models.InventoryTransaction), args.Error(1)
+	return args.Get(0).([]models.InventoryTransaction), args.Get(1).(int64), args.Error(2)
 }
 
 // GetTransactionsByType mocks the GetTransactionsByType method

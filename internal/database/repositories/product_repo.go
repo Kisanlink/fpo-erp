@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"fmt"
+
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/errors"
 
@@ -39,10 +40,28 @@ func (r *ProductRepository) GetByID(id string) (*models.Product, error) {
 	return &product, nil
 }
 
-// GetAll retrieves all products
+// GetAllPaginated retrieves all products with pagination
+func (r *ProductRepository) GetAllPaginated(limit, offset int) ([]models.Product, int64, error) {
+	var products []models.Product
+	var total int64
+
+	// Get total count
+	if err := r.db.Model(&models.Product{}).Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count products")
+	}
+
+	// Get paginated records
+	if err := r.db.Order("created_at DESC").Limit(limit).Offset(offset).Find(&products).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve products")
+	}
+
+	return products, total, nil
+}
+
+// GetAll retrieves all products without pagination
 func (r *ProductRepository) GetAll() ([]models.Product, error) {
 	var products []models.Product
-	if err := r.db.Find(&products).Error; err != nil {
+	if err := r.db.Order("created_at DESC").Find(&products).Error; err != nil {
 		return nil, errors.NewInternalServerError("Failed to retrieve products")
 	}
 	return products, nil

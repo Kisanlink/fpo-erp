@@ -27,10 +27,18 @@ func (r *RefundPoliciesRepository) GetRefundPolicyByID(id string) (*models.Refun
 }
 
 // GetAllRefundPolicies retrieves all refund policies with pagination
-func (r *RefundPoliciesRepository) GetAllRefundPolicies(limit, offset int) ([]models.RefundPolicy, error) {
+func (r *RefundPoliciesRepository) GetAllRefundPolicies(limit, offset int) ([]models.RefundPolicy, int64, error) {
 	var policies []models.RefundPolicy
-	err := r.db.Limit(limit).Offset(offset).Find(&policies).Error
-	return policies, err
+	var total int64
+
+	// Get total count
+	if err := r.db.Model(&models.RefundPolicy{}).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Get paginated records
+	err := r.db.Order("created_at DESC").Limit(limit).Offset(offset).Find(&policies).Error
+	return policies, total, err
 }
 
 // UpdateRefundPolicy updates a refund policy

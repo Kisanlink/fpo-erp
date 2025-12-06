@@ -205,7 +205,7 @@ func TestTaxHandler_GetAllTaxes_Success(t *testing.T) {
 		},
 	}
 
-	mockService.On("GetAllTaxes", 10, 0).Return(expectedTaxes, nil)
+	mockService.On("GetAllTaxes", 50, 0).Return(expectedTaxes, int64(2), nil)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -218,8 +218,9 @@ func TestTaxHandler_GetAllTaxes_Success(t *testing.T) {
 
 	var response map[string]interface{}
 	json.Unmarshal(w.Body.Bytes(), &response)
-	assert.Equal(t, "Taxes retrieved successfully", response["message"])
+	assert.Equal(t, true, response["success"])
 	assert.NotNil(t, response["data"])
+	assert.NotNil(t, response["pagination"])
 }
 
 // TestTaxHandler_GetAllTaxes_WithPagination tests pagination
@@ -229,7 +230,7 @@ func TestTaxHandler_GetAllTaxes_WithPagination(t *testing.T) {
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
 	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
-	mockService.On("GetAllTaxes", 20, 10).Return([]models.TaxResponse{}, nil)
+	mockService.On("GetAllTaxes", 20, 10).Return([]models.TaxResponse{}, int64(0), nil)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -365,7 +366,7 @@ func TestTaxHandler_GetActiveTaxes_Success(t *testing.T) {
 		{ID: "TAX000000002", Name: "SGST", Status: "active"},
 	}
 
-	mockService.On("GetActiveTaxes").Return(expectedTaxes, nil)
+	mockService.On("GetActiveTaxes", 50, 0).Return(expectedTaxes, int64(2), nil)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -378,7 +379,9 @@ func TestTaxHandler_GetActiveTaxes_Success(t *testing.T) {
 
 	var response map[string]interface{}
 	json.Unmarshal(w.Body.Bytes(), &response)
-	assert.Equal(t, "Active taxes retrieved successfully", response["message"])
+	assert.Equal(t, true, response["success"])
+	assert.NotNil(t, response["data"])
+	assert.NotNil(t, response["pagination"])
 }
 
 // TestTaxHandler_GetActiveTaxes_ServiceError tests active taxes service error
@@ -388,7 +391,7 @@ func TestTaxHandler_GetActiveTaxes_ServiceError(t *testing.T) {
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
 	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
-	mockService.On("GetActiveTaxes").Return(nil, assert.AnError)
+	mockService.On("GetActiveTaxes", 50, 0).Return(nil, int64(0), assert.AnError)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -411,7 +414,7 @@ func TestTaxHandler_GetTaxesByType_Success(t *testing.T) {
 		{ID: "TAX000000001", Name: "CGST", TaxType: "cgst"},
 	}
 
-	mockService.On("GetTaxesByType", models.TaxType("cgst")).Return(expectedTaxes, nil)
+	mockService.On("GetTaxesByType", models.TaxType("cgst"), 50, 0).Return(expectedTaxes, int64(1), nil)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -425,7 +428,9 @@ func TestTaxHandler_GetTaxesByType_Success(t *testing.T) {
 
 	var response map[string]interface{}
 	json.Unmarshal(w.Body.Bytes(), &response)
-	assert.Equal(t, "Taxes retrieved successfully", response["message"])
+	assert.Equal(t, true, response["success"])
+	assert.NotNil(t, response["data"])
+	assert.NotNil(t, response["pagination"])
 }
 
 // TestTaxHandler_GetTaxesByType_InvalidType tests invalid tax type
@@ -453,7 +458,7 @@ func TestTaxHandler_GetTaxesByType_ServiceError(t *testing.T) {
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
 	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
-	mockService.On("GetTaxesByType", models.TaxType("cgst")).Return(nil, assert.AnError)
+	mockService.On("GetTaxesByType", models.TaxType("cgst"), 50, 0).Return(nil, int64(0), assert.AnError)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -477,7 +482,7 @@ func TestTaxHandler_GetTaxesByStatus_Success(t *testing.T) {
 		{ID: "TAX000000001", Name: "CGST", Status: "active"},
 	}
 
-	mockService.On("GetTaxesByStatus", "active").Return(expectedTaxes, nil)
+	mockService.On("GetTaxesByStatus", "active", 50, 0).Return(expectedTaxes, int64(1), nil)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -491,7 +496,9 @@ func TestTaxHandler_GetTaxesByStatus_Success(t *testing.T) {
 
 	var response map[string]interface{}
 	json.Unmarshal(w.Body.Bytes(), &response)
-	assert.Equal(t, "Taxes retrieved successfully", response["message"])
+	assert.Equal(t, true, response["success"])
+	assert.NotNil(t, response["data"])
+	assert.NotNil(t, response["pagination"])
 }
 
 // TestTaxHandler_GetTaxesByStatus_InvalidStatus tests invalid status
@@ -519,7 +526,7 @@ func TestTaxHandler_GetTaxesByStatus_ServiceError(t *testing.T) {
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
 	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
-	mockService.On("GetTaxesByStatus", "active").Return(nil, assert.AnError)
+	mockService.On("GetTaxesByStatus", "active", 50, 0).Return(nil, int64(0), assert.AnError)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -644,7 +651,7 @@ func TestTaxHandler_GetTaxApplicationsBySale_Success(t *testing.T) {
 	expectedApplications := []models.TaxApplication{
 		{
 			TaxID:      "TAX000000001",
-			SaleID:     stringPtr("SALE00000001"),
+			SaleID:     testutils.StringPtr("SALE00000001"),
 			BaseAmount: 1000.0,
 			TaxRate:    9.0,
 			TaxAmount:  90.0,
@@ -699,7 +706,7 @@ func TestTaxHandler_GetTaxApplicationsByReturn_Success(t *testing.T) {
 	expectedApplications := []models.TaxApplication{
 		{
 			TaxID:      "TAX000000001",
-			ReturnID:   stringPtr("RETN00000001"),
+			ReturnID:   testutils.StringPtr("RETN00000001"),
 			BaseAmount: 500.0,
 			TaxRate:    9.0,
 			TaxAmount:  45.0,
@@ -752,7 +759,7 @@ func TestTaxHandler_GetTaxSummaryBySale_Success(t *testing.T) {
 	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	expectedSummary := &models.TaxSummary{
-		SaleID:         stringPtr("SALE00000001"),
+		SaleID:         testutils.StringPtr("SALE00000001"),
 		CGSTAmount:     90.0,
 		SGSTAmount:     90.0,
 		TotalTaxAmount: 180.0,
@@ -805,7 +812,7 @@ func TestTaxHandler_GetTaxSummaryByReturn_Success(t *testing.T) {
 	handler := handlers.NewTaxHandler(mockService, mockAAA, mockLogger)
 
 	expectedSummary := &models.TaxSummary{
-		ReturnID:       stringPtr("RETN00000001"),
+		ReturnID:       testutils.StringPtr("RETN00000001"),
 		CGSTAmount:     45.0,
 		SGSTAmount:     45.0,
 		TotalTaxAmount: 90.0,

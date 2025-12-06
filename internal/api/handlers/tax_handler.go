@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"strconv"
-
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
 	logger "kisanlink-erp/internal/interfaces"
@@ -169,9 +167,9 @@ func (h *TaxHandler) GetTax(c *gin.Context) {
 // @Description Retrieve all tax configurations with pagination
 // @Tags Taxes
 // @Produce json
-// @Param limit query integer false "Number of records to return (default: 10)" example(10)
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
 // @Param offset query integer false "Number of records to skip (default: 0)" example(0)
-// @Success 200 {object} utils.Response{data=[]models.TaxResponse} "Taxes retrieved successfully"
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.TaxResponse} "Taxes retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
@@ -185,24 +183,14 @@ func (h *TaxHandler) GetAllTaxes(c *gin.Context) {
 		zap.String("method", c.Request.Method),
 		zap.String("path", c.Request.URL.Path))
 
-	limitStr := c.DefaultQuery("limit", "10")
-	offsetStr := c.DefaultQuery("offset", "0")
-
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil || limit <= 0 {
-		limit = 10
-	}
-
-	offset, err := strconv.Atoi(offsetStr)
-	if err != nil || offset < 0 {
-		offset = 0
-	}
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
 
 	h.logger.Debug("Calling tax service to get all taxes",
-		zap.Int("limit", limit),
-		zap.Int("offset", offset))
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
 
-	taxes, err := h.taxService.GetAllTaxes(limit, offset)
+	taxes, total, err := h.taxService.GetAllTaxes(params.Limit, params.Offset)
 	if err != nil {
 		h.logger.Error("Failed to retrieve taxes via service",
 			zap.Error(err))
@@ -211,17 +199,20 @@ func (h *TaxHandler) GetAllTaxes(c *gin.Context) {
 	}
 
 	h.logger.Info("Taxes retrieved successfully via handler",
-		zap.Int("count", len(taxes)))
+		zap.Int("count", len(taxes)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "Taxes retrieved successfully", taxes)
+	utils.PaginatedOKResponse(c, taxes, total, params.Limit, params.Offset)
 }
 
 // GetActiveTaxes retrieves all currently active taxes
 // @Summary Get Active Taxes
-// @Description Retrieve all currently active tax configurations
+// @Description Retrieve all currently active tax configurations with pagination
 // @Tags Taxes
 // @Produce json
-// @Success 200 {object} utils.Response{data=[]models.TaxResponse} "Active taxes retrieved successfully"
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.TaxResponse} "Active taxes retrieved successfully"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
@@ -234,9 +225,14 @@ func (h *TaxHandler) GetActiveTaxes(c *gin.Context) {
 		zap.String("method", c.Request.Method),
 		zap.String("path", c.Request.URL.Path))
 
-	h.logger.Debug("Calling tax service to get active taxes")
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
 
-	taxes, err := h.taxService.GetActiveTaxes()
+	h.logger.Debug("Calling tax service to get active taxes",
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
+
+	taxes, total, err := h.taxService.GetActiveTaxes(params.Limit, params.Offset)
 	if err != nil {
 		h.logger.Error("Failed to retrieve active taxes via service",
 			zap.Error(err))
@@ -245,18 +241,21 @@ func (h *TaxHandler) GetActiveTaxes(c *gin.Context) {
 	}
 
 	h.logger.Info("Active taxes retrieved successfully via handler",
-		zap.Int("count", len(taxes)))
+		zap.Int("count", len(taxes)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "Active taxes retrieved successfully", taxes)
+	utils.PaginatedOKResponse(c, taxes, total, params.Limit, params.Offset)
 }
 
 // GetTaxesByType retrieves taxes by type
 // @Summary Get Taxes by Type
-// @Description Retrieve all taxes of a specific type
+// @Description Retrieve all taxes of a specific type with pagination
 // @Tags Taxes
 // @Produce json
 // @Param type path string true "Tax type" Enums(cgst,sgst,igst,vat,stt,tds,tcs,excise,customs,item_specific,category,flat)
-// @Success 200 {object} utils.Response{data=[]models.TaxResponse} "Taxes retrieved successfully"
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.TaxResponse} "Taxes retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
@@ -300,10 +299,15 @@ func (h *TaxHandler) GetTaxesByType(c *gin.Context) {
 		return
 	}
 
-	h.logger.Debug("Calling tax service to get taxes by type",
-		zap.String("tax_type", string(taxType)))
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
 
-	taxes, err := h.taxService.GetTaxesByType(taxType)
+	h.logger.Debug("Calling tax service to get taxes by type",
+		zap.String("tax_type", string(taxType)),
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
+
+	taxes, total, err := h.taxService.GetTaxesByType(taxType, params.Limit, params.Offset)
 	if err != nil {
 		h.logger.Error("Failed to retrieve taxes by type via service",
 			zap.Error(err),
@@ -314,18 +318,21 @@ func (h *TaxHandler) GetTaxesByType(c *gin.Context) {
 
 	h.logger.Info("Taxes retrieved successfully by type via handler",
 		zap.String("tax_type", string(taxType)),
-		zap.Int("count", len(taxes)))
+		zap.Int("count", len(taxes)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "Taxes retrieved successfully", taxes)
+	utils.PaginatedOKResponse(c, taxes, total, params.Limit, params.Offset)
 }
 
 // GetTaxesByStatus retrieves taxes by status
 // @Summary Get Taxes by Status
-// @Description Retrieve all taxes with a specific status
+// @Description Retrieve all taxes with a specific status with pagination
 // @Tags Taxes
 // @Produce json
 // @Param status path string true "Tax status" Enums(active,inactive,expired,scheduled)
-// @Success 200 {object} utils.Response{data=[]models.TaxResponse} "Taxes retrieved successfully"
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.TaxResponse} "Taxes retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
@@ -363,10 +370,15 @@ func (h *TaxHandler) GetTaxesByStatus(c *gin.Context) {
 		return
 	}
 
-	h.logger.Debug("Calling tax service to get taxes by status",
-		zap.String("status", status))
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
 
-	taxes, err := h.taxService.GetTaxesByStatus(status)
+	h.logger.Debug("Calling tax service to get taxes by status",
+		zap.String("status", status),
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
+
+	taxes, total, err := h.taxService.GetTaxesByStatus(status, params.Limit, params.Offset)
 	if err != nil {
 		h.logger.Error("Failed to retrieve taxes by status via service",
 			zap.Error(err),
@@ -377,9 +389,10 @@ func (h *TaxHandler) GetTaxesByStatus(c *gin.Context) {
 
 	h.logger.Info("Taxes retrieved successfully by status via handler",
 		zap.String("status", status),
-		zap.Int("count", len(taxes)))
+		zap.Int("count", len(taxes)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "Taxes retrieved successfully", taxes)
+	utils.PaginatedOKResponse(c, taxes, total, params.Limit, params.Offset)
 }
 
 // UpdateTax updates an existing tax

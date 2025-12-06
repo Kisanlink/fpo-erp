@@ -147,10 +147,12 @@ func (h *WarehouseHandler) GetWarehouse(c *gin.Context) {
 
 // GetAllWarehouses handles GET /api/v1/warehouses
 // @Summary Get All Warehouses
-// @Description Retrieve all warehouses (requires authentication)
+// @Description Retrieve all warehouses with pagination (requires authentication)
 // @Tags Warehouses
 // @Produce json
-// @Success 200 {object} utils.Response{data=[]models.WarehouseResponse} "Warehouses retrieved successfully"
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.WarehouseResponse} "Warehouses retrieved successfully"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
@@ -171,8 +173,15 @@ func (h *WarehouseHandler) GetAllWarehouses(c *gin.Context) {
 		return
 	}
 
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
+
+	h.logger.Debug("Calling warehouse service to get all warehouses",
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
+
 	// Get all warehouses
-	response, err := h.warehouseService.GetAllWarehouses(c.Request.Context(), jwtToken)
+	response, total, err := h.warehouseService.GetAllWarehouses(c.Request.Context(), params.Limit, params.Offset, jwtToken)
 	if err != nil {
 		h.logger.Error("Service error retrieving all warehouses",
 			zap.Error(err))
@@ -181,9 +190,10 @@ func (h *WarehouseHandler) GetAllWarehouses(c *gin.Context) {
 	}
 
 	h.logger.Info("All warehouses retrieved successfully",
-		zap.Int("warehouse_count", len(response)))
+		zap.Int("warehouse_count", len(response)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "Warehouses retrieved successfully", response)
+	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
 }
 
 // UpdateWarehouse handles PATCH /api/v1/warehouses/:id
