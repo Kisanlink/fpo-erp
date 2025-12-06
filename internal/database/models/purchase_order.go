@@ -27,7 +27,7 @@ type PurchaseOrder struct {
 
 	// Status workflow
 	Status string `gorm:"type:varchar(30);not null;index" json:"status"`
-	// Values: "placed", "confirmed", "out_for_delivery", "delivered", "paid"
+	// Values: "placed", "confirmed", "out_for_delivery", "delivered", "verified", "paid"
 
 	// Financial (ALL-IN pricing - includes everything)
 	TotalAmount float64 `gorm:"type:numeric(14,4);not null" json:"total_amount"` // Grand total
@@ -109,22 +109,24 @@ func (PurchaseOrderItem) TableName() string {
 
 // PurchaseOrderResponse represents the API response for purchase order
 type PurchaseOrderResponse struct {
-	ID               string                      `json:"id"`
-	PONumber         string                      `json:"po_number"`
-	CollaboratorID   string                      `json:"collaborator_id"`
-	CollaboratorName string                      `json:"collaborator_name"`
-	WarehouseID      string                      `json:"warehouse_id"`
-	WarehouseName    string                      `json:"warehouse_name"`
-	OrderDate        string                      `json:"order_date"`
-	ExpectedDelivery string                      `json:"expected_delivery_date"`
-	ActualDelivery   *string                     `json:"actual_delivery_date"`
-	Status           string                      `json:"status"`
-	TotalAmount      float64                     `json:"total_amount"`
-	PaymentStatus    string                      `json:"payment_status"`
-	PaidAmount       float64                     `json:"paid_amount"`
-	Items            []PurchaseOrderItemResponse `json:"items,omitempty"`
-	CreatedAt        string                      `json:"created_at"`
-	UpdatedAt        string                      `json:"updated_at"`
+	ID                  string                      `json:"id"`
+	PONumber            string                      `json:"po_number"`
+	CollaboratorID      string                      `json:"collaborator_id"`
+	CollaboratorName    string                      `json:"collaborator_name"`
+	WarehouseID         string                      `json:"warehouse_id"`
+	WarehouseName       string                      `json:"warehouse_name"`
+	OrderDate           string                      `json:"order_date"`
+	ExpectedDelivery    string                      `json:"expected_delivery_date"`
+	ActualDelivery      *string                     `json:"actual_delivery_date"`
+	Status              string                      `json:"status"`
+	TotalAmount         float64                     `json:"total_amount"`
+	TotalRejectedAmount float64                     `json:"total_rejected_amount"` // Total value of rejected items from GRN
+	AmountOwed          float64                     `json:"amount_owed"`           // TotalAmount - TotalRejectedAmount
+	PaymentStatus       string                      `json:"payment_status"`
+	PaidAmount          float64                     `json:"paid_amount"`
+	Items               []PurchaseOrderItemResponse `json:"items,omitempty"`
+	CreatedAt           string                      `json:"created_at"`
+	UpdatedAt           string                      `json:"updated_at"`
 }
 
 // PurchaseOrderItemResponse represents the API response for purchase order item
@@ -159,7 +161,7 @@ type CreatePurchaseOrderItemRequest struct {
 
 // UpdatePOStatusRequest represents the request to update purchase order status
 type UpdatePOStatusRequest struct {
-	Status         string     `json:"status" binding:"required"` // placed, confirmed, out_for_delivery, delivered, paid
+	Status         string     `json:"status" binding:"required"` // placed, confirmed, out_for_delivery, delivered, verified, paid
 	ActualDelivery *time.Time `json:"actual_delivery_date"`      // Set when status = delivered
 
 	// Pattern 1: Accept All (simplest - for quick processing)

@@ -446,7 +446,7 @@ func (h *EcommerceWebhookHandler) HandleOrderPayment(c *gin.Context) {
 // @Param external_order_id query string false "Filter by external order ID"
 // @Param status query string false "Filter by status (processing, success, failed)"
 // @Param limit query int false "Limit results" default(50)
-// @Success 200 {object} utils.Response{data=[]models.WebhookEvent} "Webhook history retrieved"
+// @Success 200 {object} utils.Response{data=[]models.WebhookEventResponse} "Webhook history retrieved"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"

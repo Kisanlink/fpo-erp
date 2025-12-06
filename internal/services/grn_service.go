@@ -60,12 +60,12 @@ func (s *GRNService) CreateGRN(ctx context.Context, request *models.CreateGRNReq
 		return nil, err
 	}
 
-	// Validate PO status is delivered
-	if po.Status != "delivered" {
-		s.logger.Warn("Attempted to create GRN for non-delivered PO",
+	// Validate PO status is verified
+	if po.Status != "verified" {
+		s.logger.Warn("Attempted to create GRN for non-verified PO",
 			zap.String("po_id", request.POID),
 			zap.String("po_status", po.Status))
-		return nil, errors.NewBadRequestError("Purchase order must be in 'delivered' status to create GRN")
+		return nil, errors.NewBadRequestError("Purchase order must be in 'verified' status to create GRN")
 	}
 
 	// Check if GRN already exists for this PO
@@ -432,6 +432,21 @@ func (s *GRNService) buildGRNResponse(grn *models.GRN) (*models.GRNResponse, err
 	// Add items
 	var items []models.GRNItemResponse
 	for _, item := range grn.Items {
+		// Format return tracking dates
+		var sentDate, receivedDate, closedDate *string
+		if item.ReturnSentDate != nil {
+			formatted := item.ReturnSentDate.Format(time.RFC3339)
+			sentDate = &formatted
+		}
+		if item.ReturnReceivedDate != nil {
+			formatted := item.ReturnReceivedDate.Format(time.RFC3339)
+			receivedDate = &formatted
+		}
+		if item.ReturnClosedDate != nil {
+			formatted := item.ReturnClosedDate.Format(time.RFC3339)
+			closedDate = &formatted
+		}
+
 		items = append(items, models.GRNItemResponse{
 			ID:          item.ID,
 			GRNID:       item.GRNID,
@@ -451,7 +466,13 @@ func (s *GRNService) buildGRNResponse(grn *models.GRN) (*models.GRNResponse, err
 			ExpiryDate:       item.ExpiryDate.Format("2006-01-02"),
 			BatchNumber:      item.BatchNumber,
 			InventoryBatchID: item.InventoryBatchID,
-			CreatedAt:        item.CreatedAt.UTC().Format(time.RFC3339),
+			// Return tracking fields
+			ReturnStatus:       item.ReturnStatus,
+			ReturnSentDate:     sentDate,
+			ReturnReceivedDate: receivedDate,
+			ReturnClosedDate:   closedDate,
+			ReturnRemarks:      item.ReturnRemarks,
+			CreatedAt:          item.CreatedAt.UTC().Format(time.RFC3339),
 		})
 	}
 	response.Items = items
@@ -468,4 +489,269 @@ func isValidQualityStatus(status string) bool {
 		}
 	}
 	return false
+}
+
+// GetRejectedItems retrieves all rejected items for a GRN with return tracking
+func (s *GRNService) GetRejectedItems(ctx context.Context, grnID string) (*models.RejectedItemsResponse, error) {
+	s.logger.Info("Retrieving rejected items for GRN",
+		zap.String("grn_id", grnID))
+
+	// Validate GRN exists
+	grn, err := s.grnRepo.GetByIDWithItems(grnID)
+	if err != nil {
+		s.logger.Error("Failed to retrieve GRN for rejected items",
+			zap.Error(err),
+			zap.String("grn_id", grnID))
+		return nil, err
+	}
+
+	// Get rejected items with details
+	rejectedItems, err := s.grnRepo.GetRejectedItemsByGRN(grnID)
+	if err != nil {
+		s.logger.Error("Failed to retrieve rejected items",
+			zap.Error(err),
+			zap.String("grn_id", grnID))
+		return nil, err
+	}
+
+	if len(rejectedItems) == 0 {
+		s.logger.Info("No rejected items found for GRN",
+			zap.String("grn_id", grnID))
+		return nil, errors.NewNotFoundError("No rejected items found for this GRN")
+	}
+
+	// Build response with item details
+	var items []models.RejectedItemDetail
+	var totalRejectedValue float64
+	returnStatusBreakdown := make(map[string]int)
+
+	for _, item := range rejectedItems {
+		unitPrice := item.PurchaseOrderItem.UnitPrice
+		totalValue := float64(item.RejectedQuantity) * unitPrice
+		totalRejectedValue += totalValue
+
+		// Get product info from variant
+		productName := item.Variant.VariantName
+		productSKU := ""
+		if item.Variant.SKU != nil {
+			productSKU = *item.Variant.SKU
+		}
+
+		// Format dates
+		var sentDate, receivedDate, closedDate *string
+		if item.ReturnSentDate != nil {
+			formatted := item.ReturnSentDate.Format(time.RFC3339)
+			sentDate = &formatted
+		}
+		if item.ReturnReceivedDate != nil {
+			formatted := item.ReturnReceivedDate.Format(time.RFC3339)
+			receivedDate = &formatted
+		}
+		if item.ReturnClosedDate != nil {
+			formatted := item.ReturnClosedDate.Format(time.RFC3339)
+			closedDate = &formatted
+		}
+
+		items = append(items, models.RejectedItemDetail{
+			ID:                 item.ID,
+			VariantID:          item.VariantID,
+			ProductName:        productName,
+			ProductSKU:         productSKU,
+			RejectedQuantity:   item.RejectedQuantity,
+			UnitPrice:          unitPrice,
+			TotalValue:         totalValue,
+			ReturnStatus:       item.ReturnStatus,
+			ReturnSentDate:     sentDate,
+			ReturnReceivedDate: receivedDate,
+			ReturnClosedDate:   closedDate,
+			ReturnRemarks:      item.ReturnRemarks,
+		})
+
+		// Count status breakdown
+		status := "pending" // default
+		if item.ReturnStatus != nil {
+			status = *item.ReturnStatus
+		}
+		returnStatusBreakdown[status]++
+	}
+
+	response := &models.RejectedItemsResponse{
+		GRNID:                 grn.ID,
+		GRNNumber:             grn.GRNNumber,
+		POID:                  grn.POID,
+		PONumber:              grn.PurchaseOrder.PONumber,
+		RejectedItems:         items,
+		TotalRejectedValue:    totalRejectedValue,
+		ReturnStatusBreakdown: returnStatusBreakdown,
+	}
+
+	s.logger.Info("Rejected items retrieved successfully",
+		zap.String("grn_id", grnID),
+		zap.Int("items_count", len(items)),
+		zap.Float64("total_value", totalRejectedValue))
+
+	return response, nil
+}
+
+// UpdateItemReturnStatus updates the return status of a rejected GRN item
+func (s *GRNService) UpdateItemReturnStatus(ctx context.Context, itemID string, request *models.UpdateItemReturnStatusRequest) (*models.GRNItemResponse, error) {
+	s.logger.Info("Updating item return status",
+		zap.String("item_id", itemID),
+		zap.String("new_status", request.ReturnStatus))
+
+	// Validate item exists and has rejections
+	item, err := s.grnRepo.GetItemByID(itemID)
+	if err != nil {
+		s.logger.Error("Failed to retrieve GRN item",
+			zap.Error(err),
+			zap.String("item_id", itemID))
+		return nil, err
+	}
+
+	if item.RejectedQuantity <= 0 {
+		s.logger.Warn("Attempted to update return status for item with no rejections",
+			zap.String("item_id", itemID))
+		return nil, errors.NewBadRequestError("Cannot update return status for item with no rejections")
+	}
+
+	// Validate new status
+	newStatus := request.ReturnStatus
+	if !isValidReturnStatus(newStatus) {
+		s.logger.Error("Invalid return status provided",
+			zap.String("status", newStatus))
+		return nil, errors.NewValidationError("Invalid return status. Must be: pending, sent, received_by_vendor, or closed")
+	}
+
+	// Validate status transition
+	currentStatus := "pending" // default
+	if item.ReturnStatus != nil {
+		currentStatus = *item.ReturnStatus
+	}
+
+	if !isValidReturnStatusTransition(currentStatus, newStatus) {
+		s.logger.Error("Invalid return status transition",
+			zap.String("from", currentStatus),
+			zap.String("to", newStatus))
+		return nil, errors.NewBadRequestError(fmt.Sprintf("Invalid status transition from '%s' to '%s'", currentStatus, newStatus))
+	}
+
+	// Build updates map
+	updates := make(map[string]interface{})
+	updates["return_status"] = newStatus
+	if request.ReturnRemarks != nil {
+		updates["return_remarks"] = *request.ReturnRemarks
+	}
+
+	// Set appropriate date field based on new status
+	now := time.Now().UTC()
+	switch newStatus {
+	case "sent":
+		updates["return_sent_date"] = now
+	case "received_by_vendor":
+		updates["return_received_date"] = now
+	case "closed":
+		updates["return_closed_date"] = now
+	}
+
+	// Update item
+	if err := s.grnRepo.UpdateItemReturnStatus(itemID, updates); err != nil {
+		s.logger.Error("Failed to update item return status",
+			zap.Error(err),
+			zap.String("item_id", itemID))
+		return nil, err
+	}
+
+	s.logger.Info("Item return status updated successfully",
+		zap.String("item_id", itemID),
+		zap.String("new_status", newStatus))
+
+	// Fetch updated item
+	updatedItem, err := s.grnRepo.GetItemByID(itemID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build response
+	return s.buildGRNItemResponse(updatedItem), nil
+}
+
+// isValidReturnStatus validates return status
+func isValidReturnStatus(status string) bool {
+	validStatuses := []string{"pending", "sent", "received_by_vendor", "closed"}
+	for _, s := range validStatuses {
+		if s == status {
+			return true
+		}
+	}
+	return false
+}
+
+// isValidReturnStatusTransition validates status transition
+func isValidReturnStatusTransition(from, to string) bool {
+	// Status transition rules
+	transitions := map[string][]string{
+		"pending":             {"sent"},
+		"sent":                {"received_by_vendor"},
+		"received_by_vendor":  {"closed"},
+		"closed":              {}, // Cannot transition from closed
+	}
+
+	allowedTransitions, exists := transitions[from]
+	if !exists {
+		return false
+	}
+
+	for _, allowed := range allowedTransitions {
+		if allowed == to {
+			return true
+		}
+	}
+
+	return false
+}
+
+// buildGRNItemResponse builds response for a single GRN item
+func (s *GRNService) buildGRNItemResponse(item *models.GRNItem) *models.GRNItemResponse {
+	productName := item.Variant.VariantName
+	productSKU := ""
+	if item.Variant.SKU != nil {
+		productSKU = *item.Variant.SKU
+	}
+
+	// Format dates
+	var sentDate, receivedDate, closedDate *string
+	if item.ReturnSentDate != nil {
+		formatted := item.ReturnSentDate.Format(time.RFC3339)
+		sentDate = &formatted
+	}
+	if item.ReturnReceivedDate != nil {
+		formatted := item.ReturnReceivedDate.Format(time.RFC3339)
+		receivedDate = &formatted
+	}
+	if item.ReturnClosedDate != nil {
+		formatted := item.ReturnClosedDate.Format(time.RFC3339)
+		closedDate = &formatted
+	}
+
+	return &models.GRNItemResponse{
+		ID:                 item.ID,
+		GRNID:              item.GRNID,
+		POItemID:           item.POItemID,
+		VariantID:          item.VariantID,
+		ProductName:        productName,
+		ProductSKU:         productSKU,
+		OrderedQuantity:    item.OrderedQuantity,
+		ReceivedQuantity:   item.ReceivedQuantity,
+		AcceptedQuantity:   item.AcceptedQuantity,
+		RejectedQuantity:   item.RejectedQuantity,
+		ExpiryDate:         item.ExpiryDate.Format("2006-01-02"),
+		BatchNumber:        item.BatchNumber,
+		InventoryBatchID:   item.InventoryBatchID,
+		ReturnStatus:       item.ReturnStatus,
+		ReturnSentDate:     sentDate,
+		ReturnReceivedDate: receivedDate,
+		ReturnClosedDate:   closedDate,
+		ReturnRemarks:      item.ReturnRemarks,
+		CreatedAt:          item.CreatedAt.UTC().Format(time.RFC3339),
+	}
 }

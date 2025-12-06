@@ -157,6 +157,31 @@ func (r *DiscountsRepository) IncrementUsageWithTx(tx *gorm.DB, discountID strin
 	return nil
 }
 
+// DecrementUsageWithTx decrements discount usage count within a transaction (for cancellation reversal)
+func (r *DiscountsRepository) DecrementUsageWithTx(tx *gorm.DB, discountID string) error {
+	if err := tx.Model(&models.Discount{}).Where("id = ? AND current_usage > 0", discountID).Update("current_usage", gorm.Expr("current_usage - ?", 1)).Error; err != nil {
+		return errors.NewInternalServerError("Failed to decrement discount usage")
+	}
+	return nil
+}
+
+// DeleteDiscountUsagesBySaleWithTx deletes discount usage records for a sale within a transaction
+func (r *DiscountsRepository) DeleteDiscountUsagesBySaleWithTx(tx *gorm.DB, saleID string) error {
+	if err := tx.Where("sale_id = ?", saleID).Delete(&models.DiscountUsage{}).Error; err != nil {
+		return errors.NewInternalServerError("Failed to delete discount usages")
+	}
+	return nil
+}
+
+// GetDiscountUsageBySaleWithTx retrieves discount usage by sale within a transaction
+func (r *DiscountsRepository) GetDiscountUsageBySaleWithTx(tx *gorm.DB, saleID string) ([]models.DiscountUsage, error) {
+	var usages []models.DiscountUsage
+	if err := tx.Where("sale_id = ?", saleID).Find(&usages).Error; err != nil {
+		return nil, errors.NewInternalServerError("Failed to retrieve discount usage by sale")
+	}
+	return usages, nil
+}
+
 // GetDiscountUsageBySale retrieves discount usage by sale
 func (r *DiscountsRepository) GetDiscountUsageBySale(saleID string) ([]models.DiscountUsage, error) {
 	var usages []models.DiscountUsage

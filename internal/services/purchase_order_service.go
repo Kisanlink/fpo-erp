@@ -313,7 +313,7 @@ func (s *PurchaseOrderService) GetPendingDeliveries(ctx context.Context) ([]mode
 }
 
 // UpdatePurchaseOrderStatus updates the status of a purchase order
-// Supports auto-GRN creation when status = "delivered" with delivery details
+// Supports auto-GRN creation when status = "verified" with delivery details
 func (s *PurchaseOrderService) UpdatePurchaseOrderStatus(ctx context.Context, id string, request *models.UpdatePOStatusRequest, userID string) (*models.PurchaseOrderResponse, error) {
 	s.logger.Info("Updating purchase order status",
 		zap.String("po_id", id),
@@ -343,18 +343,26 @@ func (s *PurchaseOrderService) UpdatePurchaseOrderStatus(ctx context.Context, id
 		return nil, errors.NewBadRequestError(fmt.Sprintf("invalid status transition from %s to %s", po.Status, request.Status))
 	}
 
-	// Set actual delivery date if status is delivered
+	// Set actual delivery date if status is delivered (required for accurate inventory aging)
 	var actualDelivery time.Time
 	if request.Status == "delivered" {
-		if request.ActualDelivery != nil {
-			actualDelivery = *request.ActualDelivery
-		} else {
-			actualDelivery = time.Now().UTC()
+		if request.ActualDelivery == nil {
+			return nil, errors.NewBadRequestError("actual_delivery_date is required when marking order as delivered")
 		}
+		actualDelivery = *request.ActualDelivery
 	}
 
-	// Pattern Detection: Auto-create GRN if status = "delivered" and delivery details provided
-	if request.Status == "delivered" && (request.AcceptAll != nil || len(request.Items) > 0) {
+	// Pattern Detection: Auto-create GRN if status = "verified" and delivery details provided
+	if request.Status == "verified" && (request.AcceptAll != nil || len(request.Items) > 0) {
+		// For auto-GRN on verified status, we need a valid delivery date
+		// Use provided date, or fall back to PO's existing delivery date
+		if request.ActualDelivery != nil {
+			actualDelivery = *request.ActualDelivery
+		} else if po.ActualDelivery != nil {
+			actualDelivery = *po.ActualDelivery
+		} else {
+			return nil, errors.NewBadRequestError("actual_delivery_date is required for GRN creation")
+		}
 		s.logger.Info("Auto-GRN trigger detected",
 			zap.String("po_id", po.ID),
 			zap.Bool("accept_all", request.AcceptAll != nil && *request.AcceptAll))
@@ -673,7 +681,8 @@ func (s *PurchaseOrderService) processDeliveryItems(ctx context.Context, po *mod
 		}
 
 		// Update PO status and delivery date
-		po.Status = "delivered"
+		// Auto-GRN triggers on "verified" status, so keep status as "verified"
+		po.Status = "verified"
 		po.ActualDelivery = &actualDelivery
 		if err := s.poRepo.UpdateWithTx(tx, po); err != nil {
 			return err
@@ -781,19 +790,41 @@ func (s *PurchaseOrderService) calculateQualityStatus(items []models.DeliveryIte
 func (s *PurchaseOrderService) generateGRNNumber() (string, error) {
 	year := time.Now().UTC().Year()
 
-	// Try to find the next available number
-	for i := 1; i <= 9999; i++ {
-		grnNumber := fmt.Sprintf("GRN-%d-%04d", year, i)
-		exists, err := s.grnRepo.GRNNumberExists(grnNumber)
-		if err != nil {
-			return "", err
-		}
-		if !exists {
-			return grnNumber, nil
-		}
+	// Get the last used number for this year (O(1) instead of O(n))
+	lastNumber, err := s.grnRepo.GetLastGRNNumberForYear(year)
+	if err != nil {
+		// Fall back to checking if number exists
+		lastNumber = 0
 	}
 
-	return "", errors.NewInternalServerError("failed to generate unique GRN number")
+	nextNumber := lastNumber + 1
+	if nextNumber > 9999 {
+		return "", errors.NewInternalServerError("GRN number limit reached for year")
+	}
+
+	grnNumber := fmt.Sprintf("GRN-%d-%04d", year, nextNumber)
+
+	// Verify uniqueness (handles edge cases like manual insertions)
+	exists, err := s.grnRepo.GRNNumberExists(grnNumber)
+	if err != nil {
+		return "", err
+	}
+	if exists {
+		// Rare edge case: manually inserted GRN, fall back to sequential search
+		for i := nextNumber + 1; i <= 9999; i++ {
+			grnNumber = fmt.Sprintf("GRN-%d-%04d", year, i)
+			exists, err = s.grnRepo.GRNNumberExists(grnNumber)
+			if err != nil {
+				return "", err
+			}
+			if !exists {
+				return grnNumber, nil
+			}
+		}
+		return "", errors.NewInternalServerError("failed to generate unique GRN number")
+	}
+
+	return grnNumber, nil
 }
 
 // generatePONumber generates a unique PO number in format: PO-YYYY-NNNN
@@ -817,21 +848,36 @@ func (s *PurchaseOrderService) generatePONumber() (string, error) {
 
 // buildPurchaseOrderResponse builds a response with related entity details
 func (s *PurchaseOrderService) buildPurchaseOrderResponse(po *models.PurchaseOrder) (*models.PurchaseOrderResponse, error) {
+	// Calculate total rejected amount from GRN (if GRN exists)
+	totalRejectedAmount, err := s.grnRepo.GetTotalRejectedAmountByPO(po.ID)
+	if err != nil {
+		// Log error but don't fail - treat as 0 if no GRN exists yet
+		s.logger.Warn("Failed to calculate rejected amount for PO",
+			zap.String("po_id", po.ID),
+			zap.Error(err))
+		totalRejectedAmount = 0
+	}
+
+	// Calculate amount owed (Option A: keep TotalAmount unchanged, subtract rejections)
+	amountOwed := po.TotalAmount - totalRejectedAmount
+
 	response := &models.PurchaseOrderResponse{
-		ID:               po.ID,
-		PONumber:         po.PONumber,
-		CollaboratorID:   po.CollaboratorID,
-		CollaboratorName: po.Collaborator.CompanyName,
-		WarehouseID:      po.WarehouseID,
-		WarehouseName:    po.Warehouse.Name,
-		OrderDate:        po.OrderDate.Format("2006-01-02"),
-		ExpectedDelivery: po.ExpectedDelivery.Format("2006-01-02"),
-		Status:           po.Status,
-		TotalAmount:      po.TotalAmount,
-		PaymentStatus:    po.PaymentStatus,
-		PaidAmount:       po.PaidAmount,
-		CreatedAt:        po.CreatedAt.UTC().Format(time.RFC3339),
-		UpdatedAt:        po.UpdatedAt.UTC().Format(time.RFC3339),
+		ID:                  po.ID,
+		PONumber:            po.PONumber,
+		CollaboratorID:      po.CollaboratorID,
+		CollaboratorName:    po.Collaborator.CompanyName,
+		WarehouseID:         po.WarehouseID,
+		WarehouseName:       po.Warehouse.Name,
+		OrderDate:           po.OrderDate.Format("2006-01-02"),
+		ExpectedDelivery:    po.ExpectedDelivery.Format("2006-01-02"),
+		Status:              po.Status,
+		TotalAmount:         po.TotalAmount,
+		TotalRejectedAmount: totalRejectedAmount,
+		AmountOwed:          amountOwed,
+		PaymentStatus:       po.PaymentStatus,
+		PaidAmount:          po.PaidAmount,
+		CreatedAt:           po.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:           po.UpdatedAt.UTC().Format(time.RFC3339),
 	}
 
 	if po.ActualDelivery != nil {
@@ -862,7 +908,7 @@ func (s *PurchaseOrderService) buildPurchaseOrderResponse(po *models.PurchaseOrd
 
 // isValidPOStatus validates purchase order status
 func isValidPOStatus(status string) bool {
-	validStatuses := []string{"placed", "confirmed", "out_for_delivery", "delivered", "paid"}
+	validStatuses := []string{"placed", "confirmed", "out_for_delivery", "delivered", "verified", "paid"}
 	for _, s := range validStatuses {
 		if s == status {
 			return true
@@ -878,7 +924,8 @@ func isValidPOStatusTransition(from, to string) bool {
 		"placed":           {"confirmed"},
 		"confirmed":        {"out_for_delivery"},
 		"out_for_delivery": {"delivered"},
-		"delivered":        {"paid"},
+		"delivered":        {"verified"},
+		"verified":         {"paid"},
 	}
 
 	validNextStatuses, ok := transitions[from]

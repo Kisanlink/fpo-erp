@@ -28,7 +28,7 @@ func setupSalesService(t *testing.T) (*services.SalesService, *gorm.DB, func()) 
 	salesRepo := repositories.NewSalesRepository(db)
 	productRepo := repositories.NewProductRepository(db)
 	inventoryRepo := repositories.NewInventoryRepository(db)
-	priceRepo := repositories.NewProductPriceRepository(db)
+	variantRepo := repositories.NewProductVariantRepository(db)
 	discountsRepo := repositories.NewDiscountsRepository(db)
 	taxRepo := repositories.NewTaxRepository(db)
 	warehouseRepo := repositories.NewWarehouseRepository(db)
@@ -39,7 +39,7 @@ func setupSalesService(t *testing.T) (*services.SalesService, *gorm.DB, func()) 
 		salesRepo,
 		productRepo,
 		inventoryRepo,
-		priceRepo,
+		variantRepo,
 		discountsRepo,
 		taxRepo,
 		warehouseRepo,
@@ -731,4 +731,252 @@ func TestSalesService_CreateSale_Failure_InsufficientInventory(t *testing.T) {
 
 	// Assert
 	testutils.AssertError(t, err, "Should return error for insufficient inventory")
+}
+
+// =============================================================================
+// CompleteSale Tests
+// =============================================================================
+
+func TestSalesService_CompleteSale_Success(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// ARRANGE: Setup test data with inventory
+	warehouse, _, variant, _, batch := setupSaleTestData(t, db)
+
+	// Create sale via service (creates reservation)
+	request := &models.CreateSaleRequest{
+		WarehouseID: warehouse.ID,
+		PaymentMode: "cash",
+		SaleType:    "in_store",
+		Items: []models.CreateSaleItemRequest{
+			{
+				VariantID: variant.ID,
+				Quantity:  10,
+			},
+		},
+	}
+	saleResp, err := service.CreateSale(request)
+	testutils.AssertNoError(t, err, "CreateSale should succeed")
+	testutils.AssertEqual(t, saleResp.Status, models.SaleStatusPending, "Sale should be pending")
+
+	// Verify reservation was created
+	var updatedBatch models.InventoryBatch
+	db.First(&updatedBatch, "id = ?", batch.ID)
+	testutils.AssertEqual(t, updatedBatch.ReservedQuantity, int64(10), "Reservation should be 10")
+	initialTotal := updatedBatch.TotalQuantity
+
+	// ACT: Complete the sale
+	completedSale, err := service.CompleteSale(saleResp.ID, "test-user")
+
+	// ASSERT
+	testutils.AssertNoError(t, err, "CompleteSale should succeed")
+	testutils.AssertNotNil(t, completedSale, "Response should not be nil")
+	testutils.AssertEqual(t, completedSale.Status, models.SaleStatusCompleted, "Status should be completed")
+
+	// Verify reservation converted to deduction
+	db.First(&updatedBatch, "id = ?", batch.ID)
+	testutils.AssertEqual(t, updatedBatch.ReservedQuantity, int64(0), "Reservation should be cleared")
+	testutils.AssertEqual(t, updatedBatch.TotalQuantity, initialTotal-10, "Total should be reduced by 10")
+}
+
+func TestSalesService_CompleteSale_NotPending_Error(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// ARRANGE: Create sale directly with "completed" status
+	warehouse := createTestWarehouse(t, db, "WH-COMPLETE-001")
+	sale := createTestSale(t, db, warehouse.ID, 1000.00, models.SaleStatusCompleted)
+
+	// ACT: Try to complete the already completed sale
+	_, err := service.CompleteSale(sale.ID, "test-user")
+
+	// ASSERT
+	testutils.AssertError(t, err, "Should return error for non-pending sale")
+	testutils.AssertContains(t, err.Error(), "Only pending sales can be completed", "Error message should mention pending")
+}
+
+func TestSalesService_CompleteSale_NotFound_Error(t *testing.T) {
+	service, _, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// ACT: Try to complete non-existent sale
+	_, err := service.CompleteSale("INVALID-SALE-ID", "test-user")
+
+	// ASSERT
+	testutils.AssertError(t, err, "Should return error for non-existent sale")
+}
+
+// =============================================================================
+// CancelSale Tests - Reservation vs Stock Restore
+// =============================================================================
+
+func TestSalesService_CancelSale_Pending_ReleasesReservation(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// ARRANGE: Setup test data with inventory
+	warehouse, _, variant, _, batch := setupSaleTestData(t, db)
+
+	// Create sale via service (creates reservation)
+	request := &models.CreateSaleRequest{
+		WarehouseID: warehouse.ID,
+		PaymentMode: "cash",
+		SaleType:    "in_store",
+		Items: []models.CreateSaleItemRequest{
+			{
+				VariantID: variant.ID,
+				Quantity:  10,
+			},
+		},
+	}
+	saleResp, err := service.CreateSale(request)
+	testutils.AssertNoError(t, err, "CreateSale should succeed")
+
+	// Record initial quantities
+	var updatedBatch models.InventoryBatch
+	db.First(&updatedBatch, "id = ?", batch.ID)
+	initialTotal := updatedBatch.TotalQuantity
+
+	// ACT: Cancel the pending sale
+	cancelResp, err := service.CancelSale(saleResp.ID, &models.CancelSaleRequest{
+		Reason:      "customer_request",
+		PerformedBy: "test-user",
+	})
+
+	// ASSERT
+	testutils.AssertNoError(t, err, "CancelSale should succeed")
+	testutils.AssertNotNil(t, cancelResp, "Cancel response should not be nil")
+
+	// Verify reservation released (not stock restored)
+	db.First(&updatedBatch, "id = ?", batch.ID)
+	testutils.AssertEqual(t, updatedBatch.TotalQuantity, initialTotal, "Total should be unchanged for pending cancellation")
+	testutils.AssertEqual(t, updatedBatch.ReservedQuantity, int64(0), "Reserved should be 0 after release")
+}
+
+func TestSalesService_CancelSale_Completed_RestoresStock(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// ARRANGE: Setup test data with inventory
+	warehouse, _, variant, _, batch := setupSaleTestData(t, db)
+
+	// Create and complete sale
+	request := &models.CreateSaleRequest{
+		WarehouseID: warehouse.ID,
+		PaymentMode: "cash",
+		SaleType:    "in_store",
+		Items: []models.CreateSaleItemRequest{
+			{
+				VariantID: variant.ID,
+				Quantity:  10,
+			},
+		},
+	}
+	saleResp, err := service.CreateSale(request)
+	testutils.AssertNoError(t, err, "CreateSale should succeed")
+
+	// Complete the sale (deducts stock)
+	_, err = service.CompleteSale(saleResp.ID, "test-user")
+	testutils.AssertNoError(t, err, "CompleteSale should succeed")
+
+	// Record quantities after completion
+	var batchAfterComplete models.InventoryBatch
+	db.First(&batchAfterComplete, "id = ?", batch.ID)
+	totalAfterComplete := batchAfterComplete.TotalQuantity
+
+	// ACT: Cancel the completed sale
+	cancelResp, err := service.CancelSale(saleResp.ID, &models.CancelSaleRequest{
+		Reason:      "customer_request",
+		PerformedBy: "test-user",
+	})
+
+	// ASSERT
+	testutils.AssertNoError(t, err, "CancelSale should succeed")
+	testutils.AssertNotNil(t, cancelResp, "Cancel response should not be nil")
+
+	// Verify stock restored (TotalQuantity increased)
+	var batchAfterCancel models.InventoryBatch
+	db.First(&batchAfterCancel, "id = ?", batch.ID)
+	testutils.AssertEqual(t, batchAfterCancel.TotalQuantity, totalAfterComplete+10, "Total should be restored for completed cancellation")
+}
+
+func TestSalesService_CancelSale_InventoryRestoredFlag_Pending(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// ARRANGE: Setup test data with inventory
+	warehouse, _, variant, _, _ := setupSaleTestData(t, db)
+
+	// Create pending sale
+	request := &models.CreateSaleRequest{
+		WarehouseID: warehouse.ID,
+		PaymentMode: "cash",
+		SaleType:    "in_store",
+		Items: []models.CreateSaleItemRequest{
+			{
+				VariantID: variant.ID,
+				Quantity:  10,
+			},
+		},
+	}
+	saleResp, err := service.CreateSale(request)
+	testutils.AssertNoError(t, err, "CreateSale should succeed")
+
+	// ACT: Cancel the pending sale
+	_, err = service.CancelSale(saleResp.ID, &models.CancelSaleRequest{
+		Reason:      "customer_request",
+		PerformedBy: "test-user",
+	})
+	testutils.AssertNoError(t, err, "CancelSale should succeed")
+
+	// ASSERT: Check cancellation item has InventoryRestored = false
+	var cancellationItem models.SaleCancellationItem
+	err = db.Joins("JOIN sale_cancellations ON sale_cancellations.id = sale_cancellation_items.cancellation_id").
+		Where("sale_cancellations.sale_id = ?", saleResp.ID).
+		First(&cancellationItem).Error
+	testutils.AssertNoError(t, err, "Should find cancellation item")
+	testutils.AssertEqual(t, cancellationItem.InventoryRestored, false, "InventoryRestored should be false for pending sale cancellation")
+}
+
+func TestSalesService_CancelSale_InventoryRestoredFlag_Completed(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// ARRANGE: Setup test data with inventory
+	warehouse, _, variant, _, _ := setupSaleTestData(t, db)
+
+	// Create and complete sale
+	request := &models.CreateSaleRequest{
+		WarehouseID: warehouse.ID,
+		PaymentMode: "cash",
+		SaleType:    "in_store",
+		Items: []models.CreateSaleItemRequest{
+			{
+				VariantID: variant.ID,
+				Quantity:  10,
+			},
+		},
+	}
+	saleResp, err := service.CreateSale(request)
+	testutils.AssertNoError(t, err, "CreateSale should succeed")
+
+	// Complete the sale
+	_, err = service.CompleteSale(saleResp.ID, "test-user")
+	testutils.AssertNoError(t, err, "CompleteSale should succeed")
+
+	// ACT: Cancel the completed sale
+	_, err = service.CancelSale(saleResp.ID, &models.CancelSaleRequest{
+		Reason:      "customer_request",
+		PerformedBy: "test-user",
+	})
+	testutils.AssertNoError(t, err, "CancelSale should succeed")
+
+	// ASSERT: Check cancellation item has InventoryRestored = true
+	var cancellationItem models.SaleCancellationItem
+	err = db.Joins("JOIN sale_cancellations ON sale_cancellations.id = sale_cancellation_items.cancellation_id").
+		Where("sale_cancellations.sale_id = ?", saleResp.ID).
+		First(&cancellationItem).Error
+	testutils.AssertNoError(t, err, "Should find cancellation item")
+	testutils.AssertEqual(t, cancellationItem.InventoryRestored, true, "InventoryRestored should be true for completed sale cancellation")
 }

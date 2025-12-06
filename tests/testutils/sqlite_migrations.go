@@ -377,10 +377,12 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 			sku TEXT UNIQUE,
 			barcode TEXT,
 			collaborator_id TEXT,
+			collaborator_ids TEXT DEFAULT '[]',
 			brand_name TEXT,
 			hsn_code TEXT,
 			gst_rate REAL,
-			images TEXT,
+			images TEXT DEFAULT '[]',
+			prices TEXT DEFAULT '[]',
 			dosage_instructions TEXT,
 			usage_details TEXT,
 			is_active INTEGER DEFAULT 1,
@@ -428,7 +430,8 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 			variant_id TEXT NOT NULL,
 			cost_price REAL NOT NULL,
 			expiry_date DATETIME NOT NULL,
-			total_quantity INTEGER NOT NULL,
+			total_quantity INTEGER NOT NULL CHECK (total_quantity >= 0),
+			reserved_quantity INTEGER NOT NULL DEFAULT 0 CHECK (reserved_quantity >= 0),
 			cgst_rate REAL DEFAULT 0,
 			sgst_rate REAL DEFAULT 0,
 			custom_tax_ids TEXT DEFAULT '[]',
@@ -438,7 +441,8 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 			deleted_at DATETIME,
 			created_by TEXT,
 			updated_by TEXT,
-			deleted_by TEXT
+			deleted_by TEXT,
+			CHECK (reserved_quantity <= total_quantity)
 		)
 	`).Error; err != nil {
 		return err
@@ -585,6 +589,11 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 			received_quantity INTEGER NOT NULL,
 			accepted_quantity INTEGER NOT NULL,
 			rejected_quantity INTEGER DEFAULT 0,
+			return_status TEXT,
+			return_sent_date DATETIME,
+			return_received_date DATETIME,
+			return_closed_date DATETIME,
+			return_remarks TEXT,
 			expiry_date DATE NOT NULL,
 			batch_number TEXT,
 			inventory_batch_id TEXT,

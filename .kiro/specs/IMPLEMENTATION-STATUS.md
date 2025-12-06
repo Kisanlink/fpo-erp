@@ -203,3 +203,157 @@ CreateSale → Reserve inventory → "reserved" status
 - `.kiro/specs/order-cancellation/INDEX.md`
 - `.kiro/specs/order-cancellation-inventory/design.md`
 - `.kiro/specs/order-cancellation-inventory/tasks.md`
+
+---
+
+## 🔄 MERGE GUIDE: Bring Features from Remote Branch
+
+**Last Updated:** December 2025
+
+### Branch Status
+
+| Branch | Commit | Description |
+|--------|--------|-------------|
+| **Current**: `development/specs-implementation` | `a8c999b` | Has Reports, TLS, Presigned URLs |
+| **Remote**: `origin/development/variants-fix` | `0aa2d29` | Has Reserved Stock, Partial Cancellation |
+| **Merge Base** | `021cbb9` | Common ancestor (Postgres v17.4 upgrade) |
+
+### Features in Remote Branch (TO BE MERGED)
+
+#### ✅ Reserved Stock System - FULLY IMPLEMENTED
+| Feature | File | Line |
+|---------|------|------|
+| `ReservedQuantity` field | `internal/database/models/inventory.go` | Model field |
+| `AvailableQuantity()` method | `internal/database/models/inventory.go` | Helper method |
+| `CompleteSale()` service | `internal/services/sales_service.go` | Line 1926 |
+| `ConvertReservationToDeductionWithTx()` | `internal/database/repositories/inventory_repo.go` | Line 348 |
+| Reservation transaction type | `internal/services/sales_service.go` | Line 288 |
+
+#### ✅ Partial Cancellation - FULLY IMPLEMENTED
+| Feature | File | Line |
+|---------|------|------|
+| `CancelItems()` service | `internal/services/sales_service.go` | Line 1604 |
+| `CancelItems` handler | `internal/api/handlers/sales_handler.go` | Line 765 |
+| `GetCancellations()` service | `internal/services/sales_service.go` | Line 1538 |
+| `GetCancellations` handler | `internal/api/handlers/sales_handler.go` | Line 818 |
+
+#### ✅ Interface Updates
+```go
+// NEW methods in remote branch:
+CancelItems(saleID string, req *models.CancelItemsRequest) (*models.CancelItemsResponse, error)
+GetCancellations(saleID string) (*models.GetCancellationsResponse, error)
+CompleteSale(saleID string, performedBy string) (*models.SaleResponse, error)
+```
+
+### Merge Conflicts (11 Files)
+
+| File | Conflict Type | Resolution Strategy |
+|------|---------------|---------------------|
+| `docs/docs.go` | Swagger annotations | 🟢 Regenerate with `swag init` after merge |
+| `docs/swagger.json` | Generated | 🟢 Regenerate with `swag init` |
+| `docs/swagger.yaml` | Generated | 🟢 Regenerate with `swag init` |
+| `go.mod` | Dependencies | 🟢 Run `go mod tidy` after merge |
+| `go.sum` | Checksums | 🟢 Auto-resolves with `go mod tidy` |
+| `internal/api/routes/routes.go` | Routes | 🟡 Keep BOTH route sets |
+| `internal/database/models/product_variant.go` | Model fields | 🟡 Keep BOTH field additions |
+| `internal/services/product_service.go` | Logic changes | 🔴 Manual review - keep both changes |
+| `internal/services/product_variant_service.go` | Logic changes | 🔴 Manual review - keep both changes |
+| `internal/services/sales_service.go` | Reserved stock + your changes | 🔴 Manual - most complex |
+| `tests/services/product_service_test.go` | Test cases | 🟡 Merge both test sets |
+
+### Step-by-Step Merge Instructions
+
+```bash
+# Step 1: Ensure clean working tree
+git status  # Should show "nothing to commit, working tree clean"
+
+# Step 2: Fetch latest from remote
+git fetch origin
+
+# Step 3: Start merge
+git merge origin/development/variants-fix
+
+# Step 4: Resolve conflicts (11 files)
+# For each conflict file:
+#   - Open in VS Code (shows conflict markers)
+#   - Accept BOTH changes where possible
+#   - For complex files (sales_service.go), carefully review each hunk
+
+# Step 5: After resolving all conflicts
+git add .
+
+# Step 6: Regenerate docs (fixes doc conflicts automatically)
+swag init -g cmd/server/main.go -o docs/
+
+# Step 7: Tidy modules
+go mod tidy
+
+# Step 8: Verify build
+go build ./...
+
+# Step 9: Run tests
+go test ./...
+
+# Step 10: Complete merge
+git commit -m "merge: bring reserved stock and partial cancellation from variants-fix"
+```
+
+### Conflict Resolution Tips
+
+#### For `sales_service.go` (Most Complex):
+1. Your branch has: `farmer_id` → `customer_id` rename
+2. Remote has: Reserved Stock logic, CancelItems, GetCancellations, CompleteSale
+3. **Strategy**: Keep ALL methods from remote, apply your field rename
+
+#### For `routes.go`:
+1. Your branch has: Report routes, TLS config
+2. Remote has: cancel-items, cancellations, complete routes
+3. **Strategy**: Include ALL routes from both branches
+
+#### For `product_variant_service.go`:
+1. Your branch has: Image sync logic
+2. Remote has: Bug fixes
+3. **Strategy**: Keep image sync + apply remote fixes
+
+### Post-Merge Verification
+
+```bash
+# 1. Check all new endpoints work
+curl -X POST http://localhost:8080/api/v1/sales/{id}/cancel-items
+curl -X GET http://localhost:8080/api/v1/sales/{id}/cancellations
+curl -X POST http://localhost:8080/api/v1/sales/{id}/complete
+
+# 2. Verify Reserved Stock
+# - Create a sale (status should be 'pending')
+# - Check inventory shows ReservedQuantity
+# - Complete sale (status becomes 'completed')
+# - Check inventory ReservedQuantity decreases
+
+# 3. Verify Partial Cancellation
+# - Create a sale with multiple items
+# - Cancel one item
+# - Verify inventory restored for that item only
+```
+
+### Updated Implementation Status After Merge
+
+| Category | BEFORE Merge | AFTER Merge |
+|----------|--------------|-------------|
+| Reserved Stock | 0% (0/8) | **100% (8/8)** ✅ |
+| Partial Cancellation | 0% (0/4) | **100% (4/4)** ✅ |
+| GetCancellations | ❌ | ✅ |
+| CompleteSale | ❌ | ✅ |
+| **Overall** | 36% | **~75%** |
+
+### Still Missing After Merge
+
+| Feature | Time | Priority |
+|---------|------|----------|
+| Discount reversal (TODO) | 3 hours | 🔴 High |
+| Tax voiding (TODO) | 3 hours | 🔴 High |
+| PODetail endpoint | 4-6 hours | 🟡 Medium |
+| InventoryList endpoint | 4-6 hours | 🟡 Medium |
+| Comprehensive testing | 10 hours | 🟢 Low |
+| Metrics/Observability | 17 hours | 🟢 Low |
+
+**Total remaining after merge: ~20-25 hours**

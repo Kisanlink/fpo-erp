@@ -7,6 +7,19 @@ import (
 	"github.com/Kisanlink/kisanlink-db/pkg/core/hash"
 )
 
+// Price type constants
+const (
+	PriceTypeMRP = "MRP" // Maximum Retail Price
+	PriceTypeMSP = "MSP" // Minimum Selling Price
+)
+
+// VariantPrice represents a price point for a variant
+type VariantPrice struct {
+	PriceType string  `json:"price_type"` // "MRP" or "MSP"
+	Price     float64 `json:"price"`
+	Currency  string  `json:"currency"` // "INR", "USD", etc.
+}
+
 // ProductVariant represents different packaging/size variants of a product
 // Can also represent collaborator-specific variants (supplier-specific products)
 type ProductVariant struct {
@@ -30,19 +43,22 @@ type ProductVariant struct {
 	Barcode *string `gorm:"type:varchar(50)" json:"barcode"`    // For scanning
 
 	// Collaborator-specific fields (optional - for supplier-specific variants)
-	CollaboratorID     *string  `gorm:"type:varchar(100);index:idx_product_collaborator" json:"collaborator_id"`
-	BrandName          *string  `gorm:"type:varchar(100)" json:"brand_name"`  // Collaborator's brand
-	HSNCode            *string  `gorm:"type:varchar(8)" json:"hsn_code"`      // For GST classification
-	GSTRate            *float64 `gorm:"type:numeric(5,2)" json:"gst_rate"`    // e.g., 5.00, 12.00, 18.00, 28.00
-	Images             *string  `gorm:"type:json" json:"images"`              // JSON array of S3 paths
-	DosageInstructions *string  `gorm:"type:text" json:"dosage_instructions"` // Usage instructions
-	UsageDetails       *string  `gorm:"type:text" json:"usage_details"`       // Detailed usage
+	CollaboratorIDs    []string `gorm:"type:json;serializer:json" json:"collaborator_ids"` // Multiple collaborators can supply same variant
+	BrandName          *string  `gorm:"type:varchar(100)" json:"brand_name"`                // Collaborator's brand
+	HSNCode            *string  `gorm:"type:varchar(8)" json:"hsn_code"`                    // For GST classification
+	GSTRate            *float64 `gorm:"type:numeric(5,2)" json:"gst_rate"`                  // e.g., 5.00, 12.00, 18.00, 28.00
+	Images             *string  `gorm:"type:json" json:"images"`                            // JSON array of S3 paths
+	DosageInstructions *string  `gorm:"type:text" json:"dosage_instructions"`               // Usage instructions
+	UsageDetails       *string  `gorm:"type:text" json:"usage_details"`                     // Detailed usage
+
+	// Embedded pricing (replaces separate ProductPrice table)
+	Prices []VariantPrice `gorm:"type:json;serializer:json" json:"prices"` // Array of price points
 
 	IsActive bool `gorm:"default:true" json:"is_active"`
 
 	// Associations
-	Product      Product       `gorm:"foreignKey:ProductID;references:ID" json:"product,omitempty"`
-	Collaborator *Collaborator `gorm:"foreignKey:CollaboratorID" json:"collaborator,omitempty"`
+	Product Product `gorm:"foreignKey:ProductID;references:ID" json:"product,omitempty"`
+	// Note: Collaborator association removed since this is now many-to-many via JSON array
 }
 
 // NewProductVariant creates a new ProductVariant with initialized fields
@@ -58,20 +74,20 @@ func NewProductVariant(productID, variantName, quantity, packSize string) *Produ
 	}
 }
 
-// NewCollaboratorVariant creates a new ProductVariant for a specific collaborator/supplier
-func NewCollaboratorVariant(productID, collaboratorID, variantName, quantity, packSize, brandName, hsnCode string, gstRate float64) *ProductVariant {
+// NewCollaboratorVariant creates a new ProductVariant for specific collaborator(s)/supplier(s)
+func NewCollaboratorVariant(productID string, collaboratorIDs []string, variantName, quantity, packSize, brandName, hsnCode string, gstRate float64) *ProductVariant {
 	baseModel := base.NewBaseModel(constants.TableProductVariant, hash.Medium)
 	return &ProductVariant{
-		BaseModel:      *baseModel,
-		ProductID:      productID,
-		CollaboratorID: &collaboratorID,
-		VariantName:    variantName,
-		Quantity:       quantity,
-		PackSize:       packSize,
-		BrandName:      &brandName,
-		HSNCode:        &hsnCode,
-		GSTRate:        &gstRate,
-		IsActive:       true,
+		BaseModel:       *baseModel,
+		ProductID:       productID,
+		CollaboratorIDs: collaboratorIDs,
+		VariantName:     variantName,
+		Quantity:        quantity,
+		PackSize:        packSize,
+		BrandName:       &brandName,
+		HSNCode:         &hsnCode,
+		GSTRate:         &gstRate,
+		IsActive:        true,
 	}
 }
 
@@ -89,17 +105,18 @@ type ProductVariantResponse struct {
 	PackSize           string   `json:"pack_size"`
 	SKU                *string  `json:"sku"`
 	Barcode            *string  `json:"barcode"`
-	CollaboratorID     *string  `json:"collaborator_id,omitempty"`
+	CollaboratorIDs    []string `json:"collaborator_ids,omitempty"` // Multiple collaborators
 	BrandName          *string  `json:"brand_name,omitempty"`
 	HSNCode            *string  `json:"hsn_code,omitempty"`
-	GSTRate            *float64 `json:"gst_rate,omitempty"`
-	Images             []string `json:"images,omitempty"`     // S3 paths (for reference)
-	ImageURLs          []string `json:"image_urls,omitempty"` // Presigned URLs (valid for 1 hour)
-	DosageInstructions *string  `json:"dosage_instructions,omitempty"`
-	UsageDetails       *string  `json:"usage_details,omitempty"`
-	IsActive           bool     `json:"is_active"`
-	CreatedAt          string   `json:"created_at"`
-	UpdatedAt          string   `json:"updated_at"`
+	GSTRate            *float64       `json:"gst_rate,omitempty"`
+	Images             []string       `json:"images,omitempty"`     // S3 paths (for reference)
+	ImageURLs          []string       `json:"image_urls,omitempty"` // Presigned URLs (valid for 1 hour)
+	DosageInstructions *string        `json:"dosage_instructions,omitempty"`
+	UsageDetails       *string        `json:"usage_details,omitempty"`
+	Prices             []VariantPrice `json:"prices"` // Always included in response
+	IsActive           bool           `json:"is_active"`
+	CreatedAt          string         `json:"created_at"`
+	UpdatedAt          string         `json:"updated_at"`
 }
 
 // CreateProductVariantRequest represents the request to create a product variant
@@ -110,13 +127,14 @@ type CreateProductVariantRequest struct {
 	PackSize           string   `json:"pack_size" binding:"required"`
 	SKU                *string  `json:"sku"`
 	Barcode            *string  `json:"barcode"`
-	CollaboratorID     *string  `json:"collaborator_id"`                            // Optional: for collaborator-specific variants
-	BrandName          *string  `json:"brand_name"`                                 // Required if collaborator_id provided
-	HSNCode            *string  `json:"hsn_code"`                                   // Required if collaborator_id provided
-	GSTRate            *float64 `json:"gst_rate" binding:"omitempty,min=0,max=100"` // Required if collaborator_id provided
-	Images             []string `json:"images"`
-	DosageInstructions *string  `json:"dosage_instructions"`
-	UsageDetails       *string  `json:"usage_details"`
+	CollaboratorIDs    []string `json:"collaborator_ids"`                           // Optional: multiple collaborators can supply same variant
+	BrandName          *string  `json:"brand_name"`                                 // Required if collaborator_ids provided
+	HSNCode            *string  `json:"hsn_code"`                                   // Required if collaborator_ids provided
+	GSTRate            *float64 `json:"gst_rate" binding:"omitempty,min=0,max=100"` // Required if collaborator_ids provided
+	Images             []string       `json:"images"`
+	DosageInstructions *string        `json:"dosage_instructions"`
+	UsageDetails       *string        `json:"usage_details"`
+	Prices             []VariantPrice `json:"prices"` // Optional: can create variant without prices
 }
 
 // UpdateProductVariantRequest represents the request to update a product variant
@@ -127,11 +145,13 @@ type UpdateProductVariantRequest struct {
 	PackSize           *string   `json:"pack_size,omitempty"`
 	SKU                *string   `json:"sku,omitempty"`
 	Barcode            *string   `json:"barcode,omitempty"`
+	CollaboratorIDs    *[]string `json:"collaborator_ids,omitempty"` // Optional: update collaborator associations
 	BrandName          *string   `json:"brand_name,omitempty"`
 	HSNCode            *string   `json:"hsn_code,omitempty"`
 	GSTRate            *float64  `json:"gst_rate,omitempty"`
-	Images             *[]string `json:"images,omitempty"`
-	DosageInstructions *string   `json:"dosage_instructions,omitempty"`
-	UsageDetails       *string   `json:"usage_details,omitempty"`
-	IsActive           *bool     `json:"is_active,omitempty"`
+	Images             *[]string       `json:"images,omitempty"`
+	DosageInstructions *string         `json:"dosage_instructions,omitempty"`
+	UsageDetails       *string         `json:"usage_details,omitempty"`
+	Prices             *[]VariantPrice `json:"prices,omitempty"` // Optional: update prices
+	IsActive           *bool           `json:"is_active,omitempty"`
 }

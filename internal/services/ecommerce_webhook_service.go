@@ -290,7 +290,7 @@ func (s *EcommerceWebhookService) findOrCreateVariant(
 	externalID := webhookVariant.ExternalID
 	variant.ExternalID = &externalID
 	variant.SKU = &webhookVariant.SKU
-	variant.CollaboratorID = &collaboratorID
+	variant.CollaboratorIDs = []string{collaboratorID} // Use array instead of pointer
 	variant.BrandName = webhookVariant.BrandName
 	variant.GSTRate = webhookVariant.GSTRate
 	variant.DosageInstructions = webhookVariant.DosageInstructions

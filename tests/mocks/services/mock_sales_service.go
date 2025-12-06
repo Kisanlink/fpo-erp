@@ -87,3 +87,27 @@ func (m *MockSalesService) CancelSale(saleID string, req *models.CancelSaleReque
 	}
 	return args.Get(0).(*models.CancelSaleResponse), args.Error(1)
 }
+
+func (m *MockSalesService) CancelItems(saleID string, req *models.CancelItemsRequest) (*models.CancelItemsResponse, error) {
+	args := m.Called(saleID, req)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.CancelItemsResponse), args.Error(1)
+}
+
+func (m *MockSalesService) GetCancellations(saleID string) (*models.GetCancellationsResponse, error) {
+	args := m.Called(saleID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.GetCancellationsResponse), args.Error(1)
+}
+
+func (m *MockSalesService) CompleteSale(saleID string, performedBy string) (*models.SaleResponse, error) {
+	args := m.Called(saleID, performedBy)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.SaleResponse), args.Error(1)
+}

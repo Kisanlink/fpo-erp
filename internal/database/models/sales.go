@@ -1,12 +1,49 @@
 package models
 
 import (
+	"fmt"
 	"kisanlink-erp/internal/constants"
 	"time"
 
 	"github.com/Kisanlink/kisanlink-db/pkg/base"
 	"github.com/Kisanlink/kisanlink-db/pkg/core/hash"
 )
+
+// Sale status constants
+const (
+	SaleStatusPending   = "pending"
+	SaleStatusCompleted = "completed"
+	SaleStatusCancelled = "cancelled"
+)
+
+// IsReservationStatus returns true if the status means inventory is reserved (not yet deducted)
+// Pending sales have inventory reserved; completed/cancelled sales have inventory deducted or released
+func IsReservationStatus(status string) bool {
+	return status == SaleStatusPending
+}
+
+// ValidStatusTransitions defines allowed status transitions for sales
+var ValidStatusTransitions = map[string][]string{
+	SaleStatusPending:   {SaleStatusCompleted, SaleStatusCancelled},
+	SaleStatusCompleted: {SaleStatusCancelled},
+	SaleStatusCancelled: {}, // Terminal state - no transitions allowed
+}
+
+// ValidateStatusTransition checks if a status transition is allowed
+func ValidateStatusTransition(fromStatus, toStatus string) error {
+	allowedTargets, exists := ValidStatusTransitions[fromStatus]
+	if !exists {
+		return fmt.Errorf("unknown current status: %s", fromStatus)
+	}
+
+	for _, allowed := range allowedTargets {
+		if toStatus == allowed {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("invalid status transition from '%s' to '%s'", fromStatus, toStatus)
+}
 
 // Sale represents a sale transaction
 type Sale struct {
@@ -252,7 +289,8 @@ type CreateSaleItemRequest struct {
 
 // UpdateSaleRequest represents the request to update a sale
 type UpdateSaleRequest struct {
-	Status *string `json:"status,omitempty"`
+	Status      *string `json:"status,omitempty"`
+	PerformedBy string  `json:"-"` // Set by handler from JWT context, not from request body
 }
 
 // UpdateSaleStatusRequest represents the request to update sale status
