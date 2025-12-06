@@ -155,6 +155,8 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 		discountRepo,
 		taxRepo,
 		refundPoliciesRepo,
+		purchaseOrderRepo,
+		grnRepo,
 		logger,
 	)
 

@@ -339,3 +339,268 @@ type SalesContextMetadata struct {
 	ConsistencyToken             string    `json:"consistency_token"`
 	ExpiresAt                    time.Time `json:"expires_at"`
 }
+
+// === Purchase Order Detail Response Types ===
+
+// PODetailRequest represents query parameters for PO detail aggregation
+type PODetailRequest struct {
+	Include string `form:"include"` // Comma-separated: collaborator,warehouse,items,grns,inventory,payments
+}
+
+// PODetailResponse represents the aggregated purchase order detail response
+type PODetailResponse struct {
+	PurchaseOrder POInfo            `json:"purchase_order"`
+	Collaborator  *CollaboratorInfo `json:"collaborator,omitempty"`
+	Warehouse     *WarehouseInfo    `json:"warehouse,omitempty"`
+	Items         []POItemDetail    `json:"items,omitempty"`
+	GRNs          []GRNDetail       `json:"grns,omitempty"`
+	Payments      []POPaymentDetail `json:"payments,omitempty"`
+	Summary       POSummary         `json:"summary"`
+	Timeline      []POTimelineEvent `json:"timeline,omitempty"`
+	Metadata      ResponseMetadata  `json:"metadata"`
+}
+
+// POInfo represents purchase order information
+type POInfo struct {
+	ID                   string  `json:"id"`
+	PONumber             string  `json:"po_number"`
+	CollaboratorID       string  `json:"collaborator_id"`
+	WarehouseID          string  `json:"warehouse_id"`
+	Status               string  `json:"status"`
+	OrderDate            string  `json:"order_date"`
+	ExpectedDeliveryDate string  `json:"expected_delivery_date"`
+	ActualDeliveryDate   *string `json:"actual_delivery_date,omitempty"`
+	TotalAmount          float64 `json:"total_amount"`
+	PaidAmount           float64 `json:"paid_amount"`
+	PendingAmount        float64 `json:"pending_amount"`
+	PaymentStatus        string  `json:"payment_status"`
+	Currency             string  `json:"currency"`
+	ExternalOrderID      *string `json:"external_order_id,omitempty"`
+	CreatedAt            string  `json:"created_at"`
+	UpdatedAt            string  `json:"updated_at"`
+}
+
+// POItemDetail represents a purchase order item with variant and product info
+type POItemDetail struct {
+	ID               string              `json:"id"`
+	VariantID        string              `json:"variant_id"`
+	Variant          *VariantInfoForPO   `json:"variant,omitempty"`
+	Product          *ProductBasicInfo   `json:"product,omitempty"`
+	OrderedQuantity  int64               `json:"ordered_quantity"`
+	ReceivedQuantity int64               `json:"received_quantity"`
+	PendingQuantity  int64               `json:"pending_quantity"`
+	UnitCost         float64             `json:"unit_cost"`
+	TotalCost        float64             `json:"total_cost"`
+	ReceivedStatus   string              `json:"received_status"` // pending, partially_received, fully_received
+}
+
+// VariantInfoForPO represents variant info for purchase order context
+type VariantInfoForPO struct {
+	ID          string   `json:"id"`
+	VariantName string   `json:"variant_name"`
+	SKU         string   `json:"sku"`
+	BrandName   *string  `json:"brand_name,omitempty"`
+	Quantity    string   `json:"quantity"`
+	PackSize    *string  `json:"pack_size,omitempty"`
+	Images      []string `json:"images,omitempty"`
+}
+
+// GRNDetail represents a goods receipt note with items and inventory
+type GRNDetail struct {
+	ID               string               `json:"id"`
+	GRNNumber        string               `json:"grn_number"`
+	POID             string               `json:"purchase_order_id"`
+	ReceivedDate     string               `json:"received_date"`
+	Status           string               `json:"status"`
+	QualityStatus    string               `json:"quality_status"`
+	ReceivedBy       string               `json:"received_by"`
+	Remarks          *string              `json:"remarks,omitempty"`
+	Items            []GRNItemDetail      `json:"items,omitempty"`
+	InventoryCreated []InventoryCreated   `json:"inventory_created,omitempty"`
+}
+
+// GRNItemDetail represents a GRN item with quantities
+type GRNItemDetail struct {
+	POItemID         string  `json:"po_item_id"`
+	VariantID        string  `json:"variant_id"`
+	OrderedQuantity  int64   `json:"ordered_quantity"`
+	ReceivedQuantity int64   `json:"received_quantity"`
+	AcceptedQuantity int64   `json:"accepted_quantity"`
+	RejectedQuantity int64   `json:"rejected_quantity"`
+	UnitCost         float64 `json:"unit_cost"`
+	TotalCost        float64 `json:"total_cost"`
+	ExpiryDate       string  `json:"expiry_date"`
+	BatchNumber      *string `json:"batch_number,omitempty"`
+}
+
+// InventoryCreated represents inventory batch created from GRN
+type InventoryCreated struct {
+	BatchID           string  `json:"batch_id"`
+	VariantID         string  `json:"variant_id"`
+	WarehouseID       string  `json:"warehouse_id"`
+	Quantity          int64   `json:"quantity"`
+	CostPrice         float64 `json:"cost_price"`
+	ExpiryDate        string  `json:"expiry_date"`
+	ManufacturingDate *string `json:"manufacturing_date,omitempty"`
+	BatchNumber       *string `json:"batch_number,omitempty"`
+}
+
+// POPaymentDetail represents a payment for a purchase order
+type POPaymentDetail struct {
+	ID              string  `json:"id"`
+	POID            string  `json:"purchase_order_id"`
+	PaymentDate     string  `json:"payment_date"`
+	Amount          float64 `json:"amount"`
+	PaymentMethod   string  `json:"payment_method"`
+	ReferenceNumber *string `json:"reference_number,omitempty"`
+	Notes           *string `json:"notes,omitempty"`
+	Status          string  `json:"status"`
+	CreatedBy       string  `json:"created_by"`
+}
+
+// POSummary represents purchase order summary calculations
+type POSummary struct {
+	TotalOrderValue      float64 `json:"total_order_value"`
+	TotalReceivedValue   float64 `json:"total_received_value"`
+	TotalPendingValue    float64 `json:"total_pending_value"`
+	TotalRejectedValue   float64 `json:"total_rejected_value"`
+	CompletionPercentage float64 `json:"completion_percentage"`
+	TotalItemsOrdered    int64   `json:"total_items_ordered"`
+	TotalItemsReceived   int64   `json:"total_items_received"`
+	TotalItemsPending    int64   `json:"total_items_pending"`
+	PaymentStatus        string  `json:"payment_status"`
+	FulfillmentStatus    string  `json:"fulfillment_status"` // pending, partially_received, fully_received
+}
+
+// POTimelineEvent represents an event in the PO timeline
+type POTimelineEvent struct {
+	Timestamp   string  `json:"timestamp"`
+	Event       string  `json:"event"` // purchase_order_created, payment_received, grn_created, status_changed
+	Description string  `json:"description"`
+	Actor       *string `json:"actor,omitempty"`
+}
+
+// === Inventory List Response Types ===
+
+// InventoryListRequest represents query parameters for inventory list
+type InventoryListRequest struct {
+	WarehouseID       string `form:"warehouse_id"`
+	VariantID         string `form:"variant_id"`
+	ProductID         string `form:"product_id"`
+	Category          string `form:"category"`
+	InStockOnly       bool   `form:"in_stock_only"`
+	ExpiringSoon      bool   `form:"expiring_soon"`
+	LowStockThreshold *int64 `form:"low_stock_threshold"`
+	Include           string `form:"include"` // variant,product,warehouse,prices,taxes
+	SortBy            string `form:"sort_by"` // expiry_date, quantity, cost_price
+	SortOrder         string `form:"sort_order"` // asc, desc
+	Limit             int    `form:"limit"`
+	Offset            int    `form:"offset"`
+}
+
+// InventoryListResponse represents the aggregated inventory list response
+type InventoryListResponse struct {
+	Batches    []BatchWithContext   `json:"batches"`
+	Pagination InventoryPagination  `json:"pagination"`
+	Summary    InventorySummary     `json:"summary"`
+	Metadata   InventoryListMetadata `json:"metadata"`
+}
+
+// BatchWithContext represents an inventory batch with full context
+type BatchWithContext struct {
+	ID              string               `json:"id"`
+	Warehouse       *WarehouseBasicInfo  `json:"warehouse,omitempty"`
+	Variant         *VariantInfoForSales `json:"variant,omitempty"`
+	Product         *ProductInfoForSales `json:"product,omitempty"`
+	QuantityDetails QuantityDetails      `json:"quantity_details"`
+	Pricing         *BatchPricing        `json:"pricing,omitempty"`
+	BatchInfo       BatchDetails         `json:"batch_info"`
+	TaxConfig       *BatchTaxConfig      `json:"tax_config,omitempty"`
+	Metadata        BatchMetadata        `json:"metadata"`
+}
+
+// WarehouseBasicInfo represents minimal warehouse information
+type WarehouseBasicInfo struct {
+	ID       string                 `json:"id"`
+	Name     string                 `json:"name"`
+	Location *WarehouseLocationInfo `json:"location,omitempty"`
+}
+
+// WarehouseLocationInfo represents warehouse location
+type WarehouseLocationInfo struct {
+	City  *string `json:"city,omitempty"`
+	State *string `json:"state,omitempty"`
+}
+
+// QuantityDetails represents quantity breakdown for a batch
+type QuantityDetails struct {
+	TotalQuantity     int64 `json:"total_quantity"`
+	AvailableQuantity int64 `json:"available_quantity"`
+	ReservedQuantity  int64 `json:"reserved_quantity"`
+	SoldQuantity      int64 `json:"sold_quantity"`
+	InStock           bool  `json:"in_stock"`
+}
+
+// BatchPricing represents pricing information for a batch
+type BatchPricing struct {
+	CostPrice     float64                   `json:"cost_price"`
+	SellingPrices *BatchSellingPrices       `json:"selling_prices,omitempty"`
+	Margin        *BatchMargin              `json:"margin,omitempty"`
+	Currency      string                    `json:"currency"`
+}
+
+// BatchSellingPrices represents selling prices by type
+type BatchSellingPrices struct {
+	Retail    *float64 `json:"retail,omitempty"`
+	Wholesale *float64 `json:"wholesale,omitempty"`
+	Bulk      *float64 `json:"bulk,omitempty"`
+}
+
+// BatchMargin represents margin calculation
+type BatchMargin struct {
+	RetailMargin           float64 `json:"retail_margin"`
+	RetailMarginPercentage float64 `json:"retail_margin_percentage"`
+}
+
+// BatchDetails represents batch-specific information
+type BatchDetails struct {
+	BatchNumber       *string `json:"batch_number,omitempty"`
+	ManufacturingDate *string `json:"manufacturing_date,omitempty"`
+	ExpiryDate        string  `json:"expiry_date"`
+	DaysUntilExpiry   int     `json:"days_until_expiry"`
+	ExpiryStatus      string  `json:"expiry_status"` // good, warning, critical, expired
+}
+
+// BatchMetadata represents batch metadata
+type BatchMetadata struct {
+	CreatedAt string  `json:"created_at"`
+	UpdatedAt string  `json:"updated_at"`
+	CreatedBy *string `json:"created_by,omitempty"`
+}
+
+// InventoryPagination represents pagination info
+type InventoryPagination struct {
+	Total      int  `json:"total"`
+	Limit      int  `json:"limit"`
+	Offset     int  `json:"offset"`
+	HasMore    bool `json:"has_more"`
+	NextOffset *int `json:"next_offset,omitempty"`
+}
+
+// InventorySummary represents summary statistics
+type InventorySummary struct {
+	TotalBatches       int     `json:"total_batches"`
+	TotalProducts      int     `json:"total_products"`
+	TotalVariants      int     `json:"total_variants"`
+	TotalStockQuantity int64   `json:"total_stock_quantity"`
+	TotalStockValue    float64 `json:"total_stock_value"`
+	ExpiringSoonCount  int     `json:"expiring_soon_count"`
+	LowStockCount      int     `json:"low_stock_count"`
+	ZeroStockCount     int     `json:"zero_stock_count"`
+}
+
+// InventoryListMetadata represents metadata for inventory list
+type InventoryListMetadata struct {
+	ReadTimestamp  string                 `json:"read_timestamp"`
+	FiltersApplied map[string]interface{} `json:"filters_applied,omitempty"`
+}

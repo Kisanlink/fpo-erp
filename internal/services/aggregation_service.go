@@ -25,6 +25,8 @@ type AggregationService struct {
 	discountRepo        *repositories.DiscountsRepository
 	taxRepo             *repositories.TaxRepository
 	refundPoliciesRepo  *repositories.RefundPoliciesRepository
+	purchaseOrderRepo   *repositories.PurchaseOrderRepository
+	grnRepo             *repositories.GRNRepository
 	logger              interfaces.Logger
 }
 
@@ -38,6 +40,8 @@ func NewAggregationService(
 	discountRepo *repositories.DiscountsRepository,
 	taxRepo *repositories.TaxRepository,
 	refundPoliciesRepo *repositories.RefundPoliciesRepository,
+	purchaseOrderRepo *repositories.PurchaseOrderRepository,
+	grnRepo *repositories.GRNRepository,
 	logger interfaces.Logger,
 ) *AggregationService {
 	return &AggregationService{
@@ -49,6 +53,8 @@ func NewAggregationService(
 		discountRepo:        discountRepo,
 		taxRepo:             taxRepo,
 		refundPoliciesRepo:  refundPoliciesRepo,
+		purchaseOrderRepo:   purchaseOrderRepo,
+		grnRepo:             grnRepo,
 		logger:              logger,
 	}
 }
@@ -723,4 +729,822 @@ func (s *AggregationService) generateConsistencyToken(data interface{}) string {
 
 	hash := sha256.Sum256(jsonData)
 	return "CT_" + hex.EncodeToString(hash[:8])
+}
+
+// ParsePOIncludeOptions parses the include query parameter for PO detail
+func ParsePOIncludeOptions(includeParam string) map[string]bool {
+	options := map[string]bool{
+		"collaborator": false,
+		"warehouse":    false,
+		"items":        false,
+		"grns":         false,
+		"inventory":    false,
+		"payments":     false,
+		"timeline":     false,
+	}
+
+	if includeParam == "" || includeParam == "all" || includeParam == "*" {
+		for k := range options {
+			options[k] = true
+		}
+		return options
+	}
+
+	if includeParam == "none" {
+		return options
+	}
+
+	includes := strings.Split(includeParam, ",")
+	for _, include := range includes {
+		key := strings.TrimSpace(strings.ToLower(include))
+		if _, exists := options[key]; exists {
+			options[key] = true
+		}
+	}
+
+	return options
+}
+
+// GetPODetail returns aggregated purchase order details
+func (s *AggregationService) GetPODetail(poID string, req *models.PODetailRequest) (*models.PODetailResponse, error) {
+	s.logger.Info("Getting aggregated PO detail",
+		zap.String("po_id", poID),
+		zap.String("include", req.Include))
+
+	// Parse include options
+	includes := ParsePOIncludeOptions(req.Include)
+
+	// Get purchase order with items
+	po, err := s.purchaseOrderRepo.GetByIDWithItems(poID)
+	if err != nil {
+		s.logger.Error("Purchase order not found", zap.String("po_id", poID), zap.Error(err))
+		return nil, errors.NewNotFoundError("Purchase order not found")
+	}
+
+	// Build basic PO info
+	actualDelivery := (*string)(nil)
+	if po.ActualDelivery != nil {
+		ad := po.ActualDelivery.Format("2006-01-02")
+		actualDelivery = &ad
+	}
+
+	externalOrderID := (*string)(nil)
+	if po.ExternalOrderID != nil {
+		externalOrderID = po.ExternalOrderID
+	}
+
+	pendingAmount := po.TotalAmount - po.PaidAmount
+	if pendingAmount < 0 {
+		pendingAmount = 0
+	}
+
+	response := &models.PODetailResponse{
+		PurchaseOrder: models.POInfo{
+			ID:                   po.ID,
+			PONumber:             po.PONumber,
+			CollaboratorID:       po.CollaboratorID,
+			WarehouseID:          po.WarehouseID,
+			Status:               po.Status,
+			OrderDate:            po.OrderDate.Format("2006-01-02"),
+			ExpectedDeliveryDate: po.ExpectedDelivery.Format("2006-01-02"),
+			ActualDeliveryDate:   actualDelivery,
+			TotalAmount:          po.TotalAmount,
+			PaidAmount:           po.PaidAmount,
+			PendingAmount:        pendingAmount,
+			PaymentStatus:        po.PaymentStatus,
+			Currency:             "INR",
+			ExternalOrderID:      externalOrderID,
+			CreatedAt:            po.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:            po.UpdatedAt.Format(time.RFC3339),
+		},
+		Metadata: models.ResponseMetadata{
+			ReadTimestamp: time.Now().Format(time.RFC3339),
+		},
+	}
+
+	// Get collaborator info if requested
+	if includes["collaborator"] {
+		collaborator, err := s.collaboratorRepo.GetByID(po.CollaboratorID)
+		if err == nil {
+			isActive := false
+			if collaborator.IsActive != nil {
+				isActive = *collaborator.IsActive
+			}
+			response.Collaborator = &models.CollaboratorInfo{
+				ID:            collaborator.ID,
+				CompanyName:   collaborator.CompanyName,
+				ContactPerson: &collaborator.ContactPerson,
+				Phone:         &collaborator.ContactNumber,
+				Email:         collaborator.Email,
+				IsActive:      isActive,
+			}
+		}
+	}
+
+	// Get warehouse info if requested
+	if includes["warehouse"] {
+		warehouse, err := s.warehouseRepo.GetByID(po.WarehouseID)
+		if err == nil {
+			response.Warehouse = &models.WarehouseInfo{
+				ID:       warehouse.ID,
+				Name:     warehouse.Name,
+				IsActive: true,
+			}
+		}
+	}
+
+	// Get items if requested
+	var totalOrderedQty int64
+	var totalReceivedQty int64
+	var totalPendingQty int64
+	var totalOrderValue float64
+	var totalReceivedValue float64
+	var totalRejectedValue float64
+
+	if includes["items"] {
+		for _, item := range po.Items {
+			receivedQty := int64(0)
+			if item.ReceivedQuantity != nil {
+				receivedQty = *item.ReceivedQuantity
+			}
+			pendingQty := item.Quantity - receivedQty
+			if pendingQty < 0 {
+				pendingQty = 0
+			}
+
+			// Determine received status
+			receivedStatus := "pending"
+			if receivedQty >= item.Quantity {
+				receivedStatus = "fully_received"
+			} else if receivedQty > 0 {
+				receivedStatus = "partially_received"
+			}
+
+			itemDetail := models.POItemDetail{
+				ID:               item.ID,
+				VariantID:        item.VariantID,
+				OrderedQuantity:  item.Quantity,
+				ReceivedQuantity: receivedQty,
+				PendingQuantity:  pendingQty,
+				UnitCost:         item.UnitPrice,
+				TotalCost:        item.LineTotal,
+				ReceivedStatus:   receivedStatus,
+			}
+
+			// Get variant info
+			variant, err := s.variantRepo.GetByID(item.VariantID)
+			if err == nil {
+				variantInfo := &models.VariantInfoForPO{
+					ID:          variant.ID,
+					VariantName: variant.VariantName,
+					Quantity:    variant.Quantity,
+					PackSize:    &variant.PackSize,
+					BrandName:   variant.BrandName,
+				}
+				if variant.SKU != nil {
+					variantInfo.SKU = *variant.SKU
+				}
+
+				// Parse images from JSON
+				if variant.Images != nil {
+					var images []string
+					if err := json.Unmarshal([]byte(*variant.Images), &images); err == nil {
+						variantInfo.Images = images
+					}
+				}
+
+				itemDetail.Variant = variantInfo
+
+				// Get product info
+				product, err := s.productRepo.GetByID(variant.ProductID)
+				if err == nil {
+					itemDetail.Product = &models.ProductBasicInfo{
+						ID:   product.ID,
+						Name: product.Name,
+					}
+				}
+			}
+
+			response.Items = append(response.Items, itemDetail)
+
+			// Update totals
+			totalOrderedQty += item.Quantity
+			totalReceivedQty += receivedQty
+			totalPendingQty += pendingQty
+			totalOrderValue += item.LineTotal
+			totalReceivedValue += float64(receivedQty) * item.UnitPrice
+		}
+	} else {
+		// Still calculate totals even if items not included
+		for _, item := range po.Items {
+			receivedQty := int64(0)
+			if item.ReceivedQuantity != nil {
+				receivedQty = *item.ReceivedQuantity
+			}
+			pendingQty := item.Quantity - receivedQty
+			if pendingQty < 0 {
+				pendingQty = 0
+			}
+
+			totalOrderedQty += item.Quantity
+			totalReceivedQty += receivedQty
+			totalPendingQty += pendingQty
+			totalOrderValue += item.LineTotal
+			totalReceivedValue += float64(receivedQty) * item.UnitPrice
+		}
+	}
+
+	// Get GRNs if requested
+	if includes["grns"] {
+		grn, err := s.grnRepo.GetByPurchaseOrder(poID)
+		if err == nil {
+			grnDetail := models.GRNDetail{
+				ID:            grn.ID,
+				GRNNumber:     grn.GRNNumber,
+				POID:          grn.POID,
+				ReceivedDate:  grn.ReceivedDate.Format(time.RFC3339),
+				Status:        "completed",
+				QualityStatus: grn.QualityStatus,
+				ReceivedBy:    grn.ReceivedBy,
+				Remarks:       grn.Remarks,
+			}
+
+			// Get GRN with items for detailed information
+			grnWithItems, err := s.grnRepo.GetByIDWithItems(grn.ID)
+			if err == nil {
+				for _, item := range grnWithItems.Items {
+					grnItemDetail := models.GRNItemDetail{
+						POItemID:         item.POItemID,
+						VariantID:        item.VariantID,
+						OrderedQuantity:  item.OrderedQuantity,
+						ReceivedQuantity: item.ReceivedQuantity,
+						AcceptedQuantity: item.AcceptedQuantity,
+						RejectedQuantity: item.RejectedQuantity,
+						UnitCost:         0, // Need to get from PO item
+						TotalCost:        0,
+						ExpiryDate:       item.ExpiryDate.Format("2006-01-02"),
+						BatchNumber:      item.BatchNumber,
+					}
+
+					// Get unit cost from PO item
+					for _, poItem := range po.Items {
+						if poItem.ID == item.POItemID {
+							grnItemDetail.UnitCost = poItem.UnitPrice
+							grnItemDetail.TotalCost = float64(item.AcceptedQuantity) * poItem.UnitPrice
+							break
+						}
+					}
+
+					// Calculate rejected value
+					totalRejectedValue += float64(item.RejectedQuantity) * grnItemDetail.UnitCost
+
+					grnDetail.Items = append(grnDetail.Items, grnItemDetail)
+
+					// Include inventory created if requested
+					if includes["inventory"] && item.InventoryBatchID != nil {
+						batch, err := s.inventoryRepo.GetBatchByID(*item.InventoryBatchID)
+						if err == nil {
+							invCreated := models.InventoryCreated{
+								BatchID:     batch.ID,
+								VariantID:   batch.VariantID,
+								WarehouseID: batch.WarehouseID,
+								Quantity:    batch.TotalQuantity,
+								CostPrice:   batch.CostPrice,
+								ExpiryDate:  batch.ExpiryDate.Format("2006-01-02"),
+								BatchNumber: item.BatchNumber,
+							}
+							grnDetail.InventoryCreated = append(grnDetail.InventoryCreated, invCreated)
+						}
+					}
+				}
+			}
+
+			response.GRNs = append(response.GRNs, grnDetail)
+		}
+	} else {
+		// Still calculate rejected value from GRN
+		rejectedAmount, err := s.grnRepo.GetTotalRejectedAmountByPO(poID)
+		if err == nil {
+			totalRejectedValue = rejectedAmount
+		}
+	}
+
+	// Calculate summary
+	completionPercentage := float64(0)
+	if totalOrderedQty > 0 {
+		completionPercentage = (float64(totalReceivedQty) / float64(totalOrderedQty)) * 100
+	}
+
+	fulfillmentStatus := "pending"
+	if totalReceivedQty >= totalOrderedQty {
+		fulfillmentStatus = "fully_received"
+	} else if totalReceivedQty > 0 {
+		fulfillmentStatus = "partially_received"
+	}
+
+	response.Summary = models.POSummary{
+		TotalOrderValue:      totalOrderValue,
+		TotalReceivedValue:   totalReceivedValue,
+		TotalPendingValue:    totalOrderValue - totalReceivedValue,
+		TotalRejectedValue:   totalRejectedValue,
+		CompletionPercentage: completionPercentage,
+		TotalItemsOrdered:    totalOrderedQty,
+		TotalItemsReceived:   totalReceivedQty,
+		TotalItemsPending:    totalPendingQty,
+		PaymentStatus:        po.PaymentStatus,
+		FulfillmentStatus:    fulfillmentStatus,
+	}
+
+	// Build timeline if requested
+	if includes["timeline"] {
+		response.Timeline = s.buildPOTimeline(po, response.GRNs)
+	}
+
+	// Generate consistency token
+	response.Metadata.ConsistencyToken = s.generateConsistencyToken(response)
+
+	return response, nil
+}
+
+// ParseInventoryIncludeOptions parses the include query parameter for inventory list
+func ParseInventoryIncludeOptions(includeParam string) map[string]bool {
+	options := map[string]bool{
+		"variant":   false,
+		"product":   false,
+		"warehouse": false,
+		"prices":    false,
+		"taxes":     false,
+	}
+
+	if includeParam == "" || includeParam == "all" || includeParam == "*" {
+		for k := range options {
+			options[k] = true
+		}
+		return options
+	}
+
+	if includeParam == "none" {
+		return options
+	}
+
+	includes := strings.Split(includeParam, ",")
+	for _, include := range includes {
+		key := strings.TrimSpace(strings.ToLower(include))
+		if _, exists := options[key]; exists {
+			options[key] = true
+		}
+	}
+
+	return options
+}
+
+// GetInventoryList returns a paginated list of inventory batches with full context
+func (s *AggregationService) GetInventoryList(req *models.InventoryListRequest) (*models.InventoryListResponse, error) {
+	s.logger.Info("Getting inventory list",
+		zap.String("warehouse_id", req.WarehouseID),
+		zap.String("variant_id", req.VariantID),
+		zap.String("product_id", req.ProductID),
+		zap.Bool("in_stock_only", req.InStockOnly),
+		zap.Bool("expiring_soon", req.ExpiringSoon))
+
+	// Parse include options
+	includes := ParseInventoryIncludeOptions(req.Include)
+
+	// Set default pagination values
+	limit := req.Limit
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	offset := req.Offset
+	if offset < 0 {
+		offset = 0
+	}
+
+	// Get all batches first, then filter and paginate
+	var allBatches []models.InventoryBatch
+	var err error
+
+	if req.WarehouseID != "" {
+		allBatches, err = s.inventoryRepo.GetBatchesByWarehouse(req.WarehouseID)
+	} else if req.VariantID != "" {
+		allBatches, err = s.inventoryRepo.GetBatchesByVariant(req.VariantID)
+	} else {
+		allBatches, err = s.inventoryRepo.GetAllBatches()
+	}
+
+	if err != nil {
+		s.logger.Error("Failed to get inventory batches", zap.Error(err))
+		return nil, errors.NewInternalServerError("Failed to retrieve inventory batches")
+	}
+
+	// Apply filters
+	var filteredBatches []models.InventoryBatch
+	productIDs := make(map[string]bool)
+	variantIDs := make(map[string]bool)
+	now := time.Now()
+	expiringSoonDays := 30 // Define "expiring soon" as within 30 days
+
+	for _, batch := range allBatches {
+		// Filter by variant_id if provided and not already filtered
+		if req.VariantID != "" && req.WarehouseID != "" && batch.VariantID != req.VariantID {
+			continue
+		}
+
+		// Filter by product_id
+		if req.ProductID != "" {
+			variant, err := s.variantRepo.GetByID(batch.VariantID)
+			if err != nil || variant.ProductID != req.ProductID {
+				continue
+			}
+		}
+
+		// Filter by in_stock_only
+		if req.InStockOnly && batch.AvailableQuantity() <= 0 {
+			continue
+		}
+
+		// Filter by expiring_soon
+		if req.ExpiringSoon {
+			daysUntilExpiry := int(batch.ExpiryDate.Sub(now).Hours() / 24)
+			if daysUntilExpiry > expiringSoonDays {
+				continue
+			}
+		}
+
+		filteredBatches = append(filteredBatches, batch)
+		variantIDs[batch.VariantID] = true
+	}
+
+	// Sort batches
+	sortBatches(filteredBatches, req.SortBy, req.SortOrder)
+
+	// Calculate summary before pagination
+	summary := models.InventorySummary{
+		TotalBatches:       len(filteredBatches),
+		TotalProducts:      0,
+		TotalVariants:      len(variantIDs),
+		TotalStockQuantity: 0,
+		TotalStockValue:    0,
+		ExpiringSoonCount:  0,
+		LowStockCount:      0,
+		ZeroStockCount:     0,
+	}
+
+	for _, batch := range filteredBatches {
+		summary.TotalStockQuantity += batch.TotalQuantity
+		summary.TotalStockValue += batch.CostPrice * float64(batch.TotalQuantity)
+
+		daysUntilExpiry := int(batch.ExpiryDate.Sub(now).Hours() / 24)
+		if daysUntilExpiry <= expiringSoonDays && daysUntilExpiry > 0 {
+			summary.ExpiringSoonCount++
+		}
+
+		if batch.AvailableQuantity() <= 0 {
+			summary.ZeroStockCount++
+		} else if req.LowStockThreshold != nil && batch.AvailableQuantity() <= *req.LowStockThreshold {
+			summary.LowStockCount++
+		}
+	}
+
+	// Count unique products
+	for variantID := range variantIDs {
+		variant, err := s.variantRepo.GetByID(variantID)
+		if err == nil {
+			productIDs[variant.ProductID] = true
+		}
+	}
+	summary.TotalProducts = len(productIDs)
+
+	// Apply pagination
+	total := len(filteredBatches)
+	if offset >= total {
+		filteredBatches = []models.InventoryBatch{}
+	} else {
+		end := offset + limit
+		if end > total {
+			end = total
+		}
+		filteredBatches = filteredBatches[offset:end]
+	}
+
+	// Build response
+	var batchesWithContext []models.BatchWithContext
+	for _, batch := range filteredBatches {
+		batchContext := s.buildBatchContext(&batch, includes, now, expiringSoonDays)
+		batchesWithContext = append(batchesWithContext, batchContext)
+	}
+
+	// Build pagination info
+	hasMore := offset+limit < total
+	var nextOffset *int
+	if hasMore {
+		next := offset + limit
+		nextOffset = &next
+	}
+
+	pagination := models.InventoryPagination{
+		Total:      total,
+		Limit:      limit,
+		Offset:     offset,
+		HasMore:    hasMore,
+		NextOffset: nextOffset,
+	}
+
+	// Build filters applied map
+	filtersApplied := make(map[string]interface{})
+	if req.WarehouseID != "" {
+		filtersApplied["warehouse_id"] = req.WarehouseID
+	}
+	if req.VariantID != "" {
+		filtersApplied["variant_id"] = req.VariantID
+	}
+	if req.ProductID != "" {
+		filtersApplied["product_id"] = req.ProductID
+	}
+	if req.InStockOnly {
+		filtersApplied["in_stock_only"] = true
+	}
+	if req.ExpiringSoon {
+		filtersApplied["expiring_soon"] = true
+	}
+	if req.LowStockThreshold != nil {
+		filtersApplied["low_stock_threshold"] = *req.LowStockThreshold
+	}
+	if req.SortBy != "" {
+		filtersApplied["sort_by"] = req.SortBy
+	}
+	if req.SortOrder != "" {
+		filtersApplied["sort_order"] = req.SortOrder
+	}
+
+	response := &models.InventoryListResponse{
+		Batches:    batchesWithContext,
+		Pagination: pagination,
+		Summary:    summary,
+		Metadata: models.InventoryListMetadata{
+			ReadTimestamp:  time.Now().Format(time.RFC3339),
+			FiltersApplied: filtersApplied,
+		},
+	}
+
+	return response, nil
+}
+
+// buildBatchContext builds a batch with full context
+func (s *AggregationService) buildBatchContext(batch *models.InventoryBatch, includes map[string]bool, now time.Time, expiringSoonDays int) models.BatchWithContext {
+	daysUntilExpiry := int(batch.ExpiryDate.Sub(now).Hours() / 24)
+
+	// Calculate expiry status
+	expiryStatus := "good"
+	if daysUntilExpiry <= 0 {
+		expiryStatus = "expired"
+	} else if daysUntilExpiry <= 7 {
+		expiryStatus = "critical"
+	} else if daysUntilExpiry <= expiringSoonDays {
+		expiryStatus = "warning"
+	}
+
+	batchContext := models.BatchWithContext{
+		ID: batch.ID,
+		QuantityDetails: models.QuantityDetails{
+			TotalQuantity:     batch.TotalQuantity,
+			AvailableQuantity: batch.AvailableQuantity(),
+			ReservedQuantity:  batch.ReservedQuantity,
+			SoldQuantity:      0, // Would need transaction history
+			InStock:           batch.AvailableQuantity() > 0,
+		},
+		BatchInfo: models.BatchDetails{
+			BatchNumber:     nil, // Batch number is in GRN, not in InventoryBatch
+			ExpiryDate:      batch.ExpiryDate.Format("2006-01-02"),
+			DaysUntilExpiry: daysUntilExpiry,
+			ExpiryStatus:    expiryStatus,
+		},
+		Metadata: models.BatchMetadata{
+			CreatedAt: batch.CreatedAt.Format(time.RFC3339),
+			UpdatedAt: batch.UpdatedAt.Format(time.RFC3339),
+		},
+	}
+
+	// Include warehouse if requested
+	if includes["warehouse"] {
+		warehouse, err := s.warehouseRepo.GetByID(batch.WarehouseID)
+		if err == nil {
+			batchContext.Warehouse = &models.WarehouseBasicInfo{
+				ID:   warehouse.ID,
+				Name: warehouse.Name,
+			}
+		}
+	}
+
+	// Include variant if requested
+	if includes["variant"] {
+		variant, err := s.variantRepo.GetByID(batch.VariantID)
+		if err == nil {
+			variantInfo := &models.VariantInfoForSales{
+				ID:          variant.ID,
+				VariantName: variant.VariantName,
+				Quantity:    variant.Quantity,
+				PackSize:    &variant.PackSize,
+				BrandName:   variant.BrandName,
+				HSNCode:     variant.HSNCode,
+				IsActive:    variant.IsActive,
+			}
+			if variant.SKU != nil {
+				variantInfo.SKU = *variant.SKU
+			}
+			variantInfo.Barcode = variant.Barcode
+
+			// Parse images
+			if variant.Images != nil {
+				var images []string
+				if err := json.Unmarshal([]byte(*variant.Images), &images); err == nil {
+					variantInfo.Images = images
+				}
+			}
+
+			batchContext.Variant = variantInfo
+
+			// Include product if requested
+			if includes["product"] {
+				product, err := s.productRepo.GetByID(variant.ProductID)
+				if err == nil {
+					batchContext.Product = &models.ProductInfoForSales{
+						ID:          product.ID,
+						Name:        product.Name,
+						Description: product.Description,
+					}
+				}
+			}
+
+			// Include prices if requested
+			if includes["prices"] && len(variant.Prices) > 0 {
+				sellingPrices := &models.BatchSellingPrices{}
+				for _, p := range variant.Prices {
+					pType := strings.ToLower(p.PriceType)
+					switch pType {
+					case "retail", "mrp":
+						sellingPrices.Retail = &p.Price
+					case "wholesale", "msp":
+						sellingPrices.Wholesale = &p.Price
+					case "bulk":
+						sellingPrices.Bulk = &p.Price
+					}
+				}
+
+				pricing := &models.BatchPricing{
+					CostPrice:     batch.CostPrice,
+					SellingPrices: sellingPrices,
+					Currency:      "INR",
+				}
+
+				// Calculate margin if retail price available
+				if sellingPrices.Retail != nil {
+					marginAmount := *sellingPrices.Retail - batch.CostPrice
+					marginPercentage := float64(0)
+					if batch.CostPrice > 0 {
+						marginPercentage = (marginAmount / batch.CostPrice) * 100
+					}
+					pricing.Margin = &models.BatchMargin{
+						RetailMargin:           marginAmount,
+						RetailMarginPercentage: marginPercentage,
+					}
+				}
+
+				batchContext.Pricing = pricing
+			}
+		}
+	}
+
+	// Include tax config if requested
+	if includes["taxes"] {
+		batchContext.TaxConfig = &models.BatchTaxConfig{
+			CGSTRate:     batch.CGSTRate,
+			SGSTRate:     batch.SGSTRate,
+			TotalGSTRate: batch.CGSTRate + batch.SGSTRate,
+			IsTaxExempt:  batch.IsTaxExempt,
+			CustomTaxes:  batch.CustomTaxIDs,
+		}
+	}
+
+	return batchContext
+}
+
+// sortBatches sorts the batches by the specified field
+func sortBatches(batches []models.InventoryBatch, sortBy, sortOrder string) {
+	if sortBy == "" {
+		sortBy = "expiry_date"
+	}
+	if sortOrder == "" {
+		sortOrder = "asc"
+	}
+
+	ascending := sortOrder != "desc"
+
+	switch sortBy {
+	case "expiry_date":
+		for i := 0; i < len(batches)-1; i++ {
+			for j := i + 1; j < len(batches); j++ {
+				if ascending {
+					if batches[j].ExpiryDate.Before(batches[i].ExpiryDate) {
+						batches[i], batches[j] = batches[j], batches[i]
+					}
+				} else {
+					if batches[j].ExpiryDate.After(batches[i].ExpiryDate) {
+						batches[i], batches[j] = batches[j], batches[i]
+					}
+				}
+			}
+		}
+	case "quantity":
+		for i := 0; i < len(batches)-1; i++ {
+			for j := i + 1; j < len(batches); j++ {
+				if ascending {
+					if batches[j].TotalQuantity < batches[i].TotalQuantity {
+						batches[i], batches[j] = batches[j], batches[i]
+					}
+				} else {
+					if batches[j].TotalQuantity > batches[i].TotalQuantity {
+						batches[i], batches[j] = batches[j], batches[i]
+					}
+				}
+			}
+		}
+	case "cost_price":
+		for i := 0; i < len(batches)-1; i++ {
+			for j := i + 1; j < len(batches); j++ {
+				if ascending {
+					if batches[j].CostPrice < batches[i].CostPrice {
+						batches[i], batches[j] = batches[j], batches[i]
+					}
+				} else {
+					if batches[j].CostPrice > batches[i].CostPrice {
+						batches[i], batches[j] = batches[j], batches[i]
+					}
+				}
+			}
+		}
+	}
+}
+
+// buildPOTimeline builds the timeline events for a purchase order
+func (s *AggregationService) buildPOTimeline(po *models.PurchaseOrder, grns []models.GRNDetail) []models.POTimelineEvent {
+	var timeline []models.POTimelineEvent
+
+	// PO created event
+	timeline = append(timeline, models.POTimelineEvent{
+		Timestamp:   po.CreatedAt.Format(time.RFC3339),
+		Event:       "purchase_order_created",
+		Description: "Purchase order " + po.PONumber + " was created",
+	})
+
+	// Status change events based on current status
+	statusEvents := map[string]string{
+		"confirmed":        "Purchase order was confirmed by the vendor",
+		"out_for_delivery": "Order is out for delivery",
+		"delivered":        "Order has been delivered",
+		"verified":         "Order has been verified",
+		"paid":             "Order payment completed",
+	}
+
+	statusOrder := []string{"confirmed", "out_for_delivery", "delivered", "verified", "paid"}
+	currentStatusIndex := -1
+	for i, s := range statusOrder {
+		if s == po.Status {
+			currentStatusIndex = i
+			break
+		}
+	}
+
+	// Add status events up to current status
+	for i := 0; i <= currentStatusIndex; i++ {
+		status := statusOrder[i]
+		if desc, ok := statusEvents[status]; ok {
+			timeline = append(timeline, models.POTimelineEvent{
+				Timestamp:   po.UpdatedAt.Format(time.RFC3339), // Approximate
+				Event:       "status_changed",
+				Description: desc,
+			})
+		}
+	}
+
+	// GRN created events
+	for _, grn := range grns {
+		timeline = append(timeline, models.POTimelineEvent{
+			Timestamp:   grn.ReceivedDate,
+			Event:       "grn_created",
+			Description: "Goods Receipt Note " + grn.GRNNumber + " was created",
+			Actor:       &grn.ReceivedBy,
+		})
+	}
+
+	// Payment events if paid
+	if po.PaidAmount > 0 {
+		timeline = append(timeline, models.POTimelineEvent{
+			Timestamp:   po.UpdatedAt.Format(time.RFC3339),
+			Event:       "payment_received",
+			Description: "Payment was recorded",
+		})
+	}
+
+	return timeline
 }

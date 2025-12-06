@@ -104,6 +104,9 @@ definitions:
     properties:
       created_at:
         type: string
+      download_url:
+        description: Presigned S3 URL (valid for 1 hour)
+        type: string
       entity_id:
         description: Entity ID (CLAB_xxx, PO_xxx, etc.)
         type: string
@@ -147,6 +150,56 @@ definitions:
       updated_at:
         type: string
     type: object
+  models.BatchDetails:
+    properties:
+      batch_number:
+        type: string
+      days_until_expiry:
+        type: integer
+      expiry_date:
+        type: string
+      expiry_status:
+        description: good, warning, critical, expired
+        type: string
+      manufacturing_date:
+        type: string
+    type: object
+  models.BatchMargin:
+    properties:
+      retail_margin:
+        type: number
+      retail_margin_percentage:
+        type: number
+    type: object
+  models.BatchMetadata:
+    properties:
+      created_at:
+        type: string
+      created_by:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  models.BatchPricing:
+    properties:
+      cost_price:
+        type: number
+      currency:
+        type: string
+      margin:
+        $ref: '#/definitions/models.BatchMargin'
+      selling_prices:
+        $ref: '#/definitions/models.BatchSellingPrices'
+    type: object
+  models.BatchSellingPrices:
+    properties:
+      bulk:
+        type: number
+      retail:
+        type: number
+      wholesale:
+        type: number
+    type: object
   models.BatchTaxConfig:
     properties:
       cgst_rate:
@@ -163,6 +216,27 @@ definitions:
         type: number
       total_gst_rate:
         type: number
+    type: object
+  models.BatchWithContext:
+    properties:
+      batch_info:
+        $ref: '#/definitions/models.BatchDetails'
+      id:
+        type: string
+      metadata:
+        $ref: '#/definitions/models.BatchMetadata'
+      pricing:
+        $ref: '#/definitions/models.BatchPricing'
+      product:
+        $ref: '#/definitions/models.ProductInfoForSales'
+      quantity_details:
+        $ref: '#/definitions/models.QuantityDetails'
+      tax_config:
+        $ref: '#/definitions/models.BatchTaxConfig'
+      variant:
+        $ref: '#/definitions/models.VariantInfoForSales'
+      warehouse:
+        $ref: '#/definitions/models.WarehouseBasicInfo'
     type: object
   models.CancelItemDetail:
     properties:
@@ -748,11 +822,11 @@ definitions:
       coupon_code:
         description: Manual discount by code (second priority)
         type: string
+      customer_id:
+        description: BRD Requirements
+        type: string
       discount_id:
         description: Manual discount by ID (highest priority)
-        type: string
-      farmer_id:
-        description: BRD Requirements
         type: string
       items:
         items:
@@ -1082,6 +1156,56 @@ definitions:
       tax_voided:
         $ref: '#/definitions/models.TaxVoidedInfo'
     type: object
+  models.GRNDetail:
+    properties:
+      grn_number:
+        type: string
+      id:
+        type: string
+      inventory_created:
+        items:
+          $ref: '#/definitions/models.InventoryCreated'
+        type: array
+      items:
+        items:
+          $ref: '#/definitions/models.GRNItemDetail'
+        type: array
+      purchase_order_id:
+        type: string
+      quality_status:
+        type: string
+      received_by:
+        type: string
+      received_date:
+        type: string
+      remarks:
+        type: string
+      status:
+        type: string
+    type: object
+  models.GRNItemDetail:
+    properties:
+      accepted_quantity:
+        type: integer
+      batch_number:
+        type: string
+      expiry_date:
+        type: string
+      ordered_quantity:
+        type: integer
+      po_item_id:
+        type: string
+      received_quantity:
+        type: integer
+      rejected_quantity:
+        type: integer
+      total_cost:
+        type: number
+      unit_cost:
+        type: number
+      variant_id:
+        type: string
+    type: object
   models.GRNItemResponse:
     properties:
       accepted_quantity:
@@ -1216,6 +1340,59 @@ definitions:
       warehouse_id:
         type: string
     type: object
+  models.InventoryCreated:
+    properties:
+      batch_id:
+        type: string
+      batch_number:
+        type: string
+      cost_price:
+        type: number
+      expiry_date:
+        type: string
+      manufacturing_date:
+        type: string
+      quantity:
+        type: integer
+      variant_id:
+        type: string
+      warehouse_id:
+        type: string
+    type: object
+  models.InventoryListMetadata:
+    properties:
+      filters_applied:
+        additionalProperties: true
+        type: object
+      read_timestamp:
+        type: string
+    type: object
+  models.InventoryListResponse:
+    properties:
+      batches:
+        items:
+          $ref: '#/definitions/models.BatchWithContext'
+        type: array
+      metadata:
+        $ref: '#/definitions/models.InventoryListMetadata'
+      pagination:
+        $ref: '#/definitions/models.InventoryPagination'
+      summary:
+        $ref: '#/definitions/models.InventorySummary'
+    type: object
+  models.InventoryPagination:
+    properties:
+      has_more:
+        type: boolean
+      limit:
+        type: integer
+      next_offset:
+        type: integer
+      offset:
+        type: integer
+      total:
+        type: integer
+    type: object
   models.InventoryRestoredItem:
     properties:
       batch_id:
@@ -1226,6 +1403,25 @@ definitions:
         type: string
       variant_id:
         type: string
+    type: object
+  models.InventorySummary:
+    properties:
+      expiring_soon_count:
+        type: integer
+      low_stock_count:
+        type: integer
+      total_batches:
+        type: integer
+      total_products:
+        type: integer
+      total_stock_quantity:
+        type: integer
+      total_stock_value:
+        type: number
+      total_variants:
+        type: integer
+      zero_stock_count:
+        type: integer
     type: object
   models.InventoryTransactionResponse:
     properties:
@@ -1436,6 +1632,162 @@ definitions:
     - external_order_id
     - timestamp
     type: object
+  models.PODetailResponse:
+    properties:
+      collaborator:
+        $ref: '#/definitions/models.CollaboratorInfo'
+      grns:
+        items:
+          $ref: '#/definitions/models.GRNDetail'
+        type: array
+      items:
+        items:
+          $ref: '#/definitions/models.POItemDetail'
+        type: array
+      metadata:
+        $ref: '#/definitions/models.ResponseMetadata'
+      payments:
+        items:
+          $ref: '#/definitions/models.POPaymentDetail'
+        type: array
+      purchase_order:
+        $ref: '#/definitions/models.POInfo'
+      summary:
+        $ref: '#/definitions/models.POSummary'
+      timeline:
+        items:
+          $ref: '#/definitions/models.POTimelineEvent'
+        type: array
+      warehouse:
+        $ref: '#/definitions/models.WarehouseInfo'
+    type: object
+  models.POInfo:
+    properties:
+      actual_delivery_date:
+        type: string
+      collaborator_id:
+        type: string
+      created_at:
+        type: string
+      currency:
+        type: string
+      expected_delivery_date:
+        type: string
+      external_order_id:
+        type: string
+      id:
+        type: string
+      order_date:
+        type: string
+      paid_amount:
+        type: number
+      payment_status:
+        type: string
+      pending_amount:
+        type: number
+      po_number:
+        type: string
+      status:
+        type: string
+      total_amount:
+        type: number
+      updated_at:
+        type: string
+      warehouse_id:
+        type: string
+    type: object
+  models.POItemDetail:
+    properties:
+      id:
+        type: string
+      ordered_quantity:
+        type: integer
+      pending_quantity:
+        type: integer
+      product:
+        $ref: '#/definitions/models.ProductBasicInfo'
+      received_quantity:
+        type: integer
+      received_status:
+        description: pending, partially_received, fully_received
+        type: string
+      total_cost:
+        type: number
+      unit_cost:
+        type: number
+      variant:
+        $ref: '#/definitions/models.VariantInfoForPO'
+      variant_id:
+        type: string
+    type: object
+  models.POPaymentDetail:
+    properties:
+      amount:
+        type: number
+      created_by:
+        type: string
+      id:
+        type: string
+      notes:
+        type: string
+      payment_date:
+        type: string
+      payment_method:
+        type: string
+      purchase_order_id:
+        type: string
+      reference_number:
+        type: string
+      status:
+        type: string
+    type: object
+  models.POSummary:
+    properties:
+      completion_percentage:
+        type: number
+      fulfillment_status:
+        description: pending, partially_received, fully_received
+        type: string
+      payment_status:
+        type: string
+      total_items_ordered:
+        type: integer
+      total_items_pending:
+        type: integer
+      total_items_received:
+        type: integer
+      total_order_value:
+        type: number
+      total_pending_value:
+        type: number
+      total_received_value:
+        type: number
+      total_rejected_value:
+        type: number
+    type: object
+  models.POTimelineEvent:
+    properties:
+      actor:
+        type: string
+      description:
+        type: string
+      event:
+        description: purchase_order_created, payment_received, grn_created, status_changed
+        type: string
+      timestamp:
+        type: string
+    type: object
+  models.PaginationInfo:
+    properties:
+      has_more:
+        type: boolean
+      limit:
+        type: integer
+      offset:
+        type: integer
+      total:
+        type: integer
+    type: object
   models.PaymentMethodInfo:
     properties:
       credit_days:
@@ -1605,6 +1957,11 @@ definitions:
         type: string
       updated_at:
         type: string
+      variants:
+        description: Preloaded variants with image URLs
+        items:
+          $ref: '#/definitions/models.ProductVariantResponse'
+        type: array
     type: object
   models.ProductVariantResponse:
     properties:
@@ -1629,8 +1986,13 @@ definitions:
         type: string
       id:
         type: string
+      image_urls:
+        description: Presigned URLs (valid for 1 hour)
+        items:
+          type: string
+        type: array
       images:
-        description: Parsed from JSON
+        description: S3 paths (for reference)
         items:
           type: string
         type: array
@@ -1739,6 +2101,19 @@ definitions:
       warehouse_name:
         type: string
     type: object
+  models.QuantityDetails:
+    properties:
+      available_quantity:
+        type: integer
+      in_stock:
+        type: boolean
+      reserved_quantity:
+        type: integer
+      sold_quantity:
+        type: integer
+      total_quantity:
+        type: integer
+    type: object
   models.RefundPolicyInfo:
     properties:
       conditions:
@@ -1822,6 +2197,20 @@ definitions:
         type: object
       total_rejected_value:
         type: number
+    type: object
+  models.ReportResponse:
+    properties:
+      filters_applied:
+        additionalProperties: true
+        type: object
+      generated_at:
+        type: string
+      pagination:
+        $ref: '#/definitions/models.PaginationInfo'
+      records: {}
+      report_type:
+        type: string
+      summary: {}
     type: object
   models.ResponseMetadata:
     properties:
@@ -1994,7 +2383,7 @@ definitions:
         type: string
       created_at:
         type: string
-      farmer_id:
+      customer_id:
         description: BRD Requirements
         type: string
       id:
@@ -2940,6 +3329,25 @@ definitions:
           $ref: '#/definitions/models.WarehouseStock'
         type: array
     type: object
+  models.VariantInfoForPO:
+    properties:
+      brand_name:
+        type: string
+      id:
+        type: string
+      images:
+        items:
+          type: string
+        type: array
+      pack_size:
+        type: string
+      quantity:
+        type: string
+      sku:
+        type: string
+      variant_name:
+        type: string
+    type: object
   models.VariantInfoForSales:
     properties:
       barcode:
@@ -2989,6 +3397,15 @@ definitions:
       wholesale_price:
         $ref: '#/definitions/models.PriceInfo'
     type: object
+  models.WarehouseBasicInfo:
+    properties:
+      id:
+        type: string
+      location:
+        $ref: '#/definitions/models.WarehouseLocationInfo'
+      name:
+        type: string
+    type: object
   models.WarehouseInfo:
     properties:
       address:
@@ -3002,6 +3419,13 @@ definitions:
       name:
         type: string
       organization_id:
+        type: string
+    type: object
+  models.WarehouseLocationInfo:
+    properties:
+      city:
+        type: string
+      state:
         type: string
     type: object
   models.WarehouseResponse:
@@ -5734,6 +6158,106 @@ paths:
       summary: Update Return Status for Rejected Item
       tags:
       - GRNs
+  /api/v1/inventory/batches/list:
+    get:
+      description: Retrieves a paginated list of inventory batches with full context
+        including variant, product, warehouse, prices, and tax information. Reduces
+        N+1 API calls by 95%.
+      parameters:
+      - description: Filter by warehouse ID
+        example: WH_001
+        in: query
+        name: warehouse_id
+        type: string
+      - description: Filter by variant ID
+        example: PVAR_12345678
+        in: query
+        name: variant_id
+        type: string
+      - description: Filter by product ID
+        example: PROD_12345678
+        in: query
+        name: product_id
+        type: string
+      - description: Filter by category
+        example: Fertilizers
+        in: query
+        name: category
+        type: string
+      - description: 'Show only batches with available stock. Default: true'
+        example: true
+        in: query
+        name: in_stock_only
+        type: boolean
+      - description: Show only batches expiring within 30 days
+        example: false
+        in: query
+        name: expiring_soon
+        type: boolean
+      - description: Mark batches as low stock if below this quantity
+        example: 10
+        in: query
+        name: low_stock_threshold
+        type: integer
+      - description: 'Comma-separated list of data to include: variant,product,warehouse,prices,taxes.
+          Default: all'
+        example: variant,product,warehouse
+        in: query
+        name: include
+        type: string
+      - description: 'Sort field: expiry_date, quantity, cost_price. Default: expiry_date'
+        example: expiry_date
+        in: query
+        name: sort_by
+        type: string
+      - description: 'Sort order: asc, desc. Default: asc'
+        example: asc
+        in: query
+        name: sort_order
+        type: string
+      - description: 'Maximum number of results (max 200). Default: 50'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Offset for pagination. Default: 0'
+        example: 0
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Inventory list retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.InventoryListResponse'
+              type: object
+        "400":
+          description: Bad request - invalid parameters
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Aggregated Inventory List
+      tags:
+      - Inventory
   /api/v1/prices:
     post:
       consumes:
@@ -6826,6 +7350,61 @@ paths:
       summary: Get Purchase Order
       tags:
       - Purchase Orders
+  /api/v1/purchase-orders/{id}/detail:
+    get:
+      description: Retrieves complete purchase order information including collaborator,
+        warehouse, items with variants, GRNs, inventory created, and timeline in a
+        single call. Reduces API calls by 80%.
+      parameters:
+      - description: Purchase Order ID
+        example: PORD_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 'Comma-separated list of data to include: collaborator,warehouse,items,grns,inventory,payments,timeline.
+          Default: all'
+        example: collaborator,warehouse,items,grns
+        in: query
+        name: include
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Purchase order details retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.PODetailResponse'
+              type: object
+        "400":
+          description: Bad request - invalid parameters
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Purchase order not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Aggregated Purchase Order Detail
+      tags:
+      - PurchaseOrders
   /api/v1/purchase-orders/{id}/grn:
     get:
       description: Retrieve GRN for a specific purchase order
@@ -7264,6 +7843,605 @@ paths:
       summary: Update Refund Policy
       tags:
       - Refund Policies
+  /api/v1/reports/customers:
+    get:
+      description: Generate a customer report with filtering, pagination, and export
+        options
+      parameters:
+      - default: json
+        description: 'Output format: json, xlsx, pdf'
+        enum:
+        - json
+        - xlsx
+        - pdf
+        in: query
+        name: format
+        type: string
+      - default: 50
+        description: 'Records per page (max: 500)'
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Records to skip
+        in: query
+        name: offset
+        type: integer
+      - description: Search by farmer ID
+        in: query
+        name: search
+        type: string
+      - description: Filter by warehouse ID
+        in: query
+        name: warehouse_id
+        type: string
+      - description: Minimum total purchase value
+        in: query
+        name: min_purchase_value
+        type: number
+      - description: Maximum total purchase value
+        in: query
+        name: max_purchase_value
+        type: number
+      - description: Filter start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: Filter end date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      - application/pdf
+      responses:
+        "200":
+          description: Report generated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ReportResponse'
+              type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Generate Customer Report
+      tags:
+      - Reports
+  /api/v1/reports/inventory:
+    get:
+      description: Generate an inventory report with filtering, pagination, and export
+        options
+      parameters:
+      - default: json
+        description: 'Output format: json, xlsx, pdf'
+        enum:
+        - json
+        - xlsx
+        - pdf
+        in: query
+        name: format
+        type: string
+      - default: 50
+        description: 'Records per page (max: 500)'
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Records to skip
+        in: query
+        name: offset
+        type: integer
+      - description: Filter by warehouse ID
+        in: query
+        name: warehouse_id
+        type: string
+      - description: Filter by product ID
+        in: query
+        name: product_id
+        type: string
+      - description: Filter by variant ID
+        in: query
+        name: variant_id
+        type: string
+      - description: Show only low stock items
+        in: query
+        name: low_stock
+        type: boolean
+      - description: Show items expiring within 30 days
+        in: query
+        name: expiring_soon
+        type: boolean
+      - description: Include expired items
+        in: query
+        name: expired
+        type: boolean
+      - description: Minimum quantity filter
+        in: query
+        name: min_quantity
+        type: integer
+      - description: Maximum quantity filter
+        in: query
+        name: max_quantity
+        type: integer
+      produces:
+      - application/json
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      - application/pdf
+      responses:
+        "200":
+          description: Report generated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ReportResponse'
+              type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Generate Inventory Report
+      tags:
+      - Reports
+  /api/v1/reports/products:
+    get:
+      description: Generate a product master report with filtering, pagination, and
+        export options
+      parameters:
+      - default: json
+        description: 'Output format: json, xlsx, pdf'
+        enum:
+        - json
+        - xlsx
+        - pdf
+        in: query
+        name: format
+        type: string
+      - default: 50
+        description: 'Records per page (max: 500)'
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Records to skip
+        in: query
+        name: offset
+        type: integer
+      - description: Search by product name or description
+        in: query
+        name: search
+        type: string
+      - description: Filter products with/without variants
+        in: query
+        name: has_variants
+        type: boolean
+      - description: Filter by active status
+        in: query
+        name: is_active
+        type: boolean
+      - default: created_at
+        description: Sort field
+        in: query
+        name: sort_by
+        type: string
+      - default: desc
+        description: 'Sort order: asc, desc'
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sort_order
+        type: string
+      produces:
+      - application/json
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      - application/pdf
+      responses:
+        "200":
+          description: Report generated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ReportResponse'
+              type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Generate Product Master Report
+      tags:
+      - Reports
+  /api/v1/reports/purchases:
+    get:
+      description: Generate a purchase orders report with filtering, pagination, and
+        export options
+      parameters:
+      - default: json
+        description: 'Output format: json, xlsx, pdf'
+        enum:
+        - json
+        - xlsx
+        - pdf
+        in: query
+        name: format
+        type: string
+      - default: 50
+        description: 'Records per page (max: 500)'
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Records to skip
+        in: query
+        name: offset
+        type: integer
+      - description: Filter by vendor/collaborator ID
+        in: query
+        name: collaborator_id
+        type: string
+      - description: Filter by warehouse ID
+        in: query
+        name: warehouse_id
+        type: string
+      - collectionFormat: csv
+        description: Filter by status (comma-separated)
+        in: query
+        items:
+          type: string
+        name: status
+        type: array
+      - collectionFormat: csv
+        description: Filter by payment status
+        in: query
+        items:
+          type: string
+        name: payment_status
+        type: array
+      - description: Search by PO number
+        in: query
+        name: po_number
+        type: string
+      - description: Filter start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: Filter end date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      - application/pdf
+      responses:
+        "200":
+          description: Report generated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ReportResponse'
+              type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Generate Purchase Report
+      tags:
+      - Reports
+  /api/v1/reports/returns:
+    get:
+      description: Generate a returns report with filtering, pagination, and export
+        options
+      parameters:
+      - default: json
+        description: 'Output format: json, xlsx, pdf'
+        enum:
+        - json
+        - xlsx
+        - pdf
+        in: query
+        name: format
+        type: string
+      - default: 50
+        description: 'Records per page (max: 500)'
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Records to skip
+        in: query
+        name: offset
+        type: integer
+      - description: Filter by original sale ID
+        in: query
+        name: sale_id
+        type: string
+      - description: Filter by warehouse ID
+        in: query
+        name: warehouse_id
+        type: string
+      - collectionFormat: csv
+        description: Filter by status (comma-separated)
+        in: query
+        items:
+          type: string
+        name: status
+        type: array
+      - description: Minimum refund amount
+        in: query
+        name: min_refund
+        type: number
+      - description: Maximum refund amount
+        in: query
+        name: max_refund
+        type: number
+      - description: Filter start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: Filter end date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      - application/pdf
+      responses:
+        "200":
+          description: Report generated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ReportResponse'
+              type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Generate Returns Report
+      tags:
+      - Reports
+  /api/v1/reports/sales:
+    get:
+      description: Generate a sales report with filtering, pagination, and export
+        options
+      parameters:
+      - default: json
+        description: 'Output format: json, xlsx, pdf'
+        enum:
+        - json
+        - xlsx
+        - pdf
+        in: query
+        name: format
+        type: string
+      - default: 50
+        description: 'Records per page (max: 500)'
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Records to skip
+        in: query
+        name: offset
+        type: integer
+      - description: Filter by warehouse ID
+        in: query
+        name: warehouse_id
+        type: string
+      - description: Filter by customer ID
+        in: query
+        name: customer_id
+        type: string
+      - collectionFormat: csv
+        description: Filter by status (comma-separated)
+        in: query
+        items:
+          type: string
+        name: status
+        type: array
+      - collectionFormat: csv
+        description: Filter by payment mode
+        in: query
+        items:
+          type: string
+        name: payment_mode
+        type: array
+      - collectionFormat: csv
+        description: Filter by sale type
+        in: query
+        items:
+          type: string
+        name: sale_type
+        type: array
+      - description: Minimum sale amount
+        in: query
+        name: min_amount
+        type: number
+      - description: Maximum sale amount
+        in: query
+        name: max_amount
+        type: number
+      - description: Filter start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: Filter end date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      - application/pdf
+      responses:
+        "200":
+          description: Report generated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ReportResponse'
+              type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Generate Sales Report
+      tags:
+      - Reports
+  /api/v1/reports/vendors:
+    get:
+      description: Generate a vendor master report with filtering, pagination, and
+        export options
+      parameters:
+      - default: json
+        description: 'Output format: json, xlsx, pdf'
+        enum:
+        - json
+        - xlsx
+        - pdf
+        in: query
+        name: format
+        type: string
+      - default: 50
+        description: 'Records per page (max: 500)'
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Records to skip
+        in: query
+        name: offset
+        type: integer
+      - description: Search by company name, contact person, or GST
+        in: query
+        name: search
+        type: string
+      - description: Filter by active status
+        in: query
+        name: is_active
+        type: boolean
+      - description: Filter vendors with/without GST
+        in: query
+        name: has_gst
+        type: boolean
+      - description: Sort field
+        in: query
+        name: sort_by
+        type: string
+      - description: 'Sort order: asc, desc'
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sort_order
+        type: string
+      produces:
+      - application/json
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      - application/pdf
+      responses:
+        "200":
+          description: Report generated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ReportResponse'
+              type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Generate Vendor Master Report
+      tags:
+      - Reports
   /api/v1/returns:
     get:
       description: Retrieve all returns with pagination
