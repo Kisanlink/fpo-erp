@@ -42,3 +42,17 @@ func CreateTestVariant(t *testing.T, db *gorm.DB, id, productID, sku, quantity s
 func CreateTestVariantSimple(t *testing.T, db *gorm.DB, id, productID, sku string) *models.ProductVariant {
 	return CreateTestVariant(t, db, id, productID, sku, "1.0")
 }
+
+// CreateTestWarehouse creates a test warehouse and saves it to the database
+func CreateTestWarehouse(t *testing.T, db *gorm.DB, id string) *models.Warehouse {
+	t.Helper()
+
+	warehouse := models.NewWarehouse("Test Warehouse "+id, nil)
+	warehouse.ID = id
+
+	if err := db.Create(warehouse).Error; err != nil {
+		t.Fatalf("failed to create test warehouse: %v", err)
+	}
+
+	return warehouse
+}
