@@ -16,6 +16,7 @@ import (
 // ProductService handles product business logic
 type ProductService struct {
 	productRepo *repositories.ProductRepository
+	priceRepo   *repositories.ProductPriceRepository
 	variantRepo *repositories.ProductVariantRepository
 	s3Service   *S3Service
 	logger      interfaces.Logger
@@ -25,6 +26,7 @@ type ProductService struct {
 func NewProductService(productRepo *repositories.ProductRepository, priceRepo *repositories.ProductPriceRepository, variantRepo *repositories.ProductVariantRepository, s3Service *S3Service, logger interfaces.Logger) *ProductService {
 	return &ProductService{
 		productRepo: productRepo,
+		priceRepo:   priceRepo,
 		variantRepo: variantRepo,
 		s3Service:   s3Service,
 		logger:      logger,
@@ -222,7 +224,7 @@ func (s *ProductService) SearchProducts(query string) ([]models.ProductResponse,
 	return responses, nil
 }
 
-// GetProductWithPrices retrieves a product with all its prices
+// GetProductWithPrices retrieves a product with all its prices aggregated from variants
 func (s *ProductService) GetProductWithPrices(id string) (*models.ProductWithPricesResponse, error) {
 	s.logger.Info("Retrieving product with prices",
 		zap.String("product_id", id))
@@ -236,38 +238,77 @@ func (s *ProductService) GetProductWithPrices(id string) (*models.ProductWithPri
 		return nil, err
 	}
 
-	// NOTE: Prices are now embedded in product variants
-	// Users should query individual variants to get their prices
-	// This simplifies the product response and avoids complex aggregation
-	s.logger.Debug("Prices are available at variant level",
-		zap.String("product_id", id))
+	// Get all variants for this product
+	var variants []models.ProductVariant
+	if s.variantRepo != nil {
+		variants, err = s.variantRepo.GetByProductID(id)
+		if err != nil {
+			s.logger.Warn("Failed to get variants for product",
+				zap.Error(err),
+				zap.String("product_id", id))
+			variants = []models.ProductVariant{}
+		}
+	}
 
-	// Price responses are now empty - prices moved to variants
+	// Aggregate prices from two sources:
+	// 1. The product_prices table (via priceRepo) - primary source
+	// 2. Embedded Prices JSON in variants - fallback
 	var priceResponses []models.ProductPriceResponse
-	for _, price := range []models.ProductPrice{} {
-		effectiveTo := ""
-		if price.EffectiveTo != nil {
-			effectiveTo = price.EffectiveTo.Format("2006-01-02T15:04:05Z")
+
+	for _, variant := range variants {
+		// First, try to get prices from the product_prices table
+		if s.priceRepo != nil {
+			tablePrices, err := s.priceRepo.GetByVariantID(variant.ID)
+			if err == nil && len(tablePrices) > 0 {
+				for _, price := range tablePrices {
+					effectiveTo := ""
+					if price.EffectiveTo != nil {
+						effectiveTo = price.EffectiveTo.Format("2006-01-02T15:04:05Z")
+					}
+
+					isActive := false
+					if price.IsActive != nil {
+						isActive = *price.IsActive
+					}
+
+					priceResponse := models.ProductPriceResponse{
+						ID:            price.ID,
+						VariantID:     price.VariantID,
+						PriceType:     price.PriceType,
+						Price:         price.Price,
+						Currency:      price.Currency,
+						EffectiveFrom: price.EffectiveFrom.Format("2006-01-02T15:04:05Z"),
+						EffectiveTo:   &effectiveTo,
+						IsActive:      isActive,
+						CreatedAt:     price.CreatedAt.Format("2006-01-02T15:04:05Z"),
+						UpdatedAt:     price.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+					}
+					priceResponses = append(priceResponses, priceResponse)
+				}
+				continue // Skip embedded prices if table prices found
+			}
 		}
 
-		isActiveValue := false
-		if price.IsActive != nil {
-			isActiveValue = *price.IsActive
-		}
+		// Fallback: Get prices from embedded Prices JSON field
+		for _, price := range variant.Prices {
+			currency := price.Currency
+			if currency == "" {
+				currency = "INR"
+			}
 
-		priceResponse := models.ProductPriceResponse{
-			ID:            price.ID,
-			VariantID:     price.VariantID,
-			PriceType:     price.PriceType,
-			Price:         price.Price,
-			Currency:      price.Currency,
-			EffectiveFrom: price.EffectiveFrom.Format("2006-01-02T15:04:05Z"),
-			EffectiveTo:   &effectiveTo,
-			IsActive:      isActiveValue,
-			CreatedAt:     price.CreatedAt.Format("2006-01-02T15:04:05Z"),
-			UpdatedAt:     price.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+			priceResponse := models.ProductPriceResponse{
+				ID:            variant.ID + "-" + price.PriceType,
+				VariantID:     variant.ID,
+				PriceType:     price.PriceType,
+				Price:         price.Price,
+				Currency:      currency,
+				EffectiveFrom: variant.CreatedAt.Format("2006-01-02T15:04:05Z"),
+				IsActive:      variant.IsActive,
+				CreatedAt:     variant.CreatedAt.Format("2006-01-02T15:04:05Z"),
+				UpdatedAt:     variant.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+			}
+			priceResponses = append(priceResponses, priceResponse)
 		}
-		priceResponses = append(priceResponses, priceResponse)
 	}
 
 	// Create response
@@ -283,6 +324,7 @@ func (s *ProductService) GetProductWithPrices(id string) (*models.ProductWithPri
 	s.logger.Info("Product with prices retrieved successfully",
 		zap.String("product_id", id),
 		zap.String("name", product.Name),
+		zap.Int("variant_count", len(variants)),
 		zap.Int("price_count", len(priceResponses)))
 
 	return response, nil
