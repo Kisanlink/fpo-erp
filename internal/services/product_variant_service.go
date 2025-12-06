@@ -18,6 +18,7 @@ import (
 type ProductVariantService struct {
 	variantRepo *repositories.ProductVariantRepository
 	productRepo *repositories.ProductRepository
+	priceRepo   *repositories.ProductPriceRepository
 	s3Service   *S3Service
 	logger      interfaces.Logger
 }
@@ -26,12 +27,14 @@ type ProductVariantService struct {
 func NewProductVariantService(
 	variantRepo *repositories.ProductVariantRepository,
 	productRepo *repositories.ProductRepository,
+	priceRepo *repositories.ProductPriceRepository,
 	s3Service *S3Service,
 	logger interfaces.Logger,
 ) *ProductVariantService {
 	return &ProductVariantService{
 		variantRepo: variantRepo,
 		productRepo: productRepo,
+		priceRepo:   priceRepo,
 		s3Service:   s3Service,
 		logger:      logger,
 	}
@@ -93,7 +96,7 @@ func (s *ProductVariantService) CreateProductVariant(ctx context.Context, produc
 	variant.Description = request.Description
 	variant.SKU = request.SKU
 	variant.Barcode = request.Barcode
-	variant.Prices = request.Prices // Assign validated prices
+	// Note: Prices are stored in product_prices table, not embedded in variant
 
 	// Assign collaborator-specific fields
 	variant.CollaboratorIDs = request.CollaboratorIDs
@@ -122,6 +125,37 @@ func (s *ProductVariantService) CreateProductVariant(ctx context.Context, produc
 	}
 	s.logger.Info("Product variant created successfully",
 		zap.String("variant_id", variant.ID))
+
+	// Create ProductPrice records for each price in request
+	if len(request.Prices) > 0 && s.priceRepo != nil {
+		for _, price := range request.Prices {
+			currency := price.Currency
+			if currency == "" {
+				currency = "INR"
+			}
+			isActive := true
+			productPrice := models.NewProductPrice(
+				variant.ID,
+				price.PriceType,
+				price.Price,
+				currency,
+				time.Now(),
+				nil,
+				&isActive,
+			)
+			if err := s.priceRepo.Create(productPrice); err != nil {
+				s.logger.Error("Failed to create price record",
+					zap.Error(err),
+					zap.String("variant_id", variant.ID),
+					zap.String("price_type", price.PriceType))
+				// Log and continue - don't fail variant creation for price errors
+			} else {
+				s.logger.Debug("Price record created",
+					zap.String("price_id", productPrice.ID),
+					zap.String("price_type", price.PriceType))
+			}
+		}
+	}
 
 	return s.buildProductVariantResponse(ctx, variant, product)
 }
@@ -267,14 +301,51 @@ func (s *ProductVariantService) UpdateProductVariant(ctx context.Context, id str
 	if request.Barcode != nil {
 		variant.Barcode = request.Barcode
 	}
-	if request.Prices != nil {
+	if request.Prices != nil && s.priceRepo != nil {
 		// Validate prices before updating
 		if err := s.validatePrices(*request.Prices); err != nil {
 			s.logger.Error("Price validation failed during update",
 				zap.Error(err))
 			return nil, err
 		}
-		variant.Prices = *request.Prices
+		// Update prices in product_prices table
+		for _, price := range *request.Prices {
+			currency := price.Currency
+			if currency == "" {
+				currency = "INR"
+			}
+			// Try to get existing price for this type
+			existingPrice, err := s.priceRepo.GetCurrentPrice(variant.ID, price.PriceType)
+			if err == nil && existingPrice != nil {
+				// Update existing price
+				existingPrice.Price = price.Price
+				existingPrice.Currency = currency
+				if err := s.priceRepo.Update(existingPrice); err != nil {
+					s.logger.Error("Failed to update price record",
+						zap.Error(err),
+						zap.String("variant_id", variant.ID),
+						zap.String("price_type", price.PriceType))
+				}
+			} else {
+				// Create new price record
+				isActive := true
+				productPrice := models.NewProductPrice(
+					variant.ID,
+					price.PriceType,
+					price.Price,
+					currency,
+					time.Now(),
+					nil,
+					&isActive,
+				)
+				if err := s.priceRepo.Create(productPrice); err != nil {
+					s.logger.Error("Failed to create price record",
+						zap.Error(err),
+						zap.String("variant_id", variant.ID),
+						zap.String("price_type", price.PriceType))
+				}
+			}
+		}
 	}
 	if request.IsActive != nil {
 		variant.IsActive = *request.IsActive
@@ -353,19 +424,28 @@ func (s *ProductVariantService) DeleteProductVariant(ctx context.Context, id str
 
 // GetPriceByType returns the price for a specific price type from a variant
 func (s *ProductVariantService) GetPriceByType(ctx context.Context, variantID string, priceType string) (*models.VariantPrice, error) {
-	variant, err := s.variantRepo.GetByID(variantID)
+	// Validate variant exists
+	_, err := s.variantRepo.GetByID(variantID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Search for the price type
-	for _, price := range variant.Prices {
-		if price.PriceType == priceType {
-			return &price, nil
-		}
+	// Search for the price type in product_prices table
+	if s.priceRepo == nil {
+		return nil, errors.NewInternalServerError("price repository not configured")
 	}
 
-	return nil, errors.NewNotFoundError("price type '" + priceType + "' not found for variant")
+	productPrice, err := s.priceRepo.GetCurrentPrice(variantID, priceType)
+	if err != nil {
+		return nil, errors.NewNotFoundError("price type '" + priceType + "' not found for variant")
+	}
+
+	// Convert ProductPrice to VariantPrice for API compatibility
+	return &models.VariantPrice{
+		PriceType: productPrice.PriceType,
+		Price:     productPrice.Price,
+		Currency:  productPrice.Currency,
+	}, nil
 }
 
 // validatePrices validates the prices array
@@ -427,6 +507,38 @@ func (s *ProductVariantService) buildProductVariantResponse(ctx context.Context,
 		}
 	}
 
+	// Fetch prices from product_prices table
+	var priceResponses []models.ProductPriceResponse
+	if s.priceRepo != nil {
+		prices, err := s.priceRepo.GetActiveByVariantID(variant.ID)
+		if err == nil {
+			for _, price := range prices {
+				effectiveTo := ""
+				if price.EffectiveTo != nil {
+					effectiveTo = price.EffectiveTo.Format(time.RFC3339)
+				}
+
+				isActive := false
+				if price.IsActive != nil {
+					isActive = *price.IsActive
+				}
+
+				priceResponses = append(priceResponses, models.ProductPriceResponse{
+					ID:            price.ID,
+					VariantID:     price.VariantID,
+					PriceType:     price.PriceType,
+					Price:         price.Price,
+					Currency:      price.Currency,
+					EffectiveFrom: price.EffectiveFrom.Format(time.RFC3339),
+					EffectiveTo:   &effectiveTo,
+					IsActive:      isActive,
+					CreatedAt:     price.CreatedAt.Format(time.RFC3339),
+					UpdatedAt:     price.UpdatedAt.Format(time.RFC3339),
+				})
+			}
+		}
+	}
+
 	return &models.ProductVariantResponse{
 		ID:          variant.ID,
 		ProductID:   variant.ProductID,
@@ -438,7 +550,7 @@ func (s *ProductVariantService) buildProductVariantResponse(ctx context.Context,
 		Barcode:     variant.Barcode,
 		Images:      images,
 		ImageURLs:   imageURLs,
-		Prices:      variant.Prices, // Include prices in response
+		Prices:      priceResponses, // Fetch from product_prices table
 		IsActive:    variant.IsActive,
 		CreatedAt:   variant.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:   variant.UpdatedAt.UTC().Format(time.RFC3339),

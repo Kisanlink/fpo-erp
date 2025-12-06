@@ -87,7 +87,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	inventoryService := services.NewInventoryService(inventoryRepo, warehouseRepo, productRepo, productVariantRepo, addressClient, logger)
 	discountsService := services.NewDiscountsService(discountRepo, productRepo, warehouseRepo, logger)
 	taxService := services.NewTaxService(taxRepo, logger)
-	salesService := services.NewSalesService(salesRepo, productRepo, inventoryRepo, productVariantRepo, discountRepo, taxRepo, warehouseRepo, saleCancellationRepo, logger)
+	salesService := services.NewSalesService(salesRepo, productRepo, inventoryRepo, productVariantRepo, priceRepo, discountRepo, taxRepo, warehouseRepo, saleCancellationRepo, logger)
 	returnsService := services.NewReturnsService(returnsRepo, salesRepo, inventoryRepo, logger)
 	attachmentService := services.NewAttachmentService(attachmentRepo, productVariantRepo, s3Service, logger)
 	refundPoliciesService := services.NewRefundPoliciesService(refundPoliciesRepo, logger)
@@ -107,7 +107,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 		cfg.Ecommerce.AuthToken,
 		logger,
 	)
-	productVariantService := services.NewProductVariantService(productVariantRepo, productRepo, s3Service, logger)
+	productVariantService := services.NewProductVariantService(productVariantRepo, productRepo, priceRepo, s3Service, logger)
 	purchaseOrderService := services.NewPurchaseOrderService(purchaseOrderRepo, collaboratorRepo, warehouseRepo, productRepo, productVariantRepo, grnRepo, inventoryRepo, logger)
 	grnService := services.NewGRNService(grnRepo, purchaseOrderRepo, warehouseRepo, productRepo, inventoryRepo, logger)
 
@@ -149,6 +149,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	aggregationService := services.NewAggregationService(
 		productRepo,
 		productVariantRepo,
+		priceRepo,
 		inventoryRepo,
 		warehouseRepo,
 		collaboratorRepo,

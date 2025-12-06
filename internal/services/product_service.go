@@ -250,13 +250,11 @@ func (s *ProductService) GetProductWithPrices(id string) (*models.ProductWithPri
 		}
 	}
 
-	// Aggregate prices from two sources:
-	// 1. The product_prices table (via priceRepo) - primary source
-	// 2. Embedded Prices JSON in variants - fallback
+	// Aggregate prices from product_prices table
 	var priceResponses []models.ProductPriceResponse
 
 	for _, variant := range variants {
-		// First, try to get prices from the product_prices table
+		// Get prices from the product_prices table
 		if s.priceRepo != nil {
 			tablePrices, err := s.priceRepo.GetByVariantID(variant.ID)
 			if err == nil && len(tablePrices) > 0 {
@@ -285,29 +283,7 @@ func (s *ProductService) GetProductWithPrices(id string) (*models.ProductWithPri
 					}
 					priceResponses = append(priceResponses, priceResponse)
 				}
-				continue // Skip embedded prices if table prices found
 			}
-		}
-
-		// Fallback: Get prices from embedded Prices JSON field
-		for _, price := range variant.Prices {
-			currency := price.Currency
-			if currency == "" {
-				currency = "INR"
-			}
-
-			priceResponse := models.ProductPriceResponse{
-				ID:            variant.ID + "-" + price.PriceType,
-				VariantID:     variant.ID,
-				PriceType:     price.PriceType,
-				Price:         price.Price,
-				Currency:      currency,
-				EffectiveFrom: variant.CreatedAt.Format("2006-01-02T15:04:05Z"),
-				IsActive:      variant.IsActive,
-				CreatedAt:     variant.CreatedAt.Format("2006-01-02T15:04:05Z"),
-				UpdatedAt:     variant.UpdatedAt.Format("2006-01-02T15:04:05Z"),
-			}
-			priceResponses = append(priceResponses, priceResponse)
 		}
 	}
 

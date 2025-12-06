@@ -51,8 +51,7 @@ type ProductVariant struct {
 	DosageInstructions *string  `gorm:"type:text" json:"dosage_instructions"`               // Usage instructions
 	UsageDetails       *string  `gorm:"type:text" json:"usage_details"`                     // Detailed usage
 
-	// Embedded pricing (replaces separate ProductPrice table)
-	Prices []VariantPrice `gorm:"type:json;serializer:json" json:"prices"` // Array of price points
+	// Note: Prices are stored in product_prices table, not embedded in variant
 
 	IsActive bool `gorm:"default:true" json:"is_active"`
 
@@ -113,7 +112,7 @@ type ProductVariantResponse struct {
 	ImageURLs          []string       `json:"image_urls,omitempty"` // Presigned URLs (valid for 1 hour)
 	DosageInstructions *string        `json:"dosage_instructions,omitempty"`
 	UsageDetails       *string        `json:"usage_details,omitempty"`
-	Prices             []VariantPrice `json:"prices"` // Always included in response
+	Prices             []ProductPriceResponse `json:"prices"` // Fetched from product_prices table
 	IsActive           bool           `json:"is_active"`
 	CreatedAt          string         `json:"created_at"`
 	UpdatedAt          string         `json:"updated_at"`

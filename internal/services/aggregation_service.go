@@ -19,6 +19,7 @@ import (
 type AggregationService struct {
 	productRepo         *repositories.ProductRepository
 	variantRepo         *repositories.ProductVariantRepository
+	priceRepo           *repositories.ProductPriceRepository
 	inventoryRepo       *repositories.InventoryRepository
 	warehouseRepo       *repositories.WarehouseRepository
 	collaboratorRepo    *repositories.CollaboratorRepository
@@ -34,6 +35,7 @@ type AggregationService struct {
 func NewAggregationService(
 	productRepo *repositories.ProductRepository,
 	variantRepo *repositories.ProductVariantRepository,
+	priceRepo *repositories.ProductPriceRepository,
 	inventoryRepo *repositories.InventoryRepository,
 	warehouseRepo *repositories.WarehouseRepository,
 	collaboratorRepo *repositories.CollaboratorRepository,
@@ -47,6 +49,7 @@ func NewAggregationService(
 	return &AggregationService{
 		productRepo:         productRepo,
 		variantRepo:         variantRepo,
+		priceRepo:           priceRepo,
 		inventoryRepo:       inventoryRepo,
 		warehouseRepo:       warehouseRepo,
 		collaboratorRepo:    collaboratorRepo,
@@ -240,55 +243,58 @@ func (s *AggregationService) buildVariantDetail(v *models.ProductVariant, req *m
 		}
 	}
 
-	// Get prices if requested
-	if includes.Prices && len(v.Prices) > 0 {
-		prices := &models.VariantPrices{
-			Currency:       "INR",
-			HasActivePrice: false,
-		}
-
-		for _, p := range v.Prices {
-			priceInfo := &models.PriceInfo{
-				Price:         p.Price,
-				EffectiveFrom: time.Now().Format(time.RFC3339), // Using embedded prices, no date range
-			}
-
-			switch strings.ToUpper(p.PriceType) {
-			case "MRP", "RETAIL":
-				prices.RetailPrice = priceInfo
-				prices.HasActivePrice = true
-			case "MSP", "WHOLESALE":
-				prices.WholesalePrice = priceInfo
-				prices.HasActivePrice = true
-			case "BULK":
-				prices.BulkPrice = priceInfo
-				prices.HasActivePrice = true
-			}
-		}
-
-		if req.PriceType != "" && req.PriceType != "all" {
-			// Filter by price type
-			filteredPrices := &models.VariantPrices{
-				Currency:       prices.Currency,
+	// Get prices if requested - fetch from product_prices table
+	if includes.Prices && s.priceRepo != nil {
+		productPrices, err := s.priceRepo.GetActiveByVariantID(v.ID)
+		if err == nil && len(productPrices) > 0 {
+			prices := &models.VariantPrices{
+				Currency:       "INR",
 				HasActivePrice: false,
 			}
-			switch strings.ToLower(req.PriceType) {
-			case "retail", "mrp":
-				filteredPrices.RetailPrice = prices.RetailPrice
-				filteredPrices.HasActivePrice = prices.RetailPrice != nil
-			case "wholesale", "msp":
-				filteredPrices.WholesalePrice = prices.WholesalePrice
-				filteredPrices.HasActivePrice = prices.WholesalePrice != nil
-			case "bulk":
-				filteredPrices.BulkPrice = prices.BulkPrice
-				filteredPrices.HasActivePrice = prices.BulkPrice != nil
-			default:
-				filteredPrices = prices
-			}
-			prices = filteredPrices
-		}
 
-		detail.Prices = prices
+			for _, p := range productPrices {
+				priceInfo := &models.PriceInfo{
+					Price:         p.Price,
+					EffectiveFrom: p.EffectiveFrom.Format(time.RFC3339),
+				}
+
+				switch strings.ToUpper(p.PriceType) {
+				case "MRP", "RETAIL":
+					prices.RetailPrice = priceInfo
+					prices.HasActivePrice = true
+				case "MSP", "WHOLESALE":
+					prices.WholesalePrice = priceInfo
+					prices.HasActivePrice = true
+				case "BULK":
+					prices.BulkPrice = priceInfo
+					prices.HasActivePrice = true
+				}
+			}
+
+			if req.PriceType != "" && req.PriceType != "all" {
+				// Filter by price type
+				filteredPrices := &models.VariantPrices{
+					Currency:       prices.Currency,
+					HasActivePrice: false,
+				}
+				switch strings.ToLower(req.PriceType) {
+				case "retail", "mrp":
+					filteredPrices.RetailPrice = prices.RetailPrice
+					filteredPrices.HasActivePrice = prices.RetailPrice != nil
+				case "wholesale", "msp":
+					filteredPrices.WholesalePrice = prices.WholesalePrice
+					filteredPrices.HasActivePrice = prices.WholesalePrice != nil
+				case "bulk":
+					filteredPrices.BulkPrice = prices.BulkPrice
+					filteredPrices.HasActivePrice = prices.BulkPrice != nil
+				default:
+					filteredPrices = prices
+				}
+				prices = filteredPrices
+			}
+
+			detail.Prices = prices
+		}
 	}
 
 	// Get inventory if requested
@@ -560,36 +566,39 @@ func (s *AggregationService) GetSalesContext(req *models.SalesContextRequest) (*
 				}
 			}
 
-			// Get selling price from variant
-			if len(variant.Prices) > 0 {
-				priceType := strings.ToLower(req.PriceType)
-				if priceType == "" {
-					priceType = "retail"
-				}
-
-				for _, p := range variant.Prices {
-					pType := strings.ToLower(p.PriceType)
-					if pType == priceType || (priceType == "retail" && pType == "mrp") ||
-						(priceType == "wholesale" && pType == "msp") {
-						inventoryItem.SellingPrice = &models.SellingPriceInfo{
-							Price:         p.Price,
-							PriceType:     p.PriceType,
-							Currency:      p.Currency,
-							EffectiveFrom: time.Now().Format(time.RFC3339),
-							IsActive:      true,
-						}
-						break
+			// Get selling price from product_prices table
+			if s.priceRepo != nil {
+				variantPrices, priceErr := s.priceRepo.GetActiveByVariantID(variant.ID)
+				if priceErr == nil && len(variantPrices) > 0 {
+					priceType := strings.ToLower(req.PriceType)
+					if priceType == "" {
+						priceType = "retail"
 					}
-				}
 
-				// Build alternate prices
-				for _, p := range variant.Prices {
-					pType := strings.ToLower(p.PriceType)
-					if inventoryItem.SellingPrice == nil || pType != strings.ToLower(inventoryItem.SellingPrice.PriceType) {
-						inventoryItem.AlternatePrices = append(inventoryItem.AlternatePrices, models.AlternatePriceInfo{
-							Price:     p.Price,
-							PriceType: p.PriceType,
-						})
+					for _, p := range variantPrices {
+						pType := strings.ToLower(p.PriceType)
+						if pType == priceType || (priceType == "retail" && pType == "mrp") ||
+							(priceType == "wholesale" && pType == "msp") {
+							inventoryItem.SellingPrice = &models.SellingPriceInfo{
+								Price:         p.Price,
+								PriceType:     p.PriceType,
+								Currency:      p.Currency,
+								EffectiveFrom: p.EffectiveFrom.Format(time.RFC3339),
+								IsActive:      p.IsActive != nil && *p.IsActive,
+							}
+							break
+						}
+					}
+
+					// Build alternate prices
+					for _, p := range variantPrices {
+						pType := strings.ToLower(p.PriceType)
+						if inventoryItem.SellingPrice == nil || pType != strings.ToLower(inventoryItem.SellingPrice.PriceType) {
+							inventoryItem.AlternatePrices = append(inventoryItem.AlternatePrices, models.AlternatePriceInfo{
+								Price:     p.Price,
+								PriceType: p.PriceType,
+							})
+						}
 					}
 				}
 			}
@@ -1376,41 +1385,45 @@ func (s *AggregationService) buildBatchContext(batch *models.InventoryBatch, inc
 				}
 			}
 
-			// Include prices if requested
-			if includes["prices"] && len(variant.Prices) > 0 {
-				sellingPrices := &models.BatchSellingPrices{}
-				for _, p := range variant.Prices {
-					pType := strings.ToLower(p.PriceType)
-					switch pType {
-					case "retail", "mrp":
-						sellingPrices.Retail = &p.Price
-					case "wholesale", "msp":
-						sellingPrices.Wholesale = &p.Price
-					case "bulk":
-						sellingPrices.Bulk = &p.Price
+			// Include prices if requested - fetch from product_prices table
+			if includes["prices"] && s.priceRepo != nil {
+				prices, err := s.priceRepo.GetActiveByVariantID(variant.ID)
+				if err == nil && len(prices) > 0 {
+					sellingPrices := &models.BatchSellingPrices{}
+					for _, p := range prices {
+						pType := strings.ToLower(p.PriceType)
+						price := p.Price
+						switch pType {
+						case "retail", "mrp":
+							sellingPrices.Retail = &price
+						case "wholesale", "msp":
+							sellingPrices.Wholesale = &price
+						case "bulk":
+							sellingPrices.Bulk = &price
+						}
 					}
-				}
 
-				pricing := &models.BatchPricing{
-					CostPrice:     batch.CostPrice,
-					SellingPrices: sellingPrices,
-					Currency:      "INR",
-				}
-
-				// Calculate margin if retail price available
-				if sellingPrices.Retail != nil {
-					marginAmount := *sellingPrices.Retail - batch.CostPrice
-					marginPercentage := float64(0)
-					if batch.CostPrice > 0 {
-						marginPercentage = (marginAmount / batch.CostPrice) * 100
+					pricing := &models.BatchPricing{
+						CostPrice:     batch.CostPrice,
+						SellingPrices: sellingPrices,
+						Currency:      "INR",
 					}
-					pricing.Margin = &models.BatchMargin{
-						RetailMargin:           marginAmount,
-						RetailMarginPercentage: marginPercentage,
-					}
-				}
 
-				batchContext.Pricing = pricing
+					// Calculate margin if retail price available
+					if sellingPrices.Retail != nil {
+						marginAmount := *sellingPrices.Retail - batch.CostPrice
+						marginPercentage := float64(0)
+						if batch.CostPrice > 0 {
+							marginPercentage = (marginAmount / batch.CostPrice) * 100
+						}
+						pricing.Margin = &models.BatchMargin{
+							RetailMargin:           marginAmount,
+							RetailMarginPercentage: marginPercentage,
+						}
+					}
+
+					batchContext.Pricing = pricing
+				}
 			}
 		}
 	}

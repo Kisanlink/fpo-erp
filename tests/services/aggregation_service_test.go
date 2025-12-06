@@ -37,9 +37,11 @@ func setupAggregationService(t *testing.T) (*services.AggregationService, *gorm.
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	priceRepo := repositories.NewProductPriceRepository(db)
 	service := services.NewAggregationService(
 		productRepo,
 		variantRepo,
+		priceRepo,
 		inventoryRepo,
 		warehouseRepo,
 		collaboratorRepo,

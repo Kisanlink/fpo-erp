@@ -459,16 +459,13 @@ func TestProductService_GetProductWithPrices_WithVariantsAndPrices(t *testing.T)
 	product := testutils.FixtureProduct("Tomato")
 	db.Create(product)
 
-	// Create variant with embedded prices (new architecture - prices in variant.Prices JSON)
+	// Create variant
 	variant := testutils.FixtureProductVariant(product.ID, "1kg")
-	variant.Prices = []models.VariantPrice{
-		{
-			PriceType: models.PriceTypeMRP,
-			Price:     100.0,
-			Currency:  "INR",
-		},
-	}
 	db.Create(variant)
+
+	// Create price in product_prices table (new unified architecture)
+	price := testutils.FixtureProductPrice(variant.ID, models.PriceTypeMRP, 100.0)
+	db.Create(price)
 
 	// Create repositories
 	productRepo := repositories.NewProductRepository(db)
@@ -479,7 +476,7 @@ func TestProductService_GetProductWithPrices_WithVariantsAndPrices(t *testing.T)
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
 	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
 
-	// Execute - GetProductWithPrices returns empty prices (prices moved to variants)
+	// Execute - GetProductWithPrices now returns prices from product_prices table
 	response, err := service.GetProductWithPrices(product.ID)
 
 	// Assert product is returned successfully
@@ -487,14 +484,8 @@ func TestProductService_GetProductWithPrices_WithVariantsAndPrices(t *testing.T)
 	testutils.AssertNotNil(t, response, "Response should not be nil")
 	testutils.AssertEqual(t, response.ID, product.ID, "Product ID should match")
 
-	// GetProductWithPrices intentionally returns empty prices (prices are at variant level)
-	testutils.AssertEqual(t, len(response.Prices), 0, "Product-level prices should be empty (moved to variants)")
-
-	// Verify prices are accessible through variant
-	var fetchedVariant models.ProductVariant
-	err = db.Where("id = ?", variant.ID).First(&fetchedVariant).Error
-	testutils.AssertNoError(t, err, "Should fetch variant")
-	testutils.AssertEqual(t, len(fetchedVariant.Prices), 1, "Variant should have 1 embedded price")
-	testutils.AssertEqual(t, fetchedVariant.Prices[0].PriceType, models.PriceTypeMRP, "Price type should be MRP")
-	testutils.AssertEqual(t, fetchedVariant.Prices[0].Price, 100.0, "Price should be 100.0")
+	// Verify prices are returned from product_prices table
+	testutils.AssertEqual(t, len(response.Prices), 1, "Should have 1 price from product_prices table")
+	testutils.AssertEqual(t, response.Prices[0].PriceType, models.PriceTypeMRP, "Price type should be MRP")
+	testutils.AssertEqual(t, response.Prices[0].Price, 100.0, "Price should be 100.0")
 }

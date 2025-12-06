@@ -35,11 +35,13 @@ func setupSalesService(t *testing.T) (*services.SalesService, *gorm.DB, func()) 
 	saleCancellationRepo := repositories.NewSaleCancellationRepository(db)
 
 	// Create service
+	priceRepo := repositories.NewProductPriceRepository(db)
 	service := services.NewSalesService(
 		salesRepo,
 		productRepo,
 		inventoryRepo,
 		variantRepo,
+		priceRepo,
 		discountsRepo,
 		taxRepo,
 		warehouseRepo,
@@ -501,28 +503,19 @@ func setupSaleTestData(t *testing.T, db *gorm.DB) (*models.Warehouse, *models.Pr
 	product := testutils.CreateTestProduct(t, db, "PROD-TEST-001", "Test Product")
 	variant := testutils.CreateTestVariant(t, db, "VAR-TEST-001", product.ID, "VAR-SKU-001", "1kg")
 
-	// Set price in variant.Prices JSON array (this is where getSellingPrice() looks)
-	variant.Prices = []models.VariantPrice{
-		{
-			PriceType: models.PriceTypeMRP, // "MRP" - Maximum Retail Price
-			Price:     100.00,
-			Currency:  "INR",
-		},
-	}
-	if err := db.Save(variant).Error; err != nil {
-		t.Fatalf("Failed to update variant with prices: %v", err)
+	// Create price in product_prices table (unified pricing architecture)
+	price := testutils.FixtureProductPrice(variant.ID, models.PriceTypeMRP, 100.00)
+	if err := db.Create(price).Error; err != nil {
+		t.Fatalf("Failed to create price: %v", err)
 	}
 
-	// Verify price was saved by re-fetching variant
-	var verifyVariant models.ProductVariant
-	if err := db.First(&verifyVariant, "id = ?", variant.ID).Error; err != nil {
-		t.Fatalf("Variant verification failed: %v", err)
+	// Verify price was saved by querying product_prices table
+	var verifyPrice models.ProductPrice
+	if err := db.First(&verifyPrice, "variant_id = ?", variant.ID).Error; err != nil {
+		t.Fatalf("Price verification failed: %v", err)
 	}
-	if len(verifyVariant.Prices) == 0 {
-		t.Fatalf("Variant prices not saved - expected at least 1 price, got 0")
-	}
-	t.Logf("Variant price saved successfully: PriceType=%s, Price=%.2f, Currency=%s",
-		verifyVariant.Prices[0].PriceType, verifyVariant.Prices[0].Price, verifyVariant.Prices[0].Currency)
+	t.Logf("Price saved successfully: PriceType=%s, Price=%.2f, Currency=%s",
+		verifyPrice.PriceType, verifyPrice.Price, verifyPrice.Currency)
 
 	// Create inventory batch with sufficient stock
 	expiryDate := time.Now().UTC().Add(30 * 24 * time.Hour) // 30 days from now
@@ -604,11 +597,9 @@ func TestSalesService_CreateSale_Success_MultipleItems(t *testing.T) {
 	product2 := testutils.CreateTestProduct(t, db, "PROD-TEST-002", "Test Product 2")
 	variant2 := testutils.CreateTestVariant(t, db, "VAR-TEST-002", product2.ID, "VAR-SKU-002", "2kg")
 
-	// Set price in variant.Prices JSON array for second variant
-	variant2.Prices = []models.VariantPrice{
-		{PriceType: models.PriceTypeMRP, Price: 200.00, Currency: "INR"},
-	}
-	db.Save(variant2)
+	// Create price in product_prices table for second variant
+	price2 := testutils.FixtureProductPrice(variant2.ID, models.PriceTypeMRP, 200.00)
+	db.Create(price2)
 
 	// Create inventory for second variant
 	expiryDate := time.Now().UTC().Add(30 * 24 * time.Hour)
@@ -706,11 +697,9 @@ func TestSalesService_CreateSale_Failure_InsufficientInventory(t *testing.T) {
 	product := testutils.CreateTestProduct(t, db, "PROD-LIMITED", "Limited Product")
 	variant := testutils.CreateTestVariant(t, db, "VAR-LIMITED", product.ID, "VAR-SKU-LIMITED", "1kg")
 
-	// Set price in variant.Prices JSON array
-	variant.Prices = []models.VariantPrice{
-		{PriceType: models.PriceTypeMRP, Price: 100.00, Currency: "INR"},
-	}
-	db.Save(variant)
+	// Create price in product_prices table
+	price := testutils.FixtureProductPrice(variant.ID, models.PriceTypeMRP, 100.00)
+	db.Create(price)
 
 	// Create inventory batch with only 5 units
 	expiryDate := time.Now().UTC().Add(30 * 24 * time.Hour)
@@ -1318,11 +1307,9 @@ func TestSalesService_CancelItems_PartialCancellation(t *testing.T) {
 	product2 := testutils.CreateTestProduct(t, db, "PROD-002", "Test Product 2")
 	variant2 := testutils.CreateTestVariant(t, db, "VAR-002", product2.ID, "VAR-SKU-002", "1kg")
 
-	// Set price in variant.Prices JSON array for second variant
-	variant2.Prices = []models.VariantPrice{
-		{PriceType: models.PriceTypeMRP, Price: 200.0, Currency: "INR"},
-	}
-	db.Save(variant2)
+	// Create price in product_prices table for second variant (unified pricing architecture)
+	price2 := testutils.FixtureProductPrice(variant2.ID, models.PriceTypeMRP, 200.0)
+	db.Create(price2)
 
 	// Create inventory for second variant
 	expiryDate := time.Now().UTC().Add(30 * 24 * time.Hour)
