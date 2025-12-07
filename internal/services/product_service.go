@@ -354,6 +354,40 @@ func (s *ProductService) buildProductResponse(ctx context.Context, product *mode
 	return response
 }
 
+// GetProductsByCategory retrieves all products in a specific category
+func (s *ProductService) GetProductsByCategory(ctx context.Context, categoryID string, subcategoryID *string) ([]models.ProductResponse, error) {
+	s.logger.Info("Retrieving products by category",
+		zap.String("category_id", categoryID))
+
+	var products []models.Product
+	var err error
+
+	if subcategoryID != nil && *subcategoryID != "" {
+		products, err = s.productRepo.GetByCategoryAndSubcategory(categoryID, subcategoryID)
+	} else {
+		products, err = s.productRepo.GetByCategory(categoryID)
+	}
+
+	if err != nil {
+		s.logger.Error("Failed to retrieve products by category",
+			zap.Error(err),
+			zap.String("category_id", categoryID))
+		return nil, err
+	}
+
+	var responses []models.ProductResponse
+	for _, product := range products {
+		response := s.buildProductResponse(ctx, &product)
+		responses = append(responses, *response)
+	}
+
+	s.logger.Info("Retrieved products by category successfully",
+		zap.String("category_id", categoryID),
+		zap.Int("count", len(responses)))
+
+	return responses, nil
+}
+
 // buildVariantResponse builds a variant response with presigned image URLs
 func (s *ProductService) buildVariantResponse(ctx context.Context, variant *models.ProductVariant) models.ProductVariantResponse {
 	// Unmarshal image paths from JSON

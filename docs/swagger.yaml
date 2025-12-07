@@ -6941,6 +6941,55 @@ paths:
       summary: Get Products Availability
       tags:
       - Inventory
+  /api/v1/products/category/{categoryId}:
+    get:
+      description: Retrieve all products in a specific category (requires authentication)
+      parameters:
+      - description: Category ID
+        example: CATG00000001
+        in: path
+        name: categoryId
+        required: true
+        type: string
+      - description: Subcategory ID (optional filter)
+        in: query
+        name: subcategory_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Products retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.ProductResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Products by Category
+      tags:
+      - Products
   /api/v1/products/search:
     get:
       description: Search products by query string (requires authentication)

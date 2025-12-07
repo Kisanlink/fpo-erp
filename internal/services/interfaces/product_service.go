@@ -15,4 +15,5 @@ type ProductServiceInterface interface {
 	DeleteProduct(id string) error
 	SearchProducts(query string) ([]models.ProductResponse, error)
 	GetProductWithPrices(id string) (*models.ProductWithPricesResponse, error)
+	GetProductsByCategory(ctx context.Context, categoryID string, subcategoryID *string) ([]models.ProductResponse, error)
 }

@@ -65,3 +65,11 @@ func (m *MockProductService) GetProductWithPrices(id string) (*models.ProductWit
 	}
 	return args.Get(0).(*models.ProductWithPricesResponse), args.Error(1)
 }
+
+func (m *MockProductService) GetProductsByCategory(ctx context.Context, categoryID string, subcategoryID *string) ([]models.ProductResponse, error) {
+	args := m.Called(ctx, categoryID, subcategoryID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]models.ProductResponse), args.Error(1)
+}

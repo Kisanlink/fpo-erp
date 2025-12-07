@@ -16,6 +16,7 @@ This document describes all breaking changes, new features, and response format 
    - [GRN Rejection Tracking](#3-grn-rejection-tracking)
    - [Categories API](#4-categories-api-new)
    - [Subcategories API](#5-subcategories-api-new)
+   - [Products by Category](#6-products-by-category-new)
 4. [Response Format Changes](#response-format-changes)
 5. [Endpoints with Query Parameters](#endpoints-with-query-parameters)
 6. [Frontend Migration Guide](#frontend-migration-guide)
@@ -199,6 +200,33 @@ Product categorization system with predefined hierarchy.
 | `/api/v1/subcategories` | POST | Create new subcategory |
 | `/api/v1/subcategories/:id` | PATCH | Update subcategory |
 | `/api/v1/subcategories/:id` | DELETE | Delete subcategory |
+
+### 6. Products by Category (NEW)
+
+Get products filtered by category with optional subcategory filter.
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/v1/products/category/:categoryId` | GET | Get all products in a category |
+| `/api/v1/products/category/:categoryId?subcategory_id=SUBC00000001` | GET | Get products filtered by category and subcategory |
+
+**Request Parameters:**
+
+| Type | Name | Required | Description |
+|------|------|----------|-------------|
+| Path | `categoryId` | Yes | Category ID (e.g., `CATG00000001`) |
+| Query | `subcategory_id` | No | Optional subcategory filter |
+
+**Response:** Array of `ProductResponse` objects (same format as `GET /api/v1/products`)
+
+**Example:**
+```javascript
+// Get all products in a category
+const products = await api.get('/products/category/CATG00000001');
+
+// Get products filtered by subcategory
+const filtered = await api.get('/products/category/CATG00000001?subcategory_id=SUBC00000001');
+```
 
 ---
 
