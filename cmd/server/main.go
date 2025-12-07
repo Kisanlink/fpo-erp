@@ -76,6 +76,10 @@ func main() {
 	// Configure GORM logger
 	utils.ConfigureGormLogger(pg)
 
+	// Initialize hash counters from database BEFORE auto-migration
+	// This is critical because seeding happens during migration and needs correct counters
+	initializeHashCounters(pg)
+
 	// Run auto-migration (if enabled)
 	if cfg.Database.AutoMigrate {
 		if err := database.AutoMigrate(pg); err != nil {
@@ -85,9 +89,6 @@ func main() {
 		log.Println("⚠️  WARNING: Database auto-migration is DISABLED")
 		log.Println("   Ensure database schema matches application models manually")
 	}
-
-	// Initialize hash counters from database
-	initializeHashCounters(pg)
 
 	// Seed AAA roles and permissions for ERP module (non-fatal)
 	if cfg.AAA.Enabled && cfg.AAA.GRPCAddress != "" {
@@ -183,6 +184,9 @@ func initializeHashCounters(db *gorm.DB) {
 		// Webhook Integration
 		constants.TableWebhookEvent:           hash.Medium, // Webhook Events
 		constants.TableWebhookDeliveryAttempt: hash.Medium, // Webhook Delivery Attempts
+		// Categories
+		constants.TableCategory:    hash.Medium, // Product Categories
+		constants.TableSubcategory: hash.Medium, // Product Subcategories
 	}
 
 	// Initialize counters for each table
@@ -234,6 +238,9 @@ func getExistingIDs(db *gorm.DB, tableID string) []string {
 		// Webhook Integration
 		constants.TableWebhookEvent:           "webhook_events",
 		constants.TableWebhookDeliveryAttempt: "webhook_delivery_attempts",
+		// Categories
+		constants.TableCategory:    "categories",
+		constants.TableSubcategory: "subcategories",
 	}
 
 	tableName, exists := tableNameMap[tableID]

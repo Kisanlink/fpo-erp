@@ -53,4 +53,8 @@ const (
 	// Webhook Integration
 	TableWebhookEvent           = "WHEV" // Webhook Events
 	TableWebhookDeliveryAttempt = "WHDA" // Webhook Delivery Attempts
+
+	// Categories
+	TableCategory    = "CATG" // Product Categories
+	TableSubcategory = "SCAT" // Product Subcategories
 )

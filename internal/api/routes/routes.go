@@ -52,6 +52,10 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	// Sales cancellation repository
 	saleCancellationRepo := repositories.NewSaleCancellationRepository(db)
 
+	// Category repositories
+	categoryRepo := repositories.NewCategoryRepository(db)
+	subcategoryRepo := repositories.NewSubcategoryRepository(db)
+
 	// Initialize S3 service
 	s3Service, err := services.NewS3Service(cfg)
 	if err != nil {
@@ -110,6 +114,10 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	productVariantService := services.NewProductVariantService(productVariantRepo, productRepo, priceRepo, s3Service, logger)
 	purchaseOrderService := services.NewPurchaseOrderService(purchaseOrderRepo, collaboratorRepo, warehouseRepo, productRepo, productVariantRepo, grnRepo, inventoryRepo, logger)
 	grnService := services.NewGRNService(grnRepo, purchaseOrderRepo, warehouseRepo, productRepo, inventoryRepo, logger)
+
+	// Category services
+	categoryService := services.NewCategoryService(categoryRepo, subcategoryRepo, logger)
+	subcategoryService := services.NewSubcategoryService(subcategoryRepo, categoryRepo, logger)
 
 	// Webhook services
 	webhookSecurityService := services.NewWebhookSecurityService(cfg.Webhook.Secret)
@@ -182,6 +190,10 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	purchaseOrderHandler := handlers.NewPurchaseOrderHandler(purchaseOrderService, aaaMiddleware, logger)
 	grnHandler := handlers.NewGRNHandler(grnService, aaaMiddleware, logger)
 
+	// Category handlers
+	categoryHandler := handlers.NewCategoryHandler(categoryService, logger)
+	subcategoryHandler := handlers.NewSubcategoryHandler(subcategoryService, logger)
+
 	// Webhook handler (no AAA middleware - uses HMAC signature verification)
 	ecommerceWebhookHandler := handlers.NewEcommerceWebhookHandler(
 		ecommerceWebhookService,
@@ -219,6 +231,10 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 		priceHandler.RegisterRoutes(v1)
 		purchaseOrderHandler.RegisterRoutes(v1)
 		grnHandler.RegisterRoutes(v1)
+
+		// Category handlers
+		categoryHandler.RegisterRoutes(v1)
+		subcategoryHandler.RegisterRoutes(v1)
 
 		// Webhook handler
 		ecommerceWebhookHandler.RegisterRoutes(v1)

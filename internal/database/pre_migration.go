@@ -25,6 +25,14 @@ func RunPreMigrationFixes(db *gorm.DB) error {
 		return fmt.Errorf("failed to rename farmer_id to customer_id: %w", err)
 	}
 
+	if err := fixSubcategoryUniqueIndex(db); err != nil {
+		return fmt.Errorf("failed to fix subcategory unique index: %w", err)
+	}
+
+	if err := migrateProductCategoryColumns(db); err != nil {
+		return fmt.Errorf("failed to migrate product category columns: %w", err)
+	}
+
 	log.Println("Pre-migration fixes completed successfully")
 	return nil
 }
@@ -222,5 +230,150 @@ func recreateProductVariantFK(db *gorm.DB) error {
 	}
 
 	log.Println("Successfully recreated foreign key constraint")
+	return nil
+}
+
+// fixSubcategoryUniqueIndex fixes the incorrect unique index on subcategories.name
+// The original index was on 'name' only, but subcategory names can be duplicated across categories
+// (e.g., "Others" can exist in both "Bio Products" and "Irrigation" categories).
+// This drops the incorrect single-column unique index so GORM can create the correct composite index.
+func fixSubcategoryUniqueIndex(db *gorm.DB) error {
+	if !db.Migrator().HasTable("subcategories") {
+		log.Println("Subcategories table does not exist yet - will be created by AutoMigrate")
+		return nil
+	}
+
+	log.Println("Checking subcategories unique index...")
+
+	// Check if the incorrect single-column unique index exists
+	var indexExists bool
+	query := `
+		SELECT EXISTS (
+			SELECT 1 FROM pg_indexes
+			WHERE tablename = 'subcategories'
+			AND indexname = 'idx_subcategories_name'
+			AND schemaname = CURRENT_SCHEMA()
+		)
+	`
+	if err := db.Raw(query).Scan(&indexExists).Error; err != nil {
+		log.Printf("Could not check for subcategories name index: %v - skipping", err)
+		return nil
+	}
+
+	if !indexExists {
+		log.Println("idx_subcategories_name index does not exist - nothing to fix")
+		return nil
+	}
+
+	// Check if it's a single-column index (incorrect) or multi-column (correct)
+	// A single-column index on 'name' alone is wrong because subcategory names
+	// are only unique WITHIN a category, not globally
+	var columnCount int
+	countQuery := `
+		SELECT count(*)
+		FROM pg_index i
+		JOIN pg_class c ON c.oid = i.indexrelid
+		JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+		WHERE c.relname = 'idx_subcategories_name'
+	`
+	if err := db.Raw(countQuery).Scan(&columnCount).Error; err != nil {
+		log.Printf("Could not check index column count: %v - skipping", err)
+		return nil
+	}
+
+	if columnCount > 1 {
+		log.Println("idx_subcategories_name is already a composite index - nothing to fix")
+		return nil
+	}
+
+	// Drop the incorrect single-column unique index
+	log.Println("Dropping incorrect single-column unique index idx_subcategories_name...")
+	if err := db.Exec("DROP INDEX IF EXISTS idx_subcategories_name").Error; err != nil {
+		return fmt.Errorf("failed to drop incorrect index: %w", err)
+	}
+
+	log.Println("Successfully dropped incorrect idx_subcategories_name index")
+	log.Println("GORM will create the correct composite index during migration")
+	return nil
+}
+
+// migrateProductCategoryColumns migrates products table from category_name/subcategory_name
+// (string-based) to category_id/subcategory_id (ID-based foreign keys)
+// This is idempotent - checks if old columns exist before migrating
+func migrateProductCategoryColumns(db *gorm.DB) error {
+	if !db.Migrator().HasTable("products") {
+		log.Println("Products table does not exist yet - will be created by AutoMigrate")
+		return nil
+	}
+
+	// Check if old category_name column exists
+	var hasOldColumn bool
+	query := `
+		SELECT EXISTS (
+			SELECT 1 FROM information_schema.columns
+			WHERE table_name = 'products' AND column_name = 'category_name'
+		)
+	`
+	if err := db.Raw(query).Scan(&hasOldColumn).Error; err != nil {
+		log.Printf("Could not check for category_name column: %v - skipping", err)
+		return nil
+	}
+
+	if !hasOldColumn {
+		log.Println("products.category_name column does not exist - already migrated to ID-based")
+		return nil
+	}
+
+	log.Println("Migrating products from category_name to category_id...")
+
+	// Step 1: Add new columns if they don't exist
+	log.Println("Adding category_id and subcategory_id columns...")
+	db.Exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS category_id VARCHAR(50)")
+	db.Exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS subcategory_id VARCHAR(50)")
+
+	// Step 2: Migrate data from name to ID (only if categories table exists)
+	if db.Migrator().HasTable("categories") {
+		log.Println("Migrating category_name to category_id...")
+		migrateCategory := `
+			UPDATE products p
+			SET category_id = c.id
+			FROM categories c
+			WHERE p.category_name = c.name AND p.category_id IS NULL
+		`
+		if err := db.Exec(migrateCategory).Error; err != nil {
+			log.Printf("Warning: Could not migrate category_name to category_id: %v", err)
+		}
+	}
+
+	if db.Migrator().HasTable("subcategories") {
+		log.Println("Migrating subcategory_name to subcategory_id...")
+		migrateSubcategory := `
+			UPDATE products p
+			SET subcategory_id = s.id
+			FROM subcategories s
+			WHERE p.subcategory_name = s.name
+			AND p.category_name = s.category_name
+			AND p.subcategory_id IS NULL
+		`
+		if err := db.Exec(migrateSubcategory).Error; err != nil {
+			log.Printf("Warning: Could not migrate subcategory_name to subcategory_id: %v", err)
+		}
+	}
+
+	// Step 3: Drop old FK constraints
+	log.Println("Dropping old FK constraints...")
+	db.Exec("ALTER TABLE products DROP CONSTRAINT IF EXISTS fk_products_category")
+	db.Exec("ALTER TABLE products DROP CONSTRAINT IF EXISTS fk_products_subcategory")
+
+	// Step 4: Drop old columns
+	log.Println("Dropping old category_name and subcategory_name columns...")
+	if err := db.Exec("ALTER TABLE products DROP COLUMN IF EXISTS category_name").Error; err != nil {
+		log.Printf("Warning: Could not drop category_name column: %v", err)
+	}
+	if err := db.Exec("ALTER TABLE products DROP COLUMN IF EXISTS subcategory_name").Error; err != nil {
+		log.Printf("Warning: Could not drop subcategory_name column: %v", err)
+	}
+
+	log.Println("Successfully migrated products to ID-based category references")
 	return nil
 }

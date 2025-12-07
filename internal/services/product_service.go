@@ -41,7 +41,22 @@ func (s *ProductService) CreateProduct(request *models.CreateProductRequest) (*m
 	// Create product model using the proper constructor
 	product := models.NewProduct(request.Name, request.Description)
 
-	s.logger.Debug("Saving product to database")
+	// Set category ID if provided
+	if request.CategoryID != nil && *request.CategoryID != "" {
+		product.CategoryID = request.CategoryID
+	}
+
+	// Set subcategory ID if provided
+	if request.SubcategoryID != nil && *request.SubcategoryID != "" {
+		product.SubcategoryID = request.SubcategoryID
+	}
+
+	categoryIDStr := ""
+	if product.CategoryID != nil {
+		categoryIDStr = *product.CategoryID
+	}
+	s.logger.Debug("Saving product to database",
+		zap.String("category_id", categoryIDStr))
 
 	// Save to database
 	if err := s.productRepo.Create(product); err != nil {
@@ -53,16 +68,19 @@ func (s *ProductService) CreateProduct(request *models.CreateProductRequest) (*m
 
 	// Convert to response
 	response := &models.ProductResponse{
-		ID:          product.ID,
-		Name:        product.Name,
-		Description: product.Description,
-		CreatedAt:   product.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt:   product.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		ID:            product.ID,
+		Name:          product.Name,
+		Description:   product.Description,
+		CategoryID:    product.CategoryID,
+		SubcategoryID: product.SubcategoryID,
+		CreatedAt:     product.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt:     product.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 	}
 
 	s.logger.Info("Product created successfully",
 		zap.String("product_id", product.ID),
-		zap.String("name", product.Name))
+		zap.String("name", product.Name),
+		zap.String("category_id", categoryIDStr))
 
 	return response, nil
 }
@@ -146,11 +164,13 @@ func (s *ProductService) UpdateProduct(id string, request *models.UpdateProductR
 	}
 
 	response := &models.ProductResponse{
-		ID:          product.ID,
-		Name:        product.Name,
-		Description: product.Description,
-		CreatedAt:   product.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt:   product.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		ID:            product.ID,
+		Name:          product.Name,
+		Description:   product.Description,
+		CategoryID:    product.CategoryID,
+		SubcategoryID: product.SubcategoryID,
+		CreatedAt:     product.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt:     product.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 	}
 
 	s.logger.Info("Product updated successfully",
@@ -309,11 +329,13 @@ func (s *ProductService) GetProductWithPrices(id string) (*models.ProductWithPri
 // buildProductResponse builds a product response with variants and presigned image URLs
 func (s *ProductService) buildProductResponse(ctx context.Context, product *models.Product) *models.ProductResponse {
 	response := &models.ProductResponse{
-		ID:          product.ID,
-		Name:        product.Name,
-		Description: product.Description,
-		CreatedAt:   product.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt:   product.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		ID:            product.ID,
+		Name:          product.Name,
+		Description:   product.Description,
+		CategoryID:    product.CategoryID,
+		SubcategoryID: product.SubcategoryID,
+		CreatedAt:     product.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt:     product.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 	}
 
 	// Preload variants with presigned image URLs

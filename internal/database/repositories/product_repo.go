@@ -93,3 +93,52 @@ func (r *ProductRepository) FindByExternalID(externalID string) (*models.Product
 	}
 	return &product, nil
 }
+
+// GetByCategory retrieves all products in a category by category ID
+func (r *ProductRepository) GetByCategory(categoryID string) ([]models.Product, error) {
+	var products []models.Product
+	if err := r.db.Where("category_id = ?", categoryID).Find(&products).Error; err != nil {
+		return nil, errors.NewInternalServerError("Failed to retrieve products by category")
+	}
+	return products, nil
+}
+
+// GetBySubcategory retrieves all products in a subcategory by subcategory ID
+func (r *ProductRepository) GetBySubcategory(subcategoryID string) ([]models.Product, error) {
+	var products []models.Product
+	if err := r.db.Where("subcategory_id = ?", subcategoryID).Find(&products).Error; err != nil {
+		return nil, errors.NewInternalServerError("Failed to retrieve products by subcategory")
+	}
+	return products, nil
+}
+
+// GetByCategoryAndSubcategory retrieves all products in a specific category and subcategory by IDs
+func (r *ProductRepository) GetByCategoryAndSubcategory(categoryID string, subcategoryID *string) ([]models.Product, error) {
+	var products []models.Product
+	query := r.db.Where("category_id = ?", categoryID)
+	if subcategoryID != nil {
+		query = query.Where("subcategory_id = ?", *subcategoryID)
+	}
+	if err := query.Find(&products).Error; err != nil {
+		return nil, errors.NewInternalServerError("Failed to retrieve products by category and subcategory")
+	}
+	return products, nil
+}
+
+// GetWithFilters retrieves products with optional category and subcategory ID filters
+func (r *ProductRepository) GetWithFilters(categoryID *string, subcategoryID *string) ([]models.Product, error) {
+	var products []models.Product
+	query := r.db.Model(&models.Product{})
+
+	if categoryID != nil && *categoryID != "" {
+		query = query.Where("category_id = ?", *categoryID)
+	}
+	if subcategoryID != nil && *subcategoryID != "" {
+		query = query.Where("subcategory_id = ?", *subcategoryID)
+	}
+
+	if err := query.Find(&products).Error; err != nil {
+		return nil, errors.NewInternalServerError("Failed to retrieve products with filters")
+	}
+	return products, nil
+}

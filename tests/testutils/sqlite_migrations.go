@@ -329,6 +329,69 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 		return err
 	}
 
+	// Category table - must be created before Products (foreign key constraint)
+	if err := db.Exec(`DROP TABLE IF EXISTS categories`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE TABLE categories (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL UNIQUE,
+			description TEXT,
+			created_at DATETIME,
+			updated_at DATETIME,
+			deleted_at DATETIME,
+			created_by TEXT,
+			updated_by TEXT,
+			deleted_by TEXT
+		)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Create index for category name
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_category_name ON categories(name)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Subcategory table - must be created before Products (foreign key constraint)
+	if err := db.Exec(`DROP TABLE IF EXISTS subcategories`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE TABLE subcategories (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL UNIQUE,
+			description TEXT,
+			category_name TEXT NOT NULL,
+			created_at DATETIME,
+			updated_at DATETIME,
+			deleted_at DATETIME,
+			created_by TEXT,
+			updated_by TEXT,
+			deleted_by TEXT
+		)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Create indexes for subcategory
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_subcategory_name ON subcategories(name)
+	`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_subcategory_category ON subcategories(category_name)
+	`).Error; err != nil {
+		return err
+	}
+
 	// Product table
 	// Drop table first to ensure schema is correct
 	if err := db.Exec(`DROP TABLE IF EXISTS products`).Error; err != nil {
@@ -341,6 +404,8 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 			external_id TEXT UNIQUE,
 			name TEXT NOT NULL,
 			description TEXT,
+			category_name TEXT NOT NULL DEFAULT 'Others',
+			subcategory_name TEXT,
 			created_at DATETIME,
 			updated_at DATETIME,
 			deleted_at DATETIME,
@@ -355,6 +420,19 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 	// Create index for external_id
 	if err := db.Exec(`
 		CREATE INDEX IF NOT EXISTS idx_product_external_id ON products(external_id)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Create indexes for category_name and subcategory_name
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_product_category ON products(category_name)
+	`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_product_subcategory ON products(subcategory_name)
 	`).Error; err != nil {
 		return err
 	}

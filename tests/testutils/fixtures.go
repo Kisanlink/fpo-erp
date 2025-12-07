@@ -63,6 +63,53 @@ func FixtureProductWithExternalID(name, externalID string) *models.Product {
 	return product
 }
 
+func FixtureProductWithCategory(name string, categoryID *string, subcategoryID *string) *models.Product {
+	product := FixtureProduct(name)
+	product.CategoryID = categoryID
+	product.SubcategoryID = subcategoryID
+	return product
+}
+
+// ========================================
+// Category Fixtures
+// ========================================
+
+func FixtureCategory(name string) *models.Category {
+	category := models.NewCategory(name, nil)
+	return category
+}
+
+func FixtureCategoryWithID(id, name string) *models.Category {
+	category := models.NewCategory(name, nil)
+	category.ID = id
+	return category
+}
+
+func FixtureCategoryWithDescription(name, description string) *models.Category {
+	category := models.NewCategory(name, &description)
+	return category
+}
+
+// ========================================
+// Subcategory Fixtures
+// ========================================
+
+func FixtureSubcategory(name, categoryName string) *models.Subcategory {
+	subcategory := models.NewSubcategory(name, categoryName, nil)
+	return subcategory
+}
+
+func FixtureSubcategoryWithID(id, name, categoryName string) *models.Subcategory {
+	subcategory := models.NewSubcategory(name, categoryName, nil)
+	subcategory.ID = id
+	return subcategory
+}
+
+func FixtureSubcategoryWithDescription(name, categoryName, description string) *models.Subcategory {
+	subcategory := models.NewSubcategory(name, categoryName, &description)
+	return subcategory
+}
+
 // ========================================
 // ProductVariant Fixtures
 // ========================================

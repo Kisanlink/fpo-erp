@@ -19,8 +19,29 @@ func AutoMigrate(db *gorm.DB) error {
 	// Phase 2: Run standard GORM auto-migration
 	log.Println("Running GORM auto-migration...")
 
-	// List all models for auto-migration
-	models := []interface{}{
+	// Phase 2a: Migrate category tables first (required for FK constraints)
+	log.Println("Migrating category tables...")
+	categoryModels := []interface{}{
+		&models.Category{},
+		&models.Subcategory{},
+	}
+	for _, model := range categoryModels {
+		if err := db.AutoMigrate(model); err != nil {
+			log.Printf("Failed to migrate model %T: %v", model, err)
+			return err
+		}
+		log.Printf("Successfully migrated model %T", model)
+	}
+
+	// Phase 2b: Seed default categories before Product migration
+	// This ensures FK constraints can be satisfied for existing products
+	if err := seedDefaultCategories(db); err != nil {
+		log.Printf("Failed to seed default categories: %v", err)
+		return err
+	}
+
+	// List remaining models for auto-migration (categories already migrated above)
+	remainingModels := []interface{}{
 		// Core entities
 		&models.Warehouse{},
 		&models.Product{},
@@ -66,8 +87,8 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.WebhookDeliveryAttempt{},
 	}
 
-	// Perform auto-migration
-	for _, model := range models {
+	// Perform auto-migration for remaining models
+	for _, model := range remainingModels {
 		if err := db.AutoMigrate(model); err != nil {
 			log.Printf("Failed to migrate model %T: %v", model, err)
 			return err
@@ -84,5 +105,79 @@ func AutoMigrate(db *gorm.DB) error {
 		// Continue - indexes are performance optimization, not critical
 	}
 
+	return nil
+}
+
+// seedDefaultCategories seeds the predefined categories and subcategories.
+// This is called during migration BEFORE Product migration to ensure FK constraints
+// can be satisfied for existing products that may have category_name='Others'.
+// This function is idempotent - checks if category exists before creating.
+func seedDefaultCategories(db *gorm.DB) error {
+	log.Println("Seeding default categories...")
+
+	// Predefined categories with their subcategories
+	categories := []struct {
+		Name          string
+		Description   string
+		Subcategories []string
+	}{
+		{"Seeds", "Agricultural seeds and planting materials", nil},
+		{"Fertilizers", "Chemical and organic fertilizers", []string{"BULK", "Water Soluble", "Micronutrients", "Macronutrients"}},
+		{"Pesticides", "Pest control products", []string{"Weedicides", "Insecticides", "Fungicides", "Organic"}},
+		{"Bio Products", "Biological and eco-friendly products", []string{"Bulk", "Liquids", "Others"}},
+		{"Implements", "Agricultural tools and implements", []string{"Weeding", "Sowing", "Sprayers"}},
+		{"Irrigation", "Irrigation equipment and systems", []string{"Pipes", "Drippers", "Sprinklers", "Automation Machines", "Others"}},
+		{"Others", "Miscellaneous agricultural products", nil},
+	}
+
+	categoryCount := 0
+	subcategoryCount := 0
+
+	for _, cat := range categories {
+		// Check if category already exists
+		var existingCategory models.Category
+		result := db.Where("name = ?", cat.Name).First(&existingCategory)
+
+		if result.Error != nil && result.Error.Error() != "record not found" {
+			// Real database error
+			log.Printf("Failed to check category %s: %v", cat.Name, result.Error)
+			return result.Error
+		}
+
+		if result.RowsAffected == 0 {
+			// Category doesn't exist, create it using proper constructor
+			description := cat.Description
+			newCategory := models.NewCategory(cat.Name, &description)
+			if err := db.Create(newCategory).Error; err != nil {
+				log.Printf("Failed to create category %s: %v", cat.Name, err)
+				return err
+			}
+			categoryCount++
+		}
+
+		// Create subcategories for this category
+		for _, subName := range cat.Subcategories {
+			// Check if subcategory already exists
+			var existingSub models.Subcategory
+			result := db.Where("name = ? AND category_name = ?", subName, cat.Name).First(&existingSub)
+
+			if result.Error != nil && result.Error.Error() != "record not found" {
+				log.Printf("Failed to check subcategory %s: %v", subName, result.Error)
+				return result.Error
+			}
+
+			if result.RowsAffected == 0 {
+				// Subcategory doesn't exist, create it using proper constructor
+				newSubcategory := models.NewSubcategory(subName, cat.Name, nil)
+				if err := db.Create(newSubcategory).Error; err != nil {
+					log.Printf("Failed to create subcategory %s: %v", subName, err)
+					return err
+				}
+				subcategoryCount++
+			}
+		}
+	}
+
+	log.Printf("✅ Seeded %d categories and %d subcategories", categoryCount, subcategoryCount)
 	return nil
 }
