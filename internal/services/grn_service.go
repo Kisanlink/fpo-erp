@@ -199,17 +199,13 @@ func (s *GRNService) CreateGRN(ctx context.Context, request *models.CreateGRNReq
 
 				// Create inventory batch with ALL-IN cost price from PO
 				// For procurement, we use the PO unit price as cost price
-				// Tax rates are 0 because PO price already includes all taxes
+				// GST-only tax system - tax rates are on ProductVariant, not on batches
 				batch := models.NewInventoryBatch(
 					po.WarehouseID,
 					poItem.VariantID,
 					poItem.UnitPrice, // ALL-IN cost price from PO
 					expiryDate,
 					itemReq.AcceptedQuantity,
-					0,          // CGST rate 0 (price is ALL-IN)
-					0,          // SGST rate 0 (price is ALL-IN)
-					[]string{}, // No custom taxes
-					false,      // Not tax exempt
 				)
 
 				if err := s.inventoryRepo.CreateBatchWithTx(tx, batch); err != nil {

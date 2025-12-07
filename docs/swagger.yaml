@@ -54,23 +54,6 @@ definitions:
       price_type:
         type: string
     type: object
-  models.AppliedTax:
-    properties:
-      amount:
-        type: number
-      base_amount:
-        type: number
-      rate:
-        type: number
-      tax_code:
-        type: string
-      tax_id:
-        type: string
-      tax_name:
-        type: string
-      tax_type:
-        $ref: '#/definitions/models.TaxType'
-    type: object
   models.AttachmentInfoResponse:
     properties:
       created_at:
@@ -203,18 +186,19 @@ definitions:
   models.BatchTaxConfig:
     properties:
       cgst_rate:
+        description: CGST (50% of GSTRate) for intra-state
         type: number
-      custom_taxes:
-        items:
-          type: string
-        type: array
+      gst_rate:
+        description: Total GST rate from variant
+        type: number
       hsn_code:
+        description: HSN code from variant
         type: string
-      is_tax_exempt:
-        type: boolean
       sgst_rate:
+        description: SGST (50% of GSTRate) for intra-state
         type: number
       total_gst_rate:
+        description: Same as GSTRate for compatibility
         type: number
     type: object
   models.BatchWithContext:
@@ -342,6 +326,23 @@ definitions:
       sale_item_id:
         type: string
     type: object
+  models.CategoryResponse:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      subcategories:
+        items:
+          $ref: '#/definitions/models.SubcategoryResponse'
+        type: array
+      updated_at:
+        type: string
+    type: object
   models.CollaboratorBasicInfo:
     properties:
       company_name:
@@ -451,6 +452,15 @@ definitions:
     required:
     - amount
     - payment_method
+    type: object
+  models.CreateCategoryRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+    required:
+    - name
     type: object
   models.CreateCollaboratorRequest:
     properties:
@@ -599,27 +609,12 @@ definitions:
     type: object
   models.CreateInventoryBatchRequest:
     properties:
-      cgst_rate:
-        description: Tax Configuration
-        maximum: 100
-        minimum: 0
-        type: number
       cost_price:
         type: number
-      custom_tax_ids:
-        items:
-          type: string
-        type: array
       expiry_date:
         type: string
-      is_tax_exempt:
-        type: boolean
       quantity:
         type: integer
-      sgst_rate:
-        maximum: 100
-        minimum: 0
-        type: number
       variant_id:
         type: string
       warehouse_id:
@@ -668,9 +663,15 @@ definitions:
     type: object
   models.CreateProductRequest:
     properties:
+      category_id:
+        description: Optional
+        type: string
       description:
         type: string
       name:
+        type: string
+      subcategory_id:
+        description: Optional
         type: string
     required:
     - name
@@ -680,7 +681,7 @@ definitions:
       barcode:
         type: string
       brand_name:
-        description: Required if collaborator_ids provided
+        description: 'Optional: collaborator''s brand'
         type: string
       collaborator_ids:
         description: 'Optional: multiple collaborators can supply same variant'
@@ -692,12 +693,12 @@ definitions:
       dosage_instructions:
         type: string
       gst_rate:
-        description: Required if collaborator_ids provided
-        maximum: 100
+        description: 'Required: GST rate (0, 5, 12, 18, or 28)'
+        maximum: 28
         minimum: 0
         type: number
       hsn_code:
-        description: Required if collaborator_ids provided
+        description: 'Required: HSN code for GST classification'
         type: string
       images:
         items:
@@ -719,6 +720,7 @@ definitions:
       variant_name:
         type: string
     required:
+    - hsn_code
     - pack_size
     - quantity
     - variant_name
@@ -825,6 +827,9 @@ definitions:
       customer_id:
         description: BRD Requirements
         type: string
+      delivery_state:
+        description: GST Inter-state detection
+        type: string
       discount_id:
         description: Manual discount by ID (highest priority)
         type: string
@@ -848,100 +853,17 @@ definitions:
     - sale_type
     - warehouse_id
     type: object
-  models.CreateTaxRequest:
+  models.CreateSubcategoryRequest:
     properties:
-      applicable_categories:
-        items:
-          type: string
-        type: array
-      applicable_customer_groups:
-        items:
-          type: string
-        type: array
-      applicable_products:
-        items:
-          type: string
-        type: array
-      applicable_states:
-        items:
-          type: string
-        type: array
-      applicable_warehouses:
-        items:
-          type: string
-        type: array
-      calculation_type:
-        $ref: '#/definitions/models.TaxCalculationType'
-      code:
+      category_name:
         type: string
       description:
         type: string
-      excluded_categories:
-        items:
-          type: string
-        type: array
-      excluded_customer_groups:
-        items:
-          type: string
-        type: array
-      excluded_products:
-        items:
-          type: string
-        type: array
-      excluded_states:
-        items:
-          type: string
-        type: array
-      excluded_warehouses:
-        items:
-          type: string
-        type: array
-      hsn_code:
-        type: string
-      is_active:
-        type: boolean
-      is_inter_state:
-        type: boolean
-      is_stackable:
-        type: boolean
-      max_amount:
-        type: number
-      max_order_value:
-        type: number
-      min_amount:
-        type: number
-      min_order_value:
-        type: number
       name:
         type: string
-      priority:
-        type: integer
-      rate:
-        minimum: 0
-        type: number
-      requires_gstin:
-        type: boolean
-      requires_pan:
-        type: boolean
-      sac_code:
-        type: string
-      stacking_order:
-        type: integer
-      tax_category:
-        type: string
-      tax_type:
-        $ref: '#/definitions/models.TaxType'
-      valid_from:
-        type: string
-      valid_until:
-        type: string
     required:
-    - calculation_type
-    - code
+    - category_name
     - name
-    - rate
-    - tax_type
-    - valid_from
     type: object
   models.CreateWarehouseRequest:
     properties:
@@ -1310,27 +1232,16 @@ definitions:
     properties:
       available_quantity:
         type: integer
-      cgst_rate:
-        description: Tax Configuration
-        type: number
       cost_price:
         type: number
       created_at:
         type: string
-      custom_tax_ids:
-        items:
-          type: string
-        type: array
       expiry_date:
         type: string
       id:
         type: string
-      is_tax_exempt:
-        type: boolean
       reserved_quantity:
         type: integer
-      sgst_rate:
-        type: number
       total_quantity:
         type: integer
       updated_at:
@@ -1819,23 +1730,14 @@ definitions:
         description: Embedded address info from AAA
       available_quantity:
         type: integer
-      cgst_rate:
-        description: Tax Configuration
-        type: number
       cost_price:
         type: number
       created_at:
         type: string
-      custom_tax_ids:
-        items:
-          type: string
-        type: array
       expiry_date:
         type: string
       id:
         type: string
-      is_tax_exempt:
-        type: boolean
       product_description:
         type: string
       product_name:
@@ -1844,8 +1746,6 @@ definitions:
         type: string
       reserved_quantity:
         type: integer
-      sgst_rate:
-        type: number
       total_quantity:
         type: integer
       updated_at:
@@ -1947,6 +1847,8 @@ definitions:
     type: object
   models.ProductResponse:
     properties:
+      category_id:
+        type: string
       created_at:
         type: string
       description:
@@ -1954,6 +1856,8 @@ definitions:
       id:
         type: string
       name:
+        type: string
+      subcategory_id:
         type: string
       updated_at:
         type: string
@@ -1981,8 +1885,10 @@ definitions:
       dosage_instructions:
         type: string
       gst_rate:
+        description: Required GST rate
         type: number
       hsn_code:
+        description: Required GST HSN code
         type: string
       id:
         type: string
@@ -2001,9 +1907,9 @@ definitions:
       pack_size:
         type: string
       prices:
-        description: Always included in response
+        description: Fetched from product_prices table
         items:
-          $ref: '#/definitions/models.VariantPrice'
+          $ref: '#/definitions/models.ProductPriceResponse'
         type: array
       product_id:
         type: string
@@ -2341,17 +2247,18 @@ definitions:
       batch_id:
         type: string
       cgst_amount:
-        description: Tax amounts
+        description: GST Tax amounts
         type: number
       cost_price:
         description: BRD Requirements - Cost and Margin
         type: number
       created_at:
         type: string
-      custom_tax_amount:
-        type: number
       id:
         type: string
+      igst_amount:
+        description: For inter-state sales
+        type: number
       line_total:
         type: number
       margin:
@@ -2451,6 +2358,15 @@ definitions:
       warehouse:
         $ref: '#/definitions/models.WarehouseInfo'
     type: object
+  models.SeedCategoriesResponse:
+    properties:
+      categories_created:
+        type: integer
+      message:
+        type: string
+      subcategories_created:
+        type: integer
+    type: object
   models.SellingPriceInfo:
     properties:
       currency:
@@ -2487,261 +2403,35 @@ definitions:
       warehouse_count:
         type: integer
     type: object
-  models.TaxApplicationResponse:
+  models.SubcategoryResponse:
     properties:
-      base_amount:
-        type: number
-      cgst_amount:
-        type: number
-      created_at:
-        type: string
-      customs_amount:
-        type: number
-      excise_amount:
-        type: number
-      grand_total:
-        type: number
-      id:
-        type: string
-      igst_amount:
-        type: number
-      other_tax_amount:
-        type: number
-      sale_id:
-        type: string
-      sgst_amount:
-        type: number
-      stt_amount:
-        type: number
-      sub_total:
-        type: number
-      tax_amount:
-        type: number
-      tax_id:
-        type: string
-      tax_rate:
-        type: number
-      taxable_amount:
-        type: number
-      tcs_amount:
-        type: number
-      tds_amount:
-        type: number
-      total_tax_amount:
-        type: number
-      updated_at:
-        type: string
-      vat_amount:
-        type: number
-    type: object
-  models.TaxBreakdown:
-    properties:
-      amount:
-        type: number
-      hsn_code:
-        type: string
-      rate:
-        type: number
-      sac_code:
-        type: string
-      tax_code:
-        type: string
-      tax_name:
-        type: string
-      tax_type:
-        $ref: '#/definitions/models.TaxType'
-    type: object
-  models.TaxCalculationItem:
-    properties:
-      category_id:
-        type: string
-      line_total:
-        minimum: 0
-        type: number
-      product_id:
-        type: string
-      quantity:
-        minimum: 1
-        type: integer
-      unit_price:
-        minimum: 0
-        type: number
-    required:
-    - line_total
-    - product_id
-    - quantity
-    - unit_price
-    type: object
-  models.TaxCalculationRequest:
-    properties:
-      customer_gstin:
-        type: string
-      customer_id:
-        description: Optional - not required when no customer management
-        type: string
-      customer_pan:
-        type: string
-      customer_state:
-        description: Optional - not required when no customer management
-        type: string
-      is_inter_state:
-        type: boolean
-      items:
-        items:
-          $ref: '#/definitions/models.TaxCalculationItem'
-        minItems: 1
-        type: array
-      warehouse_id:
-        type: string
-      warehouse_state:
-        type: string
-    required:
-    - items
-    - warehouse_id
-    - warehouse_state
-    type: object
-  models.TaxCalculationResponse:
-    properties:
-      applied_taxes:
-        items:
-          $ref: '#/definitions/models.AppliedTax'
-        type: array
-      grand_total:
-        type: number
-      sub_total:
-        type: number
-      tax_breakdown:
-        items:
-          $ref: '#/definitions/models.TaxBreakdown'
-        type: array
-      total_tax_amount:
-        type: number
-    type: object
-  models.TaxCalculationType:
-    enum:
-    - percentage
-    - fixed
-    - tiered
-    type: string
-    x-enum-comments:
-      TaxCalculationFixed: Fixed amount per unit
-      TaxCalculationPercentage: Percentage of base amount
-      TaxCalculationTiered: Tiered calculation
-    x-enum-varnames:
-    - TaxCalculationPercentage
-    - TaxCalculationFixed
-    - TaxCalculationTiered
-  models.TaxConfiguration:
-    properties:
-      cgst_rate:
-        type: number
-      custom_tax_ids:
-        items:
-          type: string
-        type: array
-      is_tax_exempt:
-        type: boolean
-      sgst_rate:
-        type: number
-    type: object
-  models.TaxResponse:
-    properties:
-      applicable_categories:
-        items:
-          type: string
-        type: array
-      applicable_customer_groups:
-        items:
-          type: string
-        type: array
-      applicable_products:
-        items:
-          type: string
-        type: array
-      applicable_states:
-        items:
-          type: string
-        type: array
-      applicable_warehouses:
-        items:
-          type: string
-        type: array
-      calculation_type:
-        $ref: '#/definitions/models.TaxCalculationType'
-      code:
+      category_name:
         type: string
       created_at:
-        type: string
-      created_by:
         type: string
       description:
         type: string
-      excluded_categories:
-        items:
-          type: string
-        type: array
-      excluded_customer_groups:
-        items:
-          type: string
-        type: array
-      excluded_products:
-        items:
-          type: string
-        type: array
-      excluded_states:
-        items:
-          type: string
-        type: array
-      excluded_warehouses:
-        items:
-          type: string
-        type: array
-      hsn_code:
-        type: string
       id:
         type: string
-      is_active:
-        type: boolean
-      is_inter_state:
-        type: boolean
-      is_stackable:
-        type: boolean
-      max_amount:
-        type: number
-      max_order_value:
-        type: number
-      min_amount:
-        type: number
-      min_order_value:
-        type: number
       name:
         type: string
-      priority:
-        type: integer
-      rate:
-        type: number
-      requires_gstin:
-        type: boolean
-      requires_pan:
-        type: boolean
-      sac_code:
-        type: string
-      stacking_order:
-        type: integer
-      status:
-        type: string
-      tax_category:
-        type: string
-      tax_type:
-        $ref: '#/definitions/models.TaxType'
       updated_at:
         type: string
-      updated_by:
+    type: object
+  models.TaxConfiguration:
+    properties:
+      cgst_rate:
+        description: CGST (50% of GSTRate) for intra-state
+        type: number
+      gst_rate:
+        description: Total GST rate from variant
+        type: number
+      hsn_code:
+        description: HSN code from variant
         type: string
-      valid_from:
-        type: string
-      valid_until:
-        type: string
+      sgst_rate:
+        description: SGST (50% of GSTRate) for intra-state
+        type: number
     type: object
   models.TaxSummaryBreakdown:
     properties:
@@ -2749,91 +2439,14 @@ definitions:
         type: number
       igst_amount:
         type: number
-      other_tax_amount:
-        type: number
+      is_inter_state:
+        description: true if IGST applies, false if CGST+SGST
+        type: boolean
       sgst_amount:
         type: number
       total_tax_amount:
         type: number
-      vat_amount:
-        type: number
     type: object
-  models.TaxSummaryResponse:
-    properties:
-      created_at:
-        type: string
-      id:
-        type: string
-      summary_date:
-        type: string
-      total_cgst:
-        type: number
-      total_customs:
-        type: number
-      total_excise:
-        type: number
-      total_igst:
-        type: number
-      total_other_tax:
-        type: number
-      total_sgst:
-        type: number
-      total_stt:
-        type: number
-      total_tax:
-        type: number
-      total_tcs:
-        type: number
-      total_tds:
-        type: number
-      total_vat:
-        type: number
-      updated_at:
-        type: string
-      warehouse_id:
-        type: string
-    type: object
-  models.TaxType:
-    enum:
-    - cgst
-    - sgst
-    - igst
-    - vat
-    - stt
-    - tds
-    - tcs
-    - excise
-    - customs
-    - item_specific
-    - category
-    - flat
-    type: string
-    x-enum-comments:
-      TaxTypeCGST: Central Goods and Services Tax
-      TaxTypeCategory: Category-based tax
-      TaxTypeCustoms: Customs Duty
-      TaxTypeExcise: Excise Duty
-      TaxTypeFlat: Flat tax amount
-      TaxTypeIGST: Integrated Goods and Services Tax
-      TaxTypeItemSpecific: Item-specific tax
-      TaxTypeSGST: State Goods and Services Tax
-      TaxTypeSTT: Securities Transaction Tax
-      TaxTypeTCS: Tax Collected at Source
-      TaxTypeTDS: Tax Deducted at Source
-      TaxTypeVAT: Value Added Tax
-    x-enum-varnames:
-    - TaxTypeCGST
-    - TaxTypeSGST
-    - TaxTypeIGST
-    - TaxTypeVAT
-    - TaxTypeSTT
-    - TaxTypeTDS
-    - TaxTypeTCS
-    - TaxTypeExcise
-    - TaxTypeCustoms
-    - TaxTypeItemSpecific
-    - TaxTypeCategory
-    - TaxTypeFlat
   models.TaxVoidedInfo:
     properties:
       amount_voided:
@@ -2883,6 +2496,13 @@ definitions:
         type: string
     required:
     - id
+    type: object
+  models.UpdateCategoryRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
     type: object
   models.UpdateCollaboratorRequest:
     properties:
@@ -3024,9 +2644,13 @@ definitions:
     type: object
   models.UpdateProductRequest:
     properties:
+      category_id:
+        type: string
       description:
         type: string
       name:
+        type: string
+      subcategory_id:
         type: string
     type: object
   models.UpdateProductVariantRequest:
@@ -3103,87 +2727,11 @@ definitions:
     required:
     - status
     type: object
-  models.UpdateTaxRequest:
+  models.UpdateSubcategoryRequest:
     properties:
-      applicable_categories:
-        items:
-          type: string
-        type: array
-      applicable_customer_groups:
-        items:
-          type: string
-        type: array
-      applicable_products:
-        items:
-          type: string
-        type: array
-      applicable_states:
-        items:
-          type: string
-        type: array
-      applicable_warehouses:
-        items:
-          type: string
-        type: array
-      calculation_type:
-        $ref: '#/definitions/models.TaxCalculationType'
       description:
         type: string
-      excluded_categories:
-        items:
-          type: string
-        type: array
-      excluded_customer_groups:
-        items:
-          type: string
-        type: array
-      excluded_products:
-        items:
-          type: string
-        type: array
-      excluded_states:
-        items:
-          type: string
-        type: array
-      excluded_warehouses:
-        items:
-          type: string
-        type: array
-      hsn_code:
-        type: string
-      is_active:
-        type: boolean
-      is_inter_state:
-        type: boolean
-      is_stackable:
-        type: boolean
-      max_amount:
-        type: number
-      max_order_value:
-        type: number
-      min_amount:
-        type: number
-      min_order_value:
-        type: number
       name:
-        type: string
-      priority:
-        type: integer
-      rate:
-        type: number
-      requires_gstin:
-        type: boolean
-      requires_pan:
-        type: boolean
-      sac_code:
-        type: string
-      stacking_order:
-        type: integer
-      tax_category:
-        type: string
-      valid_from:
-        type: string
-      valid_until:
         type: string
     type: object
   models.UpdateWarehouseRequest:
@@ -4768,6 +4316,291 @@ paths:
       summary: Get Low Stock Batches
       tags:
       - Inventory
+  /api/v1/categories:
+    get:
+      description: Retrieve all categories
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Categories retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.CategoryResponse'
+                  type: array
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: Get All Categories
+      tags:
+      - Categories
+    post:
+      consumes:
+      - application/json
+      description: Create a new category
+      parameters:
+      - description: Category data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Category created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.CategoryResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "409":
+          description: Conflict - category already exists
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Create Category
+      tags:
+      - Categories
+  /api/v1/categories/{id}:
+    delete:
+      description: Delete a category by ID
+      parameters:
+      - description: 'Category ID (format: CATG_xxxxxxxx)'
+        example: CATG_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Category deleted successfully
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Category not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Delete Category
+      tags:
+      - Categories
+    get:
+      description: Retrieve a specific category by ID
+      parameters:
+      - description: 'Category ID (format: CATG_xxxxxxxx)'
+        example: CATG_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Category details
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.CategoryResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Category not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: Get Category
+      tags:
+      - Categories
+    patch:
+      consumes:
+      - application/json
+      description: Update an existing category by ID
+      parameters:
+      - description: 'Category ID (format: CATG_xxxxxxxx)'
+        example: CATG_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated category data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Category updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.CategoryResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Category not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "409":
+          description: Conflict - name already exists
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Update Category
+      tags:
+      - Categories
+  /api/v1/categories/name/{name}:
+    get:
+      description: Retrieve a specific category by name
+      parameters:
+      - description: Category name
+        example: Fertilizers
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Category details
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.CategoryResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Category not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: Get Category by Name
+      tags:
+      - Categories
+  /api/v1/categories/seed:
+    post:
+      description: Seed all predefined categories and subcategories (idempotent, admin-only)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Categories seeded successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.SeedCategoriesResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Seed Categories
+      tags:
+      - Categories
+  /api/v1/categories/with-subcategories:
+    get:
+      description: Retrieve all categories with their subcategories
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Categories with subcategories retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.CategoryResponse'
+                  type: array
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: Get All Categories with Subcategories
+      tags:
+      - Categories
   /api/v1/collaborators:
     get:
       description: Retrieve all collaborators (requires authentication)
@@ -10082,88 +9915,55 @@ paths:
       summary: Get Total Sales Amount
       tags:
       - Sales
-  /api/v1/taxes:
+  /api/v1/subcategories:
     get:
-      description: Retrieve all tax configurations with pagination
-      parameters:
-      - description: 'Number of records to return (default: 10)'
-        example: 10
-        in: query
-        name: limit
-        type: integer
-      - description: 'Number of records to skip (default: 0)'
-        example: 0
-        in: query
-        name: offset
-        type: integer
+      description: Retrieve all subcategories
       produces:
       - application/json
       responses:
         "200":
-          description: Taxes retrieved successfully
+          description: Subcategories retrieved successfully
           schema:
             allOf:
             - $ref: '#/definitions/utils.Response'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/models.TaxResponse'
+                    $ref: '#/definitions/models.SubcategoryResponse'
                   type: array
               type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
         "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Get All Taxes
+      summary: Get All Subcategories
       tags:
-      - Taxes
+      - Subcategories
     post:
       consumes:
       - application/json
-      description: Create a new tax configuration (requires authentication)
+      description: Create a new subcategory
       parameters:
-      - description: Tax data
+      - description: Subcategory data
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.CreateTaxRequest'
+          $ref: '#/definitions/models.CreateSubcategoryRequest'
       produces:
       - application/json
       responses:
         "201":
-          description: Tax created successfully
+          description: Subcategory created successfully
           schema:
             allOf:
             - $ref: '#/definitions/utils.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/models.TaxResponse'
+                  $ref: '#/definitions/models.SubcategoryResponse'
               type: object
         "400":
-          description: Bad request
+          description: Bad request - category does not exist
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "401":
@@ -10175,11 +9975,7 @@ paths:
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
+          description: Conflict - subcategory already exists
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "500":
@@ -10188,15 +9984,15 @@ paths:
             $ref: '#/definitions/utils.ErrorResponseModel'
       security:
       - BearerAuth: []
-      summary: Create Tax
+      summary: Create Subcategory
       tags:
-      - Taxes
-  /api/v1/taxes/{id}:
+      - Subcategories
+  /api/v1/subcategories/{id}:
     delete:
-      description: Delete a tax configuration by ID
+      description: Delete a subcategory by ID
       parameters:
-      - description: Tax ID
-        example: TAX_12345678
+      - description: 'Subcategory ID (format: SCAT_xxxxxxxx)'
+        example: SCAT_12345678
         in: path
         name: id
         required: true
@@ -10205,31 +10001,15 @@ paths:
       - application/json
       responses:
         "200":
-          description: Tax deleted successfully
+          description: Subcategory deleted successfully
           schema:
             $ref: '#/definitions/utils.Response'
         "400":
           description: Bad request
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
         "404":
-          description: Tax not found
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
+          description: Subcategory not found
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "500":
@@ -10238,14 +10018,14 @@ paths:
             $ref: '#/definitions/utils.ErrorResponseModel'
       security:
       - BearerAuth: []
-      summary: Delete Tax
+      summary: Delete Subcategory
       tags:
-      - Taxes
+      - Subcategories
     get:
-      description: Retrieve a specific tax configuration by ID
+      description: Retrieve a specific subcategory by ID
       parameters:
-      - description: Tax ID
-        example: TAX_12345678
+      - description: 'Subcategory ID (format: SCAT_xxxxxxxx)'
+        example: SCAT_12345678
         in: path
         name: id
         required: true
@@ -10254,98 +10034,68 @@ paths:
       - application/json
       responses:
         "200":
-          description: Tax retrieved successfully
+          description: Subcategory details
           schema:
             allOf:
             - $ref: '#/definitions/utils.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/models.TaxResponse'
+                  $ref: '#/definitions/models.SubcategoryResponse'
               type: object
         "400":
           description: Bad request
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
         "404":
-          description: Tax not found
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
+          description: Subcategory not found
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Get Tax
+      summary: Get Subcategory
       tags:
-      - Taxes
-    put:
+      - Subcategories
+    patch:
       consumes:
       - application/json
-      description: Update an existing tax configuration by ID
+      description: Update an existing subcategory by ID
       parameters:
-      - description: Tax ID
-        example: TAX_12345678
+      - description: 'Subcategory ID (format: SCAT_xxxxxxxx)'
+        example: SCAT_12345678
         in: path
         name: id
         required: true
         type: string
-      - description: Updated tax data
+      - description: Updated subcategory data
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.UpdateTaxRequest'
+          $ref: '#/definitions/models.UpdateSubcategoryRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: Tax updated successfully
+          description: Subcategory updated successfully
           schema:
             allOf:
             - $ref: '#/definitions/utils.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/models.TaxResponse'
+                  $ref: '#/definitions/models.SubcategoryResponse'
               type: object
         "400":
           description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "404":
-          description: Tax not found
+          description: Subcategory not found
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
+          description: Conflict - name already exists
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "500":
@@ -10354,442 +10104,81 @@ paths:
             $ref: '#/definitions/utils.ErrorResponseModel'
       security:
       - BearerAuth: []
-      summary: Update Tax
+      summary: Update Subcategory
       tags:
-      - Taxes
-  /api/v1/taxes/active:
+      - Subcategories
+  /api/v1/subcategories/category/{category}:
     get:
-      description: Retrieve all currently active tax configurations
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Active taxes retrieved successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.Response'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/models.TaxResponse'
-                  type: array
-              type: object
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Get Active Taxes
-      tags:
-      - Taxes
-  /api/v1/taxes/applications/return/{returnID}:
-    get:
-      description: Retrieve all tax applications for a specific return
+      description: Retrieve all subcategories for a specific category
       parameters:
-      - description: Return ID
-        example: RET_12345678
+      - description: Category name
+        example: Fertilizers
         in: path
-        name: returnID
+        name: category
         required: true
         type: string
       produces:
       - application/json
       responses:
         "200":
-          description: Tax applications retrieved successfully
+          description: Subcategories retrieved successfully
           schema:
             allOf:
             - $ref: '#/definitions/utils.Response'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/models.TaxApplicationResponse'
+                    $ref: '#/definitions/models.SubcategoryResponse'
                   type: array
               type: object
         "400":
           description: Bad request
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
         "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Get Tax Applications by Return
+      summary: Get Subcategories by Category
       tags:
-      - Taxes
-  /api/v1/taxes/applications/sale/{saleID}:
+      - Subcategories
+  /api/v1/subcategories/name/{name}:
     get:
-      description: Retrieve all tax applications for a specific sale
+      description: Retrieve a specific subcategory by name
       parameters:
-      - description: Sale ID
-        example: SALE_12345678
+      - description: Subcategory name
+        example: Water Soluble
         in: path
-        name: saleID
+        name: name
         required: true
         type: string
       produces:
       - application/json
       responses:
         "200":
-          description: Tax applications retrieved successfully
+          description: Subcategory details
           schema:
             allOf:
             - $ref: '#/definitions/utils.Response'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/models.TaxApplicationResponse'
-                  type: array
+                  $ref: '#/definitions/models.SubcategoryResponse'
               type: object
         "400":
           description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Get Tax Applications by Sale
-      tags:
-      - Taxes
-  /api/v1/taxes/calculate:
-    post:
-      consumes:
-      - application/json
-      description: Calculate taxes for a transaction with given items
-      parameters:
-      - description: Tax calculation data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/models.TaxCalculationRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Tax calculation completed successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/models.TaxCalculationResponse'
-              type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Calculate Tax
-      tags:
-      - Taxes
-  /api/v1/taxes/status/{status}:
-    get:
-      description: Retrieve all taxes with a specific status
-      parameters:
-      - description: Tax status
-        enum:
-        - active
-        - inactive
-        - expired
-        - scheduled
-        in: path
-        name: status
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Taxes retrieved successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.Response'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/models.TaxResponse'
-                  type: array
-              type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Get Taxes by Status
-      tags:
-      - Taxes
-  /api/v1/taxes/summary/return/{returnID}:
-    get:
-      description: Retrieve tax summary for a specific return
-      parameters:
-      - description: Return ID
-        example: RET_12345678
-        in: path
-        name: returnID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Tax summary retrieved successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/models.TaxSummaryResponse'
-              type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "404":
-          description: Tax summary not found
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
+          description: Subcategory not found
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Get Tax Summary by Return
+      summary: Get Subcategory by Name
       tags:
-      - Taxes
-  /api/v1/taxes/summary/sale/{saleID}:
-    get:
-      description: Retrieve tax summary for a specific sale
-      parameters:
-      - description: Sale ID
-        example: SALE_12345678
-        in: path
-        name: saleID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Tax summary retrieved successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/models.TaxSummaryResponse'
-              type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "404":
-          description: Tax summary not found
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Get Tax Summary by Sale
-      tags:
-      - Taxes
-  /api/v1/taxes/type/{type}:
-    get:
-      description: Retrieve all taxes of a specific type
-      parameters:
-      - description: Tax type
-        enum:
-        - cgst
-        - sgst
-        - igst
-        - vat
-        - stt
-        - tds
-        - tcs
-        - excise
-        - customs
-        - item_specific
-        - category
-        - flat
-        in: path
-        name: type
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Taxes retrieved successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.Response'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/models.TaxResponse'
-                  type: array
-              type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Get Taxes by Type
-      tags:
-      - Taxes
+      - Subcategories
   /api/v1/variants/{id}:
     delete:
       description: Delete a product variant (soft delete, requires authentication)

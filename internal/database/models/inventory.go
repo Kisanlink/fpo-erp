@@ -19,20 +19,15 @@ const (
 )
 
 // InventoryBatch represents a batch of inventory with specific cost and expiry
+// Note: Tax rates are now on ProductVariant, not on batch level
 type InventoryBatch struct {
 	base.BaseModel
-	WarehouseID   string    `gorm:"type:varchar(100);not null" json:"warehouse_id"`
-	VariantID     string    `gorm:"type:varchar(100);not null" json:"variant_id"`
-	CostPrice     float64   `gorm:"type:numeric(12,4);not null" json:"cost_price"`
-	ExpiryDate    time.Time `gorm:"type:date;not null" json:"expiry_date"`
-	TotalQuantity    int64 `gorm:"type:bigint;not null;check:total_quantity >= 0" json:"total_quantity"`
-	ReservedQuantity int64 `gorm:"type:bigint;not null;default:0;check:reserved_quantity >= 0 AND reserved_quantity <= total_quantity" json:"reserved_quantity"`
-
-	// Tax Configuration
-	CGSTRate     float64  `gorm:"type:numeric(5,2);default:0" json:"cgst_rate"`
-	SGSTRate     float64  `gorm:"type:numeric(5,2);default:0" json:"sgst_rate"`
-	CustomTaxIDs []string `gorm:"type:json" json:"custom_tax_ids"`
-	IsTaxExempt  bool     `gorm:"default:false" json:"is_tax_exempt"`
+	WarehouseID      string    `gorm:"type:varchar(100);not null" json:"warehouse_id"`
+	VariantID        string    `gorm:"type:varchar(100);not null" json:"variant_id"`
+	CostPrice        float64   `gorm:"type:numeric(12,4);not null" json:"cost_price"`
+	ExpiryDate       time.Time `gorm:"type:date;not null" json:"expiry_date"`
+	TotalQuantity    int64     `gorm:"type:bigint;not null;check:total_quantity >= 0" json:"total_quantity"`
+	ReservedQuantity int64     `gorm:"type:bigint;not null;default:0;check:reserved_quantity >= 0 AND reserved_quantity <= total_quantity" json:"reserved_quantity"`
 
 	// Associations
 	Warehouse Warehouse      `gorm:"foreignKey:WarehouseID" json:"warehouse,omitempty"`
@@ -68,6 +63,7 @@ func (InventoryTransaction) TableName() string {
 }
 
 // InventoryBatchResponse represents the API response for inventory batch
+// Note: Tax rates are retrieved from the associated ProductVariant
 type InventoryBatchResponse struct {
 	ID                string  `json:"id"`
 	WarehouseID       string  `json:"warehouse_id"`
@@ -78,17 +74,12 @@ type InventoryBatchResponse struct {
 	ReservedQuantity  int64   `json:"reserved_quantity"`
 	AvailableQuantity int64   `json:"available_quantity"`
 
-	// Tax Configuration
-	CGSTRate     float64  `json:"cgst_rate"`
-	SGSTRate     float64  `json:"sgst_rate"`
-	CustomTaxIDs []string `json:"custom_tax_ids"`
-	IsTaxExempt  bool     `json:"is_tax_exempt"`
-
 	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"updated_at"`
 }
 
 // ProductAvailabilityResponse represents the API response for product availability across warehouses
+// Note: Tax rates (HSNCode, GSTRate) are retrieved from the associated ProductVariant
 type ProductAvailabilityResponse struct {
 	ID                 string       `json:"id"`
 	WarehouseID        string       `json:"warehouse_id"`
@@ -103,12 +94,6 @@ type ProductAvailabilityResponse struct {
 	TotalQuantity      int64        `json:"total_quantity"`
 	ReservedQuantity   int64        `json:"reserved_quantity"`
 	AvailableQuantity  int64        `json:"available_quantity"`
-
-	// Tax Configuration
-	CGSTRate     float64  `json:"cgst_rate"`
-	SGSTRate     float64  `json:"sgst_rate"`
-	CustomTaxIDs []string `json:"custom_tax_ids"`
-	IsTaxExempt  bool     `json:"is_tax_exempt"`
 
 	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"updated_at"`
@@ -127,18 +112,13 @@ type InventoryTransactionResponse struct {
 }
 
 // CreateInventoryBatchRequest represents the request to create an inventory batch
+// Note: Tax rates are now on ProductVariant (GSTRate, HSNCode), not on batch level
 type CreateInventoryBatchRequest struct {
 	WarehouseID string  `json:"warehouse_id" binding:"required"`
 	VariantID   string  `json:"variant_id" binding:"required"`
 	CostPrice   float64 `json:"cost_price" binding:"required,gt=0"`
 	ExpiryDate  string  `json:"expiry_date" binding:"required"`
 	Quantity    int64   `json:"quantity" binding:"required,gt=0"`
-
-	// Tax Configuration
-	CGSTRate     float64  `json:"cgst_rate" binding:"min=0,max=100"`
-	SGSTRate     float64  `json:"sgst_rate" binding:"min=0,max=100"`
-	CustomTaxIDs []string `json:"custom_tax_ids"`
-	IsTaxExempt  bool     `json:"is_tax_exempt"`
 }
 
 // CreateInventoryTransactionRequest represents the request to create an inventory transaction
@@ -150,11 +130,9 @@ type CreateInventoryTransactionRequest struct {
 }
 
 // NewInventoryBatch creates a new InventoryBatch with initialized fields
-func NewInventoryBatch(warehouseID, variantID string, costPrice float64, expiryDate time.Time, totalQuantity int64, cgstRate, sgstRate float64, customTaxIDs []string, isTaxExempt bool) *InventoryBatch {
+// Note: Tax configuration is now on ProductVariant (GSTRate, HSNCode), not on batch level
+func NewInventoryBatch(warehouseID, variantID string, costPrice float64, expiryDate time.Time, totalQuantity int64) *InventoryBatch {
 	baseModel := base.NewBaseModel(constants.TableBatch, hash.Medium)
-	if customTaxIDs == nil {
-		customTaxIDs = []string{}
-	}
 	return &InventoryBatch{
 		BaseModel:        *baseModel,
 		WarehouseID:      warehouseID,
@@ -163,10 +141,6 @@ func NewInventoryBatch(warehouseID, variantID string, costPrice float64, expiryD
 		ExpiryDate:       expiryDate,
 		TotalQuantity:    totalQuantity,
 		ReservedQuantity: 0, // New batches have no reservations
-		CGSTRate:         cgstRate,
-		SGSTRate:         sgstRate,
-		CustomTaxIDs:     customTaxIDs,
-		IsTaxExempt:      isTaxExempt,
 	}
 }
 

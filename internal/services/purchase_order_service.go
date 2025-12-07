@@ -611,16 +611,13 @@ func (s *PurchaseOrderService) processDeliveryItems(ctx context.Context, po *mod
 					zap.Int64("accepted_qty", acceptedQty),
 					zap.Float64("cost_price", poItem.UnitPrice))
 
+				// GST-only tax system - tax rates are on ProductVariant, not on batches
 				batch := models.NewInventoryBatch(
 					po.WarehouseID,
 					poItem.VariantID,
 					poItem.UnitPrice, // ALL-IN cost price from PO
 					expiryDate,
 					acceptedQty,
-					0,          // CGST rate 0 (price is ALL-IN)
-					0,          // SGST rate 0 (price is ALL-IN)
-					[]string{}, // No custom taxes
-					false,      // Not tax exempt
 				)
 
 				if err := s.inventoryRepo.CreateBatchWithTx(tx, batch); err != nil {

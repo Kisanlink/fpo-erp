@@ -176,7 +176,9 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	productHandler := handlers.NewProductHandler(productService, aaaMiddleware, logger)
 	inventoryHandler := handlers.NewInventoryHandler(inventoryService, aaaMiddleware, logger)
 	discountsHandler := handlers.NewDiscountsHandler(discountsService, aaaMiddleware, logger)
-	taxHandler := handlers.NewTaxHandler(taxService, aaaMiddleware, logger)
+	// GST-only tax system: Tax endpoints removed. GST calculation is internal.
+	// taxHandler := handlers.NewTaxHandler(taxService, aaaMiddleware, logger)
+	_ = taxService // Unused but kept for internal GST calculations
 	salesHandler := handlers.NewSalesHandler(salesService, aaaMiddleware, logger)
 	returnsHandler := handlers.NewReturnsHandler(returnsService, aaaMiddleware, logger)
 	attachmentHandler := handlers.NewAttachmentHandler(attachmentService, aaaMiddleware, logger)
@@ -218,7 +220,8 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 		productHandler.RegisterRoutes(v1)
 		inventoryHandler.RegisterRoutes(v1)
 		discountsHandler.RegisterRoutes(v1)
-		taxHandler.RegisterRoutes(v1)
+		// GST-only tax system: Tax endpoints removed (13 endpoints)
+		// taxHandler.RegisterRoutes(v1)
 		salesHandler.RegisterRoutes(v1)
 		returnsHandler.RegisterRoutes(v1)
 		attachmentHandler.RegisterRoutes(v1)

@@ -77,17 +77,13 @@ func (h *InventoryHandler) CreateBatch(c *gin.Context) {
 		zap.Int64("quantity", request.Quantity),
 		zap.String("expiry_date", request.ExpiryDate))
 
-	// Create batch with tax configuration
+	// Create batch (GST-only tax system - tax rates on ProductVariant, not on batches)
 	response, err := h.inventoryService.CreateBatch(
 		request.WarehouseID,
 		request.VariantID,
 		request.CostPrice,
 		expiryDate,
 		request.Quantity,
-		request.CGSTRate,
-		request.SGSTRate,
-		request.CustomTaxIDs,
-		request.IsTaxExempt,
 	)
 	if err != nil {
 		h.logger.Error("Failed to create inventory batch via service",

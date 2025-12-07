@@ -205,6 +205,8 @@ func (s *AggregationService) GetProductDetail(productID string, req *models.Prod
 
 // buildVariantDetail builds detailed variant information
 func (s *AggregationService) buildVariantDetail(v *models.ProductVariant, req *models.ProductDetailRequest, includes models.IncludeOptions) models.VariantDetail {
+	// Convert string to *string for HSNCode since VariantDetail expects pointer
+	hsnCode := v.HSNCode
 	detail := models.VariantDetail{
 		ID:          v.ID,
 		ProductID:   v.ProductID,
@@ -213,7 +215,8 @@ func (s *AggregationService) buildVariantDetail(v *models.ProductVariant, req *m
 		Quantity:    v.Quantity,
 		PackSize:    &v.PackSize,
 		BrandName:   v.BrandName,
-		HSNCode:     v.HSNCode,
+		HSNCode:     &hsnCode,
+		GSTRate:     v.GSTRate,
 		IsActive:    v.IsActive,
 		CreatedAt:   v.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:   v.UpdatedAt.Format(time.RFC3339),
@@ -226,10 +229,6 @@ func (s *AggregationService) buildVariantDetail(v *models.ProductVariant, req *m
 
 	if v.ExternalID != nil {
 		detail.ExternalID = v.ExternalID
-	}
-
-	if v.GSTRate != nil {
-		detail.GSTRate = *v.GSTRate
 	}
 
 	detail.DosageInstructions = v.DosageInstructions
@@ -383,28 +382,15 @@ func (s *AggregationService) buildVariantDetail(v *models.ProductVariant, req *m
 		}
 	}
 
-	// Get tax configuration if requested
+	// Get tax configuration if requested - now uses variant's GSTRate (GST-only system)
 	if includes.Taxes {
-		// Get tax config from batch if available
-		batches, err := s.inventoryRepo.GetBatchesByVariant(v.ID)
-		if err == nil && len(batches) > 0 {
-			// Use first batch's tax config
-			batch := batches[0]
-			detail.TaxConfiguration = &models.TaxConfiguration{
-				CGSTRate:     batch.CGSTRate,
-				SGSTRate:     batch.SGSTRate,
-				IsTaxExempt:  batch.IsTaxExempt,
-				CustomTaxIDs: batch.CustomTaxIDs,
-			}
-		} else if v.GSTRate != nil {
-			// Fallback to variant GST rate
-			gstHalf := *v.GSTRate / 2
-			detail.TaxConfiguration = &models.TaxConfiguration{
-				CGSTRate:     gstHalf,
-				SGSTRate:     gstHalf,
-				IsTaxExempt:  false,
-				CustomTaxIDs: []string{},
-			}
+		// GST is split 50-50 between CGST and SGST for intra-state
+		gstHalf := v.GSTRate / 2
+		detail.TaxConfiguration = &models.TaxConfiguration{
+			GSTRate:  v.GSTRate,
+			CGSTRate: gstHalf,
+			SGSTRate: gstHalf,
+			HSNCode:  v.HSNCode,
 		}
 	}
 
@@ -524,33 +510,44 @@ func (s *AggregationService) GetSalesContext(req *models.SalesContextRequest) (*
 			continue
 		}
 
+		// Get variant info first - we need it for tax config (GST-only system)
+		variant, variantErr := s.variantRepo.GetByID(batch.VariantID)
+
+		// Build tax config from variant's GSTRate (GST-only system)
+		var taxConfig models.BatchTaxConfig
+		if variantErr == nil {
+			gstHalf := variant.GSTRate / 2
+			taxConfig = models.BatchTaxConfig{
+				GSTRate:      variant.GSTRate,
+				CGSTRate:     gstHalf,
+				SGSTRate:     gstHalf,
+				TotalGSTRate: variant.GSTRate,
+				HSNCode:      variant.HSNCode,
+			}
+		}
+
 		inventoryItem := models.InventoryWithPricing{
 			BatchID:          batch.ID,
 			VariantID:        batch.VariantID,
 			QuantityTotal:    batch.TotalQuantity,        // Total inventory in batch
 			QuantityReserved: batch.ReservedQuantity,     // Reserved by pending sales
 			QuantitySellable: batch.AvailableQuantity(),  // Real sellable = total - reserved
-			CostPrice:         batch.CostPrice,
-			ExpiryDate:        batch.ExpiryDate.Format("2006-01-02"),
-			TaxConfig: models.BatchTaxConfig{
-				CGSTRate:     batch.CGSTRate,
-				SGSTRate:     batch.SGSTRate,
-				TotalGSTRate: batch.CGSTRate + batch.SGSTRate,
-				IsTaxExempt:  batch.IsTaxExempt,
-				CustomTaxes:  batch.CustomTaxIDs,
-			},
+			CostPrice:        batch.CostPrice,
+			ExpiryDate:       batch.ExpiryDate.Format("2006-01-02"),
+			TaxConfig:        taxConfig,
 		}
 
-		// Get variant info
-		variant, err := s.variantRepo.GetByID(batch.VariantID)
-		if err == nil {
+		// Populate variant info if available
+		if variantErr == nil {
+			// Convert string to *string for HSNCode since VariantInfoForSales expects pointer
+			hsnCodePtr := variant.HSNCode
 			inventoryItem.Variant = models.VariantInfoForSales{
 				ID:          variant.ID,
 				VariantName: variant.VariantName,
 				Quantity:    variant.Quantity,
 				PackSize:    &variant.PackSize,
 				BrandName:   variant.BrandName,
-				HSNCode:     variant.HSNCode,
+				HSNCode:     &hsnCodePtr,
 				IsActive:    variant.IsActive,
 			}
 			if variant.SKU != nil {
@@ -663,26 +660,10 @@ func (s *AggregationService) GetSalesContext(req *models.SalesContextRequest) (*
 		}
 	}
 
-	// Get active taxes for global config
-	taxes, err := s.taxRepo.GetTaxesByStatus("active")
-	if err == nil {
-		response.GlobalTaxConfiguration.TaxCalculationMethod = "exclusive"
-		for _, t := range taxes {
-			response.GlobalTaxConfiguration.ActiveTaxes = append(response.GlobalTaxConfiguration.ActiveTaxes, models.ActiveTaxInfo{
-				ID:       t.ID,
-				Name:     t.Name,
-				TaxType:  string(t.TaxType),
-				CGSTRate: t.Rate / 2, // Assuming GST split
-				SGSTRate: t.Rate / 2,
-				IsActive: t.IsActive,
-			})
-
-			// Set default rates from first GST tax
-			if t.TaxType == models.TaxTypeCGST || t.TaxType == models.TaxTypeSGST {
-				response.GlobalTaxConfiguration.DefaultCGSTRate = t.Rate
-			}
-		}
-	}
+	// GST-only tax system - taxes are on ProductVariant.GSTRate
+	// No need to fetch from tax repository - GST is calculated per item based on variant's GSTRate
+	response.GlobalTaxConfiguration.TaxCalculationMethod = "exclusive"
+	// Note: Individual item taxes are calculated from ProductVariant.GSTRate during sales
 
 	// Get refund policies
 	refundPolicies, err := s.refundPoliciesRepo.GetAllRefundPolicies(100, 0)
@@ -1349,13 +1330,15 @@ func (s *AggregationService) buildBatchContext(batch *models.InventoryBatch, inc
 	if includes["variant"] {
 		variant, err := s.variantRepo.GetByID(batch.VariantID)
 		if err == nil {
+			// Convert string to *string for HSNCode since VariantInfoForSales expects pointer
+			hsnCodePtr := variant.HSNCode
 			variantInfo := &models.VariantInfoForSales{
 				ID:          variant.ID,
 				VariantName: variant.VariantName,
 				Quantity:    variant.Quantity,
 				PackSize:    &variant.PackSize,
 				BrandName:   variant.BrandName,
-				HSNCode:     variant.HSNCode,
+				HSNCode:     &hsnCodePtr,
 				IsActive:    variant.IsActive,
 			}
 			if variant.SKU != nil {
@@ -1428,14 +1411,19 @@ func (s *AggregationService) buildBatchContext(batch *models.InventoryBatch, inc
 		}
 	}
 
-	// Include tax config if requested
+	// Include tax config if requested - now uses variant's GSTRate (GST-only system)
 	if includes["taxes"] {
-		batchContext.TaxConfig = &models.BatchTaxConfig{
-			CGSTRate:     batch.CGSTRate,
-			SGSTRate:     batch.SGSTRate,
-			TotalGSTRate: batch.CGSTRate + batch.SGSTRate,
-			IsTaxExempt:  batch.IsTaxExempt,
-			CustomTaxes:  batch.CustomTaxIDs,
+		// Fetch variant to get GST rate
+		variant, err := s.variantRepo.GetByID(batch.VariantID)
+		if err == nil {
+			gstHalf := variant.GSTRate / 2
+			batchContext.TaxConfig = &models.BatchTaxConfig{
+				GSTRate:      variant.GSTRate,
+				CGSTRate:     gstHalf,
+				SGSTRate:     gstHalf,
+				TotalGSTRate: variant.GSTRate,
+				HSNCode:      variant.HSNCode,
+			}
 		}
 	}
 

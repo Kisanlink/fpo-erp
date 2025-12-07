@@ -85,11 +85,11 @@ type SaleItem struct {
 	CostPrice float64 `gorm:"type:numeric(12,4);not null" json:"cost_price"` // Purchase price from batch
 	Margin    float64 `gorm:"type:numeric(12,4);not null" json:"margin"`     // SellingPrice - CostPrice
 
-	// Tax amounts (calculated from batch tax configuration)
-	CGSTAmount      float64 `gorm:"type:numeric(12,4);default:0" json:"cgst_amount"`
-	SGSTAmount      float64 `gorm:"type:numeric(12,4);default:0" json:"sgst_amount"`
-	CustomTaxAmount float64 `gorm:"type:numeric(12,4);default:0" json:"custom_tax_amount"`
-	TotalTaxAmount  float64 `gorm:"type:numeric(12,4);default:0" json:"total_tax_amount"`
+	// Tax amounts (calculated from variant GST rate)
+	CGSTAmount     float64 `gorm:"type:numeric(12,4);default:0" json:"cgst_amount"`
+	SGSTAmount     float64 `gorm:"type:numeric(12,4);default:0" json:"sgst_amount"`
+	IGSTAmount     float64 `gorm:"type:numeric(12,4);default:0" json:"igst_amount"` // For inter-state sales
+	TotalTaxAmount float64 `gorm:"type:numeric(12,4);default:0" json:"total_tax_amount"`
 
 	// Associations
 	Sale  Sale           `gorm:"foreignKey:SaleID" json:"sale,omitempty"`
@@ -137,39 +137,41 @@ func NewSaleItem(saleID, batchID string, quantity int64, sellingPrice, costPrice
 	baseModel := base.NewBaseModel(constants.TableSaleItem, hash.Medium)
 	margin := sellingPrice - costPrice
 	return &SaleItem{
-		BaseModel:       *baseModel,
-		SaleID:          saleID,
-		BatchID:         batchID,
-		Quantity:        quantity,
-		SellingPrice:    sellingPrice,
-		CostPrice:       costPrice,
-		Margin:          margin,
-		LineTotal:       lineTotal,
-		CGSTAmount:      0,
-		SGSTAmount:      0,
-		CustomTaxAmount: 0,
-		TotalTaxAmount:  0,
+		BaseModel:      *baseModel,
+		SaleID:         saleID,
+		BatchID:        batchID,
+		Quantity:       quantity,
+		SellingPrice:   sellingPrice,
+		CostPrice:      costPrice,
+		Margin:         margin,
+		LineTotal:      lineTotal,
+		CGSTAmount:     0,
+		SGSTAmount:     0,
+		IGSTAmount:     0,
+		TotalTaxAmount: 0,
 	}
 }
 
-// NewSaleItemWithTax creates a new SaleItem with tax amounts
-func NewSaleItemWithTax(saleID, batchID string, quantity int64, sellingPrice, costPrice, lineTotal, cgstAmount, sgstAmount, customTaxAmount float64) *SaleItem {
+// NewSaleItemWithTax creates a new SaleItem with GST tax amounts
+// For intra-state: cgstAmount and sgstAmount are set, igstAmount is 0
+// For inter-state: igstAmount is set, cgstAmount and sgstAmount are 0
+func NewSaleItemWithTax(saleID, batchID string, quantity int64, sellingPrice, costPrice, lineTotal, cgstAmount, sgstAmount, igstAmount float64) *SaleItem {
 	baseModel := base.NewBaseModel(constants.TableSaleItem, hash.Medium)
 	margin := sellingPrice - costPrice
-	totalTaxAmount := cgstAmount + sgstAmount + customTaxAmount
+	totalTaxAmount := cgstAmount + sgstAmount + igstAmount
 	return &SaleItem{
-		BaseModel:       *baseModel,
-		SaleID:          saleID,
-		BatchID:         batchID,
-		Quantity:        quantity,
-		SellingPrice:    sellingPrice,
-		CostPrice:       costPrice,
-		Margin:          margin,
-		LineTotal:       lineTotal,
-		CGSTAmount:      cgstAmount,
-		SGSTAmount:      sgstAmount,
-		CustomTaxAmount: customTaxAmount,
-		TotalTaxAmount:  totalTaxAmount,
+		BaseModel:      *baseModel,
+		SaleID:         saleID,
+		BatchID:        batchID,
+		Quantity:       quantity,
+		SellingPrice:   sellingPrice,
+		CostPrice:      costPrice,
+		Margin:         margin,
+		LineTotal:      lineTotal,
+		CGSTAmount:     cgstAmount,
+		SGSTAmount:     sgstAmount,
+		IGSTAmount:     igstAmount,
+		TotalTaxAmount: totalTaxAmount,
 	}
 }
 
@@ -230,14 +232,15 @@ type DiscountApplication struct {
 	AppliedBy    string  `json:"applied_by"` // "manual", "coupon", "auto"
 }
 
-// TaxSummaryBreakdown represents tax breakdown details
+// TaxSummaryBreakdown represents GST tax breakdown details
+// For intra-state: CGSTAmount and SGSTAmount are set, IGSTAmount is 0
+// For inter-state: IGSTAmount is set, CGSTAmount and SGSTAmount are 0
 type TaxSummaryBreakdown struct {
 	CGSTAmount     float64 `json:"cgst_amount"`
 	SGSTAmount     float64 `json:"sgst_amount"`
 	IGSTAmount     float64 `json:"igst_amount"`
-	VATAmount      float64 `json:"vat_amount"`
-	OtherTaxAmount float64 `json:"other_tax_amount"`
 	TotalTaxAmount float64 `json:"total_tax_amount"`
+	IsInterState   bool    `json:"is_inter_state"` // true if IGST applies, false if CGST+SGST
 }
 
 // SaleItemResponse represents the API response for sale item
@@ -253,11 +256,11 @@ type SaleItemResponse struct {
 	CostPrice float64 `json:"cost_price"` // Purchase price
 	Margin    float64 `json:"margin"`     // Profit margin
 
-	// Tax amounts
-	CGSTAmount      float64 `json:"cgst_amount"`
-	SGSTAmount      float64 `json:"sgst_amount"`
-	CustomTaxAmount float64 `json:"custom_tax_amount"`
-	TotalTaxAmount  float64 `json:"total_tax_amount"`
+	// GST Tax amounts
+	CGSTAmount     float64 `json:"cgst_amount"`
+	SGSTAmount     float64 `json:"sgst_amount"`
+	IGSTAmount     float64 `json:"igst_amount"` // For inter-state sales
+	TotalTaxAmount float64 `json:"total_tax_amount"`
 
 	CreatedAt string `json:"created_at"`
 }
@@ -272,6 +275,9 @@ type CreateSaleRequest struct {
 	PaymentMode string  `json:"payment_mode" binding:"required"` // cash, upi, online
 	SaleType    string  `json:"sale_type" binding:"required"`    // in_store, delivery
 	ApplyTaxes  *bool   `json:"apply_taxes"`                     // Controls tax calculation (default: false)
+
+	// GST Inter-state detection
+	DeliveryState *string `json:"delivery_state"` // Optional: state code for delivery (for inter-state IGST calculation)
 
 	DiscountID         *string                 `json:"discount_id"`          // Manual discount by ID (highest priority)
 	CouponCode         *string                 `json:"coupon_code"`          // Manual discount by code (second priority)

@@ -67,10 +67,22 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 	type itemData struct {
 		sellingPrice float64
 		batches      []models.InventoryBatch
+		variant      *models.ProductVariant // For GST rate
 	}
 
 	itemDataMap := make(map[string]*itemData)
 	for _, itemReq := range req.Items {
+		// Get variant for GST rate (GST-only tax system)
+		s.logger.Debug("Getting variant for GST rate",
+			zap.String("variant_id", itemReq.VariantID))
+		variant, err := s.variantRepo.GetByID(itemReq.VariantID)
+		if err != nil {
+			s.logger.Error("Failed to get variant",
+				zap.Error(err),
+				zap.String("variant_id", itemReq.VariantID))
+			return nil, errors.NewNotFoundError("variant not found")
+		}
+
 		// Get selling price from product_prices table (by variant_id)
 		s.logger.Debug("Getting selling price for variant",
 			zap.String("variant_id", itemReq.VariantID))
@@ -130,6 +142,7 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 		itemDataMap[itemReq.VariantID] = &itemData{
 			sellingPrice: sellingPrice,
 			batches:      batches,
+			variant:      variant,
 		}
 	}
 
@@ -211,6 +224,7 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 			itemData := itemDataMap[itemReq.VariantID]
 			sellingPrice := itemData.sellingPrice
 			batches := itemData.batches
+			variant := itemData.variant
 
 			// Allocate quantity across batches using FEFO (First Expired, First Out)
 			remainingQuantity := itemReq.Quantity
@@ -247,31 +261,25 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 				// Calculate line total for this batch allocation
 				batchLineTotal := sellingPrice * float64(quantityFromBatch)
 
-				// Calculate taxes for this batch allocation
-				s.logger.Debug("Calculating taxes for batch allocation")
-				taxCalculation, err := s.taxService.CalculateBatchTax(batch, quantityFromBatch, sellingPrice)
-				if err != nil {
-					s.logger.Error("Failed to calculate taxes",
-						zap.Error(err))
-					return err
-				}
-				// Nil check: CalculateBatchTax should never return nil without error, but guard against it
-				if taxCalculation == nil {
-					s.logger.Error("Tax calculation returned nil without error",
-						zap.String("batch_id", batch.ID))
-					return errors.NewInternalServerError("Tax calculation failed: nil result")
-				}
-				s.logger.Debug("Tax calculation completed",
+				// Calculate GST using variant's GSTRate (GST-only tax system)
+				// For now, assume intra-state (CGST+SGST) - inter-state detection can be added later
+				// TODO: Implement inter-state detection via warehouse state vs delivery state
+				isInterState := false
+				s.logger.Debug("Calculating GST for batch allocation",
+					zap.Float64("gst_rate", variant.GSTRate),
+					zap.Bool("is_inter_state", isInterState))
+				taxCalculation := s.taxService.CalculateGST(batchLineTotal, variant.GSTRate, isInterState)
+				s.logger.Debug("GST calculation completed",
 					zap.Float64("cgst_amount", taxCalculation.CGSTAmount),
 					zap.Float64("sgst_amount", taxCalculation.SGSTAmount),
-					zap.Float64("custom_tax_amount", taxCalculation.CustomTaxAmount),
+					zap.Float64("igst_amount", taxCalculation.IGSTAmount),
 					zap.Float64("total_tax_amount", taxCalculation.TotalTaxAmount))
 
 				itemTotal += batchLineTotal
 
 				// Create sale item with tax amounts and cost price (BRD requirement)
 				saleItem := models.NewSaleItemWithTax(sale.ID, batch.ID, quantityFromBatch, sellingPrice, costPrice, batchLineTotal,
-					taxCalculation.CGSTAmount, taxCalculation.SGSTAmount, taxCalculation.CustomTaxAmount)
+					taxCalculation.CGSTAmount, taxCalculation.SGSTAmount, taxCalculation.IGSTAmount)
 				s.logger.Info("Sale item created",
 					zap.String("sale_item_id", saleItem.ID),
 					zap.Float64("cost_price", costPrice),
@@ -407,6 +415,7 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 		response = s.mapSaleToResponse(sale)
 
 		// Add breakdown information
+		// GST-only tax system - no VAT or other taxes
 		var taxBreakdown *models.TaxSummaryBreakdown
 		if taxAmount > 0 {
 			taxSummary, err := s.taxRepo.GetTaxSummaryBySale(sale.ID)
@@ -415,8 +424,6 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 					CGSTAmount:     taxSummary.CGSTAmount,
 					SGSTAmount:     taxSummary.SGSTAmount,
 					IGSTAmount:     taxSummary.IGSTAmount,
-					VATAmount:      taxSummary.VATAmount,
-					OtherTaxAmount: taxSummary.OtherTaxAmount,
 					TotalTaxAmount: taxSummary.TotalTaxAmount,
 				}
 			}
@@ -868,10 +875,10 @@ func (s *SalesService) mapSaleToResponse(sale *models.Sale) *models.SaleResponse
 			// BRD Requirements - Cost and Margin
 			CostPrice:       item.CostPrice,
 			Margin:          item.Margin,
-			CGSTAmount:      item.CGSTAmount,
-			SGSTAmount:      item.SGSTAmount,
-			CustomTaxAmount: item.CustomTaxAmount,
-			TotalTaxAmount:  item.TotalTaxAmount,
+			CGSTAmount:     item.CGSTAmount,
+			SGSTAmount:     item.SGSTAmount,
+			IGSTAmount:     item.IGSTAmount,
+			TotalTaxAmount: item.TotalTaxAmount,
 			CreatedAt:       item.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		})
 	}
@@ -1063,84 +1070,84 @@ func (s *SalesService) resolveDiscountsWithPriority(req *models.CreateSaleReques
 	return finalDiscounts, applications, totalDiscountAmount, nil
 }
 
-// applyTaxesToSaleWithTx applies taxes to a sale using warehouse-based calculation within a transaction
+// applyTaxesToSaleWithTx aggregates taxes from sale items and creates TaxSummary within a transaction
+// GST-only tax system: taxes are already calculated per-item, this just aggregates them
 func (s *SalesService) applyTaxesToSaleWithTx(tx *gorm.DB, saleID string, saleItems []models.SaleItem, warehouseID string) (*models.TaxSummary, error) {
-	// Convert sale items to tax calculation items
-	var taxItems []models.TaxCalculationItem
+	// Aggregate tax amounts from sale items (already calculated during item creation)
+	var totalCGST, totalSGST, totalIGST, totalTax, subTotal float64
+	isInterState := false
+
 	for _, item := range saleItems {
-		// Get batch to retrieve product ID
-		batch, err := s.inventoryRepo.GetBatchByID(item.BatchID)
-		if err != nil {
-			return nil, err
+		totalCGST += item.CGSTAmount
+		totalSGST += item.SGSTAmount
+		totalIGST += item.IGSTAmount
+		totalTax += item.TotalTaxAmount
+		subTotal += item.LineTotal
+		// If any item has IGST, it's an inter-state sale
+		if item.IGSTAmount > 0 {
+			isInterState = true
 		}
-
-		taxItem := models.TaxCalculationItem{
-			ProductID:  batch.VariantID,
-			CategoryID: nil, // No category management in current model
-			Quantity:   int(item.Quantity),
-			UnitPrice:  item.SellingPrice,
-			LineTotal:  item.LineTotal,
-		}
-		taxItems = append(taxItems, taxItem)
 	}
 
-	// Default state since warehouse doesn't store state directly (can be configurable)
-	defaultState := "DefaultState" // This should be configurable or fetched from address service
+	grandTotal := subTotal + totalTax
 
-	// Create tax calculation request without customer information
-	taxReq := &models.TaxCalculationRequest{
-		CustomerID:     nil, // No customer management
-		CustomerState:  nil, // No customer management
-		CustomerGSTIN:  nil, // No customer GSTIN
-		CustomerPAN:    nil, // No customer PAN
-		WarehouseID:    warehouseID,
-		WarehouseState: defaultState, // Use default state for warehouse
-		Items:          taxItems,
-		IsInterState:   false, // Default to intra-state for warehouse-based taxation
+	// Create tax summary
+	taxSummary := models.NewTaxSummary()
+	taxSummary.SaleID = &saleID
+	taxSummary.CGSTAmount = totalCGST
+	taxSummary.SGSTAmount = totalSGST
+	taxSummary.IGSTAmount = totalIGST
+	taxSummary.TotalTaxAmount = totalTax
+	taxSummary.SubTotal = subTotal
+	taxSummary.GrandTotal = grandTotal
+	taxSummary.IsInterState = isInterState
+
+	// Save tax summary using transaction
+	if err := s.taxRepo.CreateTaxSummaryWithTx(tx, taxSummary); err != nil {
+		return nil, err
 	}
 
-	// Use the tax service to apply taxes and create summary within transaction
-	return s.taxService.ApplyTaxesToSaleWithTx(tx, saleID, saleItems, taxReq, "system")
+	return taxSummary, nil
 }
 
-// applyTaxesToSale applies taxes to a sale using warehouse-based calculation (no customer data needed)
+// applyTaxesToSale aggregates taxes from sale items and creates TaxSummary (no transaction)
+// GST-only tax system: taxes are already calculated per-item, this just aggregates them
 func (s *SalesService) applyTaxesToSale(saleID string, saleItems []models.SaleItem, warehouseID string) (*models.TaxSummary, error) {
-	// Convert sale items to tax calculation items
-	var taxItems []models.TaxCalculationItem
+	// Aggregate tax amounts from sale items (already calculated during item creation)
+	var totalCGST, totalSGST, totalIGST, totalTax, subTotal float64
+	isInterState := false
+
 	for _, item := range saleItems {
-		// Get batch to retrieve product ID
-		batch, err := s.inventoryRepo.GetBatchByID(item.BatchID)
-		if err != nil {
-			return nil, err
+		totalCGST += item.CGSTAmount
+		totalSGST += item.SGSTAmount
+		totalIGST += item.IGSTAmount
+		totalTax += item.TotalTaxAmount
+		subTotal += item.LineTotal
+		// If any item has IGST, it's an inter-state sale
+		if item.IGSTAmount > 0 {
+			isInterState = true
 		}
-
-		taxItem := models.TaxCalculationItem{
-			ProductID:  batch.VariantID,
-			CategoryID: nil, // No category management in current model
-			Quantity:   int(item.Quantity),
-			UnitPrice:  item.SellingPrice,
-			LineTotal:  item.LineTotal,
-		}
-		taxItems = append(taxItems, taxItem)
 	}
 
-	// Default state since warehouse doesn't store state directly (can be configurable)
-	defaultState := "DefaultState" // This should be configurable or fetched from address service
+	grandTotal := subTotal + totalTax
 
-	// Create tax calculation request without customer information
-	taxReq := &models.TaxCalculationRequest{
-		CustomerID:     nil, // No customer management
-		CustomerState:  nil, // No customer management
-		CustomerGSTIN:  nil, // No customer GSTIN
-		CustomerPAN:    nil, // No customer PAN
-		WarehouseID:    warehouseID,
-		WarehouseState: defaultState, // Use default state for warehouse
-		Items:          taxItems,
-		IsInterState:   false, // Default to intra-state for warehouse-based taxation
+	// Create tax summary
+	taxSummary := models.NewTaxSummary()
+	taxSummary.SaleID = &saleID
+	taxSummary.CGSTAmount = totalCGST
+	taxSummary.SGSTAmount = totalSGST
+	taxSummary.IGSTAmount = totalIGST
+	taxSummary.TotalTaxAmount = totalTax
+	taxSummary.SubTotal = subTotal
+	taxSummary.GrandTotal = grandTotal
+	taxSummary.IsInterState = isInterState
+
+	// Save tax summary
+	if err := s.taxRepo.CreateTaxSummary(taxSummary); err != nil {
+		return nil, err
 	}
 
-	// Use the existing tax service to apply taxes
-	return s.taxService.ApplyTaxesToSale(saleID, saleItems, taxReq, "system")
+	return taxSummary, nil
 }
 
 // calculateDiscountAmount calculates discount amount based on discount type
@@ -1452,17 +1459,7 @@ func (s *SalesService) CancelSale(saleID string, req *models.CancelSaleRequest) 
 			taxSummaryID := taxSummary.ID
 			totalTaxVoided := taxSummary.TotalTaxAmount
 
-			// Delete tax applications for this sale
-			if err := s.taxRepo.DeleteTaxApplicationsBySaleWithTx(tx, sale.ID); err != nil {
-				s.logger.Warn("Failed to delete tax applications",
-					zap.Error(err),
-					zap.String("sale_id", sale.ID))
-				// Non-critical - continue
-			} else {
-				s.logger.Debug("Deleted tax applications",
-					zap.String("sale_id", sale.ID))
-			}
-
+			// GST-only tax system: No TaxApplications table, only TaxSummary
 			// Delete tax summary for this sale
 			if err := s.taxRepo.DeleteTaxSummaryBySaleWithTx(tx, sale.ID); err != nil {
 				s.logger.Warn("Failed to delete tax summary",
@@ -1777,27 +1774,27 @@ func (s *SalesService) CancelItems(saleID string, req *models.CancelItemsRequest
 			// Update sale item quantity if partial
 			if itemReq.Quantity < saleItem.Quantity {
 				newQuantity := saleItem.Quantity - itemReq.Quantity
-				// Recalculate all proportional fields
+				// Recalculate all proportional fields (GST-only tax system)
 				newLineTotal := basePricePerUnit * float64(newQuantity)
 				marginPerUnit := saleItem.Margin / float64(saleItem.Quantity)
 				cgstPerUnit := saleItem.CGSTAmount / float64(saleItem.Quantity)
 				sgstPerUnit := saleItem.SGSTAmount / float64(saleItem.Quantity)
-				customTaxPerUnit := saleItem.CustomTaxAmount / float64(saleItem.Quantity)
+				igstPerUnit := saleItem.IGSTAmount / float64(saleItem.Quantity)
 
 				newMargin := marginPerUnit * float64(newQuantity)
 				newCGST := cgstPerUnit * float64(newQuantity)
 				newSGST := sgstPerUnit * float64(newQuantity)
-				newCustomTax := customTaxPerUnit * float64(newQuantity)
-				newTotalTax := newCGST + newSGST + newCustomTax
+				newIGST := igstPerUnit * float64(newQuantity)
+				newTotalTax := newCGST + newSGST + newIGST
 
 				if err := tx.Model(&models.SaleItem{}).Where("id = ?", saleItem.ID).Updates(map[string]interface{}{
-					"quantity":          newQuantity,
-					"line_total":        newLineTotal,
-					"margin":            newMargin,
-					"cgst_amount":       newCGST,
-					"sgst_amount":       newSGST,
-					"custom_tax_amount": newCustomTax,
-					"total_tax_amount":  newTotalTax,
+					"quantity":         newQuantity,
+					"line_total":       newLineTotal,
+					"margin":           newMargin,
+					"cgst_amount":      newCGST,
+					"sgst_amount":      newSGST,
+					"igst_amount":      newIGST,
+					"total_tax_amount": newTotalTax,
 				}).Error; err != nil {
 					s.logger.Error("Failed to update sale item quantity", zap.Error(err))
 					return errors.NewInternalServerError("Failed to update sale item")

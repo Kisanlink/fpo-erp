@@ -125,12 +125,13 @@ type WarehouseStock struct {
 	BatchCount    int     `json:"batch_count"`
 }
 
-// TaxConfiguration represents tax settings for a variant
+// TaxConfiguration represents GST tax settings for a variant
+// Simplified for GST-only system - tax rate from ProductVariant.GSTRate
 type TaxConfiguration struct {
-	CGSTRate     float64  `json:"cgst_rate"`
-	SGSTRate     float64  `json:"sgst_rate"`
-	IsTaxExempt  bool     `json:"is_tax_exempt"`
-	CustomTaxIDs []string `json:"custom_tax_ids,omitempty"`
+	GSTRate  float64 `json:"gst_rate"`  // Total GST rate from variant
+	CGSTRate float64 `json:"cgst_rate"` // CGST (50% of GSTRate) for intra-state
+	SGSTRate float64 `json:"sgst_rate"` // SGST (50% of GSTRate) for intra-state
+	HSNCode  string  `json:"hsn_code"`  // HSN code from variant
 }
 
 // ProductMetadata represents metadata for the response
@@ -258,14 +259,14 @@ type AlternatePriceInfo struct {
 	MinQuantity *int64  `json:"min_quantity,omitempty"`
 }
 
-// BatchTaxConfig represents tax configuration for a batch
+// BatchTaxConfig represents GST tax configuration for a batch
+// Tax rate is from ProductVariant.GSTRate, not batch level
 type BatchTaxConfig struct {
-	CGSTRate     float64  `json:"cgst_rate"`
-	SGSTRate     float64  `json:"sgst_rate"`
-	TotalGSTRate float64  `json:"total_gst_rate"`
-	IsTaxExempt  bool     `json:"is_tax_exempt"`
-	CustomTaxes  []string `json:"custom_taxes,omitempty"`
-	HSNCode      *string  `json:"hsn_code,omitempty"`
+	GSTRate      float64 `json:"gst_rate"`       // Total GST rate from variant
+	CGSTRate     float64 `json:"cgst_rate"`      // CGST (50% of GSTRate) for intra-state
+	SGSTRate     float64 `json:"sgst_rate"`      // SGST (50% of GSTRate) for intra-state
+	TotalGSTRate float64 `json:"total_gst_rate"` // Same as GSTRate for compatibility
+	HSNCode      string  `json:"hsn_code"`       // HSN code from variant
 }
 
 // MarginInfo represents margin calculation

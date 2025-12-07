@@ -35,8 +35,9 @@ func NewInventoryService(inventoryRepo *repositories.InventoryRepository, wareho
 	}
 }
 
-// CreateBatch creates a new inventory batch with tax configuration
-func (s *InventoryService) CreateBatch(warehouseID, variantID string, costPrice float64, expiryDate time.Time, quantity int64, cgstRate, sgstRate float64, customTaxIDs []string, isTaxExempt bool) (*models.InventoryBatchResponse, error) {
+// CreateBatch creates a new inventory batch
+// Simplified for GST-only tax system - tax rates are on ProductVariant, not on batches
+func (s *InventoryService) CreateBatch(warehouseID, variantID string, costPrice float64, expiryDate time.Time, quantity int64) (*models.InventoryBatchResponse, error) {
 	s.logger.Info("Creating inventory batch",
 		zap.String("warehouse_id", warehouseID),
 		zap.String("variant_id", variantID),
@@ -81,25 +82,8 @@ func (s *InventoryService) CreateBatch(warehouseID, variantID string, costPrice 
 		return nil, errors.NewBadRequestError("Quantity must be positive")
 	}
 
-	// Validate tax rates
-	if cgstRate < 0 || cgstRate > 100 {
-		s.logger.Error("Invalid CGST rate",
-			zap.Float64("cgst_rate", cgstRate))
-		return nil, errors.NewBadRequestError("CGST rate must be between 0 and 100")
-	}
-	if sgstRate < 0 || sgstRate > 100 {
-		s.logger.Error("Invalid SGST rate",
-			zap.Float64("sgst_rate", sgstRate))
-		return nil, errors.NewBadRequestError("SGST rate must be between 0 and 100")
-	}
-
-	s.logger.Debug("Creating inventory batch with tax configuration",
-		zap.Float64("cgst_rate", cgstRate),
-		zap.Float64("sgst_rate", sgstRate),
-		zap.Bool("tax_exempt", isTaxExempt))
-
-	// Create batch using the updated constructor
-	batch := models.NewInventoryBatch(warehouseID, variantID, costPrice, expiryDate, quantity, cgstRate, sgstRate, customTaxIDs, isTaxExempt)
+	// Create batch using the simplified constructor (no tax params - GST on variant)
+	batch := models.NewInventoryBatch(warehouseID, variantID, costPrice, expiryDate, quantity)
 
 	// Create initial transaction using the proper constructor
 	note := "Initial import"
@@ -122,10 +106,6 @@ func (s *InventoryService) CreateBatch(warehouseID, variantID string, costPrice 
 		CostPrice:     batch.CostPrice,
 		ExpiryDate:    batch.ExpiryDate.Format("2006-01-02"),
 		TotalQuantity: batch.TotalQuantity,
-		CGSTRate:      batch.CGSTRate,
-		SGSTRate:      batch.SGSTRate,
-		CustomTaxIDs:  batch.CustomTaxIDs,
-		IsTaxExempt:   batch.IsTaxExempt,
 		CreatedAt:     batch.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		UpdatedAt:     batch.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 	}
@@ -152,6 +132,7 @@ func (s *InventoryService) GetBatch(id string) (*models.InventoryBatchResponse, 
 		return nil, err
 	}
 
+	// GST-only tax system - tax rates are on ProductVariant, not on batches
 	response := &models.InventoryBatchResponse{
 		ID:            batch.ID,
 		WarehouseID:   batch.WarehouseID,
@@ -159,10 +140,6 @@ func (s *InventoryService) GetBatch(id string) (*models.InventoryBatchResponse, 
 		CostPrice:     batch.CostPrice,
 		ExpiryDate:    batch.ExpiryDate.Format("2006-01-02"),
 		TotalQuantity: batch.TotalQuantity,
-		CGSTRate:      batch.CGSTRate,
-		SGSTRate:      batch.SGSTRate,
-		CustomTaxIDs:  batch.CustomTaxIDs,
-		IsTaxExempt:   batch.IsTaxExempt,
 		CreatedAt:     batch.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		UpdatedAt:     batch.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 	}
@@ -446,12 +423,9 @@ func (s *InventoryService) GetAllProductsAvailability(ctx context.Context, jwtTo
 			CostPrice:          batch.CostPrice,
 			ExpiryDate:         batch.ExpiryDate.Format("2006-01-02"),
 			TotalQuantity:      batch.TotalQuantity,
-			CGSTRate:           batch.CGSTRate,
-			SGSTRate:           batch.SGSTRate,
-			CustomTaxIDs:       batch.CustomTaxIDs,
-			IsTaxExempt:        batch.IsTaxExempt,
-			CreatedAt:          batch.CreatedAt.Format("2006-01-02T15:04:05Z"),
-			UpdatedAt:          batch.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+			// GST-only tax system - tax rates are on ProductVariant, not on batches
+			CreatedAt: batch.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			UpdatedAt: batch.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 		}
 
 		// Fetch address details if warehouse has an address ID
@@ -494,6 +468,7 @@ func (s *InventoryService) GetAllProductsAvailability(ctx context.Context, jwtTo
 }
 
 // batchToResponse converts a batch model to response model
+// GST-only tax system - tax rates are on ProductVariant, not on batches
 func (s *InventoryService) batchToResponse(batch models.InventoryBatch) models.InventoryBatchResponse {
 	return models.InventoryBatchResponse{
 		ID:            batch.ID,
@@ -502,10 +477,6 @@ func (s *InventoryService) batchToResponse(batch models.InventoryBatch) models.I
 		CostPrice:     batch.CostPrice,
 		ExpiryDate:    batch.ExpiryDate.Format("2006-01-02"),
 		TotalQuantity: batch.TotalQuantity,
-		CGSTRate:      batch.CGSTRate,
-		SGSTRate:      batch.SGSTRate,
-		CustomTaxIDs:  batch.CustomTaxIDs,
-		IsTaxExempt:   batch.IsTaxExempt,
 		CreatedAt:     batch.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		UpdatedAt:     batch.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 	}

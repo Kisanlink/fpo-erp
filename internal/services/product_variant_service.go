@@ -91,8 +91,8 @@ func (s *ProductVariantService) CreateProductVariant(ctx context.Context, produc
 		return nil, err
 	}
 
-	// Create variant
-	variant := models.NewProductVariant(productID, request.VariantName, request.Quantity, request.PackSize)
+	// Create variant with required HSNCode and GSTRate (GST-only tax system)
+	variant := models.NewProductVariant(productID, request.VariantName, request.Quantity, request.PackSize, request.HSNCode, request.GSTRate)
 	variant.Description = request.Description
 	variant.SKU = request.SKU
 	variant.Barcode = request.Barcode
@@ -101,8 +101,6 @@ func (s *ProductVariantService) CreateProductVariant(ctx context.Context, produc
 	// Assign collaborator-specific fields
 	variant.CollaboratorIDs = request.CollaboratorIDs
 	variant.BrandName = request.BrandName
-	variant.HSNCode = request.HSNCode
-	variant.GSTRate = request.GSTRate
 	variant.DosageInstructions = request.DosageInstructions
 	variant.UsageDetails = request.UsageDetails
 
@@ -363,10 +361,10 @@ func (s *ProductVariantService) UpdateProductVariant(ctx context.Context, id str
 		variant.BrandName = request.BrandName
 	}
 	if request.HSNCode != nil {
-		variant.HSNCode = request.HSNCode
+		variant.HSNCode = *request.HSNCode
 	}
 	if request.GSTRate != nil {
-		variant.GSTRate = request.GSTRate
+		variant.GSTRate = *request.GSTRate
 	}
 	if request.DosageInstructions != nil {
 		variant.DosageInstructions = request.DosageInstructions

@@ -26,6 +26,9 @@ This document describes all breaking changes, new features, and response format 
 
 | Change | Impact | Action Required |
 |--------|--------|-----------------|
+| **Tax endpoints removed (13 endpoints)** | **HIGH** | Remove all `/api/v1/taxes/*` API calls |
+| **`apply_taxes` field on sales** | **MEDIUM** | Set `apply_taxes: true` to calculate taxes (default: false) |
+| **Inventory batch tax fields removed** | **MEDIUM** | Remove `cgst_rate`, `sgst_rate`, `is_tax_exempt` from batch handling |
 | Collaborator-Product endpoints removed | HIGH | Use variants API instead |
 | `collaborator_id` → `collaborator_ids` | HIGH | Update to array format |
 | Prices in variant response | MEDIUM | Handle new `prices` array |
@@ -38,6 +41,68 @@ This document describes all breaking changes, new features, and response format 
 ---
 
 ## Removed Endpoints
+
+### Tax Management API (ALL 13 ENDPOINTS REMOVED)
+
+**Reason:** Simplified to GST-only tax system. GST rate is now stored directly on `ProductVariant.gst_rate` field. No separate tax configuration needed.
+
+```
+REMOVED: POST   /api/v1/taxes                    - Create tax (no longer needed)
+REMOVED: GET    /api/v1/taxes                    - Get all taxes
+REMOVED: GET    /api/v1/taxes/:id                - Get tax by ID
+REMOVED: PATCH  /api/v1/taxes/:id                - Update tax
+REMOVED: DELETE /api/v1/taxes/:id                - Delete tax
+REMOVED: GET    /api/v1/taxes/active             - Get active taxes
+REMOVED: GET    /api/v1/taxes/type/:type         - Get taxes by type
+REMOVED: POST   /api/v1/taxes/:id/tiers          - Create tax tiers
+REMOVED: GET    /api/v1/taxes/:id/tiers          - Get tax tiers
+REMOVED: PATCH  /api/v1/taxes/:id/tiers/:tierId  - Update tax tier
+REMOVED: DELETE /api/v1/taxes/:id/tiers/:tierId  - Delete tax tier
+REMOVED: POST   /api/v1/taxes/calculate          - Calculate tax (now automatic)
+REMOVED: GET    /api/v1/taxes/hsn/:hsnCode       - Get taxes by HSN code
+```
+
+**Migration Path:**
+```javascript
+// OLD (Beta) - Tax configuration via API
+const tax = await api.post('/taxes', {
+  name: 'GST 18%',
+  type: 'GST',
+  rate: 18.0,
+  hsn_codes: ['1234']
+});
+
+// Assign tax to batch
+await api.post('/batches', {
+  // ...
+  cgst_rate: 9.0,
+  sgst_rate: 9.0,
+  custom_tax_ids: [tax.id]
+});
+
+// NEW (Current) - GST rate on variant
+// NO tax API calls needed!
+// GST rate is set on the product variant:
+await api.post(`/products/${productId}/variants`, {
+  variant_name: '500g',
+  quantity: '500g',
+  pack_size: 'Single',
+  hsn_code: '12345678',   // Required: HSN code for GST
+  gst_rate: 18.0,         // Required: GST rate (0, 5, 12, 18, or 28)
+  prices: [...]
+});
+
+// Tax calculation happens automatically during sale if apply_taxes: true
+const sale = await api.post('/sales', {
+  warehouse_id: 'WREH00000001',
+  payment_mode: 'cash',
+  sale_type: 'in_store',
+  apply_taxes: true,  // Enable tax calculation (default: false)
+  items: [...]
+});
+```
+
+---
 
 ### Collaborator Products API (ALL REMOVED)
 
@@ -167,6 +232,8 @@ Product categorization system with predefined hierarchy.
   "sku": "TOM-500G",
   "quantity": "500g",
   "pack_size": "Single",
+  "hsn_code": "12345678",
+  "gst_rate": 18.0,
   "collaborator_ids": ["CLAB00000001", "CLAB00000002"],
   "brand_name": "Fresh Farms",
   "prices": [
@@ -206,11 +273,13 @@ Product categorization system with predefined hierarchy.
 |-------|-----|-----|
 | `collaborator_id` | `string` (nullable) | REMOVED |
 | `collaborator_ids` | N/A | `[]string` (NEW) |
+| `hsn_code` | N/A | `string` (NEW, required) - HSN code for GST classification |
+| `gst_rate` | N/A | `float64` (NEW, required) - GST rate (0, 5, 12, 18, or 28) |
 | `prices` | N/A | `[]ProductPriceResponse` (NEW) |
 
 ---
 
-### 2. InventoryBatchResponse
+### 2. InventoryBatchResponse (Tax Fields Removed)
 
 **Old (Beta):**
 ```json
@@ -224,6 +293,7 @@ Product categorization system with predefined hierarchy.
   "cgst_rate": 9.0,
   "sgst_rate": 9.0,
   "is_tax_exempt": false,
+  "custom_tax_ids": ["TAX00000001"],
   "created_at": "2025-11-10T10:30:00Z"
 }
 ```
@@ -239,9 +309,6 @@ Product categorization system with predefined hierarchy.
   "total_quantity": 500,
   "reserved_quantity": 150,
   "available_quantity": 350,
-  "cgst_rate": 9.0,
-  "sgst_rate": 9.0,
-  "is_tax_exempt": false,
   "created_at": "2025-11-10T10:30:00Z"
 }
 ```
@@ -249,14 +316,20 @@ Product categorization system with predefined hierarchy.
 **Changes:**
 | Field | Old | New |
 |-------|-----|-----|
+| `cgst_rate` | `float64` | **REMOVED** - Tax comes from variant now |
+| `sgst_rate` | `float64` | **REMOVED** - Tax comes from variant now |
+| `is_tax_exempt` | `bool` | **REMOVED** - Use `apply_taxes` on sale |
+| `custom_tax_ids` | `[]string` | **REMOVED** - No custom taxes |
 | `reserved_quantity` | N/A | `int64` (NEW) - Stock reserved by pending sales |
 | `available_quantity` | N/A | `int64` (NEW) - `total_quantity - reserved_quantity` |
 
-**Important:** Always use `available_quantity` for stock availability checks, NOT `total_quantity`.
+**Important:**
+- Always use `available_quantity` for stock availability checks, NOT `total_quantity`.
+- Tax is now determined by the product variant's `gst_rate`, NOT the inventory batch.
 
 ---
 
-### 3. SaleResponse - Status Workflow
+### 3. SaleResponse - Status Workflow & Tax Control
 
 **Old (Beta):**
 ```json
@@ -270,7 +343,8 @@ Product categorization system with predefined hierarchy.
 ```json
 {
   "id": "SALE00000001",
-  "status": "pending"
+  "status": "pending",
+  "apply_taxes": false
 }
 ```
 
@@ -291,6 +365,46 @@ NEW (Current):
 - `pending` - Sale created, inventory reserved (NEW)
 - `completed` - Sale finalized, inventory deducted
 - `cancelled` - Sale cancelled, inventory released
+
+**New `apply_taxes` Field (GST Control):**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `apply_taxes` | `bool` | `false` | Controls whether GST is calculated for this sale |
+
+**Tax Calculation Behavior:**
+- `apply_taxes: false` (default) → No taxes calculated, all tax amounts = 0
+- `apply_taxes: true` → GST calculated using variant's `gst_rate`
+  - CGST + SGST (intra-state) or IGST (inter-state) applied
+  - Tax amounts included in sale response
+
+**Example - Sale WITHOUT taxes:**
+```javascript
+const sale = await api.post('/sales', {
+  warehouse_id: 'WREH00000001',
+  payment_mode: 'cash',
+  sale_type: 'in_store',
+  // apply_taxes not set → defaults to false
+  items: [{ variant_id: 'PVAR00000001', quantity: 10 }]
+});
+// sale.items[0].cgst_amount = 0
+// sale.items[0].sgst_amount = 0
+// sale.items[0].total_tax_amount = 0
+```
+
+**Example - Sale WITH taxes:**
+```javascript
+const sale = await api.post('/sales', {
+  warehouse_id: 'WREH00000001',
+  payment_mode: 'cash',
+  sale_type: 'in_store',
+  apply_taxes: true,  // Enable GST calculation
+  items: [{ variant_id: 'PVAR00000001', quantity: 10 }]
+});
+// sale.items[0].cgst_amount = 90.00 (9% of line total)
+// sale.items[0].sgst_amount = 90.00 (9% of line total)
+// sale.items[0].total_tax_amount = 180.00
+```
 
 ---
 
@@ -521,10 +635,8 @@ NEW (Current):
 |----------|------------------|
 | `GET /api/v1/discounts` | `limit` (default: 10), `offset` (default: 0) |
 
-### Taxes Module
-| Endpoint | Query Parameters |
-|----------|------------------|
-| `GET /api/v1/taxes` | `limit` (optional), `offset` (optional) |
+### ~~Taxes Module~~ (REMOVED)
+**All tax endpoints have been removed.** Tax calculation is now automatic based on variant's `gst_rate` and sale's `apply_taxes` field.
 
 ### Attachments Module
 | Endpoint | Query Parameters |
@@ -543,6 +655,33 @@ NEW (Current):
 ---
 
 ## Frontend Migration Guide
+
+### Step 0: Remove ALL Tax API Calls (CRITICAL)
+
+**Delete all calls to tax endpoints - they will return 404:**
+```javascript
+// REMOVE ALL THESE - ENDPOINTS NO LONGER EXIST
+api.post('/taxes', ...)                    // ❌ REMOVED
+api.get('/taxes', ...)                     // ❌ REMOVED
+api.get('/taxes/:id', ...)                 // ❌ REMOVED
+api.patch('/taxes/:id', ...)               // ❌ REMOVED
+api.delete('/taxes/:id', ...)              // ❌ REMOVED
+api.get('/taxes/active', ...)              // ❌ REMOVED
+api.get('/taxes/type/:type', ...)          // ❌ REMOVED
+api.post('/taxes/:id/tiers', ...)          // ❌ REMOVED
+api.get('/taxes/:id/tiers', ...)           // ❌ REMOVED
+api.patch('/taxes/:id/tiers/:tierId', ...) // ❌ REMOVED
+api.delete('/taxes/:id/tiers/:tierId', ..) // ❌ REMOVED
+api.post('/taxes/calculate', ...)          // ❌ REMOVED
+api.get('/taxes/hsn/:hsnCode', ...)        // ❌ REMOVED
+```
+
+**New Tax Approach:**
+1. Set `hsn_code` and `gst_rate` when creating variants
+2. Set `apply_taxes: true` when creating sales that need GST
+3. Tax amounts appear automatically in sale response
+
+---
 
 ### Step 1: Remove Collaborator-Product API Calls
 
@@ -789,19 +928,32 @@ e99c9d3 feat: implements grn rejection features
 
 ## Summary
 
-**Total Files Changed:** 53 files
-**Lines Added:** 12,059
-**Lines Deleted:** 36,028
+**Total Files Changed:** 53+ files
+**Lines Added:** 12,059+
+**Lines Deleted:** 36,028+
 
 **Key Changes:**
-1. Collaborator-product endpoints completely removed
-2. Multiple collaborators per variant supported
-3. Prices included in variant responses
-4. Reserved/available quantity tracking in inventory
-5. Pending status workflow for sales
-6. Partial sale cancellation support
-7. GRN rejection tracking with return status
-8. New aggregation API for performance optimization
-9. **Categories & Subcategories system for product organization**
+1. **TAX SYSTEM SIMPLIFIED TO GST-ONLY (13 endpoints removed)**
+   - All `/api/v1/taxes/*` endpoints removed
+   - GST rate stored on `ProductVariant.gst_rate`
+   - Tax calculation controlled by `apply_taxes` field on sales
+   - Inventory batches no longer have tax configuration
+2. Collaborator-product endpoints completely removed
+3. Multiple collaborators per variant supported
+4. Prices included in variant responses
+5. Reserved/available quantity tracking in inventory
+6. Pending status workflow for sales
+7. Partial sale cancellation support
+8. GRN rejection tracking with return status
+9. New aggregation API for performance optimization
+10. **Categories & Subcategories system for product organization**
+
+**GST Tax Quick Reference:**
+| Where | Field | Purpose |
+|-------|-------|---------|
+| Variant | `hsn_code` | HSN code for GST classification |
+| Variant | `gst_rate` | GST rate (0, 5, 12, 18, or 28) |
+| Sale | `apply_taxes` | Enable/disable GST calculation |
+| Sale Response | `cgst_amount`, `sgst_amount`, `igst_amount` | Calculated tax amounts |
 
 **Questions?** Contact the backend team.
