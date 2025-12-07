@@ -203,7 +203,7 @@ func (h *AggregationHandler) GetSalesContext(c *gin.Context) {
 // GetPODetail handles GET /api/v1/purchase-orders/:id/detail
 // @Summary Get Aggregated Purchase Order Detail
 // @Description Retrieves complete purchase order information including collaborator, warehouse, items with variants, GRNs, inventory created, and timeline in a single call. Reduces API calls by 80%.
-// @Tags PurchaseOrders
+// @Tags Purchase Orders
 // @Produce json
 // @Param id path string true "Purchase Order ID" example(PORD_12345678)
 // @Param include query string false "Comma-separated list of data to include: collaborator,warehouse,items,grns,inventory,payments,timeline. Default: all" example(collaborator,warehouse,items,grns)

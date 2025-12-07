@@ -60,13 +60,16 @@ func (h *PurchaseOrderHandler) CreatePurchaseOrder(c *gin.Context) {
 		return
 	}
 
+	// Get JWT token from context for AAA address lookups
+	jwtToken := c.GetString("jwt_token")
+
 	// 3. Service Call Log
 	h.logger.Debug("Calling CreatePurchaseOrder service",
 		zap.String("collaborator_id", request.CollaboratorID),
 		zap.String("warehouse_id", request.WarehouseID))
 
 	// Create purchase order
-	response, err := h.poService.CreatePurchaseOrder(c.Request.Context(), &request)
+	response, err := h.poService.CreatePurchaseOrder(c.Request.Context(), &request, jwtToken)
 	if err != nil {
 		// 4. Service Error Log
 		h.logger.Error("Failed to create purchase order",

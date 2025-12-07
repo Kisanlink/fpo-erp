@@ -37,6 +37,12 @@ func (s *WarehouseService) CreateWarehouse(ctx context.Context, request *models.
 		zap.String("user_id", userID),
 		zap.Bool("has_inline_address", request.Address != nil))
 
+	// Check if AAA service is required but not available
+	if s.addressClient == nil {
+		s.logger.Error("AAA address service is not available - cannot create warehouse")
+		return nil, errors.NewServiceUnavailableError("AAA address service is not available")
+	}
+
 	var addressID *string
 
 	// Handle inline address creation if provided
@@ -118,6 +124,12 @@ func (s *WarehouseService) GetWarehouse(ctx context.Context, id string, jwtToken
 	s.logger.Info("Retrieving warehouse",
 		zap.String("warehouse_id", id))
 
+	// Check if AAA service is available
+	if s.addressClient == nil {
+		s.logger.Error("AAA address service is not available - cannot retrieve warehouse")
+		return nil, errors.NewServiceUnavailableError("AAA address service is not available")
+	}
+
 	warehouse, err := s.warehouseRepo.GetByID(id)
 	if err != nil {
 		s.logger.Error("Failed to retrieve warehouse",
@@ -136,6 +148,12 @@ func (s *WarehouseService) GetWarehouse(ctx context.Context, id string, jwtToken
 // GetAllWarehouses retrieves all warehouses
 func (s *WarehouseService) GetAllWarehouses(ctx context.Context, jwtToken string) ([]models.WarehouseResponse, error) {
 	s.logger.Info("Retrieving all warehouses")
+
+	// Check if AAA service is available
+	if s.addressClient == nil {
+		s.logger.Error("AAA address service is not available - cannot retrieve warehouses")
+		return nil, errors.NewServiceUnavailableError("AAA address service is not available")
+	}
 
 	warehouses, err := s.warehouseRepo.GetAll()
 	if err != nil {
@@ -167,6 +185,12 @@ func (s *WarehouseService) GetAllWarehouses(ctx context.Context, jwtToken string
 func (s *WarehouseService) UpdateWarehouse(ctx context.Context, id string, request *models.UpdateWarehouseRequest, jwtToken string) (*models.WarehouseResponse, error) {
 	s.logger.Info("Updating warehouse",
 		zap.String("warehouse_id", id))
+
+	// Check if AAA service is available
+	if s.addressClient == nil {
+		s.logger.Error("AAA address service is not available - cannot update warehouse")
+		return nil, errors.NewServiceUnavailableError("AAA address service is not available")
+	}
 
 	// Get existing warehouse
 	warehouse, err := s.warehouseRepo.GetByID(id)
@@ -255,6 +279,12 @@ func (s *WarehouseService) DeleteWarehouse(ctx context.Context, id string, jwtTo
 	s.logger.Info("Deleting warehouse",
 		zap.String("warehouse_id", id))
 
+	// Check if AAA service is available
+	if s.addressClient == nil {
+		s.logger.Error("AAA address service is not available - cannot delete warehouse")
+		return errors.NewServiceUnavailableError("AAA address service is not available")
+	}
+
 	// Get warehouse to check if it has an address
 	warehouse, err := s.warehouseRepo.GetByID(id)
 	if err != nil {
@@ -296,6 +326,12 @@ func (s *WarehouseService) DeleteWarehouse(ctx context.Context, id string, jwtTo
 func (s *WarehouseService) SearchWarehouses(ctx context.Context, query string, jwtToken string) ([]models.WarehouseResponse, error) {
 	s.logger.Info("Searching warehouses",
 		zap.String("query", query))
+
+	// Check if AAA service is available
+	if s.addressClient == nil {
+		s.logger.Error("AAA address service is not available - cannot search warehouses")
+		return nil, errors.NewServiceUnavailableError("AAA address service is not available")
+	}
 
 	warehouses, err := s.warehouseRepo.GetByName(query)
 	if err != nil {

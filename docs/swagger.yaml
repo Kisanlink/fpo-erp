@@ -1943,10 +1943,25 @@ definitions:
     type: object
   models.PurchaseOrderItemResponse:
     properties:
+      base_price:
+        description: GST Breakdown
+        type: number
+      cgst_amount:
+        type: number
+      cgst_rate:
+        type: number
       created_at:
         type: string
+      gst_amount:
+        type: number
+      gst_rate:
+        type: number
       id:
         type: string
+      igst_amount:
+        type: number
+      igst_rate:
+        type: number
       line_total:
         type: number
       po_id:
@@ -1959,6 +1974,10 @@ definitions:
         type: integer
       received_quantity:
         type: integer
+      sgst_amount:
+        type: number
+      sgst_rate:
+        type: number
       unit_price:
         type: number
       variant_id:
@@ -1981,6 +2000,9 @@ definitions:
         type: string
       id:
         type: string
+      is_inter_state:
+        description: nil = unknown, true = inter-state, false = intra-state
+        type: boolean
       items:
         items:
           $ref: '#/definitions/models.PurchaseOrderItemResponse'
@@ -7286,7 +7308,7 @@ paths:
       - BearerAuth: []
       summary: Get Aggregated Purchase Order Detail
       tags:
-      - PurchaseOrders
+      - Purchase Orders
   /api/v1/purchase-orders/{id}/grn:
     get:
       description: Retrieve GRN for a specific purchase order

@@ -13,8 +13,8 @@ type MockPurchaseOrderService struct {
 	mock.Mock
 }
 
-func (m *MockPurchaseOrderService) CreatePurchaseOrder(ctx context.Context, request *models.CreatePurchaseOrderRequest) (*models.PurchaseOrderResponse, error) {
-	args := m.Called(ctx, request)
+func (m *MockPurchaseOrderService) CreatePurchaseOrder(ctx context.Context, request *models.CreatePurchaseOrderRequest, jwtToken string) (*models.PurchaseOrderResponse, error) {
+	args := m.Called(ctx, request, jwtToken)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

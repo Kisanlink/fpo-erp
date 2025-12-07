@@ -112,7 +112,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 		logger,
 	)
 	productVariantService := services.NewProductVariantService(productVariantRepo, productRepo, priceRepo, s3Service, logger)
-	purchaseOrderService := services.NewPurchaseOrderService(purchaseOrderRepo, collaboratorRepo, warehouseRepo, productRepo, productVariantRepo, grnRepo, inventoryRepo, logger)
+	purchaseOrderService := services.NewPurchaseOrderService(purchaseOrderRepo, collaboratorRepo, warehouseRepo, productRepo, productVariantRepo, grnRepo, inventoryRepo, addressClient, logger)
 	grnService := services.NewGRNService(grnRepo, purchaseOrderRepo, warehouseRepo, productRepo, inventoryRepo, logger)
 
 	// Category services

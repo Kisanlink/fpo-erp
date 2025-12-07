@@ -30,6 +30,8 @@ This document describes all breaking changes, new features, and response format 
 | **Tax endpoints removed (13 endpoints)** | **HIGH** | Remove all `/api/v1/taxes/*` API calls |
 | **`apply_taxes` field on sales** | **MEDIUM** | Set `apply_taxes: true` to calculate taxes (default: false) |
 | **Inventory batch tax fields removed** | **MEDIUM** | Remove `cgst_rate`, `sgst_rate`, `is_tax_exempt` from batch handling |
+| **PO item GST breakdown fields** | **LOW** | Handle new GST fields in PO item responses (`base_price`, `gst_rate`, etc.) |
+| **PO `is_inter_state` field** | **LOW** | Handle new inter-state flag on PO responses |
 | Collaborator-Product endpoints removed | HIGH | Use variants API instead |
 | `collaborator_id` → `collaborator_ids` | HIGH | Update to array format |
 | Prices in variant response | MEDIUM | Handle new `prices` array |
@@ -460,7 +462,31 @@ const sale = await api.post('/sales', {
   "total_rejected_amount": 5000.00,
   "amount_owed": 45000.00,
   "payment_status": "partial",
-  "paid_amount": 20000.00
+  "paid_amount": 20000.00,
+  "is_inter_state": false,
+  "items": [
+    {
+      "id": "POIM00000001",
+      "po_id": "PORD00000001",
+      "variant_id": "PVAR00000001",
+      "product_name": "Rice - Premium",
+      "product_sku": "RICE-PREM-5KG",
+      "quantity": 100,
+      "unit_price": 118.00,
+      "line_total": 11800.00,
+      "received_quantity": 100,
+      "base_price": 100.00,
+      "gst_rate": 18.0,
+      "gst_amount": 18.00,
+      "cgst_rate": 9.0,
+      "cgst_amount": 9.00,
+      "sgst_rate": 9.0,
+      "sgst_amount": 9.00,
+      "igst_rate": 0,
+      "igst_amount": 0,
+      "created_at": "2025-12-01T10:00:00Z"
+    }
+  ]
 }
 ```
 
@@ -473,11 +499,57 @@ NEW (Current):
   placed → confirmed → out_for_delivery → delivered → verified → paid
 ```
 
-**New Fields:**
+**New Fields (PurchaseOrderResponse):**
 | Field | Type | Description |
 |-------|------|-------------|
 | `total_rejected_amount` | `float64` | Value of rejected items from GRN |
 | `amount_owed` | `float64` | `total_amount - total_rejected_amount` |
+| `is_inter_state` | `*bool` | `true` = inter-state (IGST), `false` = intra-state (CGST+SGST), `null` = unknown |
+
+**New Fields (PurchaseOrderItemResponse - GST Breakdown):**
+| Field | Type | Description |
+|-------|------|-------------|
+| `base_price` | `float64` | Price before GST (reverse-calculated from unit_price) |
+| `gst_rate` | `float64` | GST rate from variant (e.g., 5, 12, 18, 28) |
+| `gst_amount` | `float64` | Total GST per unit |
+| `cgst_rate` | `float64` | Central GST rate (0 if inter-state) |
+| `cgst_amount` | `float64` | Central GST amount per unit (0 if inter-state) |
+| `sgst_rate` | `float64` | State GST rate (0 if inter-state) |
+| `sgst_amount` | `float64` | State GST amount per unit (0 if inter-state) |
+| `igst_rate` | `float64` | Integrated GST rate (0 if intra-state) |
+| `igst_amount` | `float64` | Integrated GST amount per unit (0 if intra-state) |
+
+**GST Calculation Logic:**
+- User enters ALL-IN `unit_price` (includes GST)
+- System reverse-calculates: `base_price = unit_price / (1 + gst_rate/100)`
+- GST split depends on collaborator vs warehouse state:
+  - **Intra-state** (same state): CGST + SGST at 50/50 split
+  - **Inter-state** (different states): IGST at full rate
+  - **Unknown** (no state info): Only `gst_amount` populated, no split
+
+**Example - Intra-state (Maharashtra → Maharashtra):**
+```
+unit_price: 118.00 (ALL-IN)
+gst_rate: 18%
+base_price: 100.00
+gst_amount: 18.00
+cgst_rate: 9%, cgst_amount: 9.00
+sgst_rate: 9%, sgst_amount: 9.00
+igst_rate: 0, igst_amount: 0
+is_inter_state: false
+```
+
+**Example - Inter-state (Gujarat → Maharashtra):**
+```
+unit_price: 118.00 (ALL-IN)
+gst_rate: 18%
+base_price: 100.00
+gst_amount: 18.00
+cgst_rate: 0, cgst_amount: 0
+sgst_rate: 0, sgst_amount: 0
+igst_rate: 18%, igst_amount: 18.00
+is_inter_state: true
+```
 
 ---
 

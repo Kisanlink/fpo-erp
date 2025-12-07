@@ -8,7 +8,7 @@ import (
 
 // PurchaseOrderServiceInterface defines the contract for purchase order service operations
 type PurchaseOrderServiceInterface interface {
-	CreatePurchaseOrder(ctx context.Context, request *models.CreatePurchaseOrderRequest) (*models.PurchaseOrderResponse, error)
+	CreatePurchaseOrder(ctx context.Context, request *models.CreatePurchaseOrderRequest, jwtToken string) (*models.PurchaseOrderResponse, error)
 	GetPurchaseOrder(ctx context.Context, id string) (*models.PurchaseOrderResponse, error)
 	GetAllPurchaseOrders(ctx context.Context) ([]models.PurchaseOrderResponse, error)
 	GetPurchaseOrdersByCollaborator(ctx context.Context, collaboratorID string) ([]models.PurchaseOrderResponse, error)

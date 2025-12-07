@@ -37,6 +37,9 @@ type PurchaseOrder struct {
 	// Values: "unpaid", "partial", "paid"
 	PaidAmount float64 `gorm:"type:numeric(14,4);default:0" json:"paid_amount"`
 
+	// Inter-state flag (determined at PO creation by comparing collaborator vs warehouse state)
+	IsInterState *bool `gorm:"type:boolean" json:"is_inter_state"` // nil = unknown, true = inter-state (IGST), false = intra-state (CGST+SGST)
+
 	// Associations
 	Collaborator Collaborator        `gorm:"foreignKey:CollaboratorID" json:"collaborator,omitempty"`
 	Warehouse    Warehouse           `gorm:"foreignKey:WarehouseID" json:"warehouse,omitempty"`
@@ -84,6 +87,17 @@ type PurchaseOrderItem struct {
 	// Delivery tracking
 	ReceivedQuantity *int64 `gorm:"type:bigint" json:"received_quantity"` // Actual received (set during GRN)
 
+	// GST Breakdown (reverse-calculated from ALL-IN unit price)
+	BasePrice  float64 `gorm:"type:numeric(14,4)" json:"base_price"`  // Price before GST
+	GSTRate    float64 `gorm:"type:numeric(5,2)" json:"gst_rate"`     // GST rate used (from variant)
+	GSTAmount  float64 `gorm:"type:numeric(14,4)" json:"gst_amount"`  // Total GST per unit
+	CGSTRate   float64 `gorm:"type:numeric(5,2)" json:"cgst_rate"`    // 0 if inter-state
+	CGSTAmount float64 `gorm:"type:numeric(14,4)" json:"cgst_amount"` // 0 if inter-state
+	SGSTRate   float64 `gorm:"type:numeric(5,2)" json:"sgst_rate"`    // 0 if inter-state
+	SGSTAmount float64 `gorm:"type:numeric(14,4)" json:"sgst_amount"` // 0 if inter-state
+	IGSTRate   float64 `gorm:"type:numeric(5,2)" json:"igst_rate"`    // 0 if intra-state
+	IGSTAmount float64 `gorm:"type:numeric(14,4)" json:"igst_amount"` // 0 if intra-state
+
 	// Associations
 	PurchaseOrder PurchaseOrder  `gorm:"foreignKey:POID" json:"purchase_order,omitempty"`
 	Variant       ProductVariant `gorm:"foreignKey:VariantID" json:"variant,omitempty"`
@@ -124,6 +138,7 @@ type PurchaseOrderResponse struct {
 	AmountOwed          float64                     `json:"amount_owed"`           // TotalAmount - TotalRejectedAmount
 	PaymentStatus       string                      `json:"payment_status"`
 	PaidAmount          float64                     `json:"paid_amount"`
+	IsInterState        *bool                       `json:"is_inter_state"` // nil = unknown, true = inter-state, false = intra-state
 	Items               []PurchaseOrderItemResponse `json:"items,omitempty"`
 	CreatedAt           string                      `json:"created_at"`
 	UpdatedAt           string                      `json:"updated_at"`
@@ -140,7 +155,17 @@ type PurchaseOrderItemResponse struct {
 	UnitPrice        float64 `json:"unit_price"`
 	LineTotal        float64 `json:"line_total"`
 	ReceivedQuantity *int64  `json:"received_quantity"`
-	CreatedAt        string  `json:"created_at"`
+	// GST Breakdown
+	BasePrice  float64 `json:"base_price"`
+	GSTRate    float64 `json:"gst_rate"`
+	GSTAmount  float64 `json:"gst_amount"`
+	CGSTRate   float64 `json:"cgst_rate,omitempty"`
+	CGSTAmount float64 `json:"cgst_amount,omitempty"`
+	SGSTRate   float64 `json:"sgst_rate,omitempty"`
+	SGSTAmount float64 `json:"sgst_amount,omitempty"`
+	IGSTRate   float64 `json:"igst_rate,omitempty"`
+	IGSTAmount float64 `json:"igst_amount,omitempty"`
+	CreatedAt  string  `json:"created_at"`
 }
 
 // CreatePurchaseOrderRequest represents the request to create a purchase order
