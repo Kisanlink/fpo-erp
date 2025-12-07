@@ -17,18 +17,18 @@ import (
 
 // AggregationService provides aggregated data for frontend optimization
 type AggregationService struct {
-	productRepo         *repositories.ProductRepository
-	variantRepo         *repositories.ProductVariantRepository
-	priceRepo           *repositories.ProductPriceRepository
-	inventoryRepo       *repositories.InventoryRepository
-	warehouseRepo       *repositories.WarehouseRepository
-	collaboratorRepo    *repositories.CollaboratorRepository
-	discountRepo        *repositories.DiscountsRepository
-	taxRepo             *repositories.TaxRepository
-	refundPoliciesRepo  *repositories.RefundPoliciesRepository
-	purchaseOrderRepo   *repositories.PurchaseOrderRepository
-	grnRepo             *repositories.GRNRepository
-	logger              interfaces.Logger
+	productRepo        *repositories.ProductRepository
+	variantRepo        *repositories.ProductVariantRepository
+	priceRepo          *repositories.ProductPriceRepository
+	inventoryRepo      *repositories.InventoryRepository
+	warehouseRepo      *repositories.WarehouseRepository
+	collaboratorRepo   *repositories.CollaboratorRepository
+	discountRepo       *repositories.DiscountsRepository
+	taxRepo            *repositories.TaxRepository
+	refundPoliciesRepo *repositories.RefundPoliciesRepository
+	purchaseOrderRepo  *repositories.PurchaseOrderRepository
+	grnRepo            *repositories.GRNRepository
+	logger             interfaces.Logger
 }
 
 // NewAggregationService creates a new AggregationService
@@ -47,18 +47,18 @@ func NewAggregationService(
 	logger interfaces.Logger,
 ) *AggregationService {
 	return &AggregationService{
-		productRepo:         productRepo,
-		variantRepo:         variantRepo,
-		priceRepo:           priceRepo,
-		inventoryRepo:       inventoryRepo,
-		warehouseRepo:       warehouseRepo,
-		collaboratorRepo:    collaboratorRepo,
-		discountRepo:        discountRepo,
-		taxRepo:             taxRepo,
-		refundPoliciesRepo:  refundPoliciesRepo,
-		purchaseOrderRepo:   purchaseOrderRepo,
-		grnRepo:             grnRepo,
-		logger:              logger,
+		productRepo:        productRepo,
+		variantRepo:        variantRepo,
+		priceRepo:          priceRepo,
+		inventoryRepo:      inventoryRepo,
+		warehouseRepo:      warehouseRepo,
+		collaboratorRepo:   collaboratorRepo,
+		discountRepo:       discountRepo,
+		taxRepo:            taxRepo,
+		refundPoliciesRepo: refundPoliciesRepo,
+		purchaseOrderRepo:  purchaseOrderRepo,
+		grnRepo:            grnRepo,
+		logger:             logger,
 	}
 }
 
@@ -529,9 +529,9 @@ func (s *AggregationService) GetSalesContext(req *models.SalesContextRequest) (*
 		inventoryItem := models.InventoryWithPricing{
 			BatchID:          batch.ID,
 			VariantID:        batch.VariantID,
-			QuantityTotal:    batch.TotalQuantity,        // Total inventory in batch
-			QuantityReserved: batch.ReservedQuantity,     // Reserved by pending sales
-			QuantitySellable: batch.AvailableQuantity(),  // Real sellable = total - reserved
+			QuantityTotal:    batch.TotalQuantity,       // Total inventory in batch
+			QuantityReserved: batch.ReservedQuantity,    // Reserved by pending sales
+			QuantitySellable: batch.AvailableQuantity(), // Real sellable = total - reserved
 			CostPrice:        batch.CostPrice,
 			ExpiryDate:       batch.ExpiryDate.Format("2006-01-02"),
 			TaxConfig:        taxConfig,

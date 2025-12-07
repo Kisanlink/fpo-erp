@@ -87,12 +87,12 @@ const (
 // Kept for migration reference only
 type Tax struct {
 	base.BaseModel
-	Code            string  `json:"code" gorm:"uniqueIndex;not null"`
-	Name            string  `json:"name" gorm:"not null"`
-	Description     string  `json:"description"`
-	TaxType         TaxType `json:"tax_type" gorm:"not null"`
-	Rate            float64 `json:"rate" gorm:"not null"`
-	IsActive        bool    `json:"is_active" gorm:"default:true"`
+	Code        string  `json:"code" gorm:"uniqueIndex;not null"`
+	Name        string  `json:"name" gorm:"not null"`
+	Description string  `json:"description"`
+	TaxType     TaxType `json:"tax_type" gorm:"not null"`
+	Rate        float64 `json:"rate" gorm:"not null"`
+	IsActive    bool    `json:"is_active" gorm:"default:true"`
 }
 
 func (Tax) TableName() string {

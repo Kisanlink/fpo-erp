@@ -686,10 +686,10 @@ func isValidReturnStatus(status string) bool {
 func isValidReturnStatusTransition(from, to string) bool {
 	// Status transition rules
 	transitions := map[string][]string{
-		"pending":             {"sent"},
-		"sent":                {"received_by_vendor"},
-		"received_by_vendor":  {"closed"},
-		"closed":              {}, // Cannot transition from closed
+		"pending":            {"sent"},
+		"sent":               {"received_by_vendor"},
+		"received_by_vendor": {"closed"},
+		"closed":             {}, // Cannot transition from closed
 	}
 
 	allowedTransitions, exists := transitions[from]

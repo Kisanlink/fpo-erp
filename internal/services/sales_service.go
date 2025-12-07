@@ -873,13 +873,13 @@ func (s *SalesService) mapSaleToResponse(sale *models.Sale) *models.SaleResponse
 			SellingPrice: item.SellingPrice,
 			LineTotal:    item.LineTotal,
 			// BRD Requirements - Cost and Margin
-			CostPrice:       item.CostPrice,
-			Margin:          item.Margin,
+			CostPrice:      item.CostPrice,
+			Margin:         item.Margin,
 			CGSTAmount:     item.CGSTAmount,
 			SGSTAmount:     item.SGSTAmount,
 			IGSTAmount:     item.IGSTAmount,
 			TotalTaxAmount: item.TotalTaxAmount,
-			CreatedAt:       item.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			CreatedAt:      item.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		})
 	}
 

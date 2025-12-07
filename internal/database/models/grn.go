@@ -192,13 +192,13 @@ type UpdateItemReturnStatusRequest struct {
 
 // RejectedItemsResponse represents the response for rejected items endpoint
 type RejectedItemsResponse struct {
-	GRNID                string                    `json:"grn_id"`
-	GRNNumber            string                    `json:"grn_number"`
-	POID                 string                    `json:"po_id"`
-	PONumber             string                    `json:"po_number"`
-	RejectedItems        []RejectedItemDetail      `json:"rejected_items"`
-	TotalRejectedValue   float64                   `json:"total_rejected_value"`
-	ReturnStatusBreakdown map[string]int            `json:"return_status_breakdown"`
+	GRNID                 string               `json:"grn_id"`
+	GRNNumber             string               `json:"grn_number"`
+	POID                  string               `json:"po_id"`
+	PONumber              string               `json:"po_number"`
+	RejectedItems         []RejectedItemDetail `json:"rejected_items"`
+	TotalRejectedValue    float64              `json:"total_rejected_value"`
+	ReturnStatusBreakdown map[string]int       `json:"return_status_breakdown"`
 }
 
 // RejectedItemDetail represents a single rejected item with return tracking

@@ -43,7 +43,7 @@ type ProductVariant struct {
 	Barcode *string `gorm:"type:varchar(50)" json:"barcode"`    // For scanning
 
 	// GST Tax Configuration (optional - allows NULL for legacy data)
-	HSNCode string  `gorm:"type:varchar(8);default:''" json:"hsn_code"` // HSN code for GST classification
+	HSNCode string  `gorm:"type:varchar(8);default:''" json:"hsn_code"`  // HSN code for GST classification
 	GSTRate float64 `gorm:"type:numeric(5,2);default:0" json:"gst_rate"` // GST rate: 0, 5, 12, 18, or 28
 
 	// Collaborator-specific fields (optional - for supplier-specific variants)
@@ -100,40 +100,40 @@ func (ProductVariant) TableName() string {
 
 // ProductVariantResponse represents the API response for product variant
 type ProductVariantResponse struct {
-	ID                 string   `json:"id"`
-	ProductID          string   `json:"product_id"`
-	VariantName        string   `json:"variant_name"`
-	Description        *string  `json:"description"`
-	Quantity           string   `json:"quantity"`
-	PackSize           string   `json:"pack_size"`
-	SKU                *string  `json:"sku"`
-	Barcode            *string  `json:"barcode"`
-	HSNCode            string   `json:"hsn_code"`                   // Required GST HSN code
-	GSTRate            float64  `json:"gst_rate"`                   // Required GST rate
-	CollaboratorIDs    []string `json:"collaborator_ids,omitempty"` // Multiple collaborators
-	BrandName          *string  `json:"brand_name,omitempty"`
-	Images             []string `json:"images,omitempty"`           // S3 paths (for reference)
-	ImageURLs          []string `json:"image_urls,omitempty"`       // Presigned URLs (valid for 1 hour)
-	DosageInstructions *string  `json:"dosage_instructions,omitempty"`
-	UsageDetails       *string  `json:"usage_details,omitempty"`
+	ID                 string                 `json:"id"`
+	ProductID          string                 `json:"product_id"`
+	VariantName        string                 `json:"variant_name"`
+	Description        *string                `json:"description"`
+	Quantity           string                 `json:"quantity"`
+	PackSize           string                 `json:"pack_size"`
+	SKU                *string                `json:"sku"`
+	Barcode            *string                `json:"barcode"`
+	HSNCode            string                 `json:"hsn_code"`                   // Required GST HSN code
+	GSTRate            float64                `json:"gst_rate"`                   // Required GST rate
+	CollaboratorIDs    []string               `json:"collaborator_ids,omitempty"` // Multiple collaborators
+	BrandName          *string                `json:"brand_name,omitempty"`
+	Images             []string               `json:"images,omitempty"`     // S3 paths (for reference)
+	ImageURLs          []string               `json:"image_urls,omitempty"` // Presigned URLs (valid for 1 hour)
+	DosageInstructions *string                `json:"dosage_instructions,omitempty"`
+	UsageDetails       *string                `json:"usage_details,omitempty"`
 	Prices             []ProductPriceResponse `json:"prices"` // Fetched from product_prices table
-	IsActive           bool     `json:"is_active"`
-	CreatedAt          string   `json:"created_at"`
-	UpdatedAt          string   `json:"updated_at"`
+	IsActive           bool                   `json:"is_active"`
+	CreatedAt          string                 `json:"created_at"`
+	UpdatedAt          string                 `json:"updated_at"`
 }
 
 // CreateProductVariantRequest represents the request to create a product variant
 type CreateProductVariantRequest struct {
-	VariantName        string   `json:"variant_name" binding:"required"`
-	Description        *string  `json:"description"`
-	Quantity           string   `json:"quantity" binding:"required"`
-	PackSize           string   `json:"pack_size" binding:"required"`
-	SKU                *string  `json:"sku"`
-	Barcode            *string  `json:"barcode"`
-	HSNCode            string   `json:"hsn_code" binding:"required"`              // Required: HSN code for GST classification
-	GSTRate            float64  `json:"gst_rate" binding:"min=0,max=28"`          // Required: GST rate (0, 5, 12, 18, or 28)
-	CollaboratorIDs    []string `json:"collaborator_ids"`                         // Optional: multiple collaborators can supply same variant
-	BrandName          *string  `json:"brand_name"`                               // Optional: collaborator's brand
+	VariantName        string         `json:"variant_name" binding:"required"`
+	Description        *string        `json:"description"`
+	Quantity           string         `json:"quantity" binding:"required"`
+	PackSize           string         `json:"pack_size" binding:"required"`
+	SKU                *string        `json:"sku"`
+	Barcode            *string        `json:"barcode"`
+	HSNCode            string         `json:"hsn_code" binding:"required"`     // Required: HSN code for GST classification
+	GSTRate            float64        `json:"gst_rate" binding:"min=0,max=28"` // Required: GST rate (0, 5, 12, 18, or 28)
+	CollaboratorIDs    []string       `json:"collaborator_ids"`                // Optional: multiple collaborators can supply same variant
+	BrandName          *string        `json:"brand_name"`                      // Optional: collaborator's brand
 	Images             []string       `json:"images"`
 	DosageInstructions *string        `json:"dosage_instructions"`
 	UsageDetails       *string        `json:"usage_details"`
@@ -142,16 +142,16 @@ type CreateProductVariantRequest struct {
 
 // UpdateProductVariantRequest represents the request to update a product variant
 type UpdateProductVariantRequest struct {
-	VariantName        *string   `json:"variant_name,omitempty"`
-	Description        *string   `json:"description,omitempty"`
-	Quantity           *string   `json:"quantity,omitempty"`
-	PackSize           *string   `json:"pack_size,omitempty"`
-	SKU                *string   `json:"sku,omitempty"`
-	Barcode            *string   `json:"barcode,omitempty"`
-	CollaboratorIDs    *[]string `json:"collaborator_ids,omitempty"` // Optional: update collaborator associations
-	BrandName          *string   `json:"brand_name,omitempty"`
-	HSNCode            *string   `json:"hsn_code,omitempty"`
-	GSTRate            *float64  `json:"gst_rate,omitempty"`
+	VariantName        *string         `json:"variant_name,omitempty"`
+	Description        *string         `json:"description,omitempty"`
+	Quantity           *string         `json:"quantity,omitempty"`
+	PackSize           *string         `json:"pack_size,omitempty"`
+	SKU                *string         `json:"sku,omitempty"`
+	Barcode            *string         `json:"barcode,omitempty"`
+	CollaboratorIDs    *[]string       `json:"collaborator_ids,omitempty"` // Optional: update collaborator associations
+	BrandName          *string         `json:"brand_name,omitempty"`
+	HSNCode            *string         `json:"hsn_code,omitempty"`
+	GSTRate            *float64        `json:"gst_rate,omitempty"`
 	Images             *[]string       `json:"images,omitempty"`
 	DosageInstructions *string         `json:"dosage_instructions,omitempty"`
 	UsageDetails       *string         `json:"usage_details,omitempty"`

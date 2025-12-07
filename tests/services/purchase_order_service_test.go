@@ -34,7 +34,7 @@ func setupPurchaseOrderService(t *testing.T) (*services.PurchaseOrderService, *g
 	grnRepo := repositories.NewGRNRepository(db)
 	inventoryRepo := repositories.NewInventoryRepository(db)
 
-	// Create service
+	// Create service (nil AAA client for tests that don't need address service)
 	service := services.NewPurchaseOrderService(
 		poRepo,
 		collaboratorRepo,
@@ -43,6 +43,7 @@ func setupPurchaseOrderService(t *testing.T) (*services.PurchaseOrderService, *g
 		variantRepo,
 		grnRepo,
 		inventoryRepo,
+		nil, // AddressGRPCClient - nil for tests
 		utils.NewLoggerAdapter(utils.GetZapLogger()),
 	)
 
@@ -159,7 +160,7 @@ func TestPurchaseOrderService_CreatePurchaseOrder_Success(t *testing.T) {
 
 	// Execute
 	ctx := context.Background()
-	response, err := service.CreatePurchaseOrder(ctx, request)
+	response, err := service.CreatePurchaseOrder(ctx, request, "")
 
 	// Assert
 	testutils.AssertNoError(t, err, "CreatePurchaseOrder should succeed")
@@ -188,7 +189,7 @@ func TestPurchaseOrderService_CreatePurchaseOrder_CollaboratorNotFound(t *testin
 	}
 
 	ctx := context.Background()
-	_, err := service.CreatePurchaseOrder(ctx, request)
+	_, err := service.CreatePurchaseOrder(ctx, request, "")
 
 	testutils.AssertError(t, err, "Should return error for invalid collaborator")
 }
@@ -217,7 +218,7 @@ func TestPurchaseOrderService_CreatePurchaseOrder_CollaboratorNotActive(t *testi
 	}
 
 	ctx := context.Background()
-	_, err := service.CreatePurchaseOrder(ctx, request)
+	_, err := service.CreatePurchaseOrder(ctx, request, "")
 
 	testutils.AssertError(t, err, "Should return error for inactive collaborator")
 	testutils.AssertContains(t, err.Error(), "not active", "Error message should mention inactive")
@@ -238,7 +239,7 @@ func TestPurchaseOrderService_CreatePurchaseOrder_WarehouseNotFound(t *testing.T
 	}
 
 	ctx := context.Background()
-	_, err := service.CreatePurchaseOrder(ctx, request)
+	_, err := service.CreatePurchaseOrder(ctx, request, "")
 
 	testutils.AssertError(t, err, "Should return error for invalid warehouse")
 }
@@ -261,7 +262,7 @@ func TestPurchaseOrderService_CreatePurchaseOrder_InvalidOrderDateFormat(t *test
 	}
 
 	ctx := context.Background()
-	_, err := service.CreatePurchaseOrder(ctx, request)
+	_, err := service.CreatePurchaseOrder(ctx, request, "")
 
 	testutils.AssertError(t, err, "Should return error for invalid order date format")
 	testutils.AssertContains(t, err.Error(), "order_date", "Error should mention order_date")
@@ -282,7 +283,7 @@ func TestPurchaseOrderService_CreatePurchaseOrder_InvalidExpectedDeliveryFormat(
 	}
 
 	ctx := context.Background()
-	_, err := service.CreatePurchaseOrder(ctx, request)
+	_, err := service.CreatePurchaseOrder(ctx, request, "")
 
 	testutils.AssertError(t, err, "Should return error for invalid expected delivery format")
 	testutils.AssertContains(t, err.Error(), "expected_delivery", "Error should mention expected_delivery")
@@ -307,7 +308,7 @@ func TestPurchaseOrderService_CreatePurchaseOrder_ExpectedDeliveryBeforeOrderDat
 	}
 
 	ctx := context.Background()
-	_, err := service.CreatePurchaseOrder(ctx, request)
+	_, err := service.CreatePurchaseOrder(ctx, request, "")
 
 	testutils.AssertError(t, err, "Should return error when expected delivery is before order date")
 	testutils.AssertContains(t, err.Error(), "after order date", "Error should mention date order")
@@ -329,7 +330,7 @@ func TestPurchaseOrderService_CreatePurchaseOrder_NoItems(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	_, err := service.CreatePurchaseOrder(ctx, request)
+	_, err := service.CreatePurchaseOrder(ctx, request, "")
 
 	testutils.AssertError(t, err, "Should return error when no items provided")
 	testutils.AssertContains(t, err.Error(), "at least one item", "Error should mention items requirement")
@@ -357,7 +358,7 @@ func TestPurchaseOrderService_CreatePurchaseOrder_InvalidVariant(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	_, err := service.CreatePurchaseOrder(ctx, request)
+	_, err := service.CreatePurchaseOrder(ctx, request, "")
 
 	testutils.AssertError(t, err, "Should return error for invalid variant")
 	testutils.AssertContains(t, err.Error(), "variant", "Error should mention variant")
@@ -396,7 +397,7 @@ func TestPurchaseOrderService_CreatePurchaseOrder_MultipleItems(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	response, err := service.CreatePurchaseOrder(ctx, request)
+	response, err := service.CreatePurchaseOrder(ctx, request, "")
 
 	testutils.AssertNoError(t, err, "CreatePurchaseOrder should succeed")
 	testutils.AssertNotNil(t, response, "Response should not be nil")

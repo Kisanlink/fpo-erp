@@ -4,10 +4,11 @@ import (
 	"testing"
 	"time"
 
-	"gorm.io/gorm"
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
 	"kisanlink-erp/tests/testutils"
+
+	"gorm.io/gorm"
 )
 
 // =============================================================================
@@ -32,7 +33,7 @@ func createTestBatch(t *testing.T, repo *repositories.InventoryRepository, wareh
 	t.Helper()
 
 	expiryDate := time.Now().UTC().Add(30 * 24 * time.Hour)
-	batch := models.NewInventoryBatch(warehouseID, variantID, 100.0, expiryDate, totalQty, 9.0, 9.0, []string{}, false)
+	batch := models.NewInventoryBatch(warehouseID, variantID, 100.0, expiryDate, totalQty)
 	batch.ReservedQuantity = reservedQty
 
 	if err := repo.CreateBatch(batch); err != nil {

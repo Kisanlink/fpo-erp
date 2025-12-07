@@ -13,11 +13,11 @@ type IncludeOptions struct {
 
 // ProductDetailRequest represents query parameters for product detail aggregation
 type ProductDetailRequest struct {
-	Include      string `form:"include"`      // Comma-separated: variants,prices,inventory,collaborators,taxes
-	WarehouseID  string `form:"warehouse_id"` // Filter inventory by warehouse
-	PriceType    string `form:"price_type"`   // Filter prices: retail, wholesale, bulk, all
-	ActiveOnly   bool   `form:"active_only"`  // Show only active variants (default: true)
-	InStockOnly  bool   `form:"in_stock_only"` // Show only variants with stock
+	Include     string `form:"include"`       // Comma-separated: variants,prices,inventory,collaborators,taxes
+	WarehouseID string `form:"warehouse_id"`  // Filter inventory by warehouse
+	PriceType   string `form:"price_type"`    // Filter prices: retail, wholesale, bulk, all
+	ActiveOnly  bool   `form:"active_only"`   // Show only active variants (default: true)
+	InStockOnly bool   `form:"in_stock_only"` // Show only variants with stock
 }
 
 // SalesContextRequest represents query parameters for sales context
@@ -63,37 +63,37 @@ type CollaboratorInfo struct {
 
 // VariantDetail represents variant information with prices and inventory
 type VariantDetail struct {
-	ID                 string              `json:"id"`
-	ProductID          string              `json:"product_id"`
-	VariantName        string              `json:"variant_name"`
-	Description        *string             `json:"description,omitempty"`
-	SKU                string              `json:"sku"`
-	Barcode            *string             `json:"barcode,omitempty"`
-	ExternalID         *string             `json:"external_id,omitempty"`
-	BrandName          *string             `json:"brand_name,omitempty"`
-	Quantity           string              `json:"quantity"`
-	PackSize           *string             `json:"pack_size,omitempty"`
-	Images             []string            `json:"images,omitempty"`
-	HSNCode            *string             `json:"hsn_code,omitempty"`
-	GSTRate            float64             `json:"gst_rate"`
-	DosageInstructions *string             `json:"dosage_instructions,omitempty"`
-	UsageDetails       *string             `json:"usage_details,omitempty"`
-	IsActive           bool                `json:"is_active"`
-	CreatedAt          string              `json:"created_at"`
-	UpdatedAt          string              `json:"updated_at"`
-	Prices             *VariantPrices      `json:"prices,omitempty"`
-	StockSummary       *StockSummary       `json:"stock_summary,omitempty"`
-	WarehouseStock     []WarehouseStock    `json:"warehouse_stock,omitempty"`
-	TaxConfiguration   *TaxConfiguration   `json:"tax_configuration,omitempty"`
+	ID                 string            `json:"id"`
+	ProductID          string            `json:"product_id"`
+	VariantName        string            `json:"variant_name"`
+	Description        *string           `json:"description,omitempty"`
+	SKU                string            `json:"sku"`
+	Barcode            *string           `json:"barcode,omitempty"`
+	ExternalID         *string           `json:"external_id,omitempty"`
+	BrandName          *string           `json:"brand_name,omitempty"`
+	Quantity           string            `json:"quantity"`
+	PackSize           *string           `json:"pack_size,omitempty"`
+	Images             []string          `json:"images,omitempty"`
+	HSNCode            *string           `json:"hsn_code,omitempty"`
+	GSTRate            float64           `json:"gst_rate"`
+	DosageInstructions *string           `json:"dosage_instructions,omitempty"`
+	UsageDetails       *string           `json:"usage_details,omitempty"`
+	IsActive           bool              `json:"is_active"`
+	CreatedAt          string            `json:"created_at"`
+	UpdatedAt          string            `json:"updated_at"`
+	Prices             *VariantPrices    `json:"prices,omitempty"`
+	StockSummary       *StockSummary     `json:"stock_summary,omitempty"`
+	WarehouseStock     []WarehouseStock  `json:"warehouse_stock,omitempty"`
+	TaxConfiguration   *TaxConfiguration `json:"tax_configuration,omitempty"`
 }
 
 // VariantPrices represents pricing information for a variant
 type VariantPrices struct {
-	Currency       string      `json:"currency"`
-	HasActivePrice bool        `json:"has_active_price"`
-	RetailPrice    *PriceInfo  `json:"retail_price,omitempty"`
-	WholesalePrice *PriceInfo  `json:"wholesale_price,omitempty"`
-	BulkPrice      *PriceInfo  `json:"bulk_price,omitempty"`
+	Currency       string     `json:"currency"`
+	HasActivePrice bool       `json:"has_active_price"`
+	RetailPrice    *PriceInfo `json:"retail_price,omitempty"`
+	WholesalePrice *PriceInfo `json:"wholesale_price,omitempty"`
+	BulkPrice      *PriceInfo `json:"bulk_price,omitempty"`
 }
 
 // PriceInfo represents individual price details
@@ -154,7 +154,7 @@ type VariantDetailResponse struct {
 // VariantDetailWithProduct includes parent product info
 type VariantDetailWithProduct struct {
 	VariantDetail
-	Product      *ProductBasicInfo    `json:"product,omitempty"`
+	Product      *ProductBasicInfo      `json:"product,omitempty"`
 	Collaborator *CollaboratorBasicInfo `json:"collaborator,omitempty"`
 }
 
@@ -181,13 +181,13 @@ type ResponseMetadata struct {
 
 // SalesContextResponse represents the aggregated sales context response
 type SalesContextResponse struct {
-	Warehouse              WarehouseInfo            `json:"warehouse"`
-	AvailableInventory     []InventoryWithPricing   `json:"available_inventory"`
-	GlobalTaxConfiguration GlobalTaxConfig          `json:"global_tax_configuration"`
-	DiscountPolicies       []DiscountPolicy         `json:"discount_policies"`
-	RefundPolicies         []RefundPolicyInfo       `json:"refund_policies"`
-	PaymentMethods         []PaymentMethodInfo      `json:"payment_methods"`
-	Metadata               SalesContextMetadata     `json:"metadata"`
+	Warehouse              WarehouseInfo          `json:"warehouse"`
+	AvailableInventory     []InventoryWithPricing `json:"available_inventory"`
+	GlobalTaxConfiguration GlobalTaxConfig        `json:"global_tax_configuration"`
+	DiscountPolicies       []DiscountPolicy       `json:"discount_policies"`
+	RefundPolicies         []RefundPolicyInfo     `json:"refund_policies"`
+	PaymentMethods         []PaymentMethodInfo    `json:"payment_methods"`
+	Metadata               SalesContextMetadata   `json:"metadata"`
 }
 
 // WarehouseInfo represents warehouse details for sales context
@@ -202,13 +202,13 @@ type WarehouseInfo struct {
 
 // InventoryWithPricing represents inventory batch with pricing and product info
 type InventoryWithPricing struct {
-	BatchID          string               `json:"batch_id"`
-	VariantID        string               `json:"variant_id"`
-	Variant          VariantInfoForSales  `json:"variant"`
-	Product          ProductInfoForSales  `json:"product"`
-	QuantityTotal    int64                `json:"quantity_total"`    // Total inventory (renamed from QuantityAvailable for clarity)
-	QuantityReserved int64                `json:"quantity_reserved"` // Reserved by pending sales
-	QuantitySellable int64                `json:"quantity_sellable"` // Available for new sales (total - reserved)
+	BatchID           string               `json:"batch_id"`
+	VariantID         string               `json:"variant_id"`
+	Variant           VariantInfoForSales  `json:"variant"`
+	Product           ProductInfoForSales  `json:"product"`
+	QuantityTotal     int64                `json:"quantity_total"`    // Total inventory (renamed from QuantityAvailable for clarity)
+	QuantityReserved  int64                `json:"quantity_reserved"` // Reserved by pending sales
+	QuantitySellable  int64                `json:"quantity_sellable"` // Available for new sales (total - reserved)
 	CostPrice         float64              `json:"cost_price"`
 	ExpiryDate        string               `json:"expiry_date"`
 	ManufacturingDate *string              `json:"manufacturing_date,omitempty"`
@@ -279,10 +279,10 @@ type MarginInfo struct {
 
 // GlobalTaxConfig represents global tax configuration
 type GlobalTaxConfig struct {
-	DefaultCGSTRate        float64       `json:"default_cgst_rate"`
-	DefaultSGSTRate        float64       `json:"default_sgst_rate"`
-	TaxCalculationMethod   string        `json:"tax_calculation_method"`
-	ActiveTaxes            []ActiveTaxInfo `json:"active_taxes"`
+	DefaultCGSTRate      float64         `json:"default_cgst_rate"`
+	DefaultSGSTRate      float64         `json:"default_sgst_rate"`
+	TaxCalculationMethod string          `json:"tax_calculation_method"`
+	ActiveTaxes          []ActiveTaxInfo `json:"active_taxes"`
 }
 
 // ActiveTaxInfo represents an active tax configuration
@@ -297,16 +297,16 @@ type ActiveTaxInfo struct {
 
 // DiscountPolicy represents a discount policy for sales
 type DiscountPolicy struct {
-	ID                    string   `json:"id"`
-	Name                  string   `json:"name"`
-	DiscountType          string   `json:"discount_type"`
-	DiscountValue         float64  `json:"discount_value"`
-	MinQuantity           *int64   `json:"min_quantity,omitempty"`
-	MinAmount             *float64 `json:"min_amount,omitempty"`
-	ApplicableCategories  []string `json:"applicable_categories,omitempty"`
-	StartDate             string   `json:"start_date"`
-	EndDate               string   `json:"end_date"`
-	IsActive              bool     `json:"is_active"`
+	ID                   string   `json:"id"`
+	Name                 string   `json:"name"`
+	DiscountType         string   `json:"discount_type"`
+	DiscountValue        float64  `json:"discount_value"`
+	MinQuantity          *int64   `json:"min_quantity,omitempty"`
+	MinAmount            *float64 `json:"min_amount,omitempty"`
+	ApplicableCategories []string `json:"applicable_categories,omitempty"`
+	StartDate            string   `json:"start_date"`
+	EndDate              string   `json:"end_date"`
+	IsActive             bool     `json:"is_active"`
 }
 
 // RefundPolicyInfo represents a refund policy
@@ -383,16 +383,16 @@ type POInfo struct {
 
 // POItemDetail represents a purchase order item with variant and product info
 type POItemDetail struct {
-	ID               string              `json:"id"`
-	VariantID        string              `json:"variant_id"`
-	Variant          *VariantInfoForPO   `json:"variant,omitempty"`
-	Product          *ProductBasicInfo   `json:"product,omitempty"`
-	OrderedQuantity  int64               `json:"ordered_quantity"`
-	ReceivedQuantity int64               `json:"received_quantity"`
-	PendingQuantity  int64               `json:"pending_quantity"`
-	UnitCost         float64             `json:"unit_cost"`
-	TotalCost        float64             `json:"total_cost"`
-	ReceivedStatus   string              `json:"received_status"` // pending, partially_received, fully_received
+	ID               string            `json:"id"`
+	VariantID        string            `json:"variant_id"`
+	Variant          *VariantInfoForPO `json:"variant,omitempty"`
+	Product          *ProductBasicInfo `json:"product,omitempty"`
+	OrderedQuantity  int64             `json:"ordered_quantity"`
+	ReceivedQuantity int64             `json:"received_quantity"`
+	PendingQuantity  int64             `json:"pending_quantity"`
+	UnitCost         float64           `json:"unit_cost"`
+	TotalCost        float64           `json:"total_cost"`
+	ReceivedStatus   string            `json:"received_status"` // pending, partially_received, fully_received
 }
 
 // VariantInfoForPO represents variant info for purchase order context
@@ -408,16 +408,16 @@ type VariantInfoForPO struct {
 
 // GRNDetail represents a goods receipt note with items and inventory
 type GRNDetail struct {
-	ID               string               `json:"id"`
-	GRNNumber        string               `json:"grn_number"`
-	POID             string               `json:"purchase_order_id"`
-	ReceivedDate     string               `json:"received_date"`
-	Status           string               `json:"status"`
-	QualityStatus    string               `json:"quality_status"`
-	ReceivedBy       string               `json:"received_by"`
-	Remarks          *string              `json:"remarks,omitempty"`
-	Items            []GRNItemDetail      `json:"items,omitempty"`
-	InventoryCreated []InventoryCreated   `json:"inventory_created,omitempty"`
+	ID               string             `json:"id"`
+	GRNNumber        string             `json:"grn_number"`
+	POID             string             `json:"purchase_order_id"`
+	ReceivedDate     string             `json:"received_date"`
+	Status           string             `json:"status"`
+	QualityStatus    string             `json:"quality_status"`
+	ReceivedBy       string             `json:"received_by"`
+	Remarks          *string            `json:"remarks,omitempty"`
+	Items            []GRNItemDetail    `json:"items,omitempty"`
+	InventoryCreated []InventoryCreated `json:"inventory_created,omitempty"`
 }
 
 // GRNItemDetail represents a GRN item with quantities
@@ -492,8 +492,8 @@ type InventoryListRequest struct {
 	InStockOnly       bool   `form:"in_stock_only"`
 	ExpiringSoon      bool   `form:"expiring_soon"`
 	LowStockThreshold *int64 `form:"low_stock_threshold"`
-	Include           string `form:"include"` // variant,product,warehouse,prices,taxes
-	SortBy            string `form:"sort_by"` // expiry_date, quantity, cost_price
+	Include           string `form:"include"`    // variant,product,warehouse,prices,taxes
+	SortBy            string `form:"sort_by"`    // expiry_date, quantity, cost_price
 	SortOrder         string `form:"sort_order"` // asc, desc
 	Limit             int    `form:"limit"`
 	Offset            int    `form:"offset"`
@@ -501,9 +501,9 @@ type InventoryListRequest struct {
 
 // InventoryListResponse represents the aggregated inventory list response
 type InventoryListResponse struct {
-	Batches    []BatchWithContext   `json:"batches"`
-	Pagination InventoryPagination  `json:"pagination"`
-	Summary    InventorySummary     `json:"summary"`
+	Batches    []BatchWithContext    `json:"batches"`
+	Pagination InventoryPagination   `json:"pagination"`
+	Summary    InventorySummary      `json:"summary"`
 	Metadata   InventoryListMetadata `json:"metadata"`
 }
 
@@ -544,10 +544,10 @@ type QuantityDetails struct {
 
 // BatchPricing represents pricing information for a batch
 type BatchPricing struct {
-	CostPrice     float64                   `json:"cost_price"`
-	SellingPrices *BatchSellingPrices       `json:"selling_prices,omitempty"`
-	Margin        *BatchMargin              `json:"margin,omitempty"`
-	Currency      string                    `json:"currency"`
+	CostPrice     float64             `json:"cost_price"`
+	SellingPrices *BatchSellingPrices `json:"selling_prices,omitempty"`
+	Margin        *BatchMargin        `json:"margin,omitempty"`
+	Currency      string              `json:"currency"`
 }
 
 // BatchSellingPrices represents selling prices by type

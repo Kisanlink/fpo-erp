@@ -34,12 +34,12 @@ func (Category) TableName() string {
 
 // CategoryResponse represents the API response for category
 type CategoryResponse struct {
-	ID            string                 `json:"id"`
-	Name          string                 `json:"name"`
-	Description   *string                `json:"description"`
-	Subcategories []SubcategoryResponse  `json:"subcategories,omitempty"`
-	CreatedAt     string                 `json:"created_at"`
-	UpdatedAt     string                 `json:"updated_at"`
+	ID            string                `json:"id"`
+	Name          string                `json:"name"`
+	Description   *string               `json:"description"`
+	Subcategories []SubcategoryResponse `json:"subcategories,omitempty"`
+	CreatedAt     string                `json:"created_at"`
+	UpdatedAt     string                `json:"updated_at"`
 }
 
 // CreateCategoryRequest represents the request to create a category
@@ -56,7 +56,7 @@ type UpdateCategoryRequest struct {
 
 // SeedCategoriesResponse represents the response from seeding categories
 type SeedCategoriesResponse struct {
-	CategoriesCreated    int `json:"categories_created"`
-	SubcategoriesCreated int `json:"subcategories_created"`
+	CategoriesCreated    int    `json:"categories_created"`
+	SubcategoriesCreated int    `json:"subcategories_created"`
 	Message              string `json:"message"`
 }

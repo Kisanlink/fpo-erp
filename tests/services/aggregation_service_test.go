@@ -915,10 +915,10 @@ func TestAggregationService_GetInventoryList_ExpiryStatus(t *testing.T) {
 	product := testutils.CreateTestProduct(t, db, "PROD-001", "Test Product")
 	variant := testutils.CreateTestVariant(t, db, "VAR-001", product.ID, "VAR-SKU-001", "1kg")
 
-	expiryGood := time.Now().Add(60 * 24 * time.Hour)      // Good (>30 days)
-	expiryWarning := time.Now().Add(20 * 24 * time.Hour)   // Warning (7-30 days)
-	expiryCritical := time.Now().Add(5 * 24 * time.Hour)   // Critical (<=7 days)
-	expiryExpired := time.Now().Add(-5 * 24 * time.Hour)   // Expired (past)
+	expiryGood := time.Now().Add(60 * 24 * time.Hour)    // Good (>30 days)
+	expiryWarning := time.Now().Add(20 * 24 * time.Hour) // Warning (7-30 days)
+	expiryCritical := time.Now().Add(5 * 24 * time.Hour) // Critical (<=7 days)
+	expiryExpired := time.Now().Add(-5 * 24 * time.Hour) // Expired (past)
 
 	batchGood := testutils.FixtureInventoryBatchWithExpiry(warehouse.ID, variant.ID, 100, expiryGood)
 	batchWarning := testutils.FixtureInventoryBatchWithExpiry(warehouse.ID, variant.ID, 50, expiryWarning)
