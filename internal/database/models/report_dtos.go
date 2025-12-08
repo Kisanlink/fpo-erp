@@ -144,13 +144,14 @@ type PurchaseReportSummary struct {
 
 // SalesReportSummary aggregates for sales report
 type SalesReportSummary struct {
-	TotalSales       int64            `json:"total_sales"`
-	TotalRevenue     float64          `json:"total_revenue"`
-	TotalTax         float64          `json:"total_tax"`
-	TotalMargin      float64          `json:"total_margin"`
-	AverageSaleValue float64          `json:"average_sale_value"`
-	ByPaymentMode    map[string]int64 `json:"by_payment_mode"`
-	BySaleType       map[string]int64 `json:"by_sale_type"`
+	TotalSales         int64            `json:"total_sales"`
+	TotalRevenue       float64          `json:"total_revenue"`
+	TotalPurchaseValue float64          `json:"total_purchase_value"`
+	TotalTax           float64          `json:"total_tax"`
+	TotalMargin        float64          `json:"total_margin"`
+	AverageSaleValue   float64          `json:"average_sale_value"`
+	ByPaymentMode      map[string]int64 `json:"by_payment_mode"`
+	BySaleType         map[string]int64 `json:"by_sale_type"`
 }
 
 // ReturnsReportSummary aggregates for returns report
@@ -249,14 +250,16 @@ type PurchaseReportRecord struct {
 // SalesReportRecord for sales report rows
 type SalesReportRecord struct {
 	ID                 string  `json:"id"`
-	WarehouseID        string  `json:"warehouse_id"`
 	WarehouseName      string  `json:"warehouse_name"`
 	SaleDate           string  `json:"sale_date"`
 	Status             string  `json:"status"`
-	CustomerID         *string `json:"customer_id,omitempty"`
+	CustomerPhone      *string `json:"customer_phone,omitempty"`
+	CustomerName       *string `json:"customer_name,omitempty"`
 	PaymentMode        string  `json:"payment_mode"`
 	SaleType           string  `json:"sale_type"`
 	TotalAmount        float64 `json:"total_amount"`
+	LandingPrice       float64 `json:"landing_price"`
+	PurchaseValue      float64 `json:"purchase_value"`
 	ApplyTaxes         bool    `json:"apply_taxes"`
 	TotalTax           float64 `json:"total_tax"`
 	TotalMargin        float64 `json:"total_margin"`
