@@ -61,13 +61,49 @@ func (r *CategoryRepository) GetByNameCaseInsensitive(name string) (*models.Cate
 	return &category, nil
 }
 
-// GetAll retrieves all categories
+// GetAll retrieves all categories (non-paginated, for internal use)
 func (r *CategoryRepository) GetAll() ([]models.Category, error) {
 	var categories []models.Category
 	if err := r.db.Find(&categories).Error; err != nil {
 		return nil, errors.NewInternalServerError("Failed to retrieve categories")
 	}
 	return categories, nil
+}
+
+// GetAllPaginated retrieves all categories with pagination
+func (r *CategoryRepository) GetAllPaginated(limit, offset int) ([]models.Category, int64, error) {
+	var categories []models.Category
+	var total int64
+
+	// Get total count
+	if err := r.db.Model(&models.Category{}).Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count categories")
+	}
+
+	// Get paginated records
+	if err := r.db.Order("name ASC").Limit(limit).Offset(offset).Find(&categories).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve categories")
+	}
+	return categories, total, nil
+}
+
+// SearchByNamePaginated searches categories by name with pagination (case-insensitive)
+func (r *CategoryRepository) SearchByNamePaginated(name string, limit, offset int) ([]models.Category, int64, error) {
+	var categories []models.Category
+	var total int64
+
+	query := r.db.Model(&models.Category{}).Where("LOWER(name) LIKE LOWER(?)", "%"+name+"%")
+
+	// Get total count
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count categories")
+	}
+
+	// Get paginated records
+	if err := query.Order("name ASC").Limit(limit).Offset(offset).Find(&categories).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to search categories")
+	}
+	return categories, total, nil
 }
 
 // Update updates a category

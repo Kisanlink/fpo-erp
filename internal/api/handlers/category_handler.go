@@ -196,10 +196,12 @@ func (h *CategoryHandler) GetCategoryByName(c *gin.Context) {
 
 // GetAllCategories handles GET /api/v1/categories
 // @Summary Get All Categories
-// @Description Retrieve all categories
+// @Description Retrieve all categories with pagination
 // @Tags Categories
 // @Produce json
-// @Success 200 {object} utils.Response{data=[]models.CategoryResponse} "Categories retrieved successfully"
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.CategoryResponse} "Categories retrieved successfully"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Router /api/v1/categories [get]
 func (h *CategoryHandler) GetAllCategories(c *gin.Context) {
@@ -207,8 +209,15 @@ func (h *CategoryHandler) GetAllCategories(c *gin.Context) {
 		zap.String("method", c.Request.Method),
 		zap.String("path", c.Request.URL.Path))
 
-	// Get all categories
-	response, err := h.categoryService.GetAllCategories(c.Request.Context())
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
+
+	h.logger.Debug("Calling category service to get all categories",
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
+
+	// Get all categories with pagination
+	response, total, err := h.categoryService.GetAllCategoriesPaginated(c.Request.Context(), params.Limit, params.Offset)
 	if err != nil {
 		h.logger.Error("Service error retrieving all categories",
 			zap.Error(err))
@@ -217,9 +226,61 @@ func (h *CategoryHandler) GetAllCategories(c *gin.Context) {
 	}
 
 	h.logger.Info("All categories retrieved successfully",
-		zap.Int("category_count", len(response)))
+		zap.Int("category_count", len(response)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "Categories retrieved successfully", response)
+	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
+}
+
+// SearchCategories handles GET /api/v1/categories/search
+// @Summary Search Categories
+// @Description Search categories by name with pagination
+// @Tags Categories
+// @Produce json
+// @Param q query string true "Search query" example(FERTILIZERS)
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.CategoryResponse} "Categories found successfully"
+// @Failure 400 {object} utils.ErrorResponseModel "Bad request - search query required"
+// @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
+// @Router /api/v1/categories/search [get]
+func (h *CategoryHandler) SearchCategories(c *gin.Context) {
+	h.logger.Info("Handling search categories request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
+	// Get search query
+	query := c.Query("q")
+	if query == "" {
+		h.logger.Error("Search query is required but not provided")
+		utils.BadRequestResponse(c, "Search query is required", nil)
+		return
+	}
+
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
+
+	h.logger.Debug("Calling category service to search categories",
+		zap.String("query", query),
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
+
+	// Search categories
+	response, total, err := h.categoryService.SearchCategories(c.Request.Context(), query, params.Limit, params.Offset)
+	if err != nil {
+		h.logger.Error("Service error searching categories",
+			zap.Error(err),
+			zap.String("query", query))
+		utils.HandleServiceError(c, "Failed to search categories", err)
+		return
+	}
+
+	h.logger.Info("Categories search completed successfully",
+		zap.String("query", query),
+		zap.Int("category_count", len(response)),
+		zap.Int64("total", total))
+
+	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
 }
 
 // GetAllCategoriesWithSubcategories handles GET /api/v1/categories/with-subcategories
@@ -357,6 +418,7 @@ func (h *CategoryHandler) RegisterRoutes(v1 *gin.RouterGroup) {
 	{
 		// Public endpoints (read operations)
 		categories.GET("", h.GetAllCategories)
+		categories.GET("/search", h.SearchCategories)
 		categories.GET("/with-subcategories", h.GetAllCategoriesWithSubcategories)
 		categories.GET("/name/:name", h.GetCategoryByName)
 		categories.GET("/:id", h.GetCategory)

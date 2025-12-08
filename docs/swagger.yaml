@@ -3102,6 +3102,32 @@ definitions:
         example: "2024-01-15T10:30:00Z"
         type: string
     type: object
+  utils.PaginatedResponseModel:
+    properties:
+      data: {}
+      pagination:
+        $ref: '#/definitions/utils.PaginationMeta'
+      request_id:
+        example: 34bc4e39-a3d7-4c18-99d9-3645139e3bd8
+        type: string
+      success:
+        example: true
+        type: boolean
+      timestamp:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+    type: object
+  utils.PaginationMeta:
+    properties:
+      limit:
+        type: integer
+      offset:
+        type: integer
+      pages:
+        type: integer
+      total:
+        type: integer
+    type: object
   utils.Response:
     properties:
       data: {}
@@ -3598,8 +3624,8 @@ paths:
     get:
       description: Retrieve all bank payments with pagination
       parameters:
-      - description: 'Number of records to return (default: 10)'
-        example: 10
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
         in: query
         name: limit
         type: integer
@@ -3615,7 +3641,7 @@ paths:
           description: Bank payments retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -3974,7 +4000,7 @@ paths:
       - Inventory
   /api/v1/batches/{id}/transactions:
     get:
-      description: Retrieve all inventory transactions for a specific batch
+      description: Retrieve all inventory transactions for a specific batch with pagination
       parameters:
       - description: Batch ID
         example: BTCH_12345678
@@ -3982,6 +4008,16 @@ paths:
         name: id
         required: true
         type: string
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -3989,7 +4025,7 @@ paths:
           description: Transactions retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -4086,11 +4122,22 @@ paths:
   /api/v1/batches/expiring:
     get:
       description: Retrieve inventory batches that are expiring within specified days
+        with pagination
       parameters:
       - description: 'Number of days to check (default: 30)'
         example: 30
         in: query
         name: days
+        type: integer
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
         type: integer
       produces:
       - application/json
@@ -4099,7 +4146,7 @@ paths:
           description: Expiring batches retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -4137,12 +4184,22 @@ paths:
       - Inventory
   /api/v1/batches/low-stock:
     get:
-      description: Retrieve inventory batches with stock below threshold
+      description: Retrieve inventory batches with stock below threshold with pagination
       parameters:
       - description: 'Stock threshold (default: 10)'
         example: 10
         in: query
         name: threshold
+        type: integer
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
         type: integer
       produces:
       - application/json
@@ -4151,7 +4208,7 @@ paths:
           description: Low stock batches retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -4189,7 +4246,18 @@ paths:
       - Inventory
   /api/v1/categories:
     get:
-      description: Retrieve all categories
+      description: Retrieve all categories with pagination
+      parameters:
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -4197,7 +4265,7 @@ paths:
           description: Categories retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -4416,6 +4484,51 @@ paths:
       summary: Get Category by Name
       tags:
       - Categories
+  /api/v1/categories/search:
+    get:
+      description: Search categories by name with pagination
+      parameters:
+      - description: Search query
+        example: FERTILIZERS
+        in: query
+        name: q
+        required: true
+        type: string
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Categories found successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.CategoryResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request - search query required
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: Search Categories
+      tags:
+      - Categories
   /api/v1/categories/seed:
     post:
       description: Seed all predefined categories and subcategories (idempotent, admin-only)
@@ -4474,7 +4587,18 @@ paths:
       - Categories
   /api/v1/collaborators:
     get:
-      description: Retrieve all collaborators (requires authentication)
+      description: Retrieve all collaborators with pagination (requires authentication)
+      parameters:
+      - default: 50
+        description: 'Number of results per page (default: 50, max: 200)'
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: 'Number of results to skip (default: 0)'
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -4482,7 +4606,7 @@ paths:
           description: Collaborators retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -4716,7 +4840,7 @@ paths:
       - Collaborators
   /api/v1/collaborators/{id}/purchase-orders:
     get:
-      description: Retrieve all purchase orders for a specific collaborator
+      description: Retrieve all purchase orders for a specific collaborator with pagination
       parameters:
       - description: 'Collaborator ID (format: CLAB_xxxxxxxx)'
         example: CLAB_12345678
@@ -4724,6 +4848,16 @@ paths:
         name: id
         required: true
         type: string
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -4731,7 +4865,7 @@ paths:
           description: Purchase orders retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -4755,7 +4889,18 @@ paths:
       - Purchase Orders
   /api/v1/collaborators/active:
     get:
-      description: Retrieve all active collaborators (requires authentication)
+      description: Retrieve all active collaborators with pagination (requires authentication)
+      parameters:
+      - default: 50
+        description: 'Number of results per page (default: 50, max: 200)'
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: 'Number of results to skip (default: 0)'
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -4763,7 +4908,7 @@ paths:
           description: Active collaborators retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -4797,13 +4942,24 @@ paths:
       - Collaborators
   /api/v1/collaborators/search:
     get:
-      description: Search collaborators by company name (requires authentication)
+      description: Search collaborators by company name with pagination (requires
+        authentication)
       parameters:
       - description: Search query
         in: query
         name: q
         required: true
         type: string
+      - default: 50
+        description: 'Number of results per page (default: 50, max: 200)'
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: 'Number of results to skip (default: 0)'
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -4811,7 +4967,7 @@ paths:
           description: Search results
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -4851,8 +5007,8 @@ paths:
     get:
       description: Retrieve all discounts with pagination
       parameters:
-      - description: 'Number of records to return (default: 10)'
-        example: 10
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
         in: query
         name: limit
         type: integer
@@ -4868,7 +5024,7 @@ paths:
           description: Discounts retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -5124,7 +5280,18 @@ paths:
       - Discounts
   /api/v1/discounts/active:
     get:
-      description: Retrieve all currently active discounts
+      description: Retrieve all currently active discounts with pagination
+      parameters:
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -5132,7 +5299,7 @@ paths:
           description: Active discounts retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -5562,7 +5729,18 @@ paths:
       - Discounts
   /api/v1/grns:
     get:
-      description: Retrieve all GRNs (requires authentication)
+      description: Retrieve all GRNs with pagination (requires authentication)
+      parameters:
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -5570,13 +5748,17 @@ paths:
           description: GRNs retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
                     $ref: '#/definitions/models.GRNResponse'
                   type: array
               type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
         "401":
           description: Unauthorized
           schema:
@@ -6225,7 +6407,18 @@ paths:
       - Product Prices
   /api/v1/products:
     get:
-      description: Retrieve all products (requires authentication)
+      description: Retrieve all products with pagination (requires authentication)
+      parameters:
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -6233,13 +6426,17 @@ paths:
           description: Products retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
                     $ref: '#/definitions/models.ProductResponse'
                   type: array
               type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
         "401":
           description: Unauthorized
           schema:
@@ -6773,6 +6970,18 @@ paths:
   /api/v1/products/availability:
     get:
       description: Retrieve availability information for all products across warehouses
+        with pagination
+      parameters:
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -6780,7 +6989,7 @@ paths:
           description: Products availability retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -6974,7 +7183,18 @@ paths:
       - Products
   /api/v1/purchase-orders:
     get:
-      description: Retrieve all purchase orders (requires authentication)
+      description: Retrieve all purchase orders with pagination (requires authentication)
+      parameters:
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -6982,7 +7202,7 @@ paths:
           description: Purchase orders retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -7323,7 +7543,18 @@ paths:
       - Purchase Orders
   /api/v1/purchase-orders/pending-deliveries:
     get:
-      description: Retrieve all purchase orders with pending deliveries
+      description: Retrieve all purchase orders with pending deliveries with pagination
+      parameters:
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -7331,7 +7562,7 @@ paths:
           description: Pending deliveries retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -7347,7 +7578,7 @@ paths:
       - Purchase Orders
   /api/v1/purchase-orders/status/{status}:
     get:
-      description: Retrieve all purchase orders with a specific status
+      description: Retrieve all purchase orders with a specific status with pagination
       parameters:
       - description: Status
         enum:
@@ -7360,6 +7591,16 @@ paths:
         name: status
         required: true
         type: string
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -7367,7 +7608,7 @@ paths:
           description: Purchase orders retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -7388,6 +7629,17 @@ paths:
   /api/v1/refund-policies:
     get:
       description: Retrieve all refund policies with pagination
+      parameters:
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -7395,7 +7647,7 @@ paths:
           description: Refund policies retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -8199,8 +8451,8 @@ paths:
     get:
       description: Retrieve all returns with pagination
       parameters:
-      - description: 'Number of records to return (default: 10)'
-        example: 10
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
         in: query
         name: limit
         type: integer
@@ -8216,7 +8468,7 @@ paths:
           description: Returns retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -8943,8 +9195,8 @@ paths:
     get:
       description: Retrieve all sales with pagination (requires authentication)
       parameters:
-      - description: 'Number of records to return (default: 10)'
-        example: 10
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
         in: query
         name: limit
         type: integer
@@ -8960,7 +9212,7 @@ paths:
           description: Sales retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -9562,7 +9814,7 @@ paths:
       - Sales
   /api/v1/sales/date-range:
     get:
-      description: Retrieve sales within a specific date range
+      description: Retrieve sales within a specific date range with pagination
       parameters:
       - description: Start date (YYYY-MM-DD)
         example: "2024-01-01"
@@ -9576,6 +9828,16 @@ paths:
         name: end_date
         required: true
         type: string
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -9583,7 +9845,7 @@ paths:
           description: Sales retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -9621,7 +9883,7 @@ paths:
       - Sales
   /api/v1/sales/status/{status}:
     get:
-      description: Retrieve all sales with a specific status
+      description: Retrieve all sales with a specific status with pagination
       parameters:
       - description: Sale status
         example: completed
@@ -9629,6 +9891,16 @@ paths:
         name: status
         required: true
         type: string
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -9636,7 +9908,7 @@ paths:
           description: Sales retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -9837,7 +10109,18 @@ paths:
       - Sales
   /api/v1/subcategories:
     get:
-      description: Retrieve all subcategories
+      description: Retrieve all subcategories with pagination
+      parameters:
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -9845,7 +10128,7 @@ paths:
           description: Subcategories retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -10029,7 +10312,7 @@ paths:
       - Subcategories
   /api/v1/subcategories/category/{categoryId}:
     get:
-      description: Retrieve all subcategories for a specific category by ID
+      description: Retrieve all subcategories for a specific category by ID with pagination
       parameters:
       - description: 'Category ID (format: CATG_xxxxxxxx)'
         example: CATG_12345678
@@ -10037,6 +10320,16 @@ paths:
         name: categoryId
         required: true
         type: string
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -10044,7 +10337,7 @@ paths:
           description: Subcategories retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -10097,6 +10390,51 @@ paths:
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
       summary: Get Subcategory by Name
+      tags:
+      - Subcategories
+  /api/v1/subcategories/search:
+    get:
+      description: Search subcategories by name with pagination
+      parameters:
+      - description: Search query
+        example: BULK
+        in: query
+        name: q
+        required: true
+        type: string
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Subcategories found successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.SubcategoryResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request - search query required
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: Search Subcategories
       tags:
       - Subcategories
   /api/v1/variants/{id}:
@@ -10249,7 +10587,8 @@ paths:
       - Product Variants
   /api/v1/variants/{id}/batches:
     get:
-      description: Retrieve all inventory batches for a specific product variant
+      description: Retrieve all inventory batches for a specific product variant with
+        pagination
       parameters:
       - description: Variant ID
         example: PVAR_12345678
@@ -10257,6 +10596,16 @@ paths:
         name: id
         required: true
         type: string
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -10264,7 +10613,7 @@ paths:
           description: Batches retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -10485,7 +10834,18 @@ paths:
       - Product Variants
   /api/v1/warehouses:
     get:
-      description: Retrieve all warehouses (requires authentication)
+      description: Retrieve all warehouses with pagination (requires authentication)
+      parameters:
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -10493,7 +10853,7 @@ paths:
           description: Warehouses retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -10727,7 +11087,7 @@ paths:
       - Warehouses
   /api/v1/warehouses/{id}/batches:
     get:
-      description: Retrieve all inventory batches for a specific warehouse
+      description: Retrieve all inventory batches for a specific warehouse with pagination
       parameters:
       - description: Warehouse ID
         example: WHSE_12345678
@@ -10735,6 +11095,16 @@ paths:
         name: id
         required: true
         type: string
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -10742,7 +11112,7 @@ paths:
           description: Batches retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -10780,7 +11150,7 @@ paths:
       - Inventory
   /api/v1/warehouses/{id}/grns:
     get:
-      description: Retrieve all GRNs for a specific warehouse
+      description: Retrieve all GRNs for a specific warehouse with pagination
       parameters:
       - description: 'Warehouse ID (format: WHSE_xxxxxxxx)'
         example: WHSE_12345678
@@ -10788,6 +11158,16 @@ paths:
         name: id
         required: true
         type: string
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -10795,7 +11175,7 @@ paths:
           description: GRNs retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:

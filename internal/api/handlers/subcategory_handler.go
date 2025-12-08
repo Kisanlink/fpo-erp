@@ -165,11 +165,13 @@ func (h *SubcategoryHandler) GetSubcategoryByName(c *gin.Context) {
 
 // GetSubcategoriesByCategory handles GET /api/v1/subcategories/category/:categoryId
 // @Summary Get Subcategories by Category
-// @Description Retrieve all subcategories for a specific category by ID
+// @Description Retrieve all subcategories for a specific category by ID with pagination
 // @Tags Subcategories
 // @Produce json
 // @Param categoryId path string true "Category ID (format: CATG_xxxxxxxx)" example(CATG_12345678)
-// @Success 200 {object} utils.Response{data=[]models.SubcategoryResponse} "Subcategories retrieved successfully"
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.SubcategoryResponse} "Subcategories retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Router /api/v1/subcategories/category/{categoryId} [get]
@@ -186,11 +188,16 @@ func (h *SubcategoryHandler) GetSubcategoriesByCategory(c *gin.Context) {
 		return
 	}
 
-	h.logger.Debug("Fetching subcategories by category",
-		zap.String("category_id", categoryID))
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
 
-	// Get subcategories by category ID
-	response, err := h.subcategoryService.GetSubcategoriesByCategory(c.Request.Context(), categoryID)
+	h.logger.Debug("Fetching subcategories by category",
+		zap.String("category_id", categoryID),
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
+
+	// Get subcategories by category ID with pagination
+	response, total, err := h.subcategoryService.GetSubcategoriesByCategoryPaginated(c.Request.Context(), categoryID, params.Limit, params.Offset)
 	if err != nil {
 		h.logger.Error("Service error retrieving subcategories",
 			zap.Error(err),
@@ -201,17 +208,20 @@ func (h *SubcategoryHandler) GetSubcategoriesByCategory(c *gin.Context) {
 
 	h.logger.Info("Subcategories retrieved successfully",
 		zap.String("category_id", categoryID),
-		zap.Int("count", len(response)))
+		zap.Int("count", len(response)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "Subcategories retrieved successfully", response)
+	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
 }
 
 // GetAllSubcategories handles GET /api/v1/subcategories
 // @Summary Get All Subcategories
-// @Description Retrieve all subcategories
+// @Description Retrieve all subcategories with pagination
 // @Tags Subcategories
 // @Produce json
-// @Success 200 {object} utils.Response{data=[]models.SubcategoryResponse} "Subcategories retrieved successfully"
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.SubcategoryResponse} "Subcategories retrieved successfully"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
 // @Router /api/v1/subcategories [get]
 func (h *SubcategoryHandler) GetAllSubcategories(c *gin.Context) {
@@ -219,8 +229,15 @@ func (h *SubcategoryHandler) GetAllSubcategories(c *gin.Context) {
 		zap.String("method", c.Request.Method),
 		zap.String("path", c.Request.URL.Path))
 
-	// Get all subcategories
-	response, err := h.subcategoryService.GetAllSubcategories(c.Request.Context())
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
+
+	h.logger.Debug("Calling subcategory service to get all subcategories",
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
+
+	// Get all subcategories with pagination
+	response, total, err := h.subcategoryService.GetAllSubcategoriesPaginated(c.Request.Context(), params.Limit, params.Offset)
 	if err != nil {
 		h.logger.Error("Service error retrieving all subcategories",
 			zap.Error(err))
@@ -229,9 +246,61 @@ func (h *SubcategoryHandler) GetAllSubcategories(c *gin.Context) {
 	}
 
 	h.logger.Info("All subcategories retrieved successfully",
-		zap.Int("subcategory_count", len(response)))
+		zap.Int("subcategory_count", len(response)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "Subcategories retrieved successfully", response)
+	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
+}
+
+// SearchSubcategories handles GET /api/v1/subcategories/search
+// @Summary Search Subcategories
+// @Description Search subcategories by name with pagination
+// @Tags Subcategories
+// @Produce json
+// @Param q query string true "Search query" example(BULK)
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.SubcategoryResponse} "Subcategories found successfully"
+// @Failure 400 {object} utils.ErrorResponseModel "Bad request - search query required"
+// @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
+// @Router /api/v1/subcategories/search [get]
+func (h *SubcategoryHandler) SearchSubcategories(c *gin.Context) {
+	h.logger.Info("Handling search subcategories request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
+	// Get search query
+	query := c.Query("q")
+	if query == "" {
+		h.logger.Error("Search query is required but not provided")
+		utils.BadRequestResponse(c, "Search query is required", nil)
+		return
+	}
+
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
+
+	h.logger.Debug("Calling subcategory service to search subcategories",
+		zap.String("query", query),
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
+
+	// Search subcategories
+	response, total, err := h.subcategoryService.SearchSubcategories(c.Request.Context(), query, params.Limit, params.Offset)
+	if err != nil {
+		h.logger.Error("Service error searching subcategories",
+			zap.Error(err),
+			zap.String("query", query))
+		utils.HandleServiceError(c, "Failed to search subcategories", err)
+		return
+	}
+
+	h.logger.Info("Subcategories search completed successfully",
+		zap.String("query", query),
+		zap.Int("subcategory_count", len(response)),
+		zap.Int64("total", total))
+
+	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
 }
 
 // UpdateSubcategory handles PATCH /api/v1/subcategories/:id
@@ -341,6 +410,7 @@ func (h *SubcategoryHandler) RegisterRoutes(v1 *gin.RouterGroup) {
 	{
 		// Public endpoints (read operations)
 		subcategories.GET("", h.GetAllSubcategories)
+		subcategories.GET("/search", h.SearchSubcategories)
 		subcategories.GET("/name/:name", h.GetSubcategoryByName)
 		subcategories.GET("/category/:categoryId", h.GetSubcategoriesByCategory)
 		subcategories.GET("/:id", h.GetSubcategory)

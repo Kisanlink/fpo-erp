@@ -154,7 +154,7 @@ func (s *SubcategoryService) GetSubcategoriesByCategory(ctx context.Context, cat
 	return responses, nil
 }
 
-// GetAllSubcategories retrieves all subcategories
+// GetAllSubcategories retrieves all subcategories (non-paginated, for internal use)
 func (s *SubcategoryService) GetAllSubcategories(ctx context.Context) ([]models.SubcategoryResponse, error) {
 	s.logger.Info("Retrieving all subcategories")
 
@@ -179,6 +179,103 @@ func (s *SubcategoryService) GetAllSubcategories(ctx context.Context) ([]models.
 
 	s.logger.Info("Retrieved all subcategories", zap.Int("count", len(responses)))
 	return responses, nil
+}
+
+// GetAllSubcategoriesPaginated retrieves all subcategories with pagination
+func (s *SubcategoryService) GetAllSubcategoriesPaginated(ctx context.Context, limit, offset int) ([]models.SubcategoryResponse, int64, error) {
+	s.logger.Info("Retrieving all subcategories with pagination",
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
+
+	subcategories, total, err := s.subcategoryRepo.GetAllPaginated(limit, offset)
+	if err != nil {
+		s.logger.Error("Failed to retrieve paginated subcategories", zap.Error(err))
+		return nil, 0, err
+	}
+
+	var responses []models.SubcategoryResponse
+	for _, subcategory := range subcategories {
+		response := models.SubcategoryResponse{
+			ID:          subcategory.ID,
+			Name:        subcategory.Name,
+			Description: subcategory.Description,
+			CategoryID:  subcategory.CategoryID,
+			CreatedAt:   subcategory.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			UpdatedAt:   subcategory.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		}
+		responses = append(responses, response)
+	}
+
+	s.logger.Info("Retrieved paginated subcategories",
+		zap.Int("count", len(responses)),
+		zap.Int64("total", total))
+	return responses, total, nil
+}
+
+// GetSubcategoriesByCategoryPaginated retrieves subcategories by category with pagination
+func (s *SubcategoryService) GetSubcategoriesByCategoryPaginated(ctx context.Context, categoryID string, limit, offset int) ([]models.SubcategoryResponse, int64, error) {
+	s.logger.Info("Retrieving subcategories by category with pagination",
+		zap.String("category_id", categoryID),
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
+
+	subcategories, total, err := s.subcategoryRepo.GetByCategoryIDPaginated(categoryID, limit, offset)
+	if err != nil {
+		s.logger.Error("Failed to retrieve paginated subcategories by category", zap.Error(err))
+		return nil, 0, err
+	}
+
+	var responses []models.SubcategoryResponse
+	for _, subcategory := range subcategories {
+		response := models.SubcategoryResponse{
+			ID:          subcategory.ID,
+			Name:        subcategory.Name,
+			Description: subcategory.Description,
+			CategoryID:  subcategory.CategoryID,
+			CreatedAt:   subcategory.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			UpdatedAt:   subcategory.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		}
+		responses = append(responses, response)
+	}
+
+	s.logger.Info("Retrieved paginated subcategories by category",
+		zap.String("category_id", categoryID),
+		zap.Int("count", len(responses)),
+		zap.Int64("total", total))
+	return responses, total, nil
+}
+
+// SearchSubcategories searches subcategories by name with pagination
+func (s *SubcategoryService) SearchSubcategories(ctx context.Context, query string, limit, offset int) ([]models.SubcategoryResponse, int64, error) {
+	s.logger.Info("Searching subcategories",
+		zap.String("query", query),
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
+
+	subcategories, total, err := s.subcategoryRepo.SearchByNamePaginated(query, limit, offset)
+	if err != nil {
+		s.logger.Error("Failed to search subcategories", zap.Error(err))
+		return nil, 0, err
+	}
+
+	var responses []models.SubcategoryResponse
+	for _, subcategory := range subcategories {
+		response := models.SubcategoryResponse{
+			ID:          subcategory.ID,
+			Name:        subcategory.Name,
+			Description: subcategory.Description,
+			CategoryID:  subcategory.CategoryID,
+			CreatedAt:   subcategory.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			UpdatedAt:   subcategory.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		}
+		responses = append(responses, response)
+	}
+
+	s.logger.Info("Search subcategories completed",
+		zap.String("query", query),
+		zap.Int("count", len(responses)),
+		zap.Int64("total", total))
+	return responses, total, nil
 }
 
 // UpdateSubcategory updates a subcategory

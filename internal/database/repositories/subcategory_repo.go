@@ -64,7 +64,7 @@ func (r *SubcategoryRepository) GetByNameAndCategoryID(name string, categoryID s
 	return &subcategory, nil
 }
 
-// GetByCategoryID retrieves all subcategories for a category by ID
+// GetByCategoryID retrieves all subcategories for a category by ID (non-paginated)
 func (r *SubcategoryRepository) GetByCategoryID(categoryID string) ([]models.Subcategory, error) {
 	var subcategories []models.Subcategory
 	if err := r.db.Where("category_id = ?", categoryID).Find(&subcategories).Error; err != nil {
@@ -73,13 +73,68 @@ func (r *SubcategoryRepository) GetByCategoryID(categoryID string) ([]models.Sub
 	return subcategories, nil
 }
 
-// GetAll retrieves all subcategories
+// GetByCategoryIDPaginated retrieves subcategories for a category with pagination
+func (r *SubcategoryRepository) GetByCategoryIDPaginated(categoryID string, limit, offset int) ([]models.Subcategory, int64, error) {
+	var subcategories []models.Subcategory
+	var total int64
+
+	query := r.db.Model(&models.Subcategory{}).Where("category_id = ?", categoryID)
+
+	// Get total count
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count subcategories by category")
+	}
+
+	// Get paginated records
+	if err := r.db.Where("category_id = ?", categoryID).Order("name ASC").Limit(limit).Offset(offset).Find(&subcategories).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve subcategories by category")
+	}
+	return subcategories, total, nil
+}
+
+// GetAll retrieves all subcategories (non-paginated, for internal use)
 func (r *SubcategoryRepository) GetAll() ([]models.Subcategory, error) {
 	var subcategories []models.Subcategory
 	if err := r.db.Find(&subcategories).Error; err != nil {
 		return nil, errors.NewInternalServerError("Failed to retrieve subcategories")
 	}
 	return subcategories, nil
+}
+
+// GetAllPaginated retrieves all subcategories with pagination
+func (r *SubcategoryRepository) GetAllPaginated(limit, offset int) ([]models.Subcategory, int64, error) {
+	var subcategories []models.Subcategory
+	var total int64
+
+	// Get total count
+	if err := r.db.Model(&models.Subcategory{}).Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count subcategories")
+	}
+
+	// Get paginated records
+	if err := r.db.Order("name ASC").Limit(limit).Offset(offset).Find(&subcategories).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve subcategories")
+	}
+	return subcategories, total, nil
+}
+
+// SearchByNamePaginated searches subcategories by name with pagination (case-insensitive)
+func (r *SubcategoryRepository) SearchByNamePaginated(name string, limit, offset int) ([]models.Subcategory, int64, error) {
+	var subcategories []models.Subcategory
+	var total int64
+
+	query := r.db.Model(&models.Subcategory{}).Where("LOWER(name) LIKE LOWER(?)", "%"+name+"%")
+
+	// Get total count
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count subcategories")
+	}
+
+	// Get paginated records
+	if err := query.Order("name ASC").Limit(limit).Offset(offset).Find(&subcategories).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to search subcategories")
+	}
+	return subcategories, total, nil
 }
 
 // Update updates a subcategory

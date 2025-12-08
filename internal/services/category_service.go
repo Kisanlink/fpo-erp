@@ -303,7 +303,7 @@ func (s *CategoryService) GetCategoryByName(ctx context.Context, name string) (*
 	return response, nil
 }
 
-// GetAllCategories retrieves all categories with their subcategories
+// GetAllCategories retrieves all categories with their subcategories (non-paginated, for internal use)
 func (s *CategoryService) GetAllCategories(ctx context.Context) ([]models.CategoryResponse, error) {
 	s.logger.Info("Retrieving all categories with subcategories")
 
@@ -350,6 +350,113 @@ func (s *CategoryService) GetAllCategories(ctx context.Context) ([]models.Catego
 
 	s.logger.Info("Retrieved all categories with subcategories", zap.Int("count", len(responses)))
 	return responses, nil
+}
+
+// GetAllCategoriesPaginated retrieves all categories with pagination
+func (s *CategoryService) GetAllCategoriesPaginated(ctx context.Context, limit, offset int) ([]models.CategoryResponse, int64, error) {
+	s.logger.Info("Retrieving all categories with pagination",
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
+
+	categories, total, err := s.categoryRepo.GetAllPaginated(limit, offset)
+	if err != nil {
+		s.logger.Error("Failed to retrieve paginated categories", zap.Error(err))
+		return nil, 0, err
+	}
+
+	var responses []models.CategoryResponse
+	for _, category := range categories {
+		// Fetch subcategories for this category
+		subcategories, err := s.subcategoryRepo.GetByCategoryID(category.ID)
+		if err != nil {
+			s.logger.Error("Failed to retrieve subcategories for category",
+				zap.Error(err),
+				zap.String("category_id", category.ID))
+			return nil, 0, err
+		}
+
+		var subcatResponses []models.SubcategoryResponse
+		for _, subcat := range subcategories {
+			subcatResponse := models.SubcategoryResponse{
+				ID:          subcat.ID,
+				Name:        subcat.Name,
+				Description: subcat.Description,
+				CategoryID:  subcat.CategoryID,
+				CreatedAt:   subcat.CreatedAt.Format("2006-01-02T15:04:05Z"),
+				UpdatedAt:   subcat.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+			}
+			subcatResponses = append(subcatResponses, subcatResponse)
+		}
+
+		response := models.CategoryResponse{
+			ID:            category.ID,
+			Name:          category.Name,
+			Description:   category.Description,
+			Subcategories: subcatResponses,
+			CreatedAt:     category.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			UpdatedAt:     category.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		}
+		responses = append(responses, response)
+	}
+
+	s.logger.Info("Retrieved paginated categories",
+		zap.Int("count", len(responses)),
+		zap.Int64("total", total))
+	return responses, total, nil
+}
+
+// SearchCategories searches categories by name with pagination
+func (s *CategoryService) SearchCategories(ctx context.Context, query string, limit, offset int) ([]models.CategoryResponse, int64, error) {
+	s.logger.Info("Searching categories",
+		zap.String("query", query),
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
+
+	categories, total, err := s.categoryRepo.SearchByNamePaginated(query, limit, offset)
+	if err != nil {
+		s.logger.Error("Failed to search categories", zap.Error(err))
+		return nil, 0, err
+	}
+
+	var responses []models.CategoryResponse
+	for _, category := range categories {
+		// Fetch subcategories for this category
+		subcategories, err := s.subcategoryRepo.GetByCategoryID(category.ID)
+		if err != nil {
+			s.logger.Error("Failed to retrieve subcategories for category",
+				zap.Error(err),
+				zap.String("category_id", category.ID))
+			return nil, 0, err
+		}
+
+		var subcatResponses []models.SubcategoryResponse
+		for _, subcat := range subcategories {
+			subcatResponse := models.SubcategoryResponse{
+				ID:          subcat.ID,
+				Name:        subcat.Name,
+				Description: subcat.Description,
+				CategoryID:  subcat.CategoryID,
+				CreatedAt:   subcat.CreatedAt.Format("2006-01-02T15:04:05Z"),
+				UpdatedAt:   subcat.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+			}
+			subcatResponses = append(subcatResponses, subcatResponse)
+		}
+
+		response := models.CategoryResponse{
+			ID:            category.ID,
+			Name:          category.Name,
+			Description:   category.Description,
+			Subcategories: subcatResponses,
+			CreatedAt:     category.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			UpdatedAt:     category.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		}
+		responses = append(responses, response)
+	}
+
+	s.logger.Info("Search categories completed",
+		zap.Int("count", len(responses)),
+		zap.Int64("total", total))
+	return responses, total, nil
 }
 
 // GetAllCategoriesWithSubcategories retrieves all categories with their subcategories
