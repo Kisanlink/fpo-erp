@@ -43,6 +43,9 @@ This document describes all breaking changes, new features, and response format 
 | Subcategory `category_name` → `category_id` | HIGH | Subcategory model uses ID-based FK (changed from name-based) |
 | Subcategory endpoint `/category/:category` → `/category/:categoryId` | HIGH | Use category ID in URL path |
 | **`customer_id` → Customer Details** | **HIGH** | Replace `customer_id` with `customer_phone`, `customer_name`, `is_org_member` |
+| **Category responses include subcategories** | **LOW** | All category endpoints now include `subcategories` array (additive change) |
+| **`/categories/with-subcategories` deprecated** | **LOW** | Use `/categories` instead (same response format now) |
+| **Category/Subcategory names auto-normalized to UPPER_SNAKE_CASE** | **LOW** | Input like "water soluble" becomes "WATER_SOLUBLE" automatically |
 
 ---
 
@@ -179,20 +182,60 @@ Reduces frontend API calls by 75-85% through data aggregation.
 | `/api/v1/grns/:id/rejected-items` | GET | Get rejected items from GRN |
 | `/api/v1/grns/items/:id/return-status` | PATCH | Update item return status |
 
-### 4. Categories API (NEW)
+### 4. Categories API (UPDATED - Subcategories Included by Default)
 
 Product categorization system with predefined hierarchy.
 
+**All category endpoints now include subcategories in responses** (December 2025).
+
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/api/v1/categories` | GET | List all categories |
-| `/api/v1/categories/:id` | GET | Get category by ID |
-| `/api/v1/categories/name/:name` | GET | Get category by name |
-| `/api/v1/categories/with-subcategories` | GET | Get all categories with their subcategories |
+| `/api/v1/categories` | GET | List all categories **with subcategories** |
+| `/api/v1/categories/:id` | GET | Get category by ID **with subcategories** |
+| `/api/v1/categories/name/:name` | GET | Get category by name **with subcategories** |
+| `/api/v1/categories/with-subcategories` | GET | **DEPRECATED** - Use `/categories` instead (same response) |
 | `/api/v1/categories` | POST | Create new category |
 | `/api/v1/categories/:id` | PATCH | Update category |
 | `/api/v1/categories/:id` | DELETE | Delete category |
 | `/api/v1/categories/seed` | POST | Seed predefined categories (admin-only, idempotent) |
+
+**CategoryResponse (with subcategories):**
+```json
+{
+  "id": "CATG00000001",
+  "name": "FERTILIZERS",
+  "description": "Chemical and organic fertilizers",
+  "subcategories": [
+    {
+      "id": "SCAT00000001",
+      "name": "WATER_SOLUBLE",
+      "description": "Water soluble fertilizers",
+      "category_id": "CATG00000001",
+      "created_at": "2025-12-08T10:30:00Z",
+      "updated_at": "2025-12-08T10:30:00Z"
+    },
+    {
+      "id": "SCAT00000002",
+      "name": "BULK",
+      "description": "Bulk fertilizers",
+      "category_id": "CATG00000001",
+      "created_at": "2025-12-08T10:30:00Z",
+      "updated_at": "2025-12-08T10:30:00Z"
+    }
+  ],
+  "created_at": "2025-12-08T10:30:00Z",
+  "updated_at": "2025-12-08T10:30:00Z"
+}
+```
+
+**Migration Note:** If using `/categories/with-subcategories`, switch to `/categories` as the response format is now identical.
+
+**Name Normalization:** Category names are automatically normalized to `UPPER_SNAKE_CASE` on creation:
+- Input: `"water soluble"` → Stored as: `"WATER_SOLUBLE"`
+- Input: `"Bio-Products"` → Stored as: `"BIO_PRODUCTS"`
+- Spaces and hyphens are converted to underscores, then uppercased
+
+**Single Source of Truth:** Category definitions are maintained in `internal/services/category_service.go:PredefinedCategories`. The database migration uses this same source for seeding.
 
 ### 5. Subcategories API (UPDATED - ID-BASED)
 
@@ -219,9 +262,11 @@ Product categorization system with predefined hierarchy.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `name` | `string` | **Yes** | Subcategory name (ALL_CAPS_SNAKE_CASE recommended) |
+| `name` | `string` | **Yes** | Subcategory name (auto-normalized to UPPER_SNAKE_CASE) |
 | `category_id` | `string` | **Yes** | Category ID (NOT category name) |
 | `description` | `*string` | No | Subcategory description |
+
+**Name Normalization:** Same as categories - subcategory names are automatically normalized to `UPPER_SNAKE_CASE` on creation.
 
 **SubcategoryResponse:**
 ```json
@@ -2004,9 +2049,11 @@ await api.post('/categories/seed');
 
 **Get Categories for Dropdowns:**
 ```javascript
-// Get all categories with their subcategories
-const categories = await api.get('/categories/with-subcategories');
-// Returns: [{ id: "CATG00000001", name: "FERTILIZERS", description: "Chemical and organic fertilizers", subcategories: [...] }, ...]
+// Get all categories with their subcategories (subcategories now included by default)
+const categories = await api.get('/categories');
+// Returns: [{ id: "CATG00000001", name: "FERTILIZERS", description: "...", subcategories: [...] }, ...]
+
+// DEPRECATED: /categories/with-subcategories - use /categories instead (same response)
 
 // Get subcategories for a selected category (CHANGED - now uses categoryId)
 const subcategories = await api.get(`/subcategories/category/${categoryId}`);

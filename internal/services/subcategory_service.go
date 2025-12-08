@@ -28,9 +28,13 @@ func NewSubcategoryService(subcategoryRepo *repositories.SubcategoryRepository, 
 }
 
 // CreateSubcategory creates a new subcategory
+// Name is automatically normalized to UPPER_SNAKE_CASE (e.g., "water soluble" -> "WATER_SOLUBLE")
 func (s *SubcategoryService) CreateSubcategory(ctx context.Context, request *models.CreateSubcategoryRequest) (*models.SubcategoryResponse, error) {
+	// Normalize name to UPPER_SNAKE_CASE
+	normalizedName := toSnakeCase(request.Name)
 	s.logger.Info("Creating subcategory",
-		zap.String("name", request.Name),
+		zap.String("original_name", request.Name),
+		zap.String("normalized_name", normalizedName),
 		zap.String("category_id", request.CategoryID))
 
 	// Validate category exists by ID
@@ -44,7 +48,7 @@ func (s *SubcategoryService) CreateSubcategory(ctx context.Context, request *mod
 	}
 
 	// Check if subcategory already exists in this category (name is unique per category)
-	existing, err := s.subcategoryRepo.GetByNameAndCategoryID(request.Name, request.CategoryID)
+	existing, err := s.subcategoryRepo.GetByNameAndCategoryID(normalizedName, request.CategoryID)
 	if err != nil {
 		s.logger.Error("Failed to check subcategory existence", zap.Error(err))
 		return nil, err
@@ -53,7 +57,7 @@ func (s *SubcategoryService) CreateSubcategory(ctx context.Context, request *mod
 		return nil, errors.NewBadRequestError("Subcategory with this name already exists in this category")
 	}
 
-	subcategory := models.NewSubcategory(request.Name, request.CategoryID, request.Description)
+	subcategory := models.NewSubcategory(normalizedName, request.CategoryID, request.Description)
 
 	if err := s.subcategoryRepo.Create(subcategory); err != nil {
 		s.logger.Error("Failed to create subcategory", zap.Error(err))

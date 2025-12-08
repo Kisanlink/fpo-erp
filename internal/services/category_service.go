@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"strings"
 
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
@@ -25,6 +26,19 @@ func NewCategoryService(categoryRepo *repositories.CategoryRepository, subcatego
 		subcategoryRepo: subcategoryRepo,
 		logger:          logger,
 	}
+}
+
+// toSnakeCase converts a string to UPPER_SNAKE_CASE format
+// Examples: "water soluble" -> "WATER_SOLUBLE", "Bio Products" -> "BIO_PRODUCTS"
+func toSnakeCase(s string) string {
+	// Trim spaces
+	s = strings.TrimSpace(s)
+	// Replace spaces with underscores
+	s = strings.ReplaceAll(s, " ", "_")
+	// Replace hyphens with underscores
+	s = strings.ReplaceAll(s, "-", "_")
+	// Convert to uppercase
+	return strings.ToUpper(s)
 }
 
 // SubcategoryDef defines a subcategory with name and description
@@ -161,11 +175,16 @@ func (s *CategoryService) SeedCategories(ctx context.Context) (*models.SeedCateg
 }
 
 // CreateCategory creates a new category
+// Name is automatically normalized to UPPER_SNAKE_CASE (e.g., "water soluble" -> "WATER_SOLUBLE")
 func (s *CategoryService) CreateCategory(ctx context.Context, request *models.CreateCategoryRequest) (*models.CategoryResponse, error) {
-	s.logger.Info("Creating category", zap.String("name", request.Name))
+	// Normalize name to UPPER_SNAKE_CASE
+	normalizedName := toSnakeCase(request.Name)
+	s.logger.Info("Creating category",
+		zap.String("original_name", request.Name),
+		zap.String("normalized_name", normalizedName))
 
-	// Check if category already exists
-	existing, err := s.categoryRepo.GetByName(request.Name)
+	// Check if category already exists (using normalized name)
+	existing, err := s.categoryRepo.GetByName(normalizedName)
 	if err != nil {
 		s.logger.Error("Failed to check category existence", zap.Error(err))
 		return nil, err
@@ -174,7 +193,7 @@ func (s *CategoryService) CreateCategory(ctx context.Context, request *models.Cr
 		return nil, errors.NewBadRequestError("Category with this name already exists")
 	}
 
-	category := models.NewCategory(request.Name, request.Description)
+	category := models.NewCategory(normalizedName, request.Description)
 
 	if err := s.categoryRepo.Create(category); err != nil {
 		s.logger.Error("Failed to create category", zap.Error(err))
@@ -193,9 +212,9 @@ func (s *CategoryService) CreateCategory(ctx context.Context, request *models.Cr
 	return response, nil
 }
 
-// GetCategory retrieves a category by ID
+// GetCategory retrieves a category by ID with its subcategories
 func (s *CategoryService) GetCategory(ctx context.Context, id string) (*models.CategoryResponse, error) {
-	s.logger.Info("Retrieving category", zap.String("id", id))
+	s.logger.Info("Retrieving category with subcategories", zap.String("id", id))
 
 	category, err := s.categoryRepo.GetByID(id)
 	if err != nil {
@@ -203,20 +222,43 @@ func (s *CategoryService) GetCategory(ctx context.Context, id string) (*models.C
 		return nil, err
 	}
 
+	// Fetch subcategories for this category
+	subcategories, err := s.subcategoryRepo.GetByCategoryID(category.ID)
+	if err != nil {
+		s.logger.Error("Failed to retrieve subcategories for category",
+			zap.Error(err),
+			zap.String("category_id", category.ID))
+		return nil, err
+	}
+
+	var subcatResponses []models.SubcategoryResponse
+	for _, subcat := range subcategories {
+		subcatResponse := models.SubcategoryResponse{
+			ID:          subcat.ID,
+			Name:        subcat.Name,
+			Description: subcat.Description,
+			CategoryID:  subcat.CategoryID,
+			CreatedAt:   subcat.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			UpdatedAt:   subcat.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		}
+		subcatResponses = append(subcatResponses, subcatResponse)
+	}
+
 	response := &models.CategoryResponse{
-		ID:          category.ID,
-		Name:        category.Name,
-		Description: category.Description,
-		CreatedAt:   category.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt:   category.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		ID:            category.ID,
+		Name:          category.Name,
+		Description:   category.Description,
+		Subcategories: subcatResponses,
+		CreatedAt:     category.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt:     category.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 	}
 
 	return response, nil
 }
 
-// GetCategoryByName retrieves a category by name
+// GetCategoryByName retrieves a category by name with its subcategories
 func (s *CategoryService) GetCategoryByName(ctx context.Context, name string) (*models.CategoryResponse, error) {
-	s.logger.Info("Retrieving category by name", zap.String("name", name))
+	s.logger.Info("Retrieving category by name with subcategories", zap.String("name", name))
 
 	category, err := s.categoryRepo.GetByName(name)
 	if err != nil {
@@ -227,20 +269,43 @@ func (s *CategoryService) GetCategoryByName(ctx context.Context, name string) (*
 		return nil, errors.NewNotFoundError("Category")
 	}
 
+	// Fetch subcategories for this category
+	subcategories, err := s.subcategoryRepo.GetByCategoryID(category.ID)
+	if err != nil {
+		s.logger.Error("Failed to retrieve subcategories for category",
+			zap.Error(err),
+			zap.String("category_id", category.ID))
+		return nil, err
+	}
+
+	var subcatResponses []models.SubcategoryResponse
+	for _, subcat := range subcategories {
+		subcatResponse := models.SubcategoryResponse{
+			ID:          subcat.ID,
+			Name:        subcat.Name,
+			Description: subcat.Description,
+			CategoryID:  subcat.CategoryID,
+			CreatedAt:   subcat.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			UpdatedAt:   subcat.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		}
+		subcatResponses = append(subcatResponses, subcatResponse)
+	}
+
 	response := &models.CategoryResponse{
-		ID:          category.ID,
-		Name:        category.Name,
-		Description: category.Description,
-		CreatedAt:   category.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt:   category.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		ID:            category.ID,
+		Name:          category.Name,
+		Description:   category.Description,
+		Subcategories: subcatResponses,
+		CreatedAt:     category.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt:     category.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 	}
 
 	return response, nil
 }
 
-// GetAllCategories retrieves all categories
+// GetAllCategories retrieves all categories with their subcategories
 func (s *CategoryService) GetAllCategories(ctx context.Context) ([]models.CategoryResponse, error) {
-	s.logger.Info("Retrieving all categories")
+	s.logger.Info("Retrieving all categories with subcategories")
 
 	categories, err := s.categoryRepo.GetAll()
 	if err != nil {
@@ -250,17 +315,40 @@ func (s *CategoryService) GetAllCategories(ctx context.Context) ([]models.Catego
 
 	var responses []models.CategoryResponse
 	for _, category := range categories {
+		// Fetch subcategories for this category
+		subcategories, err := s.subcategoryRepo.GetByCategoryID(category.ID)
+		if err != nil {
+			s.logger.Error("Failed to retrieve subcategories for category",
+				zap.Error(err),
+				zap.String("category_id", category.ID))
+			return nil, err
+		}
+
+		var subcatResponses []models.SubcategoryResponse
+		for _, subcat := range subcategories {
+			subcatResponse := models.SubcategoryResponse{
+				ID:          subcat.ID,
+				Name:        subcat.Name,
+				Description: subcat.Description,
+				CategoryID:  subcat.CategoryID,
+				CreatedAt:   subcat.CreatedAt.Format("2006-01-02T15:04:05Z"),
+				UpdatedAt:   subcat.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+			}
+			subcatResponses = append(subcatResponses, subcatResponse)
+		}
+
 		response := models.CategoryResponse{
-			ID:          category.ID,
-			Name:        category.Name,
-			Description: category.Description,
-			CreatedAt:   category.CreatedAt.Format("2006-01-02T15:04:05Z"),
-			UpdatedAt:   category.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+			ID:            category.ID,
+			Name:          category.Name,
+			Description:   category.Description,
+			Subcategories: subcatResponses,
+			CreatedAt:     category.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			UpdatedAt:     category.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 		}
 		responses = append(responses, response)
 	}
 
-	s.logger.Info("Retrieved all categories", zap.Int("count", len(responses)))
+	s.logger.Info("Retrieved all categories with subcategories", zap.Int("count", len(responses)))
 	return responses, nil
 }
 
