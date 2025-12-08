@@ -97,7 +97,7 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 			margin REAL NOT NULL,
 			cgst_amount REAL DEFAULT 0,
 			sgst_amount REAL DEFAULT 0,
-			custom_tax_amount REAL DEFAULT 0,
+			igst_amount REAL DEFAULT 0,
 			total_tax_amount REAL DEFAULT 0,
 			created_at DATETIME,
 			updated_at DATETIME,
@@ -220,6 +220,7 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 			total_amount REAL NOT NULL,
 			payment_status TEXT NOT NULL,
 			paid_amount REAL DEFAULT 0,
+			is_inter_state INTEGER,
 			created_at DATETIME,
 			updated_at DATETIME,
 			deleted_at DATETIME,
@@ -273,6 +274,15 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 			product_name TEXT,
 			product_sku TEXT,
 			received_quantity INTEGER,
+			base_price REAL DEFAULT 0,
+			gst_rate REAL DEFAULT 0,
+			gst_amount REAL DEFAULT 0,
+			cgst_rate REAL DEFAULT 0,
+			cgst_amount REAL DEFAULT 0,
+			sgst_rate REAL DEFAULT 0,
+			sgst_amount REAL DEFAULT 0,
+			igst_rate REAL DEFAULT 0,
+			igst_amount REAL DEFAULT 0,
 			created_at DATETIME,
 			updated_at DATETIME,
 			deleted_at DATETIME,
@@ -406,8 +416,8 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 			external_id TEXT UNIQUE,
 			name TEXT NOT NULL,
 			description TEXT,
-			category_name TEXT NOT NULL DEFAULT 'Others',
-			subcategory_name TEXT,
+			category_id TEXT,
+			subcategory_id TEXT,
 			created_at DATETIME,
 			updated_at DATETIME,
 			deleted_at DATETIME,
@@ -426,15 +436,15 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 		return err
 	}
 
-	// Create indexes for category_name and subcategory_name
+	// Create indexes for category_id and subcategory_id
 	if err := db.Exec(`
-		CREATE INDEX IF NOT EXISTS idx_product_category ON products(category_name)
+		CREATE INDEX IF NOT EXISTS idx_product_category ON products(category_id)
 	`).Error; err != nil {
 		return err
 	}
 
 	if err := db.Exec(`
-		CREATE INDEX IF NOT EXISTS idx_product_subcategory ON products(subcategory_name)
+		CREATE INDEX IF NOT EXISTS idx_product_subcategory ON products(subcategory_id)
 	`).Error; err != nil {
 		return err
 	}

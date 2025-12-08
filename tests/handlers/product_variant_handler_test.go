@@ -340,6 +340,7 @@ func TestProductVariantHandler_CreateProductVariant_Success(t *testing.T) {
 		Quantity:    "1",
 		PackSize:    "1kg",
 		SKU:         &reqSKU,
+		HSNCode:     "1006", // Required field
 	}
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest("POST", "/api/v1/products/PROD00000001/variants", bytes.NewReader(body))
@@ -402,6 +403,7 @@ func TestProductVariantHandler_CreateProductVariant_ServiceError(t *testing.T) {
 		Quantity:    "1",
 		PackSize:    "1kg",
 		SKU:         &reqSKU,
+		HSNCode:     "1006", // Required field
 	}
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest("POST", "/api/v1/products/PROD00000001/variants", bytes.NewReader(body))
