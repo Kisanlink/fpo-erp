@@ -53,11 +53,13 @@ type Sale struct {
 	TotalAmount float64   `gorm:"type:numeric(14,4);not null" json:"total_amount"`
 	Status      string    `gorm:"type:varchar(20);not null" json:"status"`
 
-	// BRD Requirements
-	CustomerID  *string `gorm:"type:varchar(100)" json:"customer_id"`                   // Optional customer/farmer identifier
-	PaymentMode string  `gorm:"type:varchar(20);not null" json:"payment_mode"`          // cash, upi, online
-	SaleType    string  `gorm:"type:varchar(20);not null" json:"sale_type"`             // in_store, delivery
-	ApplyTaxes  bool    `gorm:"type:boolean;not null;default:false" json:"apply_taxes"` // Controls tax calculation for this sale
+	// BRD Requirements - Customer tracking
+	CustomerPhone *string `gorm:"type:varchar(20)" json:"customer_phone"`                 // Customer phone number
+	CustomerName  *string `gorm:"type:varchar(255)" json:"customer_name"`                 // Customer name
+	IsOrgMember   bool    `gorm:"type:boolean;not null;default:false" json:"is_org_member"` // Whether customer belongs to the FPO/organization
+	PaymentMode   string  `gorm:"type:varchar(20);not null" json:"payment_mode"`          // cash, upi, online
+	SaleType      string  `gorm:"type:varchar(20);not null" json:"sale_type"`             // in_store, delivery
+	ApplyTaxes    bool    `gorm:"type:boolean;not null;default:false" json:"apply_taxes"` // Controls tax calculation for this sale
 
 	// Cancellation fields
 	CancelledAt        *time.Time `gorm:"type:timestamptz" json:"cancelled_at,omitempty"`
@@ -117,18 +119,20 @@ func (SaleSummary) TableName() string {
 }
 
 // NewSale creates a new Sale with initialized fields
-func NewSale(warehouseID string, saleDate time.Time, totalAmount float64, status string, customerID *string, paymentMode, saleType string, applyTaxes bool) *Sale {
+func NewSale(warehouseID string, saleDate time.Time, totalAmount float64, status string, customerPhone, customerName *string, isOrgMember bool, paymentMode, saleType string, applyTaxes bool) *Sale {
 	baseModel := base.NewBaseModel(constants.TableSale, hash.Medium)
 	return &Sale{
-		BaseModel:   *baseModel,
-		WarehouseID: warehouseID,
-		SaleDate:    saleDate,
-		TotalAmount: totalAmount,
-		Status:      status,
-		CustomerID:  customerID,
-		PaymentMode: paymentMode,
-		SaleType:    saleType,
-		ApplyTaxes:  applyTaxes,
+		BaseModel:     *baseModel,
+		WarehouseID:   warehouseID,
+		SaleDate:      saleDate,
+		TotalAmount:   totalAmount,
+		Status:        status,
+		CustomerPhone: customerPhone,
+		CustomerName:  customerName,
+		IsOrgMember:   isOrgMember,
+		PaymentMode:   paymentMode,
+		SaleType:      saleType,
+		ApplyTaxes:    applyTaxes,
 	}
 }
 
@@ -195,11 +199,13 @@ type SaleResponse struct {
 	TotalAmount float64 `json:"total_amount"`
 	Status      string  `json:"status"`
 
-	// BRD Requirements
-	CustomerID  *string `json:"customer_id,omitempty"`
-	PaymentMode string  `json:"payment_mode"`
-	SaleType    string  `json:"sale_type"`
-	ApplyTaxes  bool    `json:"apply_taxes"`
+	// BRD Requirements - Customer tracking
+	CustomerPhone *string `json:"customer_phone,omitempty"`
+	CustomerName  *string `json:"customer_name,omitempty"`
+	IsOrgMember   bool    `json:"is_org_member"`
+	PaymentMode   string  `json:"payment_mode"`
+	SaleType      string  `json:"sale_type"`
+	ApplyTaxes    bool    `json:"apply_taxes"`
 
 	// Cancellation fields
 	CancelledAt        *string `json:"cancelled_at,omitempty"`
@@ -270,11 +276,13 @@ type CreateSaleRequest struct {
 	WarehouseID string  `json:"warehouse_id" binding:"required"`
 	SaleDate    *string `json:"sale_date"`
 
-	// BRD Requirements
-	CustomerID  *string `json:"customer_id"`                     // Optional customer/farmer identifier
-	PaymentMode string  `json:"payment_mode" binding:"required"` // cash, upi, online
-	SaleType    string  `json:"sale_type" binding:"required"`    // in_store, delivery
-	ApplyTaxes  *bool   `json:"apply_taxes"`                     // Controls tax calculation (default: false)
+	// BRD Requirements - Customer tracking
+	CustomerPhone *string `json:"customer_phone"`                  // Customer phone number
+	CustomerName  *string `json:"customer_name"`                   // Customer name
+	IsOrgMember   bool    `json:"is_org_member"`                   // Whether customer belongs to the FPO/organization
+	PaymentMode   string  `json:"payment_mode" binding:"required"` // cash, upi, online
+	SaleType      string  `json:"sale_type" binding:"required"`    // in_store, delivery
+	ApplyTaxes    *bool   `json:"apply_taxes"`                     // Controls tax calculation (default: false)
 
 	// GST Inter-state detection
 	DeliveryState *string `json:"delivery_state"` // Optional: state code for delivery (for inter-state IGST calculation)

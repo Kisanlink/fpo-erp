@@ -377,3 +377,93 @@ func migrateProductCategoryColumns(db *gorm.DB) error {
 	log.Println("Successfully migrated products to ID-based category references")
 	return nil
 }
+
+// RunPostMigrationDataMigrations runs data migrations AFTER GORM AutoMigrate
+// These migrations copy data from old columns to new columns and clean up old columns
+// This must be called AFTER AutoMigrate because new columns need to exist first
+func RunPostMigrationDataMigrations(db *gorm.DB) error {
+	log.Println("Running post-migration data migrations...")
+
+	if err := migrateCustomerIDToPhone(db); err != nil {
+		return fmt.Errorf("failed to migrate customer_id to customer_phone: %w", err)
+	}
+
+	log.Println("Post-migration data migrations completed successfully")
+	return nil
+}
+
+// migrateCustomerIDToPhone migrates existing customer_id values to customer_phone
+// customer_id may contain either AAA user IDs or phone numbers
+// We migrate phone-like values (10-15 digits) to customer_phone, then drop customer_id
+// This is idempotent - checks if old column exists before migrating
+func migrateCustomerIDToPhone(db *gorm.DB) error {
+	if !db.Migrator().HasTable("sales") {
+		log.Println("Sales table does not exist yet - skipping customer_id migration")
+		return nil
+	}
+
+	// Check if customer_id column exists (old column to migrate from)
+	var customerIDExists bool
+	query := `
+		SELECT EXISTS (
+			SELECT 1 FROM information_schema.columns
+			WHERE table_name = 'sales' AND column_name = 'customer_id'
+		)
+	`
+	if err := db.Raw(query).Scan(&customerIDExists).Error; err != nil {
+		log.Printf("Could not check for customer_id column: %v - skipping", err)
+		return nil
+	}
+
+	if !customerIDExists {
+		log.Println("sales.customer_id column does not exist - already migrated")
+		return nil
+	}
+
+	// Check if customer_phone column exists (new column to migrate to)
+	var customerPhoneExists bool
+	query2 := `
+		SELECT EXISTS (
+			SELECT 1 FROM information_schema.columns
+			WHERE table_name = 'sales' AND column_name = 'customer_phone'
+		)
+	`
+	if err := db.Raw(query2).Scan(&customerPhoneExists).Error; err != nil {
+		log.Printf("Could not check for customer_phone column: %v - skipping", err)
+		return nil
+	}
+
+	if !customerPhoneExists {
+		log.Println("sales.customer_phone column does not exist yet - AutoMigrate may not have run")
+		return nil
+	}
+
+	log.Println("Migrating sales.customer_id to sales.customer_phone...")
+
+	// Step 1: Copy phone-like customer_id values to customer_phone
+	// Phone-like: 10-15 digits (Indian and international phone numbers)
+	// Uses PostgreSQL regex: ^ matches start, $ matches end, [0-9]{10,15} matches 10-15 digits
+	migrateSQL := `
+		UPDATE sales
+		SET customer_phone = customer_id
+		WHERE customer_id ~ '^[0-9]{10,15}$'
+		AND customer_phone IS NULL
+	`
+	result := db.Exec(migrateSQL)
+	if result.Error != nil {
+		log.Printf("Warning: Could not migrate customer_id to customer_phone: %v", result.Error)
+		// Don't fail - continue to drop the column
+	} else {
+		log.Printf("Migrated %d phone numbers from customer_id to customer_phone", result.RowsAffected)
+	}
+
+	// Step 2: Drop the old customer_id column
+	log.Println("Dropping old sales.customer_id column...")
+	if err := db.Exec("ALTER TABLE sales DROP COLUMN IF EXISTS customer_id").Error; err != nil {
+		log.Printf("Warning: Could not drop customer_id column: %v", err)
+		// Don't fail - column will be orphaned but system will work
+	}
+
+	log.Println("Successfully migrated customer_id to customer_phone")
+	return nil
+}

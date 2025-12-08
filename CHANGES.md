@@ -40,6 +40,7 @@ This document describes all breaking changes, new features, and response format 
 | PO `verified` status | LOW | Add to status handling |
 | Product `category_name` → `category_id` | HIGH | Use ID-based category reference (changed from name-based) |
 | Product `subcategory_name` → `subcategory_id` | HIGH | Use ID-based subcategory reference (changed from name-based) |
+| **`customer_id` → Customer Details** | **HIGH** | Replace `customer_id` with `customer_phone`, `customer_name`, `is_org_member` |
 
 ---
 
@@ -435,6 +436,129 @@ const sale = await api.post('/sales', {
 // sale.items[0].sgst_amount = 90.00 (9% of line total)
 // sale.items[0].total_tax_amount = 180.00
 ```
+
+---
+
+### 3.1 SaleResponse - Customer Details (BREAKING CHANGE)
+
+**Old (Beta) - Full Response:**
+```json
+{
+  "id": "SALE00000001",
+  "warehouse_id": "WREH00000001",
+  "sale_date": "2025-12-08T10:30:00Z",
+  "total_amount": 5000.00,
+  "status": "completed",
+  "customer_id": "CUST_123",
+  "payment_mode": "cash",
+  "sale_type": "in_store",
+  "apply_taxes": false,
+  "items": [
+    {
+      "id": "SITM00000001",
+      "sale_id": "SALE00000001",
+      "batch_id": "BATC00000001",
+      "quantity": 10,
+      "selling_price": 500.00,
+      "line_total": 5000.00,
+      "cost_price": 400.00,
+      "margin": 100.00,
+      "cgst_amount": 0,
+      "sgst_amount": 0,
+      "igst_amount": 0,
+      "total_tax_amount": 0,
+      "created_at": "2025-12-08T10:30:00Z"
+    }
+  ],
+  "breakdown": {
+    "base_amount": 5000.00,
+    "applied_discounts": [],
+    "discount_amount": 0,
+    "tax_breakdown": {
+      "cgst_amount": 0,
+      "sgst_amount": 0,
+      "igst_amount": 0,
+      "total_tax_amount": 0,
+      "is_inter_state": false
+    },
+    "tax_amount": 0,
+    "total_savings": 0,
+    "final_amount": 5000.00
+  },
+  "created_at": "2025-12-08T10:30:00Z",
+  "updated_at": "2025-12-08T10:30:00Z"
+}
+```
+
+**New (Current) - Full Response:**
+```json
+{
+  "id": "SALE00000001",
+  "warehouse_id": "WREH00000001",
+  "sale_date": "2025-12-08T10:30:00Z",
+  "total_amount": 5000.00,
+  "status": "pending",
+  "customer_phone": "9876543210",
+  "customer_name": "John Doe",
+  "is_org_member": false,
+  "payment_mode": "cash",
+  "sale_type": "in_store",
+  "apply_taxes": false,
+  "items": [
+    {
+      "id": "SITM00000001",
+      "sale_id": "SALE00000001",
+      "batch_id": "BATC00000001",
+      "quantity": 10,
+      "selling_price": 500.00,
+      "line_total": 5000.00,
+      "cost_price": 400.00,
+      "margin": 100.00,
+      "cgst_amount": 0,
+      "sgst_amount": 0,
+      "igst_amount": 0,
+      "total_tax_amount": 0,
+      "created_at": "2025-12-08T10:30:00Z"
+    }
+  ],
+  "breakdown": {
+    "base_amount": 5000.00,
+    "applied_discounts": [],
+    "discount_amount": 0,
+    "tax_breakdown": {
+      "cgst_amount": 0,
+      "sgst_amount": 0,
+      "igst_amount": 0,
+      "total_tax_amount": 0,
+      "is_inter_state": false
+    },
+    "tax_amount": 0,
+    "total_savings": 0,
+    "final_amount": 5000.00
+  },
+  "created_at": "2025-12-08T10:30:00Z",
+  "updated_at": "2025-12-08T10:30:00Z"
+}
+```
+
+**Field Changes:**
+| Field | Old | New |
+|-------|-----|-----|
+| `customer_id` | `string` (nullable) | **REMOVED** |
+| `customer_phone` | N/A | `*string` (NEW, nullable) - Customer phone number |
+| `customer_name` | N/A | `*string` (NEW, nullable) - Customer name |
+| `is_org_member` | N/A | `bool` (NEW, required) - Whether customer is FPO member |
+
+**Rationale:**
+- `customer_id` was an external reference that didn't provide direct customer information
+- New fields capture customer details directly for:
+  - Better customer identification without external lookups
+  - FPO member tracking for differential pricing/benefits
+  - Audit trail with human-readable customer info
+
+**`is_org_member` Field:**
+- `false` (default): External customer (non-member)
+- `true`: FPO member (eligible for member pricing/benefits)
 
 ---
 
@@ -895,6 +1019,126 @@ await api.post(`/sales/${sale.id}/cancel-items`, {
   items: [
     { sale_item_id: 'SITM00000001', quantity: 25 }
   ]
+});
+```
+
+### Step 4.1: Update Customer Tracking in Sales (BREAKING CHANGE)
+
+**Before (Beta) - Full CreateSaleRequest with `customer_id`:**
+```json
+{
+  "warehouse_id": "WREH00000001",
+  "sale_date": "2025-12-08",
+  "customer_id": "CUST_123",
+  "payment_mode": "cash",
+  "sale_type": "in_store",
+  "apply_taxes": false,
+  "delivery_state": null,
+  "discount_id": null,
+  "coupon_code": null,
+  "auto_apply_discounts": true,
+  "items": [
+    {
+      "variant_id": "PVAR00000001",
+      "quantity": 10
+    }
+  ]
+}
+```
+
+**After (Current) - Full CreateSaleRequest with customer details:**
+```json
+{
+  "warehouse_id": "WREH00000001",
+  "sale_date": "2025-12-08",
+  "customer_phone": "9876543210",
+  "customer_name": "John Doe",
+  "is_org_member": false,
+  "payment_mode": "cash",
+  "sale_type": "in_store",
+  "apply_taxes": false,
+  "delivery_state": null,
+  "discount_id": null,
+  "coupon_code": null,
+  "auto_apply_discounts": true,
+  "items": [
+    {
+      "variant_id": "PVAR00000001",
+      "quantity": 10
+    }
+  ]
+}
+```
+
+**CreateSaleRequest Field Reference:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `warehouse_id` | `string` | **Yes** | Warehouse ID where sale occurs |
+| `sale_date` | `string` | No | Sale date (YYYY-MM-DD), defaults to today |
+| `customer_phone` | `*string` | No | Customer phone number (replaces `customer_id`) |
+| `customer_name` | `*string` | No | Customer name (replaces `customer_id`) |
+| `is_org_member` | `bool` | No | Whether customer is FPO member (default: `false`) |
+| `payment_mode` | `string` | **Yes** | Payment method: `cash`, `upi`, `online` |
+| `sale_type` | `string` | **Yes** | Sale type: `in_store`, `delivery` |
+| `apply_taxes` | `*bool` | No | Enable GST calculation (default: `false`) |
+| `delivery_state` | `*string` | No | State code for inter-state IGST detection |
+| `discount_id` | `*string` | No | Manual discount ID (highest priority) |
+| `coupon_code` | `*string` | No | Coupon code (second priority) |
+| `auto_apply_discounts` | `*bool` | No | Auto-discover discounts (default: `true`) |
+| `items` | `array` | **Yes** | Array of sale items |
+
+**CreateSaleItemRequest:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `variant_id` | `string` | **Yes** | Product variant ID |
+| `quantity` | `int64` | **Yes** | Quantity (must be > 0) |
+
+**JavaScript Migration Example:**
+```javascript
+// OLD: Using customer_id (external reference)
+const sale = await api.post('/sales', {
+  warehouse_id: 'WREH00000001',
+  customer_id: 'CUST_123',  // ❌ REMOVED - No longer supported
+  payment_mode: 'cash',
+  sale_type: 'in_store',
+  items: [{ variant_id: 'PVAR00000001', quantity: 10 }]
+});
+console.log(sale.customer_id);  // 'CUST_123'
+
+// NEW: Using customer_phone, customer_name, is_org_member
+const sale = await api.post('/sales', {
+  warehouse_id: 'WREH00000001',
+  customer_phone: '9876543210',    // Optional: Phone number
+  customer_name: 'John Doe',        // Optional: Customer name
+  is_org_member: false,             // FPO member status (default: false)
+  payment_mode: 'cash',
+  sale_type: 'in_store',
+  apply_taxes: false,
+  items: [{ variant_id: 'PVAR00000001', quantity: 10 }]
+});
+console.log(sale.customer_phone);  // '9876543210'
+console.log(sale.customer_name);   // 'John Doe'
+console.log(sale.is_org_member);   // false
+```
+
+**Migration Checklist:**
+1. Replace `customer_id` with `customer_phone` and `customer_name` in all sale creation calls
+2. Add `is_org_member` field (defaults to `false` for non-FPO customers)
+3. Update response handling to use new fields instead of `customer_id`
+4. Update any customer display components to show phone/name
+
+**FPO Member Sales (Differential Pricing):**
+```javascript
+// Sale to FPO member (may get member pricing)
+const memberSale = await api.post('/sales', {
+  warehouse_id: 'WREH00000001',
+  customer_phone: '9876543210',
+  customer_name: 'Farmer Ramesh',
+  is_org_member: true,  // ✅ FPO member
+  payment_mode: 'cash',
+  sale_type: 'in_store',
+  apply_taxes: false,
+  items: [{ variant_id: 'PVAR00000001', quantity: 5 }]
 });
 ```
 

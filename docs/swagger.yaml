@@ -824,8 +824,11 @@ definitions:
       coupon_code:
         description: Manual discount by code (second priority)
         type: string
-      customer_id:
-        description: BRD Requirements
+      customer_name:
+        description: Customer name
+        type: string
+      customer_phone:
+        description: BRD Requirements - Customer tracking
         type: string
       delivery_state:
         description: GST Inter-state detection
@@ -833,6 +836,9 @@ definitions:
       discount_id:
         description: Manual discount by ID (highest priority)
         type: string
+      is_org_member:
+        description: Whether customer belongs to the FPO/organization
+        type: boolean
       items:
         items:
           $ref: '#/definitions/models.CreateSaleItemRequest'
@@ -2312,11 +2318,15 @@ definitions:
         type: string
       created_at:
         type: string
-      customer_id:
-        description: BRD Requirements
+      customer_name:
+        type: string
+      customer_phone:
+        description: BRD Requirements - Customer tracking
         type: string
       id:
         type: string
+      is_org_member:
+        type: boolean
       items:
         items:
           $ref: '#/definitions/models.SaleItemResponse'

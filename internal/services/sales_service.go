@@ -196,8 +196,9 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 			zap.Time("sale_date", saleDate),
 			zap.String("payment_mode", req.PaymentMode),
 			zap.String("sale_type", req.SaleType),
-			zap.Bool("apply_taxes", applyTaxes))
-		sale := models.NewSale(req.WarehouseID, saleDate, 0, models.SaleStatusPending, req.CustomerID, req.PaymentMode, req.SaleType, applyTaxes)
+			zap.Bool("apply_taxes", applyTaxes),
+			zap.Bool("is_org_member", req.IsOrgMember))
+		sale := models.NewSale(req.WarehouseID, saleDate, 0, models.SaleStatusPending, req.CustomerPhone, req.CustomerName, req.IsOrgMember, req.PaymentMode, req.SaleType, applyTaxes)
 		s.logger.Info("Sale created",
 			zap.String("sale_id", sale.ID),
 			zap.Bool("apply_taxes", sale.ApplyTaxes))
@@ -845,13 +846,15 @@ func (s *SalesService) mapSaleToResponse(sale *models.Sale) *models.SaleResponse
 		SaleDate:    sale.SaleDate.Format("2006-01-02T15:04:05Z07:00"),
 		TotalAmount: sale.TotalAmount,
 		Status:      sale.Status,
-		// BRD Requirements
-		CustomerID:  sale.CustomerID,
-		PaymentMode: sale.PaymentMode,
-		SaleType:    sale.SaleType,
-		ApplyTaxes:  sale.ApplyTaxes,
-		CreatedAt:   sale.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt:   sale.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		// BRD Requirements - Customer tracking
+		CustomerPhone: sale.CustomerPhone,
+		CustomerName:  sale.CustomerName,
+		IsOrgMember:   sale.IsOrgMember,
+		PaymentMode:   sale.PaymentMode,
+		SaleType:      sale.SaleType,
+		ApplyTaxes:    sale.ApplyTaxes,
+		CreatedAt:     sale.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:     sale.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 
 	// Add cancellation fields if present

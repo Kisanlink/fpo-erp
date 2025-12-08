@@ -98,7 +98,14 @@ func AutoMigrate(db *gorm.DB) error {
 
 	log.Println("Database auto-migration completed successfully")
 
-	// Phase 3: Create application performance indexes
+	// Phase 3: Run post-migration data migrations
+	// These run AFTER AutoMigrate because new columns need to exist first
+	if err := RunPostMigrationDataMigrations(db); err != nil {
+		log.Printf("Failed to run post-migration data migrations: %v", err)
+		return err
+	}
+
+	// Phase 4: Create application performance indexes
 	// Indexes are optimization - don't fail startup if some fail
 	if err := CreateApplicationIndexes(db); err != nil {
 		log.Printf("⚠️  Warning: Index creation had issues: %v", err)
