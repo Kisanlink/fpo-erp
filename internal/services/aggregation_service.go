@@ -115,16 +115,18 @@ func (s *AggregationService) GetProductDetail(productID string, req *models.Prod
 		return nil, errors.NewNotFoundError("Product not found")
 	}
 
+	// Use existing ProductResponse type
 	response := &models.ProductDetailResponse{
-		Product: models.ProductInfo{
-			ID:          product.ID,
-			Name:        product.Name,
-			Description: product.Description,
-			IsActive:    true, // Products don't have IsActive field in this model
-			CreatedAt:   product.CreatedAt.Format(time.RFC3339),
-			UpdatedAt:   product.UpdatedAt.Format(time.RFC3339),
+		Product: models.ProductResponse{
+			ID:            product.ID,
+			Name:          product.Name,
+			Description:   product.Description,
+			CategoryID:    product.CategoryID,
+			SubcategoryID: product.SubcategoryID,
+			CreatedAt:     product.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:     product.UpdatedAt.Format(time.RFC3339),
 		},
-		Variants: []models.VariantDetail{},
+		Variants: []models.VariantWithAggData{},
 		Metadata: models.ProductMetadata{
 			ReadTimestamp: time.Now().Format(time.RFC3339),
 		},
@@ -182,13 +184,17 @@ func (s *AggregationService) GetProductDetail(productID string, req *models.Prod
 						if collaborator.IsActive != nil {
 							isActive = *collaborator.IsActive
 						}
-						response.Collaborator = &models.CollaboratorInfo{
+						response.Collaborator = &models.CollaboratorResponse{
 							ID:            collaborator.ID,
 							CompanyName:   collaborator.CompanyName,
-							ContactPerson: &collaborator.ContactPerson,
-							Phone:         &collaborator.ContactNumber,
+							ContactPerson: collaborator.ContactPerson,
+							ContactNumber: collaborator.ContactNumber,
 							Email:         collaborator.Email,
+							GSTNumber:     collaborator.GSTNumber,
+							PANNumber:     collaborator.PANNumber,
 							IsActive:      isActive,
+							CreatedAt:     collaborator.CreatedAt.Format(time.RFC3339),
+							UpdatedAt:     collaborator.UpdatedAt.Format(time.RFC3339),
 						}
 					}
 					break
@@ -204,42 +210,40 @@ func (s *AggregationService) GetProductDetail(productID string, req *models.Prod
 }
 
 // buildVariantDetail builds detailed variant information
-func (s *AggregationService) buildVariantDetail(v *models.ProductVariant, req *models.ProductDetailRequest, includes models.IncludeOptions) models.VariantDetail {
-	// Convert string to *string for HSNCode since VariantDetail expects pointer
-	hsnCode := v.HSNCode
-	detail := models.VariantDetail{
-		ID:          v.ID,
-		ProductID:   v.ProductID,
-		VariantName: v.VariantName,
-		Description: v.Description,
-		Quantity:    v.Quantity,
-		PackSize:    &v.PackSize,
-		BrandName:   v.BrandName,
-		HSNCode:     &hsnCode,
-		GSTRate:     v.GSTRate,
-		IsActive:    v.IsActive,
-		CreatedAt:   v.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:   v.UpdatedAt.Format(time.RFC3339),
+// Returns VariantWithAggData which embeds ProductVariantResponse with aggregation-specific computed data
+func (s *AggregationService) buildVariantDetail(v *models.ProductVariant, req *models.ProductDetailRequest, includes models.IncludeOptions) models.VariantWithAggData {
+	// Build the embedded ProductVariantResponse
+	variantResponse := models.ProductVariantResponse{
+		ID:                 v.ID,
+		ProductID:          v.ProductID,
+		VariantName:        v.VariantName,
+		Description:        v.Description,
+		Quantity:           v.Quantity,
+		PackSize:           v.PackSize,
+		SKU:                v.SKU,
+		Barcode:            v.Barcode,
+		HSNCode:            v.HSNCode,
+		GSTRate:            v.GSTRate,
+		CollaboratorIDs:    v.CollaboratorIDs,
+		BrandName:          v.BrandName,
+		DosageInstructions: v.DosageInstructions,
+		UsageDetails:       v.UsageDetails,
+		IsActive:           v.IsActive,
+		CreatedAt:          v.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:          v.UpdatedAt.Format(time.RFC3339),
 	}
-
-	if v.SKU != nil {
-		detail.SKU = *v.SKU
-	}
-	detail.Barcode = v.Barcode
-
-	if v.ExternalID != nil {
-		detail.ExternalID = v.ExternalID
-	}
-
-	detail.DosageInstructions = v.DosageInstructions
-	detail.UsageDetails = v.UsageDetails
 
 	// Parse images from JSON
 	if v.Images != nil {
 		var images []string
 		if err := json.Unmarshal([]byte(*v.Images), &images); err == nil {
-			detail.Images = images
+			variantResponse.Images = images
 		}
+	}
+
+	// Build the VariantWithAggData wrapper
+	detail := models.VariantWithAggData{
+		ProductVariantResponse: variantResponse,
 	}
 
 	// Get prices if requested - fetch from product_prices table
@@ -292,7 +296,7 @@ func (s *AggregationService) buildVariantDetail(v *models.ProductVariant, req *m
 				prices = filteredPrices
 			}
 
-			detail.Prices = prices
+			detail.PricesSummary = prices
 		}
 	}
 
@@ -421,7 +425,7 @@ func (s *AggregationService) GetVariantDetail(variantID string, include string, 
 
 	response := &models.VariantDetailResponse{
 		Variant: models.VariantDetailWithProduct{
-			VariantDetail: detail,
+			VariantWithAggData: detail,
 		},
 		Metadata: models.ResponseMetadata{
 			ReadTimestamp: time.Now().Format(time.RFC3339),
@@ -432,10 +436,14 @@ func (s *AggregationService) GetVariantDetail(variantID string, include string, 
 	if includes.Variants {
 		product, err := s.productRepo.GetByID(variant.ProductID)
 		if err == nil {
-			response.Variant.Product = &models.ProductBasicInfo{
-				ID:   product.ID,
-				Name: product.Name,
-				// Category not available in Product model
+			response.Variant.Product = &models.ProductResponse{
+				ID:            product.ID,
+				Name:          product.Name,
+				Description:   product.Description,
+				CategoryID:    product.CategoryID,
+				SubcategoryID: product.SubcategoryID,
+				CreatedAt:     product.CreatedAt.Format(time.RFC3339),
+				UpdatedAt:     product.UpdatedAt.Format(time.RFC3339),
 			}
 		}
 	}
@@ -445,9 +453,21 @@ func (s *AggregationService) GetVariantDetail(variantID string, include string, 
 		collaboratorID := variant.CollaboratorIDs[0]
 		collaborator, err := s.collaboratorRepo.GetByID(collaboratorID)
 		if err == nil {
-			response.Variant.Collaborator = &models.CollaboratorBasicInfo{
-				ID:          collaborator.ID,
-				CompanyName: collaborator.CompanyName,
+			isActive := false
+			if collaborator.IsActive != nil {
+				isActive = *collaborator.IsActive
+			}
+			response.Variant.Collaborator = &models.CollaboratorResponse{
+				ID:            collaborator.ID,
+				CompanyName:   collaborator.CompanyName,
+				ContactPerson: collaborator.ContactPerson,
+				ContactNumber: collaborator.ContactNumber,
+				Email:         collaborator.Email,
+				GSTNumber:     collaborator.GSTNumber,
+				PANNumber:     collaborator.PANNumber,
+				IsActive:      isActive,
+				CreatedAt:     collaborator.CreatedAt.Format(time.RFC3339),
+				UpdatedAt:     collaborator.UpdatedAt.Format(time.RFC3339),
 			}
 		}
 	}
@@ -479,10 +499,11 @@ func (s *AggregationService) GetSalesContext(req *models.SalesContextRequest) (*
 			return nil, errors.NewNotFoundError("Warehouse not found")
 		}
 
-		response.Warehouse = models.WarehouseInfo{
-			ID:       warehouse.ID,
-			Name:     warehouse.Name,
-			IsActive: true, // Warehouse model doesn't have IsActive field, defaulting to true
+		response.Warehouse = models.WarehouseResponse{
+			ID:        warehouse.ID,
+			Name:      warehouse.Name,
+			CreatedAt: warehouse.CreatedAt.Format(time.RFC3339),
+			UpdatedAt: warehouse.UpdatedAt.Format(time.RFC3339),
 		}
 	}
 
@@ -539,21 +560,26 @@ func (s *AggregationService) GetSalesContext(req *models.SalesContextRequest) (*
 
 		// Populate variant info if available
 		if variantErr == nil {
-			// Convert string to *string for HSNCode since VariantInfoForSales expects pointer
-			hsnCodePtr := variant.HSNCode
-			inventoryItem.Variant = models.VariantInfoForSales{
-				ID:          variant.ID,
-				VariantName: variant.VariantName,
-				Quantity:    variant.Quantity,
-				PackSize:    &variant.PackSize,
-				BrandName:   variant.BrandName,
-				HSNCode:     &hsnCodePtr,
-				IsActive:    variant.IsActive,
+			// Build ProductVariantResponse
+			inventoryItem.Variant = models.ProductVariantResponse{
+				ID:                 variant.ID,
+				ProductID:          variant.ProductID,
+				VariantName:        variant.VariantName,
+				Description:        variant.Description,
+				Quantity:           variant.Quantity,
+				PackSize:           variant.PackSize,
+				SKU:                variant.SKU,
+				Barcode:            variant.Barcode,
+				HSNCode:            variant.HSNCode,
+				GSTRate:            variant.GSTRate,
+				CollaboratorIDs:    variant.CollaboratorIDs,
+				BrandName:          variant.BrandName,
+				DosageInstructions: variant.DosageInstructions,
+				UsageDetails:       variant.UsageDetails,
+				IsActive:           variant.IsActive,
+				CreatedAt:          variant.CreatedAt.Format(time.RFC3339),
+				UpdatedAt:          variant.UpdatedAt.Format(time.RFC3339),
 			}
-			if variant.SKU != nil {
-				inventoryItem.Variant.SKU = *variant.SKU
-			}
-			inventoryItem.Variant.Barcode = variant.Barcode
 
 			// Parse images
 			if variant.Images != nil {
@@ -618,11 +644,14 @@ func (s *AggregationService) GetSalesContext(req *models.SalesContextRequest) (*
 			// Get product info
 			product, err := s.productRepo.GetByID(variant.ProductID)
 			if err == nil {
-				inventoryItem.Product = models.ProductInfoForSales{
-					ID:          product.ID,
-					Name:        product.Name,
-					Description: product.Description,
-					// Category not available in Product model
+				inventoryItem.Product = models.ProductResponse{
+					ID:            product.ID,
+					Name:          product.Name,
+					Description:   product.Description,
+					CategoryID:    product.CategoryID,
+					SubcategoryID: product.SubcategoryID,
+					CreatedAt:     product.CreatedAt.Format(time.RFC3339),
+					UpdatedAt:     product.UpdatedAt.Format(time.RFC3339),
 				}
 				productCount[product.ID] = true
 			}
@@ -778,34 +807,41 @@ func (s *AggregationService) GetPODetail(poID string, req *models.PODetailReques
 		actualDelivery = &ad
 	}
 
-	externalOrderID := (*string)(nil)
-	if po.ExternalOrderID != nil {
-		externalOrderID = po.ExternalOrderID
-	}
-
 	pendingAmount := po.TotalAmount - po.PaidAmount
 	if pendingAmount < 0 {
 		pendingAmount = 0
 	}
 
+	// Get collaborator name for response
+	collaboratorName := ""
+	if collaborator, err := s.collaboratorRepo.GetByID(po.CollaboratorID); err == nil {
+		collaboratorName = collaborator.CompanyName
+	}
+
+	// Get warehouse name for response
+	warehouseName := ""
+	if warehouse, err := s.warehouseRepo.GetByID(po.WarehouseID); err == nil {
+		warehouseName = warehouse.Name
+	}
+
 	response := &models.PODetailResponse{
-		PurchaseOrder: models.POInfo{
-			ID:                   po.ID,
-			PONumber:             po.PONumber,
-			CollaboratorID:       po.CollaboratorID,
-			WarehouseID:          po.WarehouseID,
-			Status:               po.Status,
-			OrderDate:            po.OrderDate.Format("2006-01-02"),
-			ExpectedDeliveryDate: po.ExpectedDelivery.Format("2006-01-02"),
-			ActualDeliveryDate:   actualDelivery,
-			TotalAmount:          po.TotalAmount,
-			PaidAmount:           po.PaidAmount,
-			PendingAmount:        pendingAmount,
-			PaymentStatus:        po.PaymentStatus,
-			Currency:             "INR",
-			ExternalOrderID:      externalOrderID,
-			CreatedAt:            po.CreatedAt.Format(time.RFC3339),
-			UpdatedAt:            po.UpdatedAt.Format(time.RFC3339),
+		PurchaseOrder: models.PurchaseOrderResponse{
+			ID:               po.ID,
+			PONumber:         po.PONumber,
+			CollaboratorID:   po.CollaboratorID,
+			CollaboratorName: collaboratorName,
+			WarehouseID:      po.WarehouseID,
+			WarehouseName:    warehouseName,
+			OrderDate:        po.OrderDate.Format("2006-01-02"),
+			ExpectedDelivery: po.ExpectedDelivery.Format("2006-01-02"),
+			ActualDelivery:   actualDelivery,
+			Status:           po.Status,
+			TotalAmount:      po.TotalAmount,
+			PaymentStatus:    po.PaymentStatus,
+			PaidAmount:       po.PaidAmount,
+			IsInterState:     po.IsInterState,
+			CreatedAt:        po.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:        po.UpdatedAt.Format(time.RFC3339),
 		},
 		Metadata: models.ResponseMetadata{
 			ReadTimestamp: time.Now().Format(time.RFC3339),
@@ -820,13 +856,17 @@ func (s *AggregationService) GetPODetail(poID string, req *models.PODetailReques
 			if collaborator.IsActive != nil {
 				isActive = *collaborator.IsActive
 			}
-			response.Collaborator = &models.CollaboratorInfo{
+			response.Collaborator = &models.CollaboratorResponse{
 				ID:            collaborator.ID,
 				CompanyName:   collaborator.CompanyName,
-				ContactPerson: &collaborator.ContactPerson,
-				Phone:         &collaborator.ContactNumber,
+				ContactPerson: collaborator.ContactPerson,
+				ContactNumber: collaborator.ContactNumber,
 				Email:         collaborator.Email,
+				GSTNumber:     collaborator.GSTNumber,
+				PANNumber:     collaborator.PANNumber,
 				IsActive:      isActive,
+				CreatedAt:     collaborator.CreatedAt.Format(time.RFC3339),
+				UpdatedAt:     collaborator.UpdatedAt.Format(time.RFC3339),
 			}
 		}
 	}
@@ -835,10 +875,11 @@ func (s *AggregationService) GetPODetail(poID string, req *models.PODetailReques
 	if includes["warehouse"] {
 		warehouse, err := s.warehouseRepo.GetByID(po.WarehouseID)
 		if err == nil {
-			response.Warehouse = &models.WarehouseInfo{
-				ID:       warehouse.ID,
-				Name:     warehouse.Name,
-				IsActive: true,
+			response.Warehouse = &models.WarehouseResponse{
+				ID:        warehouse.ID,
+				Name:      warehouse.Name,
+				CreatedAt: warehouse.CreatedAt.Format(time.RFC3339),
+				UpdatedAt: warehouse.UpdatedAt.Format(time.RFC3339),
 			}
 		}
 	}
@@ -862,60 +903,46 @@ func (s *AggregationService) GetPODetail(poID string, req *models.PODetailReques
 				pendingQty = 0
 			}
 
-			// Determine received status
-			receivedStatus := "pending"
-			if receivedQty >= item.Quantity {
-				receivedStatus = "fully_received"
-			} else if receivedQty > 0 {
-				receivedStatus = "partially_received"
-			}
-
-			itemDetail := models.POItemDetail{
+			// Build PurchaseOrderItemResponse
+			itemResponse := models.PurchaseOrderItemResponse{
 				ID:               item.ID,
+				POID:             item.POID,
 				VariantID:        item.VariantID,
-				OrderedQuantity:  item.Quantity,
-				ReceivedQuantity: receivedQty,
-				PendingQuantity:  pendingQty,
-				UnitCost:         item.UnitPrice,
-				TotalCost:        item.LineTotal,
-				ReceivedStatus:   receivedStatus,
+				ProductName:      item.ProductName,
+				ProductSKU:       item.ProductSKU,
+				Quantity:         item.Quantity,
+				UnitPrice:        item.UnitPrice,
+				LineTotal:        item.LineTotal,
+				ReceivedQuantity: item.ReceivedQuantity,
+				// GST Breakdown from PO item
+				BasePrice:  item.BasePrice,
+				GSTRate:    item.GSTRate,
+				GSTAmount:  item.GSTAmount,
+				CGSTRate:   item.CGSTRate,
+				CGSTAmount: item.CGSTAmount,
+				SGSTRate:   item.SGSTRate,
+				SGSTAmount: item.SGSTAmount,
+				IGSTRate:   item.IGSTRate,
+				IGSTAmount: item.IGSTAmount,
+				CreatedAt:  item.CreatedAt.Format(time.RFC3339),
 			}
 
-			// Get variant info
-			variant, err := s.variantRepo.GetByID(item.VariantID)
-			if err == nil {
-				variantInfo := &models.VariantInfoForPO{
-					ID:          variant.ID,
-					VariantName: variant.VariantName,
-					Quantity:    variant.Quantity,
-					PackSize:    &variant.PackSize,
-					BrandName:   variant.BrandName,
-				}
-				if variant.SKU != nil {
-					variantInfo.SKU = *variant.SKU
-				}
-
-				// Parse images from JSON
-				if variant.Images != nil {
-					var images []string
-					if err := json.Unmarshal([]byte(*variant.Images), &images); err == nil {
-						variantInfo.Images = images
-					}
-				}
-
-				itemDetail.Variant = variantInfo
-
-				// Get product info
-				product, err := s.productRepo.GetByID(variant.ProductID)
+			// Get variant info if product details not already set
+			if itemResponse.ProductName == nil || itemResponse.ProductSKU == nil {
+				variant, err := s.variantRepo.GetByID(item.VariantID)
 				if err == nil {
-					itemDetail.Product = &models.ProductBasicInfo{
-						ID:   product.ID,
-						Name: product.Name,
+					if itemResponse.ProductSKU == nil && variant.SKU != nil {
+						itemResponse.ProductSKU = variant.SKU
+					}
+					// Get product info for name
+					product, err := s.productRepo.GetByID(variant.ProductID)
+					if err == nil && itemResponse.ProductName == nil {
+						itemResponse.ProductName = &product.Name
 					}
 				}
 			}
 
-			response.Items = append(response.Items, itemDetail)
+			response.Items = append(response.Items, itemResponse)
 
 			// Update totals
 			totalOrderedQty += item.Quantity
@@ -1319,9 +1346,11 @@ func (s *AggregationService) buildBatchContext(batch *models.InventoryBatch, inc
 	if includes["warehouse"] {
 		warehouse, err := s.warehouseRepo.GetByID(batch.WarehouseID)
 		if err == nil {
-			batchContext.Warehouse = &models.WarehouseBasicInfo{
-				ID:   warehouse.ID,
-				Name: warehouse.Name,
+			batchContext.Warehouse = &models.WarehouseResponse{
+				ID:        warehouse.ID,
+				Name:      warehouse.Name,
+				CreatedAt: warehouse.CreatedAt.Format(time.RFC3339),
+				UpdatedAt: warehouse.UpdatedAt.Format(time.RFC3339),
 			}
 		}
 	}
@@ -1330,40 +1359,48 @@ func (s *AggregationService) buildBatchContext(batch *models.InventoryBatch, inc
 	if includes["variant"] {
 		variant, err := s.variantRepo.GetByID(batch.VariantID)
 		if err == nil {
-			// Convert string to *string for HSNCode since VariantInfoForSales expects pointer
-			hsnCodePtr := variant.HSNCode
-			variantInfo := &models.VariantInfoForSales{
-				ID:          variant.ID,
-				VariantName: variant.VariantName,
-				Quantity:    variant.Quantity,
-				PackSize:    &variant.PackSize,
-				BrandName:   variant.BrandName,
-				HSNCode:     &hsnCodePtr,
-				IsActive:    variant.IsActive,
+			variantResponse := &models.ProductVariantResponse{
+				ID:                 variant.ID,
+				ProductID:          variant.ProductID,
+				VariantName:        variant.VariantName,
+				Description:        variant.Description,
+				Quantity:           variant.Quantity,
+				PackSize:           variant.PackSize,
+				SKU:                variant.SKU,
+				Barcode:            variant.Barcode,
+				HSNCode:            variant.HSNCode,
+				GSTRate:            variant.GSTRate,
+				CollaboratorIDs:    variant.CollaboratorIDs,
+				BrandName:          variant.BrandName,
+				DosageInstructions: variant.DosageInstructions,
+				UsageDetails:       variant.UsageDetails,
+				IsActive:           variant.IsActive,
+				CreatedAt:          variant.CreatedAt.Format(time.RFC3339),
+				UpdatedAt:          variant.UpdatedAt.Format(time.RFC3339),
 			}
-			if variant.SKU != nil {
-				variantInfo.SKU = *variant.SKU
-			}
-			variantInfo.Barcode = variant.Barcode
 
 			// Parse images
 			if variant.Images != nil {
 				var images []string
 				if err := json.Unmarshal([]byte(*variant.Images), &images); err == nil {
-					variantInfo.Images = images
+					variantResponse.Images = images
 				}
 			}
 
-			batchContext.Variant = variantInfo
+			batchContext.Variant = variantResponse
 
 			// Include product if requested
 			if includes["product"] {
 				product, err := s.productRepo.GetByID(variant.ProductID)
 				if err == nil {
-					batchContext.Product = &models.ProductInfoForSales{
-						ID:          product.ID,
-						Name:        product.Name,
-						Description: product.Description,
+					batchContext.Product = &models.ProductResponse{
+						ID:            product.ID,
+						Name:          product.Name,
+						Description:   product.Description,
+						CategoryID:    product.CategoryID,
+						SubcategoryID: product.SubcategoryID,
+						CreatedAt:     product.CreatedAt.Format(time.RFC3339),
+						UpdatedAt:     product.UpdatedAt.Format(time.RFC3339),
 					}
 				}
 			}

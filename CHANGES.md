@@ -876,6 +876,777 @@ is_inter_state: true
 | `GET /api/v1/aggregation/purchase-orders/:id` | `include` (collaborator,warehouse,items,grns,inventory,payments) |
 | `GET /api/v1/aggregation/inventory` | `warehouse_id`, `variant_id`, `product_id`, `expiring_within_days`, `low_stock_threshold`, `include_zero_stock`, `page`, `page_size` |
 
+#### Aggregation Response Model Refactoring (December 2025)
+
+**Change**: Aggregation endpoints now use the same response models as other APIs for consistency.
+
+| Aggregation Object | Now Uses | New Fields Available |
+|--------------------|----------|---------------------|
+| Product info | `ProductResponse` | `category_id`, `subcategory_id`, `variants` |
+| Variant info | `ProductVariantResponse` | `collaborator_ids` (array), `product_id`, `hsn_code`, `gst_rate`, full timestamps |
+| Collaborator info | `CollaboratorResponse` | `gst_number`, `pan_number`, banking details, full timestamps |
+| Warehouse info | `WarehouseResponse` | `address` object (if populated), standard format |
+| PO info | `PurchaseOrderResponse` | `is_inter_state`, GST breakdown fields, `amount_owed` |
+| PO item info | `PurchaseOrderItemResponse` | Full GST breakdown (`base_price`, `cgst_amount`, `sgst_amount`, `igst_amount`) |
+
+**Benefits**:
+- Consistent field names across all APIs
+- Additional fields automatically available (category IDs, GST fields, timestamps)
+- Easier frontend integration - same types everywhere
+
+**No Breaking Changes**: This is additive - all existing fields remain, new fields are added.
+
+#### Complete Response Body Examples for Aggregation Endpoints
+
+##### 1. GET /api/v1/aggregation/products/:id - Product Detail
+
+**Query Parameters:**
+- `include` - Comma-separated list: `variants`, `prices`, `inventory`, `collaborators`, `taxes`
+- `warehouse_id` - Filter inventory by warehouse
+- `price_type` - Filter prices: `retail`, `wholesale`, `bulk`, `all` (default: all)
+- `active_only` - Only active variants (default: true)
+- `in_stock_only` - Only variants with stock
+
+**Response:**
+```json
+{
+  "product": {
+    "id": "PROD00000001",
+    "name": "Organic Tomatoes",
+    "description": "Fresh organic tomatoes from local farms",
+    "category_id": "CAT000000001",
+    "subcategory_id": "SCAT00000001",
+    "variants": [],
+    "created_at": "2025-01-15T10:30:00Z",
+    "updated_at": "2025-01-20T14:45:00Z"
+  },
+  "variants": [
+    {
+      "variant": {
+        "id": "PVAR00000001",
+        "product_id": "PROD00000001",
+        "variant_name": "500g Pack",
+        "description": "Half kilogram pack",
+        "quantity": "500g",
+        "pack_size": "Small",
+        "sku": "TOM-500G-ORG",
+        "barcode": "8901234567890",
+        "hsn_code": "0702",
+        "gst_rate": 5.0,
+        "collaborator_ids": ["CLAB00000001", "CLAB00000002"],
+        "brand_name": "FreshFarms",
+        "images": null,
+        "image_urls": null,
+        "dosage_instructions": null,
+        "usage_details": "Store in cool, dry place",
+        "prices": [],
+        "is_active": true,
+        "created_at": "2025-01-15T10:35:00Z",
+        "updated_at": "2025-01-20T14:50:00Z"
+      },
+      "prices": [
+        {
+          "id": "PRIC00000001",
+          "variant_id": "PVAR00000001",
+          "price_type": "MRP",
+          "price": 99.00,
+          "currency": "INR",
+          "effective_from": "2025-01-01T00:00:00Z",
+          "effective_to": null,
+          "is_active": true,
+          "created_at": "2025-01-15T10:40:00Z",
+          "updated_at": "2025-01-15T10:40:00Z"
+        },
+        {
+          "id": "PRIC00000002",
+          "variant_id": "PVAR00000001",
+          "price_type": "retail",
+          "price": 89.00,
+          "currency": "INR",
+          "effective_from": "2025-01-01T00:00:00Z",
+          "effective_to": null,
+          "is_active": true,
+          "created_at": "2025-01-15T10:40:00Z",
+          "updated_at": "2025-01-15T10:40:00Z"
+        }
+      ],
+      "inventory": {
+        "total_quantity": 500,
+        "available_quantity": 450,
+        "reserved_quantity": 50,
+        "warehouse_breakdown": [
+          {
+            "warehouse_id": "WRHS00000001",
+            "warehouse_name": "Main Warehouse",
+            "total_quantity": 300,
+            "available_quantity": 270,
+            "reserved_quantity": 30,
+            "batches": [
+              {
+                "batch_id": "BATC00000001",
+                "quantity": 300,
+                "available_quantity": 270,
+                "reserved_quantity": 30,
+                "cost_price": 60.00,
+                "expiry_date": "2025-03-15",
+                "batch_number": "LOT-2025-001"
+              }
+            ]
+          },
+          {
+            "warehouse_id": "WRHS00000002",
+            "warehouse_name": "Secondary Warehouse",
+            "total_quantity": 200,
+            "available_quantity": 180,
+            "reserved_quantity": 20,
+            "batches": []
+          }
+        ]
+      },
+      "tax_info": {
+        "hsn_code": "0702",
+        "gst_rate": 5.0,
+        "cgst_rate": 2.5,
+        "sgst_rate": 2.5,
+        "igst_rate": 5.0
+      }
+    }
+  ],
+  "collaborators": [
+    {
+      "id": "CLAB00000001",
+      "company_name": "Organic Farms Ltd",
+      "contact_person": "Rajesh Kumar",
+      "contact_number": "9876543210",
+      "email": "rajesh@organicfarms.com",
+      "gst_number": "29AABCU9603R1ZM",
+      "pan_number": "AABCU9603R",
+      "bank_account_no": "1234567890123456",
+      "bank_ifsc": "HDFC0001234",
+      "bank_name": "HDFC Bank",
+      "address_id": "ADDR00000001",
+      "address": {
+        "type": "business",
+        "street": "123 Farm Road",
+        "village": "Green Village",
+        "taluk": "South Taluk",
+        "district": "Bangalore Rural",
+        "state": "Karnataka",
+        "state_code": "KA",
+        "pincode": "560001"
+      },
+      "is_active": true,
+      "created_at": "2025-01-10T08:00:00Z",
+      "updated_at": "2025-01-10T08:00:00Z"
+    }
+  ],
+  "metadata": {
+    "total_variants": 2,
+    "active_variants": 2,
+    "total_stock": 500,
+    "available_stock": 450,
+    "warehouses_with_stock": 2,
+    "price_range": {
+      "min": 89.00,
+      "max": 99.00,
+      "currency": "INR"
+    }
+  }
+}
+```
+
+##### 2. GET /api/v1/aggregation/variants/:id - Variant Detail
+
+**Query Parameters:**
+- `include` - Comma-separated list: `product`, `collaborators`, `prices`, `inventory`
+
+**Response:**
+```json
+{
+  "variant": {
+    "id": "PVAR00000001",
+    "product_id": "PROD00000001",
+    "variant_name": "500g Pack",
+    "description": "Half kilogram pack",
+    "quantity": "500g",
+    "pack_size": "Small",
+    "sku": "TOM-500G-ORG",
+    "barcode": "8901234567890",
+    "hsn_code": "0702",
+    "gst_rate": 5.0,
+    "collaborator_ids": ["CLAB00000001"],
+    "brand_name": "FreshFarms",
+    "images": ["products/tomato/500g-front.jpg"],
+    "image_urls": ["https://s3.amazonaws.com/bucket/products/tomato/500g-front.jpg?signature=..."],
+    "dosage_instructions": null,
+    "usage_details": "Store in cool, dry place",
+    "prices": [
+      {
+        "id": "PRIC00000001",
+        "variant_id": "PVAR00000001",
+        "price_type": "MRP",
+        "price": 99.00,
+        "currency": "INR",
+        "effective_from": "2025-01-01T00:00:00Z",
+        "effective_to": null,
+        "is_active": true,
+        "created_at": "2025-01-15T10:40:00Z",
+        "updated_at": "2025-01-15T10:40:00Z"
+      }
+    ],
+    "is_active": true,
+    "created_at": "2025-01-15T10:35:00Z",
+    "updated_at": "2025-01-20T14:50:00Z"
+  },
+  "product": {
+    "id": "PROD00000001",
+    "name": "Organic Tomatoes",
+    "description": "Fresh organic tomatoes from local farms",
+    "category_id": "CAT000000001",
+    "subcategory_id": "SCAT00000001",
+    "variants": [],
+    "created_at": "2025-01-15T10:30:00Z",
+    "updated_at": "2025-01-20T14:45:00Z"
+  },
+  "collaborators": [
+    {
+      "id": "CLAB00000001",
+      "company_name": "Organic Farms Ltd",
+      "contact_person": "Rajesh Kumar",
+      "contact_number": "9876543210",
+      "email": "rajesh@organicfarms.com",
+      "gst_number": "29AABCU9603R1ZM",
+      "pan_number": "AABCU9603R",
+      "bank_account_no": "1234567890123456",
+      "bank_ifsc": "HDFC0001234",
+      "bank_name": "HDFC Bank",
+      "address_id": "ADDR00000001",
+      "address": null,
+      "is_active": true,
+      "created_at": "2025-01-10T08:00:00Z",
+      "updated_at": "2025-01-10T08:00:00Z"
+    }
+  ],
+  "inventory": {
+    "total_quantity": 500,
+    "available_quantity": 450,
+    "reserved_quantity": 50,
+    "warehouse_breakdown": [
+      {
+        "warehouse_id": "WRHS00000001",
+        "warehouse_name": "Main Warehouse",
+        "total_quantity": 500,
+        "available_quantity": 450,
+        "reserved_quantity": 50,
+        "batches": [
+          {
+            "batch_id": "BATC00000001",
+            "quantity": 500,
+            "available_quantity": 450,
+            "reserved_quantity": 50,
+            "cost_price": 60.00,
+            "expiry_date": "2025-03-15",
+            "batch_number": "LOT-2025-001"
+          }
+        ]
+      }
+    ]
+  },
+  "metadata": {
+    "has_stock": true,
+    "is_available_for_sale": true,
+    "earliest_expiry": "2025-03-15",
+    "lowest_price": 89.00,
+    "price_currency": "INR"
+  }
+}
+```
+
+##### 3. GET /api/v1/aggregation/sales-context/:warehouseId - Sales Context
+
+**Query Parameters:**
+- `include_zero_stock` - Include items with zero stock (default: false)
+- `price_type` - Filter by price type: `retail`, `wholesale`, `bulk`, `all`
+- `effective_date` - Price effective date (ISO format, default: now)
+
+**Response:**
+```json
+{
+  "warehouse": {
+    "id": "WRHS00000001",
+    "name": "Main Warehouse",
+    "address": {
+      "type": "warehouse",
+      "street": "456 Industrial Area",
+      "village": null,
+      "taluk": "North Taluk",
+      "district": "Bangalore Urban",
+      "state": "Karnataka",
+      "state_code": "KA",
+      "pincode": "560002"
+    },
+    "created_at": "2025-01-01T00:00:00Z",
+    "updated_at": "2025-01-01T00:00:00Z"
+  },
+  "inventory": [
+    {
+      "variant": {
+        "id": "PVAR00000001",
+        "product_id": "PROD00000001",
+        "variant_name": "500g Pack",
+        "description": "Half kilogram pack",
+        "quantity": "500g",
+        "pack_size": "Small",
+        "sku": "TOM-500G-ORG",
+        "barcode": "8901234567890",
+        "hsn_code": "0702",
+        "gst_rate": 5.0,
+        "collaborator_ids": ["CLAB00000001"],
+        "brand_name": "FreshFarms",
+        "images": null,
+        "image_urls": null,
+        "dosage_instructions": null,
+        "usage_details": null,
+        "prices": [],
+        "is_active": true,
+        "created_at": "2025-01-15T10:35:00Z",
+        "updated_at": "2025-01-20T14:50:00Z"
+      },
+      "product": {
+        "id": "PROD00000001",
+        "name": "Organic Tomatoes",
+        "description": "Fresh organic tomatoes",
+        "category_id": "CAT000000001",
+        "subcategory_id": "SCAT00000001",
+        "variants": [],
+        "created_at": "2025-01-15T10:30:00Z",
+        "updated_at": "2025-01-20T14:45:00Z"
+      },
+      "prices": [
+        {
+          "id": "PRIC00000001",
+          "variant_id": "PVAR00000001",
+          "price_type": "MRP",
+          "price": 99.00,
+          "currency": "INR",
+          "effective_from": "2025-01-01T00:00:00Z",
+          "effective_to": null,
+          "is_active": true,
+          "created_at": "2025-01-15T10:40:00Z",
+          "updated_at": "2025-01-15T10:40:00Z"
+        },
+        {
+          "id": "PRIC00000002",
+          "variant_id": "PVAR00000001",
+          "price_type": "retail",
+          "price": 89.00,
+          "currency": "INR",
+          "effective_from": "2025-01-01T00:00:00Z",
+          "effective_to": null,
+          "is_active": true,
+          "created_at": "2025-01-15T10:40:00Z",
+          "updated_at": "2025-01-15T10:40:00Z"
+        }
+      ],
+      "stock": {
+        "total_quantity": 500,
+        "available_quantity": 450,
+        "reserved_quantity": 50,
+        "batches": [
+          {
+            "batch_id": "BATC00000001",
+            "quantity": 500,
+            "available_quantity": 450,
+            "reserved_quantity": 50,
+            "cost_price": 60.00,
+            "expiry_date": "2025-03-15",
+            "batch_number": "LOT-2025-001"
+          }
+        ]
+      },
+      "tax_config": {
+        "hsn_code": "0702",
+        "gst_rate": 5.0,
+        "cgst_rate": 2.5,
+        "sgst_rate": 2.5,
+        "igst_rate": 5.0
+      }
+    }
+  ],
+  "discounts": [
+    {
+      "id": "DISC00000001",
+      "name": "Winter Sale",
+      "code": "WINTER25",
+      "discount_type": "percentage",
+      "discount_value": 10.0,
+      "min_order_value": 500.0,
+      "max_discount_amount": 100.0,
+      "applicable_products": ["PROD00000001"],
+      "applicable_categories": [],
+      "applicable_warehouses": ["WRHS00000001"],
+      "valid_from": "2025-01-01T00:00:00Z",
+      "valid_to": "2025-01-31T23:59:59Z",
+      "is_active": true,
+      "usage_limit": 100,
+      "used_count": 25
+    }
+  ],
+  "payment_methods": [
+    {
+      "code": "cash",
+      "name": "Cash",
+      "is_enabled": true
+    },
+    {
+      "code": "upi",
+      "name": "UPI",
+      "is_enabled": true
+    },
+    {
+      "code": "online",
+      "name": "Online Payment",
+      "is_enabled": true
+    }
+  ],
+  "sale_types": [
+    {
+      "code": "in_store",
+      "name": "In-Store",
+      "is_enabled": true
+    },
+    {
+      "code": "delivery",
+      "name": "Delivery",
+      "is_enabled": true
+    }
+  ],
+  "tax_config": {
+    "apply_taxes_default": false,
+    "warehouse_state": "Karnataka",
+    "warehouse_state_code": "KA",
+    "gst_rates_available": [0, 5, 12, 18, 28]
+  },
+  "metadata": {
+    "total_products": 15,
+    "total_variants": 42,
+    "variants_in_stock": 38,
+    "active_discounts": 2,
+    "context_generated_at": "2025-01-20T15:00:00Z"
+  }
+}
+```
+
+##### 4. GET /api/v1/aggregation/purchase-orders/:id - PO Detail
+
+**Query Parameters:**
+- `include` - Comma-separated list: `collaborator`, `warehouse`, `items`, `grns`, `inventory`, `payments`
+
+**Response:**
+```json
+{
+  "purchase_order": {
+    "id": "PORD00000001",
+    "po_number": "PO-2025-0001",
+    "collaborator_id": "CLAB00000001",
+    "collaborator_name": "Organic Farms Ltd",
+    "warehouse_id": "WRHS00000001",
+    "warehouse_name": "Main Warehouse",
+    "order_date": "2025-01-15",
+    "expected_delivery_date": "2025-01-20",
+    "actual_delivery_date": "2025-01-19",
+    "status": "delivered",
+    "total_amount": 50000.00,
+    "total_rejected_amount": 2500.00,
+    "amount_owed": 47500.00,
+    "payment_status": "partial",
+    "paid_amount": 25000.00,
+    "is_inter_state": false,
+    "items": [
+      {
+        "id": "POIM00000001",
+        "po_id": "PORD00000001",
+        "variant_id": "PVAR00000001",
+        "product_name": "Organic Tomatoes - 500g",
+        "product_sku": "TOM-500G-ORG",
+        "quantity": 1000,
+        "unit_price": 50.00,
+        "line_total": 50000.00,
+        "received_quantity": 950,
+        "base_price": 47.62,
+        "gst_rate": 5.0,
+        "gst_amount": 2.38,
+        "cgst_rate": 2.5,
+        "cgst_amount": 1.19,
+        "sgst_rate": 2.5,
+        "sgst_amount": 1.19,
+        "igst_rate": 0,
+        "igst_amount": 0,
+        "created_at": "2025-01-15T09:00:00Z"
+      }
+    ],
+    "created_at": "2025-01-15T09:00:00Z",
+    "updated_at": "2025-01-19T14:30:00Z"
+  },
+  "collaborator": {
+    "id": "CLAB00000001",
+    "company_name": "Organic Farms Ltd",
+    "contact_person": "Rajesh Kumar",
+    "contact_number": "9876543210",
+    "email": "rajesh@organicfarms.com",
+    "gst_number": "29AABCU9603R1ZM",
+    "pan_number": "AABCU9603R",
+    "bank_account_no": "1234567890123456",
+    "bank_ifsc": "HDFC0001234",
+    "bank_name": "HDFC Bank",
+    "address_id": "ADDR00000001",
+    "address": {
+      "type": "business",
+      "street": "123 Farm Road",
+      "village": "Green Village",
+      "taluk": "South Taluk",
+      "district": "Bangalore Rural",
+      "state": "Karnataka",
+      "state_code": "KA",
+      "pincode": "560001"
+    },
+    "is_active": true,
+    "created_at": "2025-01-10T08:00:00Z",
+    "updated_at": "2025-01-10T08:00:00Z"
+  },
+  "warehouse": {
+    "id": "WRHS00000001",
+    "name": "Main Warehouse",
+    "address": {
+      "type": "warehouse",
+      "street": "456 Industrial Area",
+      "village": null,
+      "taluk": "North Taluk",
+      "district": "Bangalore Urban",
+      "state": "Karnataka",
+      "state_code": "KA",
+      "pincode": "560002"
+    },
+    "created_at": "2025-01-01T00:00:00Z",
+    "updated_at": "2025-01-01T00:00:00Z"
+  },
+  "grns": [
+    {
+      "id": "GRNX00000001",
+      "grn_number": "GRN-VENDOR-2025-001",
+      "po_id": "PORD00000001",
+      "warehouse_id": "WRHS00000001",
+      "received_date": "2025-01-19",
+      "quality_status": "partial",
+      "remarks": "5% items damaged during transit",
+      "grn_document": "ATCH00000001",
+      "items": [
+        {
+          "id": "GRIT00000001",
+          "grn_id": "GRNX00000001",
+          "po_item_id": "POIM00000001",
+          "variant_id": "PVAR00000001",
+          "received_quantity": 950,
+          "accepted_quantity": 900,
+          "rejected_quantity": 50,
+          "rejection_reason": "Damaged packaging",
+          "expiry_date": "2025-03-15",
+          "batch_number": "LOT-2025-001",
+          "inventory_batch_id": "BATC00000001",
+          "created_at": "2025-01-19T14:30:00Z"
+        }
+      ],
+      "created_at": "2025-01-19T14:30:00Z",
+      "updated_at": "2025-01-19T14:30:00Z"
+    }
+  ],
+  "inventory_batches": [
+    {
+      "id": "BATC00000001",
+      "warehouse_id": "WRHS00000001",
+      "variant_id": "PVAR00000001",
+      "total_quantity": 900,
+      "available_quantity": 850,
+      "reserved_quantity": 50,
+      "cost_price": 50.00,
+      "expiry_date": "2025-03-15",
+      "batch_number": "LOT-2025-001",
+      "grn_id": "GRNX00000001",
+      "created_at": "2025-01-19T14:30:00Z",
+      "updated_at": "2025-01-20T10:00:00Z"
+    }
+  ],
+  "payments": [
+    {
+      "id": "BPMT00000001",
+      "entity_type": "purchase_order",
+      "entity_id": "PORD00000001",
+      "amount": 25000.00,
+      "payment_method": "bank_transfer",
+      "transaction_reference": "UTR123456789",
+      "payment_date": "2025-01-20",
+      "notes": "Partial payment - first installment",
+      "created_at": "2025-01-20T10:00:00Z"
+    }
+  ],
+  "summary": {
+    "ordered_value": 50000.00,
+    "received_value": 47500.00,
+    "rejected_value": 2500.00,
+    "paid_amount": 25000.00,
+    "pending_amount": 22500.00,
+    "grn_count": 1,
+    "batch_count": 1,
+    "payment_count": 1,
+    "completion_percentage": 95.0,
+    "payment_percentage": 52.63
+  }
+}
+```
+
+##### 5. GET /api/v1/aggregation/inventory - Inventory List
+
+**Query Parameters:**
+- `warehouse_id` - Filter by warehouse
+- `variant_id` - Filter by variant
+- `product_id` - Filter by product (all variants)
+- `expiring_within_days` - Filter batches expiring within N days
+- `low_stock_threshold` - Filter items below threshold
+- `include_zero_stock` - Include zero-quantity batches (default: false)
+- `page` - Page number (default: 1)
+- `page_size` - Items per page (default: 20, max: 100)
+
+**Response:**
+```json
+{
+  "batches": [
+    {
+      "batch": {
+        "id": "BATC00000001",
+        "warehouse_id": "WRHS00000001",
+        "variant_id": "PVAR00000001",
+        "total_quantity": 900,
+        "available_quantity": 850,
+        "reserved_quantity": 50,
+        "cost_price": 50.00,
+        "expiry_date": "2025-03-15",
+        "batch_number": "LOT-2025-001",
+        "cgst_rate": 2.5,
+        "sgst_rate": 2.5,
+        "custom_tax_rate": 0,
+        "created_at": "2025-01-19T14:30:00Z",
+        "updated_at": "2025-01-20T10:00:00Z"
+      },
+      "warehouse": {
+        "id": "WRHS00000001",
+        "name": "Main Warehouse",
+        "address": null,
+        "created_at": "2025-01-01T00:00:00Z",
+        "updated_at": "2025-01-01T00:00:00Z"
+      },
+      "variant": {
+        "id": "PVAR00000001",
+        "product_id": "PROD00000001",
+        "variant_name": "500g Pack",
+        "description": "Half kilogram pack",
+        "quantity": "500g",
+        "pack_size": "Small",
+        "sku": "TOM-500G-ORG",
+        "barcode": "8901234567890",
+        "hsn_code": "0702",
+        "gst_rate": 5.0,
+        "collaborator_ids": ["CLAB00000001"],
+        "brand_name": "FreshFarms",
+        "images": null,
+        "image_urls": null,
+        "dosage_instructions": null,
+        "usage_details": null,
+        "prices": [],
+        "is_active": true,
+        "created_at": "2025-01-15T10:35:00Z",
+        "updated_at": "2025-01-20T14:50:00Z"
+      },
+      "product": {
+        "id": "PROD00000001",
+        "name": "Organic Tomatoes",
+        "description": "Fresh organic tomatoes",
+        "category_id": "CAT000000001",
+        "subcategory_id": "SCAT00000001",
+        "variants": [],
+        "created_at": "2025-01-15T10:30:00Z",
+        "updated_at": "2025-01-20T14:45:00Z"
+      },
+      "days_until_expiry": 54,
+      "is_expiring_soon": false,
+      "is_low_stock": false
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "page_size": 20,
+    "total_items": 156,
+    "total_pages": 8,
+    "has_next": true,
+    "has_previous": false
+  },
+  "summary": {
+    "total_batches": 156,
+    "total_quantity": 45000,
+    "total_available": 42500,
+    "total_reserved": 2500,
+    "total_value": 2250000.00,
+    "warehouses_count": 3,
+    "variants_count": 42,
+    "expiring_soon_count": 12,
+    "low_stock_count": 5,
+    "zero_stock_count": 3
+  },
+  "filters_applied": {
+    "warehouse_id": null,
+    "variant_id": null,
+    "product_id": null,
+    "expiring_within_days": null,
+    "low_stock_threshold": null,
+    "include_zero_stock": false
+  }
+}
+```
+
+#### Key Field Notes for Frontend
+
+**ID Formats** (all use kisanlink-db hash IDs, NO underscores):
+- Products: `PROD00000001`
+- Variants: `PVAR00000001`
+- Warehouses: `WRHS00000001`
+- Collaborators: `CLAB00000001`
+- Purchase Orders: `PORD00000001`
+- PO Items: `POIM00000001`
+- GRNs: `GRNX00000001`
+- GRN Items: `GRIT00000001`
+- Batches: `BATC00000001`
+- Prices: `PRIC00000001`
+- Discounts: `DISC00000001`
+- Attachments: `ATCH00000001`
+- Bank Payments: `BPMT00000001`
+
+**GST Tax Fields**:
+- `gst_rate`: Total GST rate (e.g., 5%, 12%, 18%, 28%)
+- `cgst_rate`: Central GST (half of gst_rate for intra-state)
+- `sgst_rate`: State GST (half of gst_rate for intra-state)
+- `igst_rate`: Integrated GST (full rate for inter-state, else 0)
+- `is_inter_state`: Boolean indicating IGST vs CGST+SGST
+
+**Optional Fields** (may be `null`):
+- `description`, `barcode`, `batch_number`
+- `address` (if not populated from AAA)
+- `effective_to` (open-ended prices)
+- `image_urls` (if no images uploaded)
+- `rejection_reason` (if fully accepted)
+
+**Date Formats**:
+- Timestamps: ISO 8601 with timezone (`2025-01-20T15:00:00Z`)
+- Date-only fields: `YYYY-MM-DD` (`2025-01-20`)
+
 ---
 
 ## Frontend Migration Guide

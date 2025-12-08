@@ -212,15 +212,15 @@ definitions:
       pricing:
         $ref: '#/definitions/models.BatchPricing'
       product:
-        $ref: '#/definitions/models.ProductInfoForSales'
+        $ref: '#/definitions/models.ProductResponse'
       quantity_details:
         $ref: '#/definitions/models.QuantityDetails'
       tax_config:
         $ref: '#/definitions/models.BatchTaxConfig'
       variant:
-        $ref: '#/definitions/models.VariantInfoForSales'
+        $ref: '#/definitions/models.ProductVariantResponse'
       warehouse:
-        $ref: '#/definitions/models.WarehouseBasicInfo'
+        $ref: '#/definitions/models.WarehouseResponse'
     type: object
   models.CancelItemDetail:
     properties:
@@ -341,30 +341,6 @@ definitions:
           $ref: '#/definitions/models.SubcategoryResponse'
         type: array
       updated_at:
-        type: string
-    type: object
-  models.CollaboratorBasicInfo:
-    properties:
-      company_name:
-        type: string
-      id:
-        type: string
-    type: object
-  models.CollaboratorInfo:
-    properties:
-      address:
-        $ref: '#/definitions/models.AddressInfo'
-      company_name:
-        type: string
-      contact_person:
-        type: string
-      email:
-        type: string
-      id:
-        type: string
-      is_active:
-        type: boolean
-      phone:
         type: string
     type: object
   models.CollaboratorResponse:
@@ -1378,22 +1354,22 @@ definitions:
       margin:
         $ref: '#/definitions/models.MarginInfo'
       product:
-        $ref: '#/definitions/models.ProductInfoForSales'
+        $ref: '#/definitions/models.ProductResponse'
       quantity_reserved:
         description: Reserved by pending sales
         type: integer
       quantity_sellable:
-        description: Available for new sales (total - reserved)
+        description: Available for new sales
         type: integer
       quantity_total:
-        description: Total inventory (renamed from QuantityAvailable for clarity)
+        description: Total inventory
         type: integer
       selling_price:
         $ref: '#/definitions/models.SellingPriceInfo'
       tax_config:
         $ref: '#/definitions/models.BatchTaxConfig'
       variant:
-        $ref: '#/definitions/models.VariantInfoForSales'
+        $ref: '#/definitions/models.ProductVariantResponse'
       variant_id:
         type: string
     type: object
@@ -1552,14 +1528,14 @@ definitions:
   models.PODetailResponse:
     properties:
       collaborator:
-        $ref: '#/definitions/models.CollaboratorInfo'
+        $ref: '#/definitions/models.CollaboratorResponse'
       grns:
         items:
           $ref: '#/definitions/models.GRNDetail'
         type: array
       items:
         items:
-          $ref: '#/definitions/models.POItemDetail'
+          $ref: '#/definitions/models.PurchaseOrderItemResponse'
         type: array
       metadata:
         $ref: '#/definitions/models.ResponseMetadata'
@@ -1568,7 +1544,7 @@ definitions:
           $ref: '#/definitions/models.POPaymentDetail'
         type: array
       purchase_order:
-        $ref: '#/definitions/models.POInfo'
+        $ref: '#/definitions/models.PurchaseOrderResponse'
       summary:
         $ref: '#/definitions/models.POSummary'
       timeline:
@@ -1576,66 +1552,7 @@ definitions:
           $ref: '#/definitions/models.POTimelineEvent'
         type: array
       warehouse:
-        $ref: '#/definitions/models.WarehouseInfo'
-    type: object
-  models.POInfo:
-    properties:
-      actual_delivery_date:
-        type: string
-      collaborator_id:
-        type: string
-      created_at:
-        type: string
-      currency:
-        type: string
-      expected_delivery_date:
-        type: string
-      external_order_id:
-        type: string
-      id:
-        type: string
-      order_date:
-        type: string
-      paid_amount:
-        type: number
-      payment_status:
-        type: string
-      pending_amount:
-        type: number
-      po_number:
-        type: string
-      status:
-        type: string
-      total_amount:
-        type: number
-      updated_at:
-        type: string
-      warehouse_id:
-        type: string
-    type: object
-  models.POItemDetail:
-    properties:
-      id:
-        type: string
-      ordered_quantity:
-        type: integer
-      pending_quantity:
-        type: integer
-      product:
-        $ref: '#/definitions/models.ProductBasicInfo'
-      received_quantity:
-        type: integer
-      received_status:
-        description: pending, partially_received, fully_received
-        type: string
-      total_cost:
-        type: number
-      unit_cost:
-        type: number
-      variant:
-        $ref: '#/definitions/models.VariantInfoForPO'
-      variant_id:
-        type: string
+        $ref: '#/definitions/models.WarehouseResponse'
     type: object
   models.POPaymentDetail:
     properties:
@@ -1763,57 +1680,18 @@ definitions:
       warehouse_name:
         type: string
     type: object
-  models.ProductBasicInfo:
-    properties:
-      category:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-    type: object
   models.ProductDetailResponse:
     properties:
       collaborator:
-        $ref: '#/definitions/models.CollaboratorInfo'
+        $ref: '#/definitions/models.CollaboratorResponse'
       metadata:
         $ref: '#/definitions/models.ProductMetadata'
       product:
-        $ref: '#/definitions/models.ProductInfo'
+        $ref: '#/definitions/models.ProductResponse'
       variants:
         items:
-          $ref: '#/definitions/models.VariantDetail'
+          $ref: '#/definitions/models.VariantWithAggData'
         type: array
-    type: object
-  models.ProductInfo:
-    properties:
-      category:
-        type: string
-      created_at:
-        type: string
-      description:
-        type: string
-      id:
-        type: string
-      is_active:
-        type: boolean
-      name:
-        type: string
-      organization_id:
-        type: string
-      updated_at:
-        type: string
-    type: object
-  models.ProductInfoForSales:
-    properties:
-      category:
-        type: string
-      description:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
     type: object
   models.ProductMetadata:
     properties:
@@ -2388,7 +2266,7 @@ definitions:
           $ref: '#/definitions/models.RefundPolicyInfo'
         type: array
       warehouse:
-        $ref: '#/definitions/models.WarehouseInfo'
+        $ref: '#/definitions/models.WarehouseResponse'
     type: object
   models.SeedCategoriesResponse:
     properties:
@@ -2796,57 +2674,6 @@ definitions:
     - order_value
     - warehouse_id
     type: object
-  models.VariantDetail:
-    properties:
-      barcode:
-        type: string
-      brand_name:
-        type: string
-      created_at:
-        type: string
-      description:
-        type: string
-      dosage_instructions:
-        type: string
-      external_id:
-        type: string
-      gst_rate:
-        type: number
-      hsn_code:
-        type: string
-      id:
-        type: string
-      images:
-        items:
-          type: string
-        type: array
-      is_active:
-        type: boolean
-      pack_size:
-        type: string
-      prices:
-        $ref: '#/definitions/models.VariantPrices'
-      product_id:
-        type: string
-      quantity:
-        type: string
-      sku:
-        type: string
-      stock_summary:
-        $ref: '#/definitions/models.StockSummary'
-      tax_configuration:
-        $ref: '#/definitions/models.TaxConfiguration'
-      updated_at:
-        type: string
-      usage_details:
-        type: string
-      variant_name:
-        type: string
-      warehouse_stock:
-        items:
-          $ref: '#/definitions/models.WarehouseStock'
-        type: array
-    type: object
   models.VariantDetailResponse:
     properties:
       metadata:
@@ -2861,22 +2688,33 @@ definitions:
       brand_name:
         type: string
       collaborator:
-        $ref: '#/definitions/models.CollaboratorBasicInfo'
+        $ref: '#/definitions/models.CollaboratorResponse'
+      collaborator_ids:
+        description: Multiple collaborators
+        items:
+          type: string
+        type: array
       created_at:
         type: string
       description:
         type: string
       dosage_instructions:
         type: string
-      external_id:
-        type: string
       gst_rate:
+        description: Required GST rate
         type: number
       hsn_code:
+        description: Required GST HSN code
         type: string
       id:
         type: string
+      image_urls:
+        description: Presigned URLs (valid for 1 hour)
+        items:
+          type: string
+        type: array
       images:
+        description: S3 paths (for reference)
         items:
           type: string
         type: array
@@ -2885,9 +2723,16 @@ definitions:
       pack_size:
         type: string
       prices:
-        $ref: '#/definitions/models.VariantPrices'
+        description: Fetched from product_prices table
+        items:
+          $ref: '#/definitions/models.ProductPriceResponse'
+        type: array
+      prices_summary:
+        allOf:
+        - $ref: '#/definitions/models.VariantPrices'
+        description: Aggregated price summary
       product:
-        $ref: '#/definitions/models.ProductBasicInfo'
+        $ref: '#/definitions/models.ProductResponse'
       product_id:
         type: string
       quantity:
@@ -2908,50 +2753,6 @@ definitions:
         items:
           $ref: '#/definitions/models.WarehouseStock'
         type: array
-    type: object
-  models.VariantInfoForPO:
-    properties:
-      brand_name:
-        type: string
-      id:
-        type: string
-      images:
-        items:
-          type: string
-        type: array
-      pack_size:
-        type: string
-      quantity:
-        type: string
-      sku:
-        type: string
-      variant_name:
-        type: string
-    type: object
-  models.VariantInfoForSales:
-    properties:
-      barcode:
-        type: string
-      brand_name:
-        type: string
-      hsn_code:
-        type: string
-      id:
-        type: string
-      images:
-        items:
-          type: string
-        type: array
-      is_active:
-        type: boolean
-      pack_size:
-        type: string
-      quantity:
-        type: string
-      sku:
-        type: string
-      variant_name:
-        type: string
     type: object
   models.VariantPrice:
     properties:
@@ -2977,36 +2778,74 @@ definitions:
       wholesale_price:
         $ref: '#/definitions/models.PriceInfo'
     type: object
-  models.WarehouseBasicInfo:
+  models.VariantWithAggData:
     properties:
+      barcode:
+        type: string
+      brand_name:
+        type: string
+      collaborator_ids:
+        description: Multiple collaborators
+        items:
+          type: string
+        type: array
+      created_at:
+        type: string
+      description:
+        type: string
+      dosage_instructions:
+        type: string
+      gst_rate:
+        description: Required GST rate
+        type: number
+      hsn_code:
+        description: Required GST HSN code
+        type: string
       id:
         type: string
-      location:
-        $ref: '#/definitions/models.WarehouseLocationInfo'
-      name:
-        type: string
-    type: object
-  models.WarehouseInfo:
-    properties:
-      address:
-        $ref: '#/definitions/models.AddressInfo'
-      contact_phone:
-        type: string
-      id:
-        type: string
+      image_urls:
+        description: Presigned URLs (valid for 1 hour)
+        items:
+          type: string
+        type: array
+      images:
+        description: S3 paths (for reference)
+        items:
+          type: string
+        type: array
       is_active:
         type: boolean
-      name:
+      pack_size:
         type: string
-      organization_id:
+      prices:
+        description: Fetched from product_prices table
+        items:
+          $ref: '#/definitions/models.ProductPriceResponse'
+        type: array
+      prices_summary:
+        allOf:
+        - $ref: '#/definitions/models.VariantPrices'
+        description: Aggregated price summary
+      product_id:
         type: string
-    type: object
-  models.WarehouseLocationInfo:
-    properties:
-      city:
+      quantity:
         type: string
-      state:
+      sku:
         type: string
+      stock_summary:
+        $ref: '#/definitions/models.StockSummary'
+      tax_configuration:
+        $ref: '#/definitions/models.TaxConfiguration'
+      updated_at:
+        type: string
+      usage_details:
+        type: string
+      variant_name:
+        type: string
+      warehouse_stock:
+        items:
+          $ref: '#/definitions/models.WarehouseStock'
+        type: array
     type: object
   models.WarehouseResponse:
     properties:
