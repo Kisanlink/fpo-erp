@@ -27,10 +27,18 @@ func (r *ReturnsRepository) GetReturnByID(id string) (*models.Return, error) {
 	return &ret, err
 }
 
-func (r *ReturnsRepository) GetAllReturns(limit, offset int) ([]models.Return, error) {
+func (r *ReturnsRepository) GetAllReturns(limit, offset int) ([]models.Return, int64, error) {
 	var returns []models.Return
-	err := r.db.Preload("Items").Limit(limit).Offset(offset).Find(&returns).Error
-	return returns, err
+	var total int64
+
+	// Get total count
+	if err := r.db.Model(&models.Return{}).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Get paginated records
+	err := r.db.Preload("Items").Order("created_at DESC").Limit(limit).Offset(offset).Find(&returns).Error
+	return returns, total, err
 }
 
 func (r *ReturnsRepository) UpdateReturn(ret *models.Return) error {
@@ -113,14 +121,14 @@ func (r *ReturnsRepository) GetTotalReturnsAmount(startDate, endDate time.Time) 
 func (r *ReturnsRepository) GetReturnRateByProduct(productID string, startDate, endDate time.Time) (float64, error) {
 	var returnRate float64
 	err := r.db.Raw(`
-		SELECT 
+		SELECT
 			COALESCE(
 				(SUM(return_items.quantity) * 100.0 / NULLIF(SUM(sale_items.quantity), 0)
 			, 0) as return_rate
-		FROM return_items 
+		FROM return_items
 		JOIN returns ON return_items.return_id = returns.id
 		LEFT JOIN sale_items ON return_items.sale_item_id = sale_items.id
-		WHERE return_items.product_id = ? 
+		WHERE return_items.product_id = ?
 		AND returns.return_date BETWEEN ? AND ?
 	`, productID, startDate, endDate).Scan(&returnRate).Error
 	return returnRate, err

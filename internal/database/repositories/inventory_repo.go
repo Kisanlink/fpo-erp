@@ -71,22 +71,38 @@ func (r *InventoryRepository) GetBatchByID(id string) (*models.InventoryBatch, e
 	return &batch, nil
 }
 
-// GetBatchesByWarehouse retrieves all batches for a warehouse
-func (r *InventoryRepository) GetBatchesByWarehouse(warehouseID string) ([]models.InventoryBatch, error) {
+// GetBatchesByWarehouse retrieves all batches for a warehouse (paginated)
+func (r *InventoryRepository) GetBatchesByWarehouse(warehouseID string, limit, offset int) ([]models.InventoryBatch, int64, error) {
 	var batches []models.InventoryBatch
-	if err := r.db.Preload("Variant").Where("warehouse_id = ?", warehouseID).Find(&batches).Error; err != nil {
-		return nil, errors.NewInternalServerError("Failed to retrieve warehouse batches")
+	var total int64
+
+	// Get total count
+	if err := r.db.Model(&models.InventoryBatch{}).Where("warehouse_id = ?", warehouseID).Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count warehouse batches")
 	}
-	return batches, nil
+
+	// Get paginated records
+	if err := r.db.Preload("Variant").Where("warehouse_id = ?", warehouseID).Order("created_at DESC").Limit(limit).Offset(offset).Find(&batches).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve warehouse batches")
+	}
+	return batches, total, nil
 }
 
-// GetBatchesByVariant retrieves all batches for a product variant
-func (r *InventoryRepository) GetBatchesByVariant(variantID string) ([]models.InventoryBatch, error) {
+// GetBatchesByVariant retrieves all batches for a product variant (paginated)
+func (r *InventoryRepository) GetBatchesByVariant(variantID string, limit, offset int) ([]models.InventoryBatch, int64, error) {
 	var batches []models.InventoryBatch
-	if err := r.db.Preload("Warehouse").Where("variant_id = ?", variantID).Find(&batches).Error; err != nil {
-		return nil, errors.NewInternalServerError("Failed to retrieve variant batches")
+	var total int64
+
+	// Get total count
+	if err := r.db.Model(&models.InventoryBatch{}).Where("variant_id = ?", variantID).Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count variant batches")
 	}
-	return batches, nil
+
+	// Get paginated records
+	if err := r.db.Preload("Warehouse").Where("variant_id = ?", variantID).Order("created_at DESC").Limit(limit).Offset(offset).Find(&batches).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve variant batches")
+	}
+	return batches, total, nil
 }
 
 // GetBatchesByVariantOrderedByExpiry retrieves batches for a variant ordered by expiry date (FEFO)
@@ -110,10 +126,27 @@ func (r *InventoryRepository) GetBatchesByVariantAndWarehouseOrderedByExpiry(var
 	return batches, nil
 }
 
-// GetAllBatches retrieves all inventory batches with warehouse and variant details
+// GetAllBatchesPaginated retrieves all inventory batches with warehouse and variant details (paginated)
+func (r *InventoryRepository) GetAllBatchesPaginated(limit, offset int) ([]models.InventoryBatch, int64, error) {
+	var batches []models.InventoryBatch
+	var total int64
+
+	// Get total count
+	if err := r.db.Model(&models.InventoryBatch{}).Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count batches")
+	}
+
+	// Get paginated records
+	if err := r.db.Preload("Warehouse").Preload("Variant").Order("created_at DESC").Limit(limit).Offset(offset).Find(&batches).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve all batches")
+	}
+	return batches, total, nil
+}
+
+// GetAllBatches retrieves all inventory batches without pagination (for legacy/internal use)
 func (r *InventoryRepository) GetAllBatches() ([]models.InventoryBatch, error) {
 	var batches []models.InventoryBatch
-	if err := r.db.Preload("Warehouse").Preload("Variant").Find(&batches).Error; err != nil {
+	if err := r.db.Preload("Warehouse").Preload("Variant").Order("created_at DESC").Find(&batches).Error; err != nil {
 		return nil, errors.NewInternalServerError("Failed to retrieve all batches")
 	}
 	return batches, nil
@@ -135,23 +168,39 @@ func (r *InventoryRepository) DeleteBatch(id string) error {
 	return nil
 }
 
-// GetExpiringBatches retrieves batches that expire within a given timeframe
-func (r *InventoryRepository) GetExpiringBatches(days int) ([]models.InventoryBatch, error) {
+// GetExpiringBatches retrieves batches that expire within a given timeframe (paginated)
+func (r *InventoryRepository) GetExpiringBatches(days int, limit, offset int) ([]models.InventoryBatch, int64, error) {
 	var batches []models.InventoryBatch
+	var total int64
 	expiryDate := time.Now().AddDate(0, 0, days)
-	if err := r.db.Preload("Warehouse").Preload("Variant").Where("expiry_date <= ?", expiryDate).Find(&batches).Error; err != nil {
-		return nil, errors.NewInternalServerError("Failed to retrieve expiring batches")
+
+	// Get total count
+	if err := r.db.Model(&models.InventoryBatch{}).Where("expiry_date <= ?", expiryDate).Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count expiring batches")
 	}
-	return batches, nil
+
+	// Get paginated records
+	if err := r.db.Preload("Warehouse").Preload("Variant").Where("expiry_date <= ?", expiryDate).Order("created_at DESC").Limit(limit).Offset(offset).Find(&batches).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve expiring batches")
+	}
+	return batches, total, nil
 }
 
-// GetLowStockBatches retrieves batches with low stock (below threshold)
-func (r *InventoryRepository) GetLowStockBatches(threshold int64) ([]models.InventoryBatch, error) {
+// GetLowStockBatches retrieves batches with low stock (below threshold) (paginated)
+func (r *InventoryRepository) GetLowStockBatches(threshold int64, limit, offset int) ([]models.InventoryBatch, int64, error) {
 	var batches []models.InventoryBatch
-	if err := r.db.Preload("Warehouse").Preload("Variant").Where("total_quantity <= ?", threshold).Find(&batches).Error; err != nil {
-		return nil, errors.NewInternalServerError("Failed to retrieve low stock batches")
+	var total int64
+
+	// Get total count
+	if err := r.db.Model(&models.InventoryBatch{}).Where("total_quantity <= ?", threshold).Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count low stock batches")
 	}
-	return batches, nil
+
+	// Get paginated records
+	if err := r.db.Preload("Warehouse").Preload("Variant").Where("total_quantity <= ?", threshold).Order("created_at DESC").Limit(limit).Offset(offset).Find(&batches).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve low stock batches")
+	}
+	return batches, total, nil
 }
 
 // Transaction operations
@@ -165,13 +214,21 @@ func (r *InventoryRepository) CreateTransaction(transaction *models.InventoryTra
 	return nil
 }
 
-// GetTransactionsByBatch retrieves all transactions for a batch
-func (r *InventoryRepository) GetTransactionsByBatch(batchID string) ([]models.InventoryTransaction, error) {
+// GetTransactionsByBatch retrieves all transactions for a batch (paginated)
+func (r *InventoryRepository) GetTransactionsByBatch(batchID string, limit, offset int) ([]models.InventoryTransaction, int64, error) {
 	var transactions []models.InventoryTransaction
-	if err := r.db.Preload("Batch").Where("batch_id = ?", batchID).Order("occurred_at DESC").Find(&transactions).Error; err != nil {
-		return nil, errors.NewInternalServerError("Failed to retrieve batch transactions")
+	var total int64
+
+	// Get total count
+	if err := r.db.Model(&models.InventoryTransaction{}).Where("batch_id = ?", batchID).Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count batch transactions")
 	}
-	return transactions, nil
+
+	// Get paginated records
+	if err := r.db.Preload("Batch").Where("batch_id = ?", batchID).Order("occurred_at DESC").Limit(limit).Offset(offset).Find(&transactions).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve batch transactions")
+	}
+	return transactions, total, nil
 }
 
 // GetTransactionsByType retrieves transactions by type

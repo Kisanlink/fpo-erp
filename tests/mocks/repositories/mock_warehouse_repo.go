@@ -27,12 +27,12 @@ func (m *MockWarehouseRepository) GetByID(id string) (*models.Warehouse, error) 
 }
 
 // GetAll mocks the GetAll method
-func (m *MockWarehouseRepository) GetAll() ([]models.Warehouse, error) {
-	args := m.Called()
+func (m *MockWarehouseRepository) GetAll(limit, offset int) ([]models.Warehouse, int64, error) {
+	args := m.Called(limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, args.Get(1).(int64), args.Error(2)
 	}
-	return args.Get(0).([]models.Warehouse), args.Error(1)
+	return args.Get(0).([]models.Warehouse), args.Get(1).(int64), args.Error(2)
 }
 
 // Update mocks the Update method

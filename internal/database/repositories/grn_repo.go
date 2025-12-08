@@ -124,28 +124,50 @@ func (r *GRNRepository) GetByPurchaseOrder(poID string) (*models.GRN, error) {
 	return &grn, nil
 }
 
-// GetAll retrieves all GRNs
-func (r *GRNRepository) GetAll() ([]models.GRN, error) {
+// GetAll retrieves all GRNs with pagination
+func (r *GRNRepository) GetAll(limit, offset int) ([]models.GRN, int64, error) {
 	var grns []models.GRN
+	var total int64
+
+	// Get total count
+	if err := r.db.Model(&models.GRN{}).Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count GRNs")
+	}
+
+	// Get paginated records
 	if err := r.db.Preload("PurchaseOrder").
 		Preload("Warehouse").
-		Order("received_date DESC").
+		Order("created_at DESC").
+		Limit(limit).
+		Offset(offset).
 		Find(&grns).Error; err != nil {
-		return nil, errors.NewInternalServerError("Failed to retrieve GRNs")
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve GRNs")
 	}
-	return grns, nil
+	return grns, total, nil
 }
 
-// GetByWarehouse retrieves GRNs by warehouse ID
-func (r *GRNRepository) GetByWarehouse(warehouseID string) ([]models.GRN, error) {
+// GetByWarehouse retrieves GRNs by warehouse ID with pagination
+func (r *GRNRepository) GetByWarehouse(warehouseID string, limit, offset int) ([]models.GRN, int64, error) {
 	var grns []models.GRN
+	var total int64
+
+	query := r.db.Model(&models.GRN{}).Where("warehouse_id = ?", warehouseID)
+
+	// Get total count
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count GRNs by warehouse")
+	}
+
+	// Get paginated records
 	if err := r.db.Preload("PurchaseOrder").
 		Where("warehouse_id = ?", warehouseID).
-		Order("received_date DESC").
+		Order("created_at DESC").
+		Limit(limit).
+		Offset(offset).
 		Find(&grns).Error; err != nil {
-		return nil, errors.NewInternalServerError("Failed to retrieve GRNs by warehouse")
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve GRNs by warehouse")
 	}
-	return grns, nil
+	return grns, total, nil
 }
 
 // GRNNumberExists checks if a GRN number already exists

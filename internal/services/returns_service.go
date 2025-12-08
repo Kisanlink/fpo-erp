@@ -223,10 +223,10 @@ func (s *ReturnsService) GetReturn(id string) (*models.ReturnResponse, error) {
 }
 
 // GetAllReturns retrieves all returns with pagination
-func (s *ReturnsService) GetAllReturns(limit, offset int) ([]models.ReturnResponse, error) {
-	returns, err := s.returnsRepo.GetAllReturns(limit, offset)
+func (s *ReturnsService) GetAllReturns(limit, offset int) ([]models.ReturnResponse, int64, error) {
+	returns, total, err := s.returnsRepo.GetAllReturns(limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []models.ReturnResponse
@@ -234,7 +234,7 @@ func (s *ReturnsService) GetAllReturns(limit, offset int) ([]models.ReturnRespon
 		responses = append(responses, *s.mapReturnToResponse(&ret))
 	}
 
-	return responses, nil
+	return responses, total, nil
 }
 
 // UpdateReturn updates a return

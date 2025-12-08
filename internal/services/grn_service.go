@@ -291,11 +291,11 @@ func (s *GRNService) GetGRN(ctx context.Context, id string) (*models.GRNResponse
 	return s.buildGRNResponse(grn)
 }
 
-// GetAllGRNs retrieves all GRNs
-func (s *GRNService) GetAllGRNs(ctx context.Context) ([]models.GRNResponse, error) {
-	grns, err := s.grnRepo.GetAll()
+// GetAllGRNs retrieves all GRNs with pagination
+func (s *GRNService) GetAllGRNs(ctx context.Context, limit, offset int) ([]models.GRNResponse, int64, error) {
+	grns, total, err := s.grnRepo.GetAll(limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []models.GRNResponse
@@ -312,20 +312,20 @@ func (s *GRNService) GetAllGRNs(ctx context.Context) ([]models.GRNResponse, erro
 		responses = append(responses, *response)
 	}
 
-	return responses, nil
+	return responses, total, nil
 }
 
-// GetGRNsByWarehouse retrieves GRNs by warehouse
-func (s *GRNService) GetGRNsByWarehouse(ctx context.Context, warehouseID string) ([]models.GRNResponse, error) {
+// GetGRNsByWarehouse retrieves GRNs by warehouse with pagination
+func (s *GRNService) GetGRNsByWarehouse(ctx context.Context, warehouseID string, limit, offset int) ([]models.GRNResponse, int64, error) {
 	// Validate warehouse exists
 	_, err := s.warehouseRepo.GetByID(warehouseID)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	grns, err := s.grnRepo.GetByWarehouse(warehouseID)
+	grns, total, err := s.grnRepo.GetByWarehouse(warehouseID, limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []models.GRNResponse
@@ -342,7 +342,7 @@ func (s *GRNService) GetGRNsByWarehouse(ctx context.Context, warehouseID string)
 		responses = append(responses, *response)
 	}
 
-	return responses, nil
+	return responses, total, nil
 }
 
 // GetGRNByPurchaseOrder retrieves GRN by purchase order ID

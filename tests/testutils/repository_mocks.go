@@ -623,12 +623,12 @@ func (m *MockProductRepository) GetByID(id string) (*models.Product, error) {
 	return args.Get(0).(*models.Product), args.Error(1)
 }
 
-func (m *MockProductRepository) GetAll() ([]models.Product, error) {
-	args := m.Called()
+func (m *MockProductRepository) GetAll(limit, offset int) ([]models.Product, int64, error) {
+	args := m.Called(limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, 0, args.Error(2)
 	}
-	return args.Get(0).([]models.Product), args.Error(1)
+	return args.Get(0).([]models.Product), args.Get(1).(int64), args.Error(2)
 }
 
 func (m *MockProductRepository) Update(product *models.Product) error {

@@ -168,7 +168,7 @@ func TestReturnsService_GetAllReturns_Success(t *testing.T) {
 	}
 
 	// Test: Get all returns
-	responses, err := service.GetAllReturns(10, 0)
+	responses, total, err := service.GetAllReturns(10, 0)
 
 	// Assert
 	if err != nil {
@@ -177,6 +177,9 @@ func TestReturnsService_GetAllReturns_Success(t *testing.T) {
 	if len(responses) != 2 {
 		t.Errorf("Expected 2 returns, got %d", len(responses))
 	}
+	if total != 2 {
+		t.Errorf("Expected total 2, got %d", total)
+	}
 }
 
 func TestReturnsService_GetAllReturns_Empty(t *testing.T) {
@@ -184,7 +187,7 @@ func TestReturnsService_GetAllReturns_Empty(t *testing.T) {
 	defer cleanup()
 
 	// Test: Get all returns with no data
-	responses, err := service.GetAllReturns(10, 0)
+	responses, total, err := service.GetAllReturns(10, 0)
 
 	// Assert
 	if err != nil {
@@ -192,6 +195,9 @@ func TestReturnsService_GetAllReturns_Empty(t *testing.T) {
 	}
 	if len(responses) != 0 {
 		t.Errorf("Expected 0 returns, got %d", len(responses))
+	}
+	if total != 0 {
+		t.Errorf("Expected total 0, got %d", total)
 	}
 }
 
@@ -211,7 +217,7 @@ func TestReturnsService_GetAllReturns_Pagination(t *testing.T) {
 	}
 
 	// Test: Get returns with pagination
-	responses, err := service.GetAllReturns(2, 1)
+	responses, total, err := service.GetAllReturns(2, 1)
 
 	// Assert
 	if err != nil {
@@ -219,6 +225,9 @@ func TestReturnsService_GetAllReturns_Pagination(t *testing.T) {
 	}
 	if len(responses) != 2 {
 		t.Errorf("Expected 2 returns (limit), got %d", len(responses))
+	}
+	if total != 5 {
+		t.Errorf("Expected total 5, got %d", total)
 	}
 }
 

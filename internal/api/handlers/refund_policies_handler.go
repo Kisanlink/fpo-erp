@@ -82,7 +82,9 @@ func (h *RefundPoliciesHandler) CreateRefundPolicy(c *gin.Context) {
 // @Description Retrieve all refund policies with pagination
 // @Tags Refund Policies
 // @Produce json
-// @Success 200 {object} utils.Response{data=[]models.RefundPolicyResponse} "Refund policies retrieved successfully"
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.RefundPolicyResponse} "Refund policies retrieved successfully"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
@@ -96,16 +98,15 @@ func (h *RefundPoliciesHandler) GetAllRefundPolicies(c *gin.Context) {
 		zap.String("method", c.Request.Method),
 		zap.String("path", c.Request.URL.Path))
 
-	// Get query parameters for pagination
-	limit := 10 // default limit
-	offset := 0 // default offset
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
 
 	// 3. Service Call
 	h.logger.Debug("Calling service to get all refund policies",
-		zap.Int("limit", limit),
-		zap.Int("offset", offset))
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
 
-	policies, err := h.refundPoliciesService.GetAllRefundPolicies(limit, offset)
+	policies, total, err := h.refundPoliciesService.GetAllRefundPolicies(params.Limit, params.Offset)
 
 	// 4. Service Error
 	if err != nil {
@@ -117,8 +118,9 @@ func (h *RefundPoliciesHandler) GetAllRefundPolicies(c *gin.Context) {
 
 	// 5. Success
 	h.logger.Info("Refund policies retrieved successfully via handler",
-		zap.Int("count", len(policies)))
-	utils.OKResponse(c, "Refund policies retrieved successfully", policies)
+		zap.Int("count", len(policies)),
+		zap.Int64("total", total))
+	utils.PaginatedOKResponse(c, policies, total, params.Limit, params.Offset)
 }
 
 // GetRefundPolicy handles GET /api/v1/refund-policies/:id

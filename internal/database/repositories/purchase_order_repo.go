@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"fmt"
+
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/errors"
 
@@ -92,52 +93,96 @@ func (r *PurchaseOrderRepository) GetByPONumber(poNumber string) (*models.Purcha
 	return &po, nil
 }
 
-// GetAll retrieves all purchase orders
-func (r *PurchaseOrderRepository) GetAll() ([]models.PurchaseOrder, error) {
+// GetAll retrieves all purchase orders with pagination
+func (r *PurchaseOrderRepository) GetAll(limit, offset int) ([]models.PurchaseOrder, int64, error) {
 	var pos []models.PurchaseOrder
-	if err := r.db.Preload("Collaborator").Preload("Warehouse").Find(&pos).Error; err != nil {
-		return nil, errors.NewInternalServerError("Failed to retrieve purchase orders")
+	var total int64
+
+	// Get total count
+	if err := r.db.Model(&models.PurchaseOrder{}).Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count purchase orders")
 	}
-	return pos, nil
+
+	// Get paginated records
+	if err := r.db.Preload("Collaborator").Preload("Warehouse").
+		Order("created_at DESC").
+		Limit(limit).Offset(offset).
+		Find(&pos).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve purchase orders")
+	}
+	return pos, total, nil
 }
 
-// GetByCollaborator retrieves purchase orders by collaborator ID
-func (r *PurchaseOrderRepository) GetByCollaborator(collaboratorID string) ([]models.PurchaseOrder, error) {
+// GetByCollaborator retrieves purchase orders by collaborator ID with pagination
+func (r *PurchaseOrderRepository) GetByCollaborator(collaboratorID string, limit, offset int) ([]models.PurchaseOrder, int64, error) {
 	var pos []models.PurchaseOrder
+	var total int64
+
+	query := r.db.Model(&models.PurchaseOrder{}).Where("collaborator_id = ?", collaboratorID)
+
+	// Get total count
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count purchase orders by collaborator")
+	}
+
+	// Get paginated records
 	if err := r.db.Preload("Collaborator").
 		Preload("Warehouse").
 		Where("collaborator_id = ?", collaboratorID).
 		Order("created_at DESC").
+		Limit(limit).Offset(offset).
 		Find(&pos).Error; err != nil {
-		return nil, errors.NewInternalServerError("Failed to retrieve purchase orders by collaborator")
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve purchase orders by collaborator")
 	}
-	return pos, nil
+	return pos, total, nil
 }
 
-// GetByStatus retrieves purchase orders by status
-func (r *PurchaseOrderRepository) GetByStatus(status string) ([]models.PurchaseOrder, error) {
+// GetByStatus retrieves purchase orders by status with pagination
+func (r *PurchaseOrderRepository) GetByStatus(status string, limit, offset int) ([]models.PurchaseOrder, int64, error) {
 	var pos []models.PurchaseOrder
+	var total int64
+
+	query := r.db.Model(&models.PurchaseOrder{}).Where("status = ?", status)
+
+	// Get total count
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count purchase orders by status")
+	}
+
+	// Get paginated records
 	if err := r.db.Preload("Collaborator").
 		Preload("Warehouse").
 		Where("status = ?", status).
 		Order("created_at DESC").
+		Limit(limit).Offset(offset).
 		Find(&pos).Error; err != nil {
-		return nil, errors.NewInternalServerError("Failed to retrieve purchase orders by status")
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve purchase orders by status")
 	}
-	return pos, nil
+	return pos, total, nil
 }
 
-// GetPendingDeliveries retrieves purchase orders with status not delivered or paid
-func (r *PurchaseOrderRepository) GetPendingDeliveries() ([]models.PurchaseOrder, error) {
+// GetPendingDeliveries retrieves purchase orders with status not delivered or paid with pagination
+func (r *PurchaseOrderRepository) GetPendingDeliveries(limit, offset int) ([]models.PurchaseOrder, int64, error) {
 	var pos []models.PurchaseOrder
+	var total int64
+
+	query := r.db.Model(&models.PurchaseOrder{}).Where("status NOT IN ?", []string{"delivered", "paid"})
+
+	// Get total count
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError(fmt.Sprintf("Failed to count pending deliveries: %v", err))
+	}
+
+	// Get paginated records
 	if err := r.db.Preload("Collaborator").
 		Preload("Warehouse").
 		Where("status NOT IN ?", []string{"delivered", "paid"}).
 		Order("expected_delivery_date ASC").
+		Limit(limit).Offset(offset).
 		Find(&pos).Error; err != nil {
-		return nil, errors.NewInternalServerError(fmt.Sprintf("Failed to retrieve pending deliveries: %v", err))
+		return nil, 0, errors.NewInternalServerError(fmt.Sprintf("Failed to retrieve pending deliveries: %v", err))
 	}
-	return pos, nil
+	return pos, total, nil
 }
 
 // Update updates an existing purchase order

@@ -235,18 +235,21 @@ func (s *PurchaseOrderService) GetPurchaseOrder(ctx context.Context, id string) 
 	return s.buildPurchaseOrderResponse(po)
 }
 
-// GetAllPurchaseOrders retrieves all purchase orders
-func (s *PurchaseOrderService) GetAllPurchaseOrders(ctx context.Context) ([]models.PurchaseOrderResponse, error) {
-	s.logger.Info("Retrieving all purchase orders")
+// GetAllPurchaseOrders retrieves all purchase orders with pagination
+func (s *PurchaseOrderService) GetAllPurchaseOrders(ctx context.Context, limit, offset int) ([]models.PurchaseOrderResponse, int64, error) {
+	s.logger.Info("Retrieving all purchase orders",
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
 
-	pos, err := s.poRepo.GetAll()
+	pos, total, err := s.poRepo.GetAll(limit, offset)
 	if err != nil {
 		s.logger.Error("Failed to retrieve all purchase orders", zap.Error(err))
-		return nil, err
+		return nil, 0, err
 	}
 
 	s.logger.Debug("Retrieved purchase orders",
-		zap.Int("count", len(pos)))
+		zap.Int("count", len(pos)),
+		zap.Int64("total", total))
 
 	var responses []models.PurchaseOrderResponse
 	for _, po := range pos {
@@ -262,20 +265,20 @@ func (s *PurchaseOrderService) GetAllPurchaseOrders(ctx context.Context) ([]mode
 		responses = append(responses, *response)
 	}
 
-	return responses, nil
+	return responses, total, nil
 }
 
-// GetPurchaseOrdersByCollaborator retrieves purchase orders by collaborator
-func (s *PurchaseOrderService) GetPurchaseOrdersByCollaborator(ctx context.Context, collaboratorID string) ([]models.PurchaseOrderResponse, error) {
+// GetPurchaseOrdersByCollaborator retrieves purchase orders by collaborator with pagination
+func (s *PurchaseOrderService) GetPurchaseOrdersByCollaborator(ctx context.Context, collaboratorID string, limit, offset int) ([]models.PurchaseOrderResponse, int64, error) {
 	// Validate collaborator exists
 	_, err := s.collaboratorRepo.GetByID(collaboratorID)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	pos, err := s.poRepo.GetByCollaborator(collaboratorID)
+	pos, total, err := s.poRepo.GetByCollaborator(collaboratorID, limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []models.PurchaseOrderResponse
@@ -292,19 +295,19 @@ func (s *PurchaseOrderService) GetPurchaseOrdersByCollaborator(ctx context.Conte
 		responses = append(responses, *response)
 	}
 
-	return responses, nil
+	return responses, total, nil
 }
 
-// GetPurchaseOrdersByStatus retrieves purchase orders by status
-func (s *PurchaseOrderService) GetPurchaseOrdersByStatus(ctx context.Context, status string) ([]models.PurchaseOrderResponse, error) {
+// GetPurchaseOrdersByStatus retrieves purchase orders by status with pagination
+func (s *PurchaseOrderService) GetPurchaseOrdersByStatus(ctx context.Context, status string, limit, offset int) ([]models.PurchaseOrderResponse, int64, error) {
 	// Validate status
 	if !isValidPOStatus(status) {
-		return nil, errors.NewValidationError(fmt.Sprintf("invalid status: %s", status))
+		return nil, 0, errors.NewValidationError(fmt.Sprintf("invalid status: %s", status))
 	}
 
-	pos, err := s.poRepo.GetByStatus(status)
+	pos, total, err := s.poRepo.GetByStatus(status, limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []models.PurchaseOrderResponse
@@ -321,14 +324,14 @@ func (s *PurchaseOrderService) GetPurchaseOrdersByStatus(ctx context.Context, st
 		responses = append(responses, *response)
 	}
 
-	return responses, nil
+	return responses, total, nil
 }
 
-// GetPendingDeliveries retrieves all pending purchase orders
-func (s *PurchaseOrderService) GetPendingDeliveries(ctx context.Context) ([]models.PurchaseOrderResponse, error) {
-	pos, err := s.poRepo.GetPendingDeliveries()
+// GetPendingDeliveries retrieves all pending purchase orders with pagination
+func (s *PurchaseOrderService) GetPendingDeliveries(ctx context.Context, limit, offset int) ([]models.PurchaseOrderResponse, int64, error) {
+	pos, total, err := s.poRepo.GetPendingDeliveries(limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []models.PurchaseOrderResponse
@@ -345,7 +348,7 @@ func (s *PurchaseOrderService) GetPendingDeliveries(ctx context.Context) ([]mode
 		responses = append(responses, *response)
 	}
 
-	return responses, nil
+	return responses, total, nil
 }
 
 // UpdatePurchaseOrderStatus updates the status of a purchase order

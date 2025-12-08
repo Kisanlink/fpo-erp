@@ -33,14 +33,14 @@ func TestBankPaymentsHandler_CreateBankPayment_Success(t *testing.T) {
 	handler := handlers.NewBankPaymentsHandler(mockService, mockAAA, mockLogger)
 
 	request := &models.CreateBankPaymentRequest{
-		SaleID:        stringPtr("SALE00000001"),
+		SaleID:        testutils.StringPtr("SALE00000001"),
 		PaymentMethod: "upi",
 		Amount:        1500.00,
 	}
 
 	expectedResponse := &models.BankPaymentResponse{
 		ID:             "BPAY00000001",
-		SaleID:         stringPtr("SALE00000001"),
+		SaleID:         testutils.StringPtr("SALE00000001"),
 		PaymentMethod:  "upi",
 		TransactionRef: "TXN123456",
 		Amount:         1500.00,
@@ -96,7 +96,7 @@ func TestBankPaymentsHandler_CreateBankPayment_ServiceError(t *testing.T) {
 	handler := handlers.NewBankPaymentsHandler(mockService, mockAAA, mockLogger)
 
 	request := &models.CreateBankPaymentRequest{
-		SaleID:        stringPtr("SALE00000001"),
+		SaleID:        testutils.StringPtr("SALE00000001"),
 		PaymentMethod: "upi",
 		Amount:        1500.00,
 	}
@@ -125,19 +125,19 @@ func TestBankPaymentsHandler_GetAllBankPayments_Success(t *testing.T) {
 	expectedPayments := []models.BankPaymentResponse{
 		{
 			ID:            "BPAY00000001",
-			SaleID:        stringPtr("SALE00000001"),
+			SaleID:        testutils.StringPtr("SALE00000001"),
 			PaymentMethod: "upi",
 			Amount:        1500.00,
 		},
 		{
 			ID:            "BPAY00000002",
-			ReturnID:      stringPtr("RETN00000001"),
+			ReturnID:      testutils.StringPtr("RETN00000001"),
 			PaymentMethod: "cash",
 			Amount:        500.00,
 		},
 	}
 
-	mockService.On("GetAllBankPayments", 10, 0).Return(expectedPayments, nil)
+	mockService.On("GetAllBankPayments", 50, 0).Return(expectedPayments, int64(2), nil)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -150,8 +150,10 @@ func TestBankPaymentsHandler_GetAllBankPayments_Success(t *testing.T) {
 
 	var response map[string]interface{}
 	json.Unmarshal(w.Body.Bytes(), &response)
-	assert.Equal(t, "Bank payments retrieved successfully", response["message"])
 	assert.NotNil(t, response["data"])
+	assert.NotNil(t, response["pagination"])
+	pagination := response["pagination"].(map[string]interface{})
+	assert.Equal(t, float64(2), pagination["total"])
 }
 
 // TestBankPaymentsHandler_GetAllBankPayments_WithPagination tests pagination
@@ -161,7 +163,7 @@ func TestBankPaymentsHandler_GetAllBankPayments_WithPagination(t *testing.T) {
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
 	handler := handlers.NewBankPaymentsHandler(mockService, mockAAA, mockLogger)
 
-	mockService.On("GetAllBankPayments", 10, 20).Return([]models.BankPaymentResponse{}, nil)
+	mockService.On("GetAllBankPayments", 10, 20).Return([]models.BankPaymentResponse{}, int64(0), nil)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -182,7 +184,7 @@ func TestBankPaymentsHandler_GetBankPayment_Success(t *testing.T) {
 
 	expectedPayment := &models.BankPaymentResponse{
 		ID:            "BPAY00000001",
-		SaleID:        stringPtr("SALE00000001"),
+		SaleID:        testutils.StringPtr("SALE00000001"),
 		PaymentMethod: "upi",
 		Amount:        1500.00,
 	}
@@ -235,7 +237,7 @@ func TestBankPaymentsHandler_GetBankPaymentsBySale_Success(t *testing.T) {
 	expectedPayments := []models.BankPaymentResponse{
 		{
 			ID:            "BPAY00000001",
-			SaleID:        stringPtr("SALE00000001"),
+			SaleID:        testutils.StringPtr("SALE00000001"),
 			PaymentMethod: "upi",
 			Amount:        1500.00,
 		},
@@ -288,7 +290,7 @@ func TestBankPaymentsHandler_GetBankPaymentsByReturn_Success(t *testing.T) {
 	expectedPayments := []models.BankPaymentResponse{
 		{
 			ID:            "BPAY00000002",
-			ReturnID:      stringPtr("RETN00000001"),
+			ReturnID:      testutils.StringPtr("RETN00000001"),
 			PaymentMethod: "cash",
 			Amount:        500.00,
 		},
@@ -329,9 +331,4 @@ func TestBankPaymentsHandler_GetBankPaymentsByReturn_ServiceError(t *testing.T) 
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 	mockService.AssertExpectations(t)
-}
-
-// Helper function for string pointers
-func stringPtr(s string) *string {
-	return &s
 }

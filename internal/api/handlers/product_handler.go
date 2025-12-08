@@ -129,10 +129,13 @@ func (h *ProductHandler) GetProduct(c *gin.Context) {
 
 // GetAllProducts handles GET /api/v1/products
 // @Summary Get All Products
-// @Description Retrieve all products (requires authentication)
+// @Description Retrieve all products with pagination (requires authentication)
 // @Tags Products
 // @Produce json
-// @Success 200 {object} utils.Response{data=[]models.ProductResponse} "Products retrieved successfully"
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.ProductResponse} "Products retrieved successfully"
+// @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
@@ -145,8 +148,15 @@ func (h *ProductHandler) GetAllProducts(c *gin.Context) {
 		zap.String("method", c.Request.Method),
 		zap.String("path", c.Request.URL.Path))
 
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
+
+	h.logger.Debug("Calling product service to get all products",
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
+
 	// Get all products
-	response, err := h.productService.GetAllProducts(c.Request.Context())
+	response, total, err := h.productService.GetAllProducts(c.Request.Context(), params.Limit, params.Offset)
 	if err != nil {
 		h.logger.Error("Service error retrieving all products",
 			zap.Error(err))
@@ -155,9 +165,10 @@ func (h *ProductHandler) GetAllProducts(c *gin.Context) {
 	}
 
 	h.logger.Info("All products retrieved successfully",
-		zap.Int("product_count", len(response)))
+		zap.Int("product_count", len(response)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "Products retrieved successfully", response)
+	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
 }
 
 // UpdateProduct handles PATCH /api/v1/products/:id

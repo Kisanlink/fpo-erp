@@ -132,8 +132,8 @@ func TestWarehouseHandler_GetAllWarehouses_Success(t *testing.T) {
 			Name: "Secondary Warehouse",
 		},
 	}
-	mockService.On("GetAllWarehouses", mock.Anything, mock.Anything).
-		Return(expectedResponse, nil)
+	mockService.On("GetAllWarehouses", mock.Anything, 50, 0, mock.Anything).
+		Return(expectedResponse, int64(2), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/warehouses", nil)
@@ -161,8 +161,8 @@ func TestWarehouseHandler_GetAllWarehouses_EmptyList(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
-	mockService.On("GetAllWarehouses", mock.Anything, mock.Anything).
-		Return([]models.WarehouseResponse{}, nil)
+	mockService.On("GetAllWarehouses", mock.Anything, 50, 0, mock.Anything).
+		Return([]models.WarehouseResponse{}, int64(0), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/warehouses", nil)

@@ -12,11 +12,11 @@ import (
 type InventoryServiceInterface interface {
 	CreateBatch(warehouseID, variantID string, costPrice float64, expiryDate time.Time, quantity int64) (*models.InventoryBatchResponse, error)
 	GetBatch(id string) (*models.InventoryBatchResponse, error)
-	GetBatchesByWarehouse(warehouseID string) ([]models.InventoryBatchResponse, error)
-	GetBatchesByVariant(variantID string) ([]models.InventoryBatchResponse, error)
+	GetBatchesByWarehouse(warehouseID string, limit, offset int) ([]models.InventoryBatchResponse, int64, error)
+	GetBatchesByVariant(variantID string, limit, offset int) ([]models.InventoryBatchResponse, int64, error)
 	CreateTransaction(batchID string, request *models.CreateInventoryTransactionRequest) (*models.InventoryTransactionResponse, error)
-	GetTransactionsByBatch(batchID string) ([]models.InventoryTransactionResponse, error)
-	GetExpiringBatches(days int) ([]models.InventoryBatchResponse, error)
-	GetLowStockBatches(threshold int64) ([]models.InventoryBatchResponse, error)
-	GetAllProductsAvailability(ctx context.Context, jwtToken string) ([]models.ProductAvailabilityResponse, error)
+	GetTransactionsByBatch(batchID string, limit, offset int) ([]models.InventoryTransactionResponse, int64, error)
+	GetExpiringBatches(days int, limit, offset int) ([]models.InventoryBatchResponse, int64, error)
+	GetLowStockBatches(threshold int64, limit, offset int) ([]models.InventoryBatchResponse, int64, error)
+	GetAllProductsAvailability(ctx context.Context, jwtToken string, limit, offset int) ([]models.ProductAvailabilityResponse, int64, error)
 }

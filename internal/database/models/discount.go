@@ -1,8 +1,9 @@
 package models
 
 import (
-	"kisanlink-erp/internal/constants"
 	"time"
+
+	"kisanlink-erp/internal/constants"
 
 	"github.com/Kisanlink/kisanlink-db/pkg/base"
 	"github.com/Kisanlink/kisanlink-db/pkg/core/hash"

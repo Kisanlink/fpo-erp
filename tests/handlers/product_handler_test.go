@@ -250,8 +250,8 @@ func TestProductHandler_GetAllProducts_Success(t *testing.T) {
 			Name: "Wheat Flour",
 		},
 	}
-	mockService.On("GetAllProducts", mock.Anything).
-		Return(expectedResponse, nil)
+	mockService.On("GetAllProducts", mock.Anything, mock.AnythingOfType("int"), mock.AnythingOfType("int")).
+		Return(expectedResponse, int64(2), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/products", nil)
@@ -279,8 +279,8 @@ func TestProductHandler_GetAllProducts_EmptyList(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
-	mockService.On("GetAllProducts", mock.Anything).
-		Return([]models.ProductResponse{}, nil)
+	mockService.On("GetAllProducts", mock.Anything, mock.AnythingOfType("int"), mock.AnythingOfType("int")).
+		Return([]models.ProductResponse{}, int64(0), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/products", nil)

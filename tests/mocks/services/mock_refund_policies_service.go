@@ -27,12 +27,12 @@ func (m *MockRefundPoliciesService) GetRefundPolicy(id string) (*models.RefundPo
 	return args.Get(0).(*models.RefundPolicyResponse), args.Error(1)
 }
 
-func (m *MockRefundPoliciesService) GetAllRefundPolicies(limit, offset int) ([]models.RefundPolicyResponse, error) {
+func (m *MockRefundPoliciesService) GetAllRefundPolicies(limit, offset int) ([]models.RefundPolicyResponse, int64, error) {
 	args := m.Called(limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, 0, args.Error(2)
 	}
-	return args.Get(0).([]models.RefundPolicyResponse), args.Error(1)
+	return args.Get(0).([]models.RefundPolicyResponse), args.Get(1).(int64), args.Error(2)
 }
 
 func (m *MockRefundPoliciesService) UpdateRefundPolicy(id string, req *models.UpdateRefundPolicyRequest) (*models.RefundPolicyResponse, error) {

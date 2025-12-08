@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"strconv"
-
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
 	logger "kisanlink-erp/internal/interfaces"
@@ -84,9 +82,9 @@ func (h *BankPaymentsHandler) CreateBankPayment(c *gin.Context) {
 // @Description Retrieve all bank payments with pagination
 // @Tags Bank Payments
 // @Produce json
-// @Param limit query integer false "Number of records to return (default: 10)" example(10)
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
 // @Param offset query integer false "Number of records to skip (default: 0)" example(0)
-// @Success 200 {object} utils.Response{data=[]models.BankPaymentResponse} "Bank payments retrieved successfully"
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.BankPaymentResponse} "Bank payments retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
@@ -101,32 +99,15 @@ func (h *BankPaymentsHandler) GetAllBankPayments(c *gin.Context) {
 		zap.String("method", c.Request.Method),
 		zap.String("path", c.Request.URL.Path))
 
-	limitStr := c.DefaultQuery("limit", "10")
-	offsetStr := c.DefaultQuery("offset", "0")
-
-	// 2. Validation Error
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil {
-		h.logger.Error("Invalid limit parameter for get all bank payments",
-			zap.Error(err))
-		utils.BadRequestResponse(c, "Invalid limit parameter", err)
-		return
-	}
-
-	offset, err := strconv.Atoi(offsetStr)
-	if err != nil {
-		h.logger.Error("Invalid offset parameter for get all bank payments",
-			zap.Error(err))
-		utils.BadRequestResponse(c, "Invalid offset parameter", err)
-		return
-	}
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
 
 	// 3. Service Call
 	h.logger.Debug("Calling service to get all bank payments",
-		zap.Int("limit", limit),
-		zap.Int("offset", offset))
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
 
-	payments, err := h.bankPaymentsService.GetAllBankPayments(limit, offset)
+	payments, total, err := h.bankPaymentsService.GetAllBankPayments(params.Limit, params.Offset)
 
 	// 4. Service Error
 	if err != nil {
@@ -138,8 +119,9 @@ func (h *BankPaymentsHandler) GetAllBankPayments(c *gin.Context) {
 
 	// 5. Success
 	h.logger.Info("Bank payments retrieved successfully via handler",
-		zap.Int("count", len(payments)))
-	utils.OKResponse(c, "Bank payments retrieved successfully", payments)
+		zap.Int("count", len(payments)),
+		zap.Int64("total", total))
+	utils.PaginatedOKResponse(c, payments, total, params.Limit, params.Offset)
 }
 
 // GetBankPayment handles GET /api/v1/bank-payments/:id

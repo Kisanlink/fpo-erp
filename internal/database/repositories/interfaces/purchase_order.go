@@ -32,17 +32,17 @@ type PurchaseOrderInterface interface {
 	// GetByPONumber retrieves a purchase order by PO number
 	GetByPONumber(poNumber string) (*models.PurchaseOrder, error)
 
-	// GetAll retrieves all purchase orders
-	GetAll() ([]models.PurchaseOrder, error)
+	// GetAll retrieves all purchase orders with pagination
+	GetAll(limit, offset int) ([]models.PurchaseOrder, int64, error)
 
-	// GetByCollaborator retrieves purchase orders by collaborator ID
-	GetByCollaborator(collaboratorID string) ([]models.PurchaseOrder, error)
+	// GetByCollaborator retrieves purchase orders by collaborator ID with pagination
+	GetByCollaborator(collaboratorID string, limit, offset int) ([]models.PurchaseOrder, int64, error)
 
-	// GetByStatus retrieves purchase orders by status
-	GetByStatus(status string) ([]models.PurchaseOrder, error)
+	// GetByStatus retrieves purchase orders by status with pagination
+	GetByStatus(status string, limit, offset int) ([]models.PurchaseOrder, int64, error)
 
-	// GetPendingDeliveries retrieves purchase orders pending delivery
-	GetPendingDeliveries() ([]models.PurchaseOrder, error)
+	// GetPendingDeliveries retrieves purchase orders pending delivery with pagination
+	GetPendingDeliveries(limit, offset int) ([]models.PurchaseOrder, int64, error)
 
 	// Update updates an existing purchase order
 	Update(po *models.PurchaseOrder) error

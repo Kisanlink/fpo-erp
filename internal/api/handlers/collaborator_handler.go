@@ -175,10 +175,12 @@ func (h *CollaboratorHandler) GetCollaborator(c *gin.Context) {
 
 // GetAllCollaborators handles GET /api/v1/collaborators
 // @Summary Get All Collaborators
-// @Description Retrieve all collaborators (requires authentication)
+// @Description Retrieve all collaborators with pagination (requires authentication)
 // @Tags Collaborators
 // @Produce json
-// @Success 200 {object} utils.Response{data=[]models.CollaboratorResponse} "Collaborators retrieved successfully"
+// @Param limit query int false "Number of results per page (default: 50, max: 200)" default(50)
+// @Param offset query int false "Number of results to skip (default: 0)" default(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.CollaboratorResponse} "Collaborators retrieved successfully"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
@@ -199,11 +201,16 @@ func (h *CollaboratorHandler) GetAllCollaborators(c *gin.Context) {
 		return
 	}
 
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
+
 	// 3. Service Call Log
-	h.logger.Debug("Calling service to get all collaborators")
+	h.logger.Debug("Calling service to get all collaborators",
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
 
 	// Get all collaborators
-	response, err := h.collaboratorService.GetAllCollaborators(c.Request.Context(), jwtToken)
+	response, total, err := h.collaboratorService.GetAllCollaborators(c.Request.Context(), jwtToken, params.Limit, params.Offset)
 	if err != nil {
 		// 4. Service Error Log
 		h.logger.Error("Service error getting all collaborators",
@@ -214,17 +221,20 @@ func (h *CollaboratorHandler) GetAllCollaborators(c *gin.Context) {
 
 	// 5. Success Log
 	h.logger.Info("All collaborators retrieved successfully",
-		zap.Int("count", len(response)))
+		zap.Int("count", len(response)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "Collaborators retrieved successfully", response)
+	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
 }
 
 // GetActiveCollaborators handles GET /api/v1/collaborators/active
 // @Summary Get Active Collaborators
-// @Description Retrieve all active collaborators (requires authentication)
+// @Description Retrieve all active collaborators with pagination (requires authentication)
 // @Tags Collaborators
 // @Produce json
-// @Success 200 {object} utils.Response{data=[]models.CollaboratorResponse} "Active collaborators retrieved successfully"
+// @Param limit query int false "Number of results per page (default: 50, max: 200)" default(50)
+// @Param offset query int false "Number of results to skip (default: 0)" default(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.CollaboratorResponse} "Active collaborators retrieved successfully"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
@@ -245,11 +255,16 @@ func (h *CollaboratorHandler) GetActiveCollaborators(c *gin.Context) {
 		return
 	}
 
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
+
 	// 3. Service Call Log
-	h.logger.Debug("Calling service to get active collaborators")
+	h.logger.Debug("Calling service to get active collaborators",
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
 
 	// Get active collaborators
-	response, err := h.collaboratorService.GetActiveCollaborators(c.Request.Context(), jwtToken)
+	response, total, err := h.collaboratorService.GetActiveCollaborators(c.Request.Context(), jwtToken, params.Limit, params.Offset)
 	if err != nil {
 		// 4. Service Error Log
 		h.logger.Error("Service error getting active collaborators",
@@ -260,9 +275,10 @@ func (h *CollaboratorHandler) GetActiveCollaborators(c *gin.Context) {
 
 	// 5. Success Log
 	h.logger.Info("Active collaborators retrieved successfully",
-		zap.Int("count", len(response)))
+		zap.Int("count", len(response)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "Active collaborators retrieved successfully", response)
+	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
 }
 
 // UpdateCollaborator handles PUT /api/v1/collaborators/:id
@@ -432,11 +448,13 @@ func (h *CollaboratorHandler) DeleteCollaborator(c *gin.Context) {
 
 // SearchCollaborators handles GET /api/v1/collaborators/search
 // @Summary Search Collaborators
-// @Description Search collaborators by company name (requires authentication)
+// @Description Search collaborators by company name with pagination (requires authentication)
 // @Tags Collaborators
 // @Produce json
 // @Param q query string true "Search query"
-// @Success 200 {object} utils.Response{data=[]models.CollaboratorResponse} "Search results"
+// @Param limit query int false "Number of results per page (default: 50, max: 200)" default(50)
+// @Param offset query int false "Number of results to skip (default: 0)" default(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.CollaboratorResponse} "Search results"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
@@ -465,12 +483,17 @@ func (h *CollaboratorHandler) SearchCollaborators(c *gin.Context) {
 		return
 	}
 
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
+
 	// 3. Service Call Log
 	h.logger.Debug("Calling service to search collaborators",
-		zap.String("query", query))
+		zap.String("query", query),
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
 
 	// Search collaborators
-	response, err := h.collaboratorService.SearchCollaborators(c.Request.Context(), query, jwtToken)
+	response, total, err := h.collaboratorService.SearchCollaborators(c.Request.Context(), query, jwtToken, params.Limit, params.Offset)
 	if err != nil {
 		// 4. Service Error Log
 		h.logger.Error("Service error searching collaborators",
@@ -483,9 +506,10 @@ func (h *CollaboratorHandler) SearchCollaborators(c *gin.Context) {
 	// 5. Success Log
 	h.logger.Info("Collaborators search completed successfully",
 		zap.String("query", query),
-		zap.Int("count", len(response)))
+		zap.Int("count", len(response)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "Search completed successfully", response)
+	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
 }
 
 // RegisterRoutes registers all collaborator routes

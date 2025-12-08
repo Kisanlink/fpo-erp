@@ -454,10 +454,11 @@ func TestPurchaseOrderService_GetAllPurchaseOrders_Success(t *testing.T) {
 	createTestPurchaseOrder(t, db, "PO-2025-0002", collaborator.ID, warehouse.ID, "confirmed")
 
 	ctx := context.Background()
-	responses, err := service.GetAllPurchaseOrders(ctx)
+	responses, total, err := service.GetAllPurchaseOrders(ctx, 50, 0)
 
 	testutils.AssertNoError(t, err, "GetAllPurchaseOrders should succeed")
 	testutils.AssertEqual(t, len(responses), 2, "Should return 2 POs")
+	testutils.AssertEqual(t, total, int64(2), "Total should be 2")
 }
 
 func TestPurchaseOrderService_GetAllPurchaseOrders_Empty(t *testing.T) {
@@ -465,10 +466,11 @@ func TestPurchaseOrderService_GetAllPurchaseOrders_Empty(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	responses, err := service.GetAllPurchaseOrders(ctx)
+	responses, total, err := service.GetAllPurchaseOrders(ctx, 50, 0)
 
 	testutils.AssertNoError(t, err, "GetAllPurchaseOrders should succeed")
 	testutils.AssertEqual(t, len(responses), 0, "Should return empty list")
+	testutils.AssertEqual(t, total, int64(0), "Total should be 0")
 }
 
 // =============================================================================
@@ -488,10 +490,11 @@ func TestPurchaseOrderService_GetPurchaseOrdersByCollaborator_Success(t *testing
 	createTestPurchaseOrder(t, db, "PO-2025-0003", collaborator2.ID, warehouse.ID, "placed")
 
 	ctx := context.Background()
-	responses, err := service.GetPurchaseOrdersByCollaborator(ctx, collaborator1.ID)
+	responses, total, err := service.GetPurchaseOrdersByCollaborator(ctx, collaborator1.ID, 50, 0)
 
 	testutils.AssertNoError(t, err, "GetPurchaseOrdersByCollaborator should succeed")
 	testutils.AssertEqual(t, len(responses), 2, "Should return 2 POs for collaborator 1")
+	testutils.AssertEqual(t, total, int64(2), "Total should be 2")
 	for _, resp := range responses {
 		testutils.AssertEqual(t, resp.CollaboratorID, collaborator1.ID, "All POs should belong to collaborator 1")
 	}
@@ -504,10 +507,11 @@ func TestPurchaseOrderService_GetPurchaseOrdersByCollaborator_Empty(t *testing.T
 	collaborator := createTestCollaborator(t, db, "COLLAB-001", true)
 
 	ctx := context.Background()
-	responses, err := service.GetPurchaseOrdersByCollaborator(ctx, collaborator.ID)
+	responses, total, err := service.GetPurchaseOrdersByCollaborator(ctx, collaborator.ID, 50, 0)
 
 	testutils.AssertNoError(t, err, "GetPurchaseOrdersByCollaborator should succeed")
 	testutils.AssertEqual(t, len(responses), 0, "Should return empty list")
+	testutils.AssertEqual(t, total, int64(0), "Total should be 0")
 }
 
 func TestPurchaseOrderService_GetPurchaseOrdersByCollaborator_NotFound(t *testing.T) {
@@ -515,7 +519,7 @@ func TestPurchaseOrderService_GetPurchaseOrdersByCollaborator_NotFound(t *testin
 	defer cleanup()
 
 	ctx := context.Background()
-	_, err := service.GetPurchaseOrdersByCollaborator(ctx, "INVALID-COLLAB")
+	_, _, err := service.GetPurchaseOrdersByCollaborator(ctx, "INVALID-COLLAB", 50, 0)
 
 	testutils.AssertError(t, err, "Should return error for invalid collaborator")
 }
@@ -536,10 +540,11 @@ func TestPurchaseOrderService_GetPurchaseOrdersByStatus_Success(t *testing.T) {
 	createTestPurchaseOrder(t, db, "PO-2025-0003", collaborator.ID, warehouse.ID, "confirmed")
 
 	ctx := context.Background()
-	responses, err := service.GetPurchaseOrdersByStatus(ctx, "confirmed")
+	responses, total, err := service.GetPurchaseOrdersByStatus(ctx, "confirmed", 50, 0)
 
 	testutils.AssertNoError(t, err, "GetPurchaseOrdersByStatus should succeed")
 	testutils.AssertEqual(t, len(responses), 2, "Should return 2 confirmed POs")
+	testutils.AssertEqual(t, total, int64(2), "Total should be 2")
 	for _, resp := range responses {
 		testutils.AssertEqual(t, resp.Status, "confirmed", "All POs should have confirmed status")
 	}
@@ -555,10 +560,11 @@ func TestPurchaseOrderService_GetPurchaseOrdersByStatus_Empty(t *testing.T) {
 	createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "placed")
 
 	ctx := context.Background()
-	responses, err := service.GetPurchaseOrdersByStatus(ctx, "delivered")
+	responses, total, err := service.GetPurchaseOrdersByStatus(ctx, "delivered", 50, 0)
 
 	testutils.AssertNoError(t, err, "GetPurchaseOrdersByStatus should succeed")
 	testutils.AssertEqual(t, len(responses), 0, "Should return empty list")
+	testutils.AssertEqual(t, total, int64(0), "Total should be 0")
 }
 
 func TestPurchaseOrderService_GetPurchaseOrdersByStatus_InvalidStatus(t *testing.T) {
@@ -566,7 +572,7 @@ func TestPurchaseOrderService_GetPurchaseOrdersByStatus_InvalidStatus(t *testing
 	defer cleanup()
 
 	ctx := context.Background()
-	_, err := service.GetPurchaseOrdersByStatus(ctx, "invalid_status")
+	_, _, err := service.GetPurchaseOrdersByStatus(ctx, "invalid_status", 50, 0)
 
 	testutils.AssertError(t, err, "Should return error for invalid status")
 	testutils.AssertContains(t, err.Error(), "invalid status", "Error should mention invalid status")
@@ -588,7 +594,7 @@ func TestPurchaseOrderService_GetPendingDeliveries_Success(t *testing.T) {
 	createTestPurchaseOrder(t, db, "PO-2025-0003", collaborator.ID, warehouse.ID, "delivered")
 
 	ctx := context.Background()
-	responses, err := service.GetPendingDeliveries(ctx)
+	responses, _, err := service.GetPendingDeliveries(ctx, 50, 0)
 
 	testutils.AssertNoError(t, err, "GetPendingDeliveries should succeed")
 	// Depends on repository implementation - should return pending ones
@@ -606,7 +612,7 @@ func TestPurchaseOrderService_GetPendingDeliveries_Empty(t *testing.T) {
 	createTestPurchaseOrder(t, db, "PO-2025-0002", collaborator.ID, warehouse.ID, "paid")
 
 	ctx := context.Background()
-	responses, err := service.GetPendingDeliveries(ctx)
+	responses, _, err := service.GetPendingDeliveries(ctx, 50, 0)
 
 	testutils.AssertNoError(t, err, "GetPendingDeliveries should succeed")
 	testutils.AssertTrue(t, len(responses) >= 0, "Should return list")

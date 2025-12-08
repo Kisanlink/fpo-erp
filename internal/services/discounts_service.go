@@ -133,10 +133,10 @@ func (s *DiscountsService) GetDiscount(id string) (*models.DiscountResponse, err
 }
 
 // GetAllDiscounts retrieves all discounts with pagination
-func (s *DiscountsService) GetAllDiscounts(limit, offset int) ([]models.DiscountResponse, error) {
-	discounts, err := s.discountRepo.GetAllDiscounts(limit, offset)
+func (s *DiscountsService) GetAllDiscounts(limit, offset int) ([]models.DiscountResponse, int64, error) {
+	discounts, total, err := s.discountRepo.GetAllDiscounts(limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []models.DiscountResponse
@@ -144,14 +144,14 @@ func (s *DiscountsService) GetAllDiscounts(limit, offset int) ([]models.Discount
 		responses = append(responses, *discount.ToResponse())
 	}
 
-	return responses, nil
+	return responses, total, nil
 }
 
 // GetActiveDiscounts retrieves all active discounts
-func (s *DiscountsService) GetActiveDiscounts() ([]models.DiscountResponse, error) {
-	discounts, err := s.discountRepo.GetActiveDiscounts()
+func (s *DiscountsService) GetActiveDiscounts(limit, offset int) ([]models.DiscountResponse, int64, error) {
+	discounts, total, err := s.discountRepo.GetActiveDiscounts(limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []models.DiscountResponse
@@ -159,7 +159,7 @@ func (s *DiscountsService) GetActiveDiscounts() ([]models.DiscountResponse, erro
 		responses = append(responses, *discount.ToResponse())
 	}
 
-	return responses, nil
+	return responses, total, nil
 }
 
 // UpdateDiscount updates a discount

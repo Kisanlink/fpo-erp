@@ -11,6 +11,7 @@ import (
 	"kisanlink-erp/internal/database/repositories"
 	"kisanlink-erp/internal/errors"
 	"kisanlink-erp/internal/interfaces"
+	"kisanlink-erp/internal/utils"
 
 	"go.uber.org/zap"
 )
@@ -302,7 +303,7 @@ func (s *AggregationService) buildVariantDetail(v *models.ProductVariant, req *m
 
 	// Get inventory if requested
 	if includes.Inventory {
-		batches, err := s.inventoryRepo.GetBatchesByVariant(v.ID)
+		batches, err := s.inventoryRepo.GetBatchesByVariantOrderedByExpiry(v.ID)
 		if err == nil && len(batches) > 0 {
 			stockSummary := &models.StockSummary{
 				TotalQuantity:     0,
@@ -511,7 +512,21 @@ func (s *AggregationService) GetSalesContext(req *models.SalesContextRequest) (*
 	var batches []models.InventoryBatch
 	var err error
 	if req.WarehouseID != "" {
-		batches, err = s.inventoryRepo.GetBatchesByWarehouse(req.WarehouseID)
+		// Use pagination loop to get all batches for the warehouse
+		limit := utils.MaxLimit
+		offset := 0
+		for {
+			pageBatches, total, fetchErr := s.inventoryRepo.GetBatchesByWarehouse(req.WarehouseID, limit, offset)
+			if fetchErr != nil {
+				err = fetchErr
+				break
+			}
+			batches = append(batches, pageBatches...)
+			if int64(offset+limit) >= total {
+				break
+			}
+			offset += limit
+		}
 	} else {
 		batches, err = s.inventoryRepo.GetAllBatches()
 	}
@@ -695,7 +710,7 @@ func (s *AggregationService) GetSalesContext(req *models.SalesContextRequest) (*
 	// Note: Individual item taxes are calculated from ProductVariant.GSTRate during sales
 
 	// Get refund policies
-	refundPolicies, err := s.refundPoliciesRepo.GetAllRefundPolicies(100, 0)
+	refundPolicies, _, err := s.refundPoliciesRepo.GetAllRefundPolicies(utils.MaxLimit, 0)
 	if err == nil {
 		for _, rp := range refundPolicies {
 			// Calculate refund percentage from restocking fee (100 - restocking fee)
@@ -1142,9 +1157,37 @@ func (s *AggregationService) GetInventoryList(req *models.InventoryListRequest) 
 	var err error
 
 	if req.WarehouseID != "" {
-		allBatches, err = s.inventoryRepo.GetBatchesByWarehouse(req.WarehouseID)
+		// Use pagination loop to get all batches for the warehouse
+		pLimit := utils.MaxLimit
+		pOffset := 0
+		for {
+			pageBatches, total, fetchErr := s.inventoryRepo.GetBatchesByWarehouse(req.WarehouseID, pLimit, pOffset)
+			if fetchErr != nil {
+				err = fetchErr
+				break
+			}
+			allBatches = append(allBatches, pageBatches...)
+			if int64(pOffset+pLimit) >= total {
+				break
+			}
+			pOffset += pLimit
+		}
 	} else if req.VariantID != "" {
-		allBatches, err = s.inventoryRepo.GetBatchesByVariant(req.VariantID)
+		// Use pagination loop to get all batches for the variant
+		pLimit := utils.MaxLimit
+		pOffset := 0
+		for {
+			pageBatches, total, fetchErr := s.inventoryRepo.GetBatchesByVariant(req.VariantID, pLimit, pOffset)
+			if fetchErr != nil {
+				err = fetchErr
+				break
+			}
+			allBatches = append(allBatches, pageBatches...)
+			if int64(pOffset+pLimit) >= total {
+				break
+			}
+			pOffset += pLimit
+		}
 	} else {
 		allBatches, err = s.inventoryRepo.GetAllBatches()
 	}

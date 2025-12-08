@@ -145,21 +145,23 @@ func (s *WarehouseService) GetWarehouse(ctx context.Context, id string, jwtToken
 	return s.buildWarehouseResponse(ctx, warehouse, jwtToken)
 }
 
-// GetAllWarehouses retrieves all warehouses
-func (s *WarehouseService) GetAllWarehouses(ctx context.Context, jwtToken string) ([]models.WarehouseResponse, error) {
-	s.logger.Info("Retrieving all warehouses")
+// GetAllWarehouses retrieves all warehouses with pagination
+func (s *WarehouseService) GetAllWarehouses(ctx context.Context, limit, offset int, jwtToken string) ([]models.WarehouseResponse, int64, error) {
+	s.logger.Info("Retrieving all warehouses",
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
 
 	// Check if AAA service is available
 	if s.addressClient == nil {
 		s.logger.Error("AAA address service is not available - cannot retrieve warehouses")
-		return nil, errors.NewServiceUnavailableError("AAA address service is not available")
+		return nil, 0, errors.NewServiceUnavailableError("AAA address service is not available")
 	}
 
-	warehouses, err := s.warehouseRepo.GetAll()
+	warehouses, total, err := s.warehouseRepo.GetAll(limit, offset)
 	if err != nil {
 		s.logger.Error("Failed to retrieve all warehouses",
 			zap.Error(err))
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []models.WarehouseResponse
@@ -176,9 +178,10 @@ func (s *WarehouseService) GetAllWarehouses(ctx context.Context, jwtToken string
 	}
 
 	s.logger.Info("Retrieved all warehouses successfully",
-		zap.Int("count", len(responses)))
+		zap.Int("count", len(responses)),
+		zap.Int64("total", total))
 
-	return responses, nil
+	return responses, total, nil
 }
 
 // UpdateWarehouse updates a warehouse

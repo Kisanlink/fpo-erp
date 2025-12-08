@@ -29,12 +29,12 @@ func (m *MockWarehouseService) GetWarehouse(ctx context.Context, id string, jwtT
 	return args.Get(0).(*models.WarehouseResponse), args.Error(1)
 }
 
-func (m *MockWarehouseService) GetAllWarehouses(ctx context.Context, jwtToken string) ([]models.WarehouseResponse, error) {
-	args := m.Called(ctx, jwtToken)
+func (m *MockWarehouseService) GetAllWarehouses(ctx context.Context, limit, offset int, jwtToken string) ([]models.WarehouseResponse, int64, error) {
+	args := m.Called(ctx, limit, offset, jwtToken)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, 0, args.Error(2)
 	}
-	return args.Get(0).([]models.WarehouseResponse), args.Error(1)
+	return args.Get(0).([]models.WarehouseResponse), args.Get(1).(int64), args.Error(2)
 }
 
 func (m *MockWarehouseService) UpdateWarehouse(ctx context.Context, id string, request *models.UpdateWarehouseRequest, jwtToken string) (*models.WarehouseResponse, error) {

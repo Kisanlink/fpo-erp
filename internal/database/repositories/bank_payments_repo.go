@@ -27,10 +27,18 @@ func (r *BankPaymentsRepository) GetBankPaymentByID(id string) (*models.BankPaym
 }
 
 // GetAllBankPayments retrieves all bank payments with pagination
-func (r *BankPaymentsRepository) GetAllBankPayments(limit, offset int) ([]models.BankPayment, error) {
+func (r *BankPaymentsRepository) GetAllBankPayments(limit, offset int) ([]models.BankPayment, int64, error) {
 	var payments []models.BankPayment
-	err := r.db.Limit(limit).Offset(offset).Find(&payments).Error
-	return payments, err
+	var total int64
+
+	// Get total count
+	if err := r.db.Model(&models.BankPayment{}).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Get paginated records
+	err := r.db.Order("created_at DESC").Limit(limit).Offset(offset).Find(&payments).Error
+	return payments, total, err
 }
 
 // GetBankPaymentsBySaleID retrieves bank payments for a specific sale

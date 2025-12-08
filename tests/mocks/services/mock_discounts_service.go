@@ -27,20 +27,20 @@ func (m *MockDiscountsService) GetDiscount(id string) (*models.DiscountResponse,
 	return args.Get(0).(*models.DiscountResponse), args.Error(1)
 }
 
-func (m *MockDiscountsService) GetAllDiscounts(limit, offset int) ([]models.DiscountResponse, error) {
+func (m *MockDiscountsService) GetAllDiscounts(limit, offset int) ([]models.DiscountResponse, int64, error) {
 	args := m.Called(limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, args.Get(1).(int64), args.Error(2)
 	}
-	return args.Get(0).([]models.DiscountResponse), args.Error(1)
+	return args.Get(0).([]models.DiscountResponse), args.Get(1).(int64), args.Error(2)
 }
 
-func (m *MockDiscountsService) GetActiveDiscounts() ([]models.DiscountResponse, error) {
-	args := m.Called()
+func (m *MockDiscountsService) GetActiveDiscounts(limit, offset int) ([]models.DiscountResponse, int64, error) {
+	args := m.Called(limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, args.Get(1).(int64), args.Error(2)
 	}
-	return args.Get(0).([]models.DiscountResponse), args.Error(1)
+	return args.Get(0).([]models.DiscountResponse), args.Get(1).(int64), args.Error(2)
 }
 
 func (m *MockDiscountsService) UpdateDiscount(id string, req *models.UpdateDiscountRequest) (*models.DiscountResponse, error) {

@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories/interfaces"
 	"kisanlink-erp/internal/errors"
 	"kisanlink-erp/internal/utils"
-	"time"
 )
 
 // EcommerceWebhookService handles e-commerce webhook business logic
@@ -164,7 +165,8 @@ func (s *EcommerceWebhookService) ProcessOrderCreated(ctx context.Context, webho
 // resolveWarehouse finds warehouse by address_id
 func (s *EcommerceWebhookService) resolveWarehouse(ctx context.Context, addressID string) (*models.Warehouse, error) {
 	// Find warehouse with this address_id
-	warehouses, err := s.warehouseRepo.GetAll()
+	// Use high limit to fetch all warehouses (200 is the max limit)
+	warehouses, _, err := s.warehouseRepo.GetAll(200, 0)
 	if err != nil {
 		return nil, errors.NewInternalServerError("failed to query warehouses")
 	}

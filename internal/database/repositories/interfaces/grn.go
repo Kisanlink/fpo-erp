@@ -41,11 +41,11 @@ type GRNInterface interface {
 	// GetByPurchaseOrder retrieves a GRN by purchase order ID
 	GetByPurchaseOrder(poID string) (*models.GRN, error)
 
-	// GetAll retrieves all GRNs
-	GetAll() ([]models.GRN, error)
+	// GetAll retrieves all GRNs with pagination
+	GetAll(limit, offset int) ([]models.GRN, int64, error)
 
-	// GetByWarehouse retrieves GRNs by warehouse ID
-	GetByWarehouse(warehouseID string) ([]models.GRN, error)
+	// GetByWarehouse retrieves GRNs by warehouse ID with pagination
+	GetByWarehouse(warehouseID string, limit, offset int) ([]models.GRN, int64, error)
 
 	// GRNNumberExists checks if a GRN number already exists
 	GRNNumberExists(grnNumber string) (bool, error)

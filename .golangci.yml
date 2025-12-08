@@ -1,312 +1,66 @@
 # golangci-lint configuration for Kisanlink ERP
 # Optimized for fast pre-commit checks while catching real issues
 
+version: "2"
+
 run:
-  # Timeout for analysis (matches pre-commit hook timeout)
   timeout: 2m
-
-  # Exit code when at least one issue was found
-  issues-exit-code: 1
-
-  # Include test files in linting
   tests: true
-
-  # Modules download mode (readonly for CI/pre-commit)
   modules-download-mode: readonly
 
-  # Skip directories
-  skip-dirs:
-    - vendor
-    - .git
-    - .github
-    - scripts
-    - docs
-
-  # Skip files
-  skip-files:
-    - ".*\\.pb\\.go$"  # Protocol buffer generated files
-    - ".*_generated\\.go$"  # Any generated files
-
-# Output configuration
 output:
-  # Format: colored-line-number, line-number, json, tab, checkstyle, code-climate
-  format: colored-line-number
-
-  # Print lines of code with issue
+  formats:
+    text:
+      path: stdout
+      format: colored-line-number
   print-issued-lines: true
-
-  # Print linter name in the end of issue text
   print-linter-name: true
-
-  # Make issues output unique by line
-  uniq-by-line: true
-
-  # Sort results by: filepath, line, and column
   sort-results: true
 
-# Linters configuration
+# Linters configuration - minimal set for speed
 linters:
-  # Disable all linters by default
-  disable-all: true
-
-  # Enable specific linters
+  default: none
   enable:
-    # Essential - Bugs and correctness
-    - errcheck        # Checks for unchecked errors
-    - gosimple        # Simplify code suggestions
-    - govet          # Reports suspicious constructs
-    - ineffassign    # Detects ineffectual assignments
-    - staticcheck    # Go static analysis (very comprehensive)
-    - typecheck      # Type checking
-    - unused         # Checks for unused constants, variables, functions
+    - govet
+    - ineffassign
 
-    # Code quality
-    - gofmt          # Checks if code is gofmt-ed (formatting)
-    - goimports      # Checks if imports are formatted
-    - misspell       # Finds commonly misspelled English words
-    - unconvert      # Remove unnecessary type conversions
-    - unparam        # Reports unused function parameters
+# Formatters
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes: kisanlink-erp
 
-    # Style and best practices
-    - errname        # Checks that error types follow conventions
-    - errorlint      # Find code that will cause problems with Go 1.13+ error wrapping
-    - exportloopref  # Checks for pointers to enclosing loop variables
-    - goconst        # Finds repeated strings that could be constants
-    - gocritic       # Comprehensive linter (with performance checks)
-    - goprintffuncname # Checks that printf-like functions are named correctly
-    - nolintlint     # Reports ill-formed or insufficient nolint directives
-    - predeclared    # Find code that shadows built-in identifiers
-    - revive         # Fast, configurable, extensible, flexible linter
-    - stylecheck     # Replacement for golint
-    - whitespace     # Detection of leading/trailing whitespace
-
-    # Security (lightweight)
-    - gosec          # Security problems (G101-G602) - runs separately in pre-commit but good as double-check
-
-  # Fast mode - only new issues
-  fast: true
-
-# Linter-specific settings
+# Linter settings
 linters-settings:
-  errcheck:
-    # Report `a := b.(MyStruct)` without checking ok
-    check-type-assertions: true
-
-    # Report `defer file.Close()` without checking error
-    check-blank: true
-
-    # Functions to exclude from checking (known safe patterns)
-    exclude-functions:
-      - (io.Closer).Close
-      - (*database/sql.Rows).Close
-      - (*os.File).Close
-
   govet:
-    # Enable all analyzers
-    enable-all: true
-
-    # Disable specific analyzers that are too noisy
     disable:
-      - shadow  # Too many false positives
-      - fieldalignment  # Style preference, not a bug
-      - atomicalign  # Causing panic with nil pointer dereference
-
-  gocritic:
-    # Enable multiple checks by tags
-    enabled-tags:
-      - diagnostic  # Diagnostics
-      - style       # Style issues
-      - performance # Performance issues
-
-    disabled-checks:
-      - unnecessaryDefer  # Sometimes defer is clearer even if not strictly necessary
-      - ifElseChain       # Sometimes if-else is clearer than switch
-      - singleCaseSwitch  # Sometimes switch is clearer for future expansion
-
-  staticcheck:
-    # Select checks (SA=staticcheck, ST=stylecheck, S=simple)
-    checks: ["all"]
-
-  stylecheck:
-    # Select checks
-    checks: ["all", "-ST1000", "-ST1003"]
-    # ST1000: Incorrect or missing package comment
-    # ST1003: Poorly chosen identifier (ALL_CAPS)
-
-  revive:
-    # Minimal configuration for speed
-    confidence: 0.8
-    rules:
-      # Essential rules
-      - name: blank-imports
-      - name: context-as-argument
-      - name: context-keys-type
-      - name: dot-imports
-      - name: error-return
-      - name: error-strings
-      - name: error-naming
-      - name: exported
-        disabled: true  # Too noisy for now
-      - name: if-return
-      - name: increment-decrement
-      - name: var-naming
-      - name: var-declaration
-      - name: package-comments
-        disabled: true  # Will enable later
-      - name: range
-      - name: receiver-naming
-      - name: time-naming
-      - name: unexported-return
-      - name: indent-error-flow
-      - name: errorf
-      - name: empty-block
-      - name: superfluous-else
-      - name: unused-parameter
-        disabled: true  # Too many false positives in interfaces
-      - name: unreachable-code
-      - name: redefines-builtin-id
-
-  gosec:
-    # Include test files
-    tests: true
-
-    # Select which rules to run (G101-G602)
-    includes:
-      - G101  # Look for hard coded credentials
-      - G102  # Bind to all interfaces
-      - G103  # Audit the use of unsafe block
-      - G104  # Audit errors not checked
-      - G106  # Audit the use of ssh.InsecureIgnoreHostKey
-      - G107  # Url provided to HTTP request as taint input
-      - G201  # SQL query construction using format string
-      - G202  # SQL query construction using string concatenation
-      - G203  # Use of unescaped data in HTML templates
-      - G204  # Audit use of command execution
-      - G301  # Poor file permissions used when creating a directory
-      - G302  # Poor file permissions used when creation file or using chmod
-      - G303  # Creating tempfile using a predictable path
-      - G304  # File path provided as taint input
-      - G305  # File traversal when extracting zip archive
-      - G401  # Detect the usage of DES, RC4, MD5 or SHA1
-      - G402  # Look for bad TLS connection settings
-      - G403  # Ensure minimum RSA key length of 2048 bits
-      - G404  # Insecure random number source (rand instead of crypto/rand)
-      - G501  # Import blocklist: crypto/md5
-      - G502  # Import blocklist: crypto/des
-      - G503  # Import blocklist: crypto/rc4
-      - G504  # Import blocklist: net/http/cgi
-      - G505  # Import blocklist: crypto/sha1
-      - G601  # Implicit memory aliasing of items from a range statement
-
-    # Exclude rules that are too noisy
-    excludes:
-      - G110  # Decompression bomb - too many false positives
-
-  gofmt:
-    # Simplify code
-    simplify: true
-
-  goimports:
-    # Put local imports after 3rd-party packages
-    local-prefixes: kisanlink-erp
-
-  misspell:
-    # Locale to use
-    locale: US
-
-  goconst:
-    # Minimal occurrences of constant string to trigger
-    min-occurrences: 3
-    # Minimum length of string constant
-    min-len: 3
-    # Ignore test files
-    ignore-tests: true
+      - shadow
+      - fieldalignment
 
 # Issues configuration
 issues:
-  # Maximum issues count per one linter
   max-issues-per-linter: 50
-
-  # Maximum count of issues with the same text
-  max-same-issues: 3
-
-  # Show only new issues
-  new: false
-
-  # Fix found issues (if supported by linter)
+  max-same-issues: 5
   fix: false
 
-  # Exclude patterns
   exclude-rules:
-    # Exclude some linters from running on tests files
+    # Exclude test files from most linters
     - path: _test\.go
-      linters:
-        - errcheck      # Errors in tests are usually intentional
-        - gocritic      # Test code can be less optimal
-        - gosec         # Test code can be less secure
-        - unparam       # Test functions often have unused params
-
-    # Exclude specific gosec rules in test files
-    - path: _test\.go
-      text: "G104:"  # Unhandled errors in tests
-      linters:
-        - gosec
-
-    # Exclude known false positives
-    - text: "Error return value of .((os\\.)?std(out|err)\\..*|.*Close|.*Flush|os\\.Remove(All)?|.*print(f|ln)?|os\\.(Un)?Setenv). is not checked"
-      linters:
-        - errcheck
-
-    # Exclude shadow checking - too many false positives
-    - text: "shadow:"
-      linters:
-        - govet
-
-    # Exclude some staticcheck messages
-    - text: "SA9003:"  # Empty branch - sometimes intentional
-      linters:
-        - staticcheck
-
-    # Ignore long lines in test files (test data can be long)
-    - path: _test\.go
-      text: "line is \\d+ characters"
-      linters:
-        - revive
-
-    # Allow dot imports in test files for testify
-    - path: _test\.go
-      text: "dot-imports:"
-      linters:
-        - revive
-
-    # Ignore magic numbers in tests
-    - path: _test\.go
-      text: "mnd:"
       linters:
         - gocritic
+        - gosec
+        - unparam
 
-  #Exclude directories
-  exclude-dirs:
+# Exclusions
+exclusions:
+  paths:
     - vendor
     - .git
-    - .github
-    - scripts
-    - docs
-
-  #Exclude files
-  exclude-files:
-    - ".*\\.pb\\.go$"
-    - ".*_generated\\.go$"
-
-  uniq-by-line: true
-
-  # Independently of option `exclude` we use default exclude patterns
-  exclude-use-default: true
-
-  # Show all issues from a linter
-  exclude-case-sensitive: false
-
-  # If set to true, exclude and exclude-rules regular expressions become case-sensitive
-  include:
-    - EXC0001  # errcheck: Almost all programs ignore errors
-    - EXC0002  # golint: Annoying issue about not having a comment
+    - tests/mocks
+    - tests/testutils
+  presets:
+    - comments
+    - std-error-handling

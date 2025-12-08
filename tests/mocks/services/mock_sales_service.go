@@ -29,12 +29,12 @@ func (m *MockSalesService) GetSale(id string) (*models.SaleResponse, error) {
 	return args.Get(0).(*models.SaleResponse), args.Error(1)
 }
 
-func (m *MockSalesService) GetAllSales(limit, offset int) ([]models.SaleResponse, error) {
+func (m *MockSalesService) GetAllSales(limit, offset int) ([]models.SaleResponse, int64, error) {
 	args := m.Called(limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, 0, args.Error(2)
 	}
-	return args.Get(0).([]models.SaleResponse), args.Error(1)
+	return args.Get(0).([]models.SaleResponse), args.Get(1).(int64), args.Error(2)
 }
 
 func (m *MockSalesService) UpdateSale(id string, req *models.UpdateSaleRequest) (*models.SaleResponse, error) {
@@ -50,20 +50,20 @@ func (m *MockSalesService) DeleteSale(id string) error {
 	return args.Error(0)
 }
 
-func (m *MockSalesService) GetSalesByDateRange(startDate, endDate time.Time) ([]models.SaleResponse, error) {
-	args := m.Called(startDate, endDate)
+func (m *MockSalesService) GetSalesByDateRange(startDate, endDate time.Time, limit, offset int) ([]models.SaleResponse, int64, error) {
+	args := m.Called(startDate, endDate, limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, 0, args.Error(2)
 	}
-	return args.Get(0).([]models.SaleResponse), args.Error(1)
+	return args.Get(0).([]models.SaleResponse), args.Get(1).(int64), args.Error(2)
 }
 
-func (m *MockSalesService) GetSalesByStatus(status string) ([]models.SaleResponse, error) {
-	args := m.Called(status)
+func (m *MockSalesService) GetSalesByStatus(status string, limit, offset int) ([]models.SaleResponse, int64, error) {
+	args := m.Called(status, limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, 0, args.Error(2)
 	}
-	return args.Get(0).([]models.SaleResponse), args.Error(1)
+	return args.Get(0).([]models.SaleResponse), args.Get(1).(int64), args.Error(2)
 }
 
 func (m *MockSalesService) GetTotalSalesAmount(startDate, endDate time.Time) (float64, error) {

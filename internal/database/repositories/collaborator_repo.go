@@ -35,10 +35,27 @@ func (r *CollaboratorRepository) GetByID(id string) (*models.Collaborator, error
 	return &collaborator, nil
 }
 
-// GetAll retrieves all collaborators
+// GetAllPaginated retrieves all collaborators with pagination
+func (r *CollaboratorRepository) GetAllPaginated(limit, offset int) ([]models.Collaborator, int64, error) {
+	var collaborators []models.Collaborator
+	var total int64
+
+	// Get total count
+	if err := r.db.Model(&models.Collaborator{}).Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count collaborators")
+	}
+
+	// Get paginated records
+	if err := r.db.Order("created_at DESC").Limit(limit).Offset(offset).Find(&collaborators).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve collaborators")
+	}
+	return collaborators, total, nil
+}
+
+// GetAll retrieves all collaborators without pagination
 func (r *CollaboratorRepository) GetAll() ([]models.Collaborator, error) {
 	var collaborators []models.Collaborator
-	if err := r.db.Find(&collaborators).Error; err != nil {
+	if err := r.db.Order("created_at DESC").Find(&collaborators).Error; err != nil {
 		return nil, errors.NewInternalServerError("Failed to retrieve collaborators")
 	}
 	return collaborators, nil
@@ -72,19 +89,54 @@ func (r *CollaboratorRepository) GetByGSTNumber(gstNumber string) (*models.Colla
 	return &collaborator, nil
 }
 
-// GetActiveCollaborators retrieves all active collaborators
+// GetActiveCollaborators retrieves all active collaborators with pagination
+func (r *CollaboratorRepository) GetActiveCollaboratorsPaginated(limit, offset int) ([]models.Collaborator, int64, error) {
+	var collaborators []models.Collaborator
+	var total int64
+
+	// Get total count
+	if err := r.db.Model(&models.Collaborator{}).Where("is_active = ?", true).Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count active collaborators")
+	}
+
+	// Get paginated records
+	if err := r.db.Where("is_active = ?", true).Order("created_at DESC").Limit(limit).Offset(offset).Find(&collaborators).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve active collaborators")
+	}
+	return collaborators, total, nil
+}
+
 func (r *CollaboratorRepository) GetActiveCollaborators() ([]models.Collaborator, error) {
 	var collaborators []models.Collaborator
-	if err := r.db.Where("is_active = ?", true).Find(&collaborators).Error; err != nil {
+	if err := r.db.Where("is_active = ?", true).Order("created_at DESC").Find(&collaborators).Error; err != nil {
 		return nil, errors.NewInternalServerError("Failed to retrieve active collaborators")
 	}
 	return collaborators, nil
 }
 
-// SearchByName searches collaborators by company name
+// SearchByNamePaginated searches collaborators by company name with pagination
+func (r *CollaboratorRepository) SearchByNamePaginated(name string, limit, offset int) ([]models.Collaborator, int64, error) {
+	var collaborators []models.Collaborator
+	var total int64
+
+	query := r.db.Model(&models.Collaborator{}).Where("company_name ILIKE ?", "%"+name+"%")
+
+	// Get total count
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count search results")
+	}
+
+	// Get paginated records
+	if err := r.db.Where("company_name ILIKE ?", "%"+name+"%").Order("created_at DESC").Limit(limit).Offset(offset).Find(&collaborators).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to search collaborators by name")
+	}
+	return collaborators, total, nil
+}
+
+// SearchByName searches collaborators by company name without pagination
 func (r *CollaboratorRepository) SearchByName(name string) ([]models.Collaborator, error) {
 	var collaborators []models.Collaborator
-	if err := r.db.Where("company_name ILIKE ?", "%"+name+"%").Find(&collaborators).Error; err != nil {
+	if err := r.db.Where("company_name ILIKE ?", "%"+name+"%").Order("created_at DESC").Find(&collaborators).Error; err != nil {
 		return nil, errors.NewInternalServerError("Failed to search collaborators by name")
 	}
 	return collaborators, nil

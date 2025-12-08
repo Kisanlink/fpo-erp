@@ -153,11 +153,13 @@ func (h *InventoryHandler) GetBatch(c *gin.Context) {
 
 // GetBatchesByWarehouse handles GET /api/v1/warehouses/:id/batches
 // @Summary Get Batches by Warehouse
-// @Description Retrieve all inventory batches for a specific warehouse
+// @Description Retrieve all inventory batches for a specific warehouse with pagination
 // @Tags Inventory
 // @Produce json
 // @Param id path string true "Warehouse ID" example(WHSE_12345678)
-// @Success 200 {object} utils.Response{data=[]models.InventoryBatchResponse} "Batches retrieved successfully"
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.InventoryBatchResponse} "Batches retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
@@ -179,11 +181,16 @@ func (h *InventoryHandler) GetBatchesByWarehouse(c *gin.Context) {
 		return
 	}
 
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
+
 	h.logger.Debug("Calling inventory service to get batches by warehouse",
-		zap.String("warehouse_id", warehouseID))
+		zap.String("warehouse_id", warehouseID),
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
 
 	// Get batches by warehouse
-	response, err := h.inventoryService.GetBatchesByWarehouse(warehouseID)
+	response, total, err := h.inventoryService.GetBatchesByWarehouse(warehouseID, params.Limit, params.Offset)
 	if err != nil {
 		h.logger.Error("Failed to retrieve batches by warehouse via service",
 			zap.Error(err),
@@ -194,18 +201,21 @@ func (h *InventoryHandler) GetBatchesByWarehouse(c *gin.Context) {
 
 	h.logger.Info("Batches retrieved successfully by warehouse via handler",
 		zap.String("warehouse_id", warehouseID),
-		zap.Int("count", len(response)))
+		zap.Int("count", len(response)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "Batches retrieved successfully", response)
+	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
 }
 
 // GetBatchesByVariant handles GET /api/v1/variants/:id/batches
 // @Summary Get Batches by Variant
-// @Description Retrieve all inventory batches for a specific product variant
+// @Description Retrieve all inventory batches for a specific product variant with pagination
 // @Tags Inventory
 // @Produce json
 // @Param id path string true "Variant ID" example(PVAR_12345678)
-// @Success 200 {object} utils.Response{data=[]models.InventoryBatchResponse} "Batches retrieved successfully"
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.InventoryBatchResponse} "Batches retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
@@ -227,11 +237,16 @@ func (h *InventoryHandler) GetBatchesByVariant(c *gin.Context) {
 		return
 	}
 
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
+
 	h.logger.Debug("Calling inventory service to get batches by variant",
-		zap.String("variant_id", variantID))
+		zap.String("variant_id", variantID),
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
 
 	// Get batches by variant
-	response, err := h.inventoryService.GetBatchesByVariant(variantID)
+	response, total, err := h.inventoryService.GetBatchesByVariant(variantID, params.Limit, params.Offset)
 	if err != nil {
 		h.logger.Error("Failed to retrieve batches by variant via service",
 			zap.Error(err),
@@ -242,9 +257,10 @@ func (h *InventoryHandler) GetBatchesByVariant(c *gin.Context) {
 
 	h.logger.Info("Batches retrieved successfully by variant via handler",
 		zap.String("variant_id", variantID),
-		zap.Int("count", len(response)))
+		zap.Int("count", len(response)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "Batches retrieved successfully", response)
+	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
 }
 
 // CreateTransaction handles POST /api/v1/batches/:id/transactions
@@ -314,11 +330,13 @@ func (h *InventoryHandler) CreateTransaction(c *gin.Context) {
 
 // GetTransactionsByBatch handles GET /api/v1/batches/:id/transactions
 // @Summary Get Transactions by Batch
-// @Description Retrieve all inventory transactions for a specific batch
+// @Description Retrieve all inventory transactions for a specific batch with pagination
 // @Tags Inventory
 // @Produce json
 // @Param id path string true "Batch ID" example(BTCH_12345678)
-// @Success 200 {object} utils.Response{data=[]models.InventoryTransactionResponse} "Transactions retrieved successfully"
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.InventoryTransactionResponse} "Transactions retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
@@ -340,11 +358,16 @@ func (h *InventoryHandler) GetTransactionsByBatch(c *gin.Context) {
 		return
 	}
 
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
+
 	h.logger.Debug("Calling inventory service to get transactions by batch",
-		zap.String("batch_id", batchID))
+		zap.String("batch_id", batchID),
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
 
 	// Get transactions by batch
-	response, err := h.inventoryService.GetTransactionsByBatch(batchID)
+	response, total, err := h.inventoryService.GetTransactionsByBatch(batchID, params.Limit, params.Offset)
 	if err != nil {
 		h.logger.Error("Failed to retrieve transactions by batch via service",
 			zap.Error(err),
@@ -355,18 +378,21 @@ func (h *InventoryHandler) GetTransactionsByBatch(c *gin.Context) {
 
 	h.logger.Info("Transactions retrieved successfully by batch via handler",
 		zap.String("batch_id", batchID),
-		zap.Int("count", len(response)))
+		zap.Int("count", len(response)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "Transactions retrieved successfully", response)
+	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
 }
 
 // GetExpiringBatches handles GET /api/v1/batches/expiring
 // @Summary Get Expiring Batches
-// @Description Retrieve inventory batches that are expiring within specified days
+// @Description Retrieve inventory batches that are expiring within specified days with pagination
 // @Tags Inventory
 // @Produce json
 // @Param days query integer false "Number of days to check (default: 30)" example(30)
-// @Success 200 {object} utils.Response{data=[]models.InventoryBatchResponse} "Expiring batches retrieved successfully"
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.InventoryBatchResponse} "Expiring batches retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
@@ -391,11 +417,16 @@ func (h *InventoryHandler) GetExpiringBatches(c *gin.Context) {
 		return
 	}
 
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
+
 	h.logger.Debug("Calling inventory service to get expiring batches",
-		zap.Int("days", days))
+		zap.Int("days", days),
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
 
 	// Get expiring batches
-	response, err := h.inventoryService.GetExpiringBatches(days)
+	response, total, err := h.inventoryService.GetExpiringBatches(days, params.Limit, params.Offset)
 	if err != nil {
 		h.logger.Error("Failed to retrieve expiring batches via service",
 			zap.Error(err),
@@ -406,18 +437,21 @@ func (h *InventoryHandler) GetExpiringBatches(c *gin.Context) {
 
 	h.logger.Info("Expiring batches retrieved successfully via handler",
 		zap.Int("days", days),
-		zap.Int("count", len(response)))
+		zap.Int("count", len(response)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "Expiring batches retrieved successfully", response)
+	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
 }
 
 // GetLowStockBatches handles GET /api/v1/batches/low-stock
 // @Summary Get Low Stock Batches
-// @Description Retrieve inventory batches with stock below threshold
+// @Description Retrieve inventory batches with stock below threshold with pagination
 // @Tags Inventory
 // @Produce json
 // @Param threshold query integer false "Stock threshold (default: 10)" example(10)
-// @Success 200 {object} utils.Response{data=[]models.InventoryBatchResponse} "Low stock batches retrieved successfully"
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.InventoryBatchResponse} "Low stock batches retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
@@ -442,11 +476,16 @@ func (h *InventoryHandler) GetLowStockBatches(c *gin.Context) {
 		return
 	}
 
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
+
 	h.logger.Debug("Calling inventory service to get low stock batches",
-		zap.Int64("threshold", threshold))
+		zap.Int64("threshold", threshold),
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
 
 	// Get low stock batches
-	response, err := h.inventoryService.GetLowStockBatches(threshold)
+	response, total, err := h.inventoryService.GetLowStockBatches(threshold, params.Limit, params.Offset)
 	if err != nil {
 		h.logger.Error("Failed to retrieve low stock batches via service",
 			zap.Error(err),
@@ -457,17 +496,20 @@ func (h *InventoryHandler) GetLowStockBatches(c *gin.Context) {
 
 	h.logger.Info("Low stock batches retrieved successfully via handler",
 		zap.Int64("threshold", threshold),
-		zap.Int("count", len(response)))
+		zap.Int("count", len(response)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "Low stock batches retrieved successfully", response)
+	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
 }
 
 // GetAllProductsAvailability handles GET /api/v1/products/availability
 // @Summary Get Products Availability
-// @Description Retrieve availability information for all products across warehouses
+// @Description Retrieve availability information for all products across warehouses with pagination
 // @Tags Inventory
 // @Produce json
-// @Success 200 {object} utils.Response{data=[]models.ProductAvailabilityResponse} "Products availability retrieved successfully"
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.ProductAvailabilityResponse} "Products availability retrieved successfully"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
@@ -488,10 +530,15 @@ func (h *InventoryHandler) GetAllProductsAvailability(c *gin.Context) {
 		return
 	}
 
-	h.logger.Debug("Calling inventory service to get all products availability")
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
+
+	h.logger.Debug("Calling inventory service to get all products availability",
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
 
 	// Get all products availability across warehouses
-	response, err := h.inventoryService.GetAllProductsAvailability(c.Request.Context(), jwtToken)
+	response, total, err := h.inventoryService.GetAllProductsAvailability(c.Request.Context(), jwtToken, params.Limit, params.Offset)
 	if err != nil {
 		h.logger.Error("Failed to retrieve products availability via service",
 			zap.Error(err))
@@ -500,9 +547,10 @@ func (h *InventoryHandler) GetAllProductsAvailability(c *gin.Context) {
 	}
 
 	h.logger.Info("Products availability retrieved successfully via handler",
-		zap.Int("count", len(response)))
+		zap.Int("count", len(response)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "Products availability retrieved successfully", response)
+	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
 }
 
 // RegisterRoutes registers inventory routes

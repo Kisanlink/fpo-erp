@@ -145,9 +145,9 @@ func (h *SalesHandler) GetSale(c *gin.Context) {
 // @Description Retrieve all sales with pagination (requires authentication)
 // @Tags Sales
 // @Produce json
-// @Param limit query integer false "Number of records to return (default: 10)" example(10)
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
 // @Param offset query integer false "Number of records to skip (default: 0)" example(0)
-// @Success 200 {object} utils.Response{data=[]models.SaleResponse} "Sales retrieved successfully"
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.SaleResponse} "Sales retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
@@ -161,32 +161,14 @@ func (h *SalesHandler) GetAllSales(c *gin.Context) {
 		zap.String("method", c.Request.Method),
 		zap.String("path", c.Request.URL.Path))
 
-	limitStr := c.DefaultQuery("limit", "10")
-	offsetStr := c.DefaultQuery("offset", "0")
-
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil {
-		h.logger.Error("Invalid limit parameter",
-			zap.Error(err),
-			zap.String("limit", limitStr))
-		utils.BadRequestResponse(c, "Invalid limit parameter", err)
-		return
-	}
-
-	offset, err := strconv.Atoi(offsetStr)
-	if err != nil {
-		h.logger.Error("Invalid offset parameter",
-			zap.Error(err),
-			zap.String("offset", offsetStr))
-		utils.BadRequestResponse(c, "Invalid offset parameter", err)
-		return
-	}
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
 
 	h.logger.Debug("Calling sales service to get all sales",
-		zap.Int("limit", limit),
-		zap.Int("offset", offset))
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
 
-	sales, err := h.salesService.GetAllSales(limit, offset)
+	sales, total, err := h.salesService.GetAllSales(params.Limit, params.Offset)
 	if err != nil {
 		h.logger.Error("Failed to retrieve sales via service",
 			zap.Error(err))
@@ -195,9 +177,10 @@ func (h *SalesHandler) GetAllSales(c *gin.Context) {
 	}
 
 	h.logger.Info("Sales retrieved successfully via handler",
-		zap.Int("count", len(sales)))
+		zap.Int("count", len(sales)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "Sales retrieved successfully", sales)
+	utils.PaginatedOKResponse(c, sales, total, params.Limit, params.Offset)
 }
 
 // UpdateSale handles PUT /api/v1/sales/:id
@@ -312,12 +295,14 @@ func (h *SalesHandler) DeleteSale(c *gin.Context) {
 
 // GetSalesByDateRange handles GET /api/v1/sales/date-range
 // @Summary Get Sales by Date Range
-// @Description Retrieve sales within a specific date range
+// @Description Retrieve sales within a specific date range with pagination
 // @Tags Sales
 // @Produce json
 // @Param start_date query string true "Start date (YYYY-MM-DD)" example(2024-01-01)
 // @Param end_date query string true "End date (YYYY-MM-DD)" example(2024-12-31)
-// @Success 200 {object} utils.Response{data=[]models.SaleResponse} "Sales retrieved successfully"
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.SaleResponse} "Sales retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
@@ -358,11 +343,16 @@ func (h *SalesHandler) GetSalesByDateRange(c *gin.Context) {
 		return
 	}
 
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
+
 	h.logger.Debug("Calling sales service to get sales by date range",
 		zap.String("start_date", startDateStr),
-		zap.String("end_date", endDateStr))
+		zap.String("end_date", endDateStr),
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
 
-	sales, err := h.salesService.GetSalesByDateRange(startDate, endDate)
+	sales, total, err := h.salesService.GetSalesByDateRange(startDate, endDate, params.Limit, params.Offset)
 	if err != nil {
 		h.logger.Error("Failed to retrieve sales by date range via service",
 			zap.Error(err),
@@ -374,19 +364,22 @@ func (h *SalesHandler) GetSalesByDateRange(c *gin.Context) {
 
 	h.logger.Info("Sales by date range retrieved successfully via handler",
 		zap.Int("count", len(sales)),
+		zap.Int64("total", total),
 		zap.String("start_date", startDateStr),
 		zap.String("end_date", endDateStr))
 
-	utils.OKResponse(c, "Sales retrieved successfully", sales)
+	utils.PaginatedOKResponse(c, sales, total, params.Limit, params.Offset)
 }
 
 // GetSalesByStatus handles GET /api/v1/sales/status/:status
 // @Summary Get Sales by Status
-// @Description Retrieve all sales with a specific status
+// @Description Retrieve all sales with a specific status with pagination
 // @Tags Sales
 // @Produce json
 // @Param status path string true "Sale status" example(completed)
-// @Success 200 {object} utils.Response{data=[]models.SaleResponse} "Sales retrieved successfully"
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.SaleResponse} "Sales retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
@@ -407,10 +400,15 @@ func (h *SalesHandler) GetSalesByStatus(c *gin.Context) {
 		return
 	}
 
-	h.logger.Debug("Calling sales service to get sales by status",
-		zap.String("status", status))
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
 
-	sales, err := h.salesService.GetSalesByStatus(status)
+	h.logger.Debug("Calling sales service to get sales by status",
+		zap.String("status", status),
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
+
+	sales, total, err := h.salesService.GetSalesByStatus(status, params.Limit, params.Offset)
 	if err != nil {
 		h.logger.Error("Failed to retrieve sales by status via service",
 			zap.Error(err),
@@ -421,9 +419,10 @@ func (h *SalesHandler) GetSalesByStatus(c *gin.Context) {
 
 	h.logger.Info("Sales by status retrieved successfully via handler",
 		zap.Int("count", len(sales)),
+		zap.Int64("total", total),
 		zap.String("status", status))
 
-	utils.OKResponse(c, "Sales retrieved successfully", sales)
+	utils.PaginatedOKResponse(c, sales, total, params.Limit, params.Offset)
 }
 
 // GetTotalSalesAmount handles GET /api/v1/sales/total-amount

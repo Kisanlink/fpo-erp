@@ -12,8 +12,8 @@ type WarehouseInterface interface {
 	// GetByID retrieves a warehouse by ID
 	GetByID(id string) (*models.Warehouse, error)
 
-	// GetAll retrieves all warehouses
-	GetAll() ([]models.Warehouse, error)
+	// GetAll retrieves all warehouses with pagination
+	GetAll(limit, offset int) ([]models.Warehouse, int64, error)
 
 	// Update updates an existing warehouse
 	Update(warehouse *models.Warehouse) error

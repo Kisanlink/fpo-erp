@@ -91,21 +91,21 @@ func (m *MockGRNRepository) GetByPurchaseOrder(poID string) (*models.GRN, error)
 }
 
 // GetAll mocks the GetAll method
-func (m *MockGRNRepository) GetAll() ([]models.GRN, error) {
-	args := m.Called()
+func (m *MockGRNRepository) GetAll(limit, offset int) ([]models.GRN, int64, error) {
+	args := m.Called(limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, args.Get(1).(int64), args.Error(2)
 	}
-	return args.Get(0).([]models.GRN), args.Error(1)
+	return args.Get(0).([]models.GRN), args.Get(1).(int64), args.Error(2)
 }
 
 // GetByWarehouse mocks the GetByWarehouse method
-func (m *MockGRNRepository) GetByWarehouse(warehouseID string) ([]models.GRN, error) {
-	args := m.Called(warehouseID)
+func (m *MockGRNRepository) GetByWarehouse(warehouseID string, limit, offset int) ([]models.GRN, int64, error) {
+	args := m.Called(warehouseID, limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, args.Get(1).(int64), args.Error(2)
 	}
-	return args.Get(0).([]models.GRN), args.Error(1)
+	return args.Get(0).([]models.GRN), args.Get(1).(int64), args.Error(2)
 }
 
 // GRNNumberExists mocks the GRNNumberExists method

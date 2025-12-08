@@ -29,36 +29,36 @@ func (m *MockPurchaseOrderService) GetPurchaseOrder(ctx context.Context, id stri
 	return args.Get(0).(*models.PurchaseOrderResponse), args.Error(1)
 }
 
-func (m *MockPurchaseOrderService) GetAllPurchaseOrders(ctx context.Context) ([]models.PurchaseOrderResponse, error) {
-	args := m.Called(ctx)
+func (m *MockPurchaseOrderService) GetAllPurchaseOrders(ctx context.Context, limit, offset int) ([]models.PurchaseOrderResponse, int64, error) {
+	args := m.Called(ctx, limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, 0, args.Error(2)
 	}
-	return args.Get(0).([]models.PurchaseOrderResponse), args.Error(1)
+	return args.Get(0).([]models.PurchaseOrderResponse), args.Get(1).(int64), args.Error(2)
 }
 
-func (m *MockPurchaseOrderService) GetPurchaseOrdersByCollaborator(ctx context.Context, collaboratorID string) ([]models.PurchaseOrderResponse, error) {
-	args := m.Called(ctx, collaboratorID)
+func (m *MockPurchaseOrderService) GetPurchaseOrdersByCollaborator(ctx context.Context, collaboratorID string, limit, offset int) ([]models.PurchaseOrderResponse, int64, error) {
+	args := m.Called(ctx, collaboratorID, limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, 0, args.Error(2)
 	}
-	return args.Get(0).([]models.PurchaseOrderResponse), args.Error(1)
+	return args.Get(0).([]models.PurchaseOrderResponse), args.Get(1).(int64), args.Error(2)
 }
 
-func (m *MockPurchaseOrderService) GetPurchaseOrdersByStatus(ctx context.Context, status string) ([]models.PurchaseOrderResponse, error) {
-	args := m.Called(ctx, status)
+func (m *MockPurchaseOrderService) GetPurchaseOrdersByStatus(ctx context.Context, status string, limit, offset int) ([]models.PurchaseOrderResponse, int64, error) {
+	args := m.Called(ctx, status, limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, 0, args.Error(2)
 	}
-	return args.Get(0).([]models.PurchaseOrderResponse), args.Error(1)
+	return args.Get(0).([]models.PurchaseOrderResponse), args.Get(1).(int64), args.Error(2)
 }
 
-func (m *MockPurchaseOrderService) GetPendingDeliveries(ctx context.Context) ([]models.PurchaseOrderResponse, error) {
-	args := m.Called(ctx)
+func (m *MockPurchaseOrderService) GetPendingDeliveries(ctx context.Context, limit, offset int) ([]models.PurchaseOrderResponse, int64, error) {
+	args := m.Called(ctx, limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, 0, args.Error(2)
 	}
-	return args.Get(0).([]models.PurchaseOrderResponse), args.Error(1)
+	return args.Get(0).([]models.PurchaseOrderResponse), args.Get(1).(int64), args.Error(2)
 }
 
 func (m *MockPurchaseOrderService) UpdatePurchaseOrderStatus(ctx context.Context, id string, request *models.UpdatePOStatusRequest, userID string) (*models.PurchaseOrderResponse, error) {

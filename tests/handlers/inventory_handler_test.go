@@ -268,8 +268,8 @@ func TestInventoryHandler_GetBatchesByWarehouse_Success(t *testing.T) {
 			TotalQuantity: 300,
 		},
 	}
-	mockService.On("GetBatchesByWarehouse", "WHSE00000001").
-		Return(expectedResponse, nil)
+	mockService.On("GetBatchesByWarehouse", "WHSE00000001", 50, 0).
+		Return(expectedResponse, int64(2), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/warehouses/WHSE00000001/batches", nil)
@@ -297,8 +297,8 @@ func TestInventoryHandler_GetBatchesByWarehouse_EmptyList(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
-	mockService.On("GetBatchesByWarehouse", "WHSE00000001").
-		Return([]models.InventoryBatchResponse{}, nil)
+	mockService.On("GetBatchesByWarehouse", "WHSE00000001", 50, 0).
+		Return([]models.InventoryBatchResponse{}, int64(0), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/warehouses/WHSE00000001/batches", nil)
@@ -321,8 +321,8 @@ func TestInventoryHandler_GetBatchesByWarehouse_ServiceError(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
-	mockService.On("GetBatchesByWarehouse", "WHSE00000001").
-		Return(nil, errors.New("database error"))
+	mockService.On("GetBatchesByWarehouse", "WHSE00000001", 50, 0).
+		Return(nil, int64(0), errors.New("database error"))
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/warehouses/WHSE00000001/batches", nil)
@@ -363,8 +363,8 @@ func TestInventoryHandler_GetBatchesByVariant_Success(t *testing.T) {
 			TotalQuantity: 300,
 		},
 	}
-	mockService.On("GetBatchesByVariant", "PVAR00000001").
-		Return(expectedResponse, nil)
+	mockService.On("GetBatchesByVariant", "PVAR00000001", 50, 0).
+		Return(expectedResponse, int64(2), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/variants/PVAR00000001/batches", nil)
@@ -392,8 +392,8 @@ func TestInventoryHandler_GetBatchesByVariant_EmptyList(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
-	mockService.On("GetBatchesByVariant", "PVAR00000001").
-		Return([]models.InventoryBatchResponse{}, nil)
+	mockService.On("GetBatchesByVariant", "PVAR00000001", 50, 0).
+		Return([]models.InventoryBatchResponse{}, int64(0), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/variants/PVAR00000001/batches", nil)
@@ -416,8 +416,8 @@ func TestInventoryHandler_GetBatchesByVariant_ServiceError(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
-	mockService.On("GetBatchesByVariant", "PVAR00000001").
-		Return(nil, errors.New("database error"))
+	mockService.On("GetBatchesByVariant", "PVAR00000001", 50, 0).
+		Return(nil, int64(0), errors.New("database error"))
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/variants/PVAR00000001/batches", nil)
@@ -594,8 +594,8 @@ func TestInventoryHandler_GetTransactionsByBatch_Success(t *testing.T) {
 			QuantityChange:  -50,
 		},
 	}
-	mockService.On("GetTransactionsByBatch", "BATC00000001").
-		Return(expectedResponse, nil)
+	mockService.On("GetTransactionsByBatch", "BATC00000001", 50, 0).
+		Return(expectedResponse, int64(2), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/batches/BATC00000001/transactions", nil)
@@ -623,8 +623,8 @@ func TestInventoryHandler_GetTransactionsByBatch_EmptyList(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
-	mockService.On("GetTransactionsByBatch", "BATC00000001").
-		Return([]models.InventoryTransactionResponse{}, nil)
+	mockService.On("GetTransactionsByBatch", "BATC00000001", 50, 0).
+		Return([]models.InventoryTransactionResponse{}, int64(0), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/batches/BATC00000001/transactions", nil)
@@ -647,8 +647,8 @@ func TestInventoryHandler_GetTransactionsByBatch_ServiceError(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
-	mockService.On("GetTransactionsByBatch", "BATC00000001").
-		Return(nil, errors.New("database error"))
+	mockService.On("GetTransactionsByBatch", "BATC00000001", 50, 0).
+		Return(nil, int64(0), errors.New("database error"))
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/batches/BATC00000001/transactions", nil)
@@ -685,8 +685,8 @@ func TestInventoryHandler_GetExpiringBatches_Success(t *testing.T) {
 			ExpiryDate: "2025-03-01",
 		},
 	}
-	mockService.On("GetExpiringBatches", 30).
-		Return(expectedResponse, nil)
+	mockService.On("GetExpiringBatches", 30, 50, 0).
+		Return(expectedResponse, int64(2), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/batches/expiring?days=30", nil)
@@ -714,8 +714,8 @@ func TestInventoryHandler_GetExpiringBatches_DefaultDays(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations (default 30 days)
-	mockService.On("GetExpiringBatches", 30).
-		Return([]models.InventoryBatchResponse{}, nil)
+	mockService.On("GetExpiringBatches", 30, 50, 0).
+		Return([]models.InventoryBatchResponse{}, int64(0), nil)
 
 	// Create request without days parameter
 	req := httptest.NewRequest("GET", "/api/v1/batches/expiring", nil)
@@ -757,8 +757,8 @@ func TestInventoryHandler_GetExpiringBatches_ServiceError(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
-	mockService.On("GetExpiringBatches", 30).
-		Return(nil, errors.New("database error"))
+	mockService.On("GetExpiringBatches", 30, 50, 0).
+		Return(nil, int64(0), errors.New("database error"))
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/batches/expiring?days=30", nil)
@@ -795,8 +795,8 @@ func TestInventoryHandler_GetLowStockBatches_Success(t *testing.T) {
 			TotalQuantity: 8,
 		},
 	}
-	mockService.On("GetLowStockBatches", int64(10)).
-		Return(expectedResponse, nil)
+	mockService.On("GetLowStockBatches", int64(10), 50, 0).
+		Return(expectedResponse, int64(2), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/batches/low-stock?threshold=10", nil)
@@ -824,8 +824,8 @@ func TestInventoryHandler_GetLowStockBatches_DefaultThreshold(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations (default threshold 10)
-	mockService.On("GetLowStockBatches", int64(10)).
-		Return([]models.InventoryBatchResponse{}, nil)
+	mockService.On("GetLowStockBatches", int64(10), 50, 0).
+		Return([]models.InventoryBatchResponse{}, int64(0), nil)
 
 	// Create request without threshold parameter
 	req := httptest.NewRequest("GET", "/api/v1/batches/low-stock", nil)
@@ -867,8 +867,8 @@ func TestInventoryHandler_GetLowStockBatches_ServiceError(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
-	mockService.On("GetLowStockBatches", int64(10)).
-		Return(nil, errors.New("database error"))
+	mockService.On("GetLowStockBatches", int64(10), 50, 0).
+		Return(nil, int64(0), errors.New("database error"))
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/batches/low-stock?threshold=10", nil)
@@ -915,8 +915,8 @@ func TestInventoryHandler_GetAllProductsAvailability_Success(t *testing.T) {
 			TotalQuantity: 300,
 		},
 	}
-	mockService.On("GetAllProductsAvailability", mock.Anything, mock.AnythingOfType("string")).
-		Return(expectedResponse, nil)
+	mockService.On("GetAllProductsAvailability", mock.Anything, mock.AnythingOfType("string"), 50, 0).
+		Return(expectedResponse, int64(2), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/products/availability", nil)
@@ -944,8 +944,8 @@ func TestInventoryHandler_GetAllProductsAvailability_EmptyList(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
-	mockService.On("GetAllProductsAvailability", mock.Anything, mock.AnythingOfType("string")).
-		Return([]models.ProductAvailabilityResponse{}, nil)
+	mockService.On("GetAllProductsAvailability", mock.Anything, mock.AnythingOfType("string"), 50, 0).
+		Return([]models.ProductAvailabilityResponse{}, int64(0), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/products/availability", nil)
@@ -968,8 +968,8 @@ func TestInventoryHandler_GetAllProductsAvailability_ServiceError(t *testing.T) 
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
-	mockService.On("GetAllProductsAvailability", mock.Anything, mock.AnythingOfType("string")).
-		Return(nil, errors.New("AAA service error"))
+	mockService.On("GetAllProductsAvailability", mock.Anything, mock.AnythingOfType("string"), 50, 0).
+		Return(nil, int64(0), errors.New("AAA service error"))
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/products/availability", nil)

@@ -133,10 +133,13 @@ func (h *GRNHandler) GetGRN(c *gin.Context) {
 
 // GetAllGRNs handles GET /api/v1/grns
 // @Summary Get All Goods Receipt Notes
-// @Description Retrieve all GRNs (requires authentication)
+// @Description Retrieve all GRNs with pagination (requires authentication)
 // @Tags GRNs
 // @Produce json
-// @Success 200 {object} utils.Response{data=[]models.GRNResponse} "GRNs retrieved successfully"
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.GRNResponse} "GRNs retrieved successfully"
+// @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
@@ -150,11 +153,16 @@ func (h *GRNHandler) GetAllGRNs(c *gin.Context) {
 		zap.String("method", c.Request.Method),
 		zap.String("path", c.Request.URL.Path))
 
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
+
 	// 3. Service Call Log
-	h.logger.Debug("Calling service to get all GRNs")
+	h.logger.Debug("Calling service to get all GRNs",
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
 
 	// Get all GRNs
-	response, err := h.grnService.GetAllGRNs(c.Request.Context())
+	response, total, err := h.grnService.GetAllGRNs(c.Request.Context(), params.Limit, params.Offset)
 	if err != nil {
 		// 4. Service Error Log
 		h.logger.Error("Service error getting all GRNs",
@@ -165,18 +173,21 @@ func (h *GRNHandler) GetAllGRNs(c *gin.Context) {
 
 	// 5. Success Log
 	h.logger.Info("All GRNs retrieved successfully",
-		zap.Int("count", len(response)))
+		zap.Int("count", len(response)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "GRNs retrieved successfully", response)
+	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
 }
 
 // GetGRNsByWarehouse handles GET /api/v1/warehouses/:id/grns
 // @Summary Get GRNs by Warehouse
-// @Description Retrieve all GRNs for a specific warehouse
+// @Description Retrieve all GRNs for a specific warehouse with pagination
 // @Tags GRNs
 // @Produce json
 // @Param id path string true "Warehouse ID (format: WHSE_xxxxxxxx)" example(WHSE_12345678)
-// @Success 200 {object} utils.Response{data=[]models.GRNResponse} "GRNs retrieved successfully"
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.GRNResponse} "GRNs retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 404 {object} utils.ErrorResponseModel "Warehouse not found"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
@@ -194,12 +205,17 @@ func (h *GRNHandler) GetGRNsByWarehouse(c *gin.Context) {
 		return
 	}
 
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
+
 	// 3. Service Call Log
 	h.logger.Debug("Calling service to get GRNs by warehouse",
-		zap.String("warehouse_id", warehouseID))
+		zap.String("warehouse_id", warehouseID),
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
 
 	// Get GRNs
-	response, err := h.grnService.GetGRNsByWarehouse(c.Request.Context(), warehouseID)
+	response, total, err := h.grnService.GetGRNsByWarehouse(c.Request.Context(), warehouseID, params.Limit, params.Offset)
 	if err != nil {
 		// 4. Service Error Log
 		h.logger.Error("Service error getting GRNs by warehouse",
@@ -212,9 +228,10 @@ func (h *GRNHandler) GetGRNsByWarehouse(c *gin.Context) {
 	// 5. Success Log
 	h.logger.Info("GRNs by warehouse retrieved successfully",
 		zap.String("warehouse_id", warehouseID),
-		zap.Int("count", len(response)))
+		zap.Int("count", len(response)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "GRNs retrieved successfully", response)
+	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
 }
 
 // GetGRNByPurchaseOrder handles GET /api/v1/purchase-orders/:id/grn

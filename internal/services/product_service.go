@@ -119,15 +119,17 @@ func (s *ProductService) GetProduct(ctx context.Context, id string) (*models.Pro
 	return response, nil
 }
 
-// GetAllProducts retrieves all products with variants preloaded
-func (s *ProductService) GetAllProducts(ctx context.Context) ([]models.ProductResponse, error) {
-	s.logger.Info("Retrieving all products")
+// GetAllProducts retrieves all products with pagination and variants preloaded
+func (s *ProductService) GetAllProducts(ctx context.Context, limit, offset int) ([]models.ProductResponse, int64, error) {
+	s.logger.Info("Retrieving all products",
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
 
-	products, err := s.productRepo.GetAll()
+	products, total, err := s.productRepo.GetAllPaginated(limit, offset)
 	if err != nil {
 		s.logger.Error("Failed to retrieve all products",
 			zap.Error(err))
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []models.ProductResponse
@@ -137,9 +139,10 @@ func (s *ProductService) GetAllProducts(ctx context.Context) ([]models.ProductRe
 	}
 
 	s.logger.Info("Retrieved all products successfully",
-		zap.Int("count", len(responses)))
+		zap.Int("count", len(responses)),
+		zap.Int64("total", total))
 
-	return responses, nil
+	return responses, total, nil
 }
 
 // UpdateProduct updates a product
