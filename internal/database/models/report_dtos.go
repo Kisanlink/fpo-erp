@@ -216,6 +216,7 @@ type InventoryReportRecord struct {
 	TotalValue    float64 `json:"total_value"`
 	ExpiryDate    string  `json:"expiry_date"`
 	DaysToExpiry  int     `json:"days_to_expiry"`
+	DaysOnShelf   int     `json:"days_on_shelf"`
 	CGSTRate      float64 `json:"cgst_rate"`
 	SGSTRate      float64 `json:"sgst_rate"`
 	IsTaxExempt   bool    `json:"is_tax_exempt"`

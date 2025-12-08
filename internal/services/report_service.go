@@ -330,6 +330,7 @@ func (s *ReportService) GenerateInventoryReport(filter *models.InventoryReportFi
 		(inventory_batches.total_quantity * inventory_batches.cost_price) as total_value,
 		inventory_batches.expiry_date,
 		EXTRACT(DAY FROM (inventory_batches.expiry_date - CURRENT_DATE)) as days_to_expiry,
+		EXTRACT(DAY FROM (CURRENT_DATE - DATE(inventory_batches.created_at))) as days_on_shelf,
 		inventory_batches.cgst_rate,
 		inventory_batches.sgst_rate,
 		inventory_batches.is_tax_exempt,
