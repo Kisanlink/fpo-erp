@@ -18,13 +18,13 @@ type Product struct {
 	Name        string  `gorm:"type:varchar(150);not null" json:"name"`
 	Description *string `gorm:"type:text" json:"description"`
 
-	// Category fields - ID-based references (optional)
-	CategoryID    *string `gorm:"type:varchar(50);index" json:"category_id"`
-	SubcategoryID *string `gorm:"type:varchar(50);index" json:"subcategory_id"`
-
-	// Category associations
-	Category    *Category    `gorm:"foreignKey:CategoryID;references:ID" json:"category,omitempty"`
-	Subcategory *Subcategory `gorm:"foreignKey:SubcategoryID;references:ID" json:"subcategory,omitempty"`
+	// Category fields - ID-based references
+	// CategoryID: Optional, defaults to null. Application logic should default to "OTHER" category.
+	// SubcategoryID: Optional, nullable. Subcategory is not required.
+	// NOTE: Category and Subcategory associations removed to reduce database load.
+	// Use CategoryRepository.GetByID() or SubcategoryRepository.GetByID() to fetch related data if needed.
+	CategoryID    *string `gorm:"type:varchar(50);index:idx_products_category_id;default:null" json:"category_id"`
+	SubcategoryID *string `gorm:"type:varchar(50);index:idx_products_subcategory_id;default:null" json:"subcategory_id"`
 
 	// Associations
 	Variants []ProductVariant `gorm:"foreignKey:ProductID" json:"variants,omitempty"`

@@ -8,14 +8,14 @@ import (
 )
 
 // Category represents a product category in the system
+// Name is unique and used as enumeration identifier (ALL_CAPS_SNAKE_CASE)
 type Category struct {
 	base.BaseModel
 
-	Name        string  `gorm:"type:varchar(100);uniqueIndex;not null" json:"name"`
+	Name        string  `gorm:"type:varchar(100);uniqueIndex:idx_categories_name;not null" json:"name"`
 	Description *string `gorm:"type:text" json:"description"`
-
-	// Associations
-	Subcategories []Subcategory `gorm:"foreignKey:CategoryName;references:Name" json:"subcategories,omitempty"`
+	// NOTE: Subcategories association removed to reduce database load
+	// Use SubcategoryRepository.GetByCategoryID() to fetch subcategories
 }
 
 // NewCategory creates a new Category with initialized fields

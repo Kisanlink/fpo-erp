@@ -56,7 +56,7 @@ func (h *SubcategoryHandler) CreateSubcategory(c *gin.Context) {
 
 	h.logger.Debug("Calling service to create subcategory",
 		zap.String("name", request.Name),
-		zap.String("category", request.CategoryName))
+		zap.String("category_id", request.CategoryID))
 
 	// Create subcategory
 	response, err := h.subcategoryService.CreateSubcategory(c.Request.Context(), &request)
@@ -163,44 +163,44 @@ func (h *SubcategoryHandler) GetSubcategoryByName(c *gin.Context) {
 	utils.OKResponse(c, "Subcategory retrieved successfully", response)
 }
 
-// GetSubcategoriesByCategory handles GET /api/v1/subcategories/category/:category
+// GetSubcategoriesByCategory handles GET /api/v1/subcategories/category/:categoryId
 // @Summary Get Subcategories by Category
-// @Description Retrieve all subcategories for a specific category
+// @Description Retrieve all subcategories for a specific category by ID
 // @Tags Subcategories
 // @Produce json
-// @Param category path string true "Category name" example(Fertilizers)
+// @Param categoryId path string true "Category ID (format: CATG_xxxxxxxx)" example(CATG_12345678)
 // @Success 200 {object} utils.Response{data=[]models.SubcategoryResponse} "Subcategories retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
-// @Router /api/v1/subcategories/category/{category} [get]
+// @Router /api/v1/subcategories/category/{categoryId} [get]
 func (h *SubcategoryHandler) GetSubcategoriesByCategory(c *gin.Context) {
 	h.logger.Info("Handling get subcategories by category request",
 		zap.String("method", c.Request.Method),
 		zap.String("path", c.Request.URL.Path))
 
-	// Get category name from URL
-	categoryName := c.Param("category")
-	if categoryName == "" {
-		h.logger.Error("Category name is required but not provided")
-		utils.BadRequestResponse(c, "Category name is required", nil)
+	// Get category ID from URL
+	categoryID := c.Param("categoryId")
+	if categoryID == "" {
+		h.logger.Error("Category ID is required but not provided")
+		utils.BadRequestResponse(c, "Category ID is required", nil)
 		return
 	}
 
 	h.logger.Debug("Fetching subcategories by category",
-		zap.String("category", categoryName))
+		zap.String("category_id", categoryID))
 
-	// Get subcategories by category
-	response, err := h.subcategoryService.GetSubcategoriesByCategory(c.Request.Context(), categoryName)
+	// Get subcategories by category ID
+	response, err := h.subcategoryService.GetSubcategoriesByCategory(c.Request.Context(), categoryID)
 	if err != nil {
 		h.logger.Error("Service error retrieving subcategories",
 			zap.Error(err),
-			zap.String("category", categoryName))
+			zap.String("category_id", categoryID))
 		utils.HandleServiceError(c, "Failed to retrieve subcategories", err)
 		return
 	}
 
 	h.logger.Info("Subcategories retrieved successfully",
-		zap.String("category", categoryName),
+		zap.String("category_id", categoryID),
 		zap.Int("count", len(response)))
 
 	utils.OKResponse(c, "Subcategories retrieved successfully", response)
@@ -342,7 +342,7 @@ func (h *SubcategoryHandler) RegisterRoutes(v1 *gin.RouterGroup) {
 		// Public endpoints (read operations)
 		subcategories.GET("", h.GetAllSubcategories)
 		subcategories.GET("/name/:name", h.GetSubcategoryByName)
-		subcategories.GET("/category/:category", h.GetSubcategoriesByCategory)
+		subcategories.GET("/category/:categoryId", h.GetSubcategoriesByCategory)
 		subcategories.GET("/:id", h.GetSubcategory)
 
 		// Authenticated endpoints (write operations)

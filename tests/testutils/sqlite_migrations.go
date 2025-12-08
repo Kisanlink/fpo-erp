@@ -377,9 +377,9 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 	if err := db.Exec(`
 		CREATE TABLE subcategories (
 			id TEXT PRIMARY KEY,
-			name TEXT NOT NULL UNIQUE,
+			name TEXT NOT NULL,
 			description TEXT,
-			category_name TEXT NOT NULL,
+			category_id TEXT NOT NULL,
 			created_at DATETIME,
 			updated_at DATETIME,
 			deleted_at DATETIME,
@@ -391,15 +391,16 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 		return err
 	}
 
-	// Create indexes for subcategory
+	// Create composite unique index for subcategory (name unique per category)
 	if err := db.Exec(`
-		CREATE INDEX IF NOT EXISTS idx_subcategory_name ON subcategories(name)
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_subcategory_name_category ON subcategories(name, category_id)
 	`).Error; err != nil {
 		return err
 	}
 
+	// Create index for category_id lookup
 	if err := db.Exec(`
-		CREATE INDEX IF NOT EXISTS idx_subcategory_category ON subcategories(category_name)
+		CREATE INDEX IF NOT EXISTS idx_subcategory_category_id ON subcategories(category_id)
 	`).Error; err != nil {
 		return err
 	}

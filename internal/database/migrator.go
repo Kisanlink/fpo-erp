@@ -2,7 +2,9 @@ package database
 
 import (
 	"kisanlink-erp/internal/database/models"
+	"kisanlink-erp/internal/services"
 	"log"
+	"strings"
 
 	"gorm.io/gorm"
 )
@@ -117,35 +119,22 @@ func AutoMigrate(db *gorm.DB) error {
 
 // seedDefaultCategories seeds the predefined categories and subcategories.
 // This is called during migration BEFORE Product migration to ensure FK constraints
-// can be satisfied for existing products that may have category_name='Others'.
-// This function is idempotent - checks if category exists before creating.
+// can be satisfied for existing products.
+// This function is idempotent - checks if category exists (case-insensitive) before creating.
+// Uses services.PredefinedCategories as single source of truth.
 func seedDefaultCategories(db *gorm.DB) error {
 	log.Println("Seeding default categories...")
-
-	// Predefined categories with their subcategories
-	categories := []struct {
-		Name          string
-		Description   string
-		Subcategories []string
-	}{
-		{"Seeds", "Agricultural seeds and planting materials", nil},
-		{"Fertilizers", "Chemical and organic fertilizers", []string{"BULK", "Water Soluble", "Micronutrients", "Macronutrients"}},
-		{"Pesticides", "Pest control products", []string{"Weedicides", "Insecticides", "Fungicides", "Organic"}},
-		{"Bio Products", "Biological and eco-friendly products", []string{"Bulk", "Liquids", "Others"}},
-		{"Implements", "Agricultural tools and implements", []string{"Weeding", "Sowing", "Sprayers"}},
-		{"Irrigation", "Irrigation equipment and systems", []string{"Pipes", "Drippers", "Sprinklers", "Automation Machines", "Others"}},
-		{"Others", "Miscellaneous agricultural products", nil},
-	}
 
 	categoryCount := 0
 	subcategoryCount := 0
 
-	for _, cat := range categories {
-		// Check if category already exists
+	for _, cat := range services.PredefinedCategories {
+		// Check if category already exists (case-insensitive)
 		var existingCategory models.Category
-		result := db.Where("name = ?", cat.Name).First(&existingCategory)
+		result := db.Where("LOWER(name) = LOWER(?)", cat.Name).First(&existingCategory)
 
-		if result.Error != nil && result.Error.Error() != "record not found" {
+		var categoryID string
+		if result.Error != nil && !strings.Contains(result.Error.Error(), "record not found") {
 			// Real database error
 			log.Printf("Failed to check category %s: %v", cat.Name, result.Error)
 			return result.Error
@@ -159,25 +148,30 @@ func seedDefaultCategories(db *gorm.DB) error {
 				log.Printf("Failed to create category %s: %v", cat.Name, err)
 				return err
 			}
+			categoryID = newCategory.ID
 			categoryCount++
+		} else {
+			// Category exists, use its ID for subcategories
+			categoryID = existingCategory.ID
 		}
 
 		// Create subcategories for this category
-		for _, subName := range cat.Subcategories {
-			// Check if subcategory already exists
+		for _, sub := range cat.Subcategories {
+			// Check if subcategory already exists (case-insensitive name + category_id)
 			var existingSub models.Subcategory
-			result := db.Where("name = ? AND category_name = ?", subName, cat.Name).First(&existingSub)
+			result := db.Where("LOWER(name) = LOWER(?) AND category_id = ?", sub.Name, categoryID).First(&existingSub)
 
-			if result.Error != nil && result.Error.Error() != "record not found" {
-				log.Printf("Failed to check subcategory %s: %v", subName, result.Error)
+			if result.Error != nil && !strings.Contains(result.Error.Error(), "record not found") {
+				log.Printf("Failed to check subcategory %s: %v", sub.Name, result.Error)
 				return result.Error
 			}
 
 			if result.RowsAffected == 0 {
 				// Subcategory doesn't exist, create it using proper constructor
-				newSubcategory := models.NewSubcategory(subName, cat.Name, nil)
+				description := sub.Description
+				newSubcategory := models.NewSubcategory(sub.Name, categoryID, &description)
 				if err := db.Create(newSubcategory).Error; err != nil {
-					log.Printf("Failed to create subcategory %s: %v", subName, err)
+					log.Printf("Failed to create subcategory %s: %v", sub.Name, err)
 					return err
 				}
 				subcategoryCount++

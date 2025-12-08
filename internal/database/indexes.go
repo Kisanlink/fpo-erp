@@ -80,11 +80,26 @@ func buildIndexSQL(idx IndexDefinition) string {
 func getIndexDefinitions() []IndexDefinition {
 	return []IndexDefinition{
 		// ============================================================================
+		// CATEGORIES TABLE INDEXES
+		// ============================================================================
+		{Table: "categories", Columns: "name", Name: "idx_categories_name", Unique: true},
+		{Table: "categories", Columns: "LOWER(name)", Name: "idx_categories_name_lower"},
+
+		// ============================================================================
+		// SUBCATEGORIES TABLE INDEXES
+		// Note: idx_subcategory_name_category is created by GORM from model tags
+		// ============================================================================
+		{Table: "subcategories", Columns: "category_id", Name: "idx_subcategories_category_id"},
+		{Table: "subcategories", Columns: "LOWER(name)", Name: "idx_subcategories_name_lower"},
+
+		// ============================================================================
 		// PRODUCTS TABLE INDEXES
 		// ============================================================================
 		{Table: "products", Columns: "external_id", Name: "idx_products_external_id", Where: "external_id IS NOT NULL"},
 		{Table: "products", Columns: "LOWER(name)", Name: "idx_products_name_lower"},
 		{Table: "products", Columns: "created_at DESC", Name: "idx_products_created_at"},
+		{Table: "products", Columns: "category_id", Name: "idx_products_category_id", Where: "category_id IS NOT NULL"},
+		{Table: "products", Columns: "subcategory_id", Name: "idx_products_subcategory_id", Where: "subcategory_id IS NOT NULL"},
 
 		// ============================================================================
 		// PRODUCT VARIANTS TABLE INDEXES

@@ -15,21 +15,23 @@ import (
 
 // ProductService handles product business logic
 type ProductService struct {
-	productRepo *repositories.ProductRepository
-	priceRepo   *repositories.ProductPriceRepository
-	variantRepo *repositories.ProductVariantRepository
-	s3Service   *S3Service
-	logger      interfaces.Logger
+	productRepo  *repositories.ProductRepository
+	priceRepo    *repositories.ProductPriceRepository
+	variantRepo  *repositories.ProductVariantRepository
+	categoryRepo *repositories.CategoryRepository
+	s3Service    *S3Service
+	logger       interfaces.Logger
 }
 
 // NewProductService creates a new product service
-func NewProductService(productRepo *repositories.ProductRepository, priceRepo *repositories.ProductPriceRepository, variantRepo *repositories.ProductVariantRepository, s3Service *S3Service, logger interfaces.Logger) *ProductService {
+func NewProductService(productRepo *repositories.ProductRepository, priceRepo *repositories.ProductPriceRepository, variantRepo *repositories.ProductVariantRepository, categoryRepo *repositories.CategoryRepository, s3Service *S3Service, logger interfaces.Logger) *ProductService {
 	return &ProductService{
-		productRepo: productRepo,
-		priceRepo:   priceRepo,
-		variantRepo: variantRepo,
-		s3Service:   s3Service,
-		logger:      logger,
+		productRepo:  productRepo,
+		priceRepo:    priceRepo,
+		variantRepo:  variantRepo,
+		categoryRepo: categoryRepo,
+		s3Service:    s3Service,
+		logger:       logger,
 	}
 }
 
@@ -41,9 +43,19 @@ func (s *ProductService) CreateProduct(request *models.CreateProductRequest) (*m
 	// Create product model using the proper constructor
 	product := models.NewProduct(request.Name, request.Description)
 
-	// Set category ID if provided
+	// Set category ID if provided, otherwise default to "OTHER" category
 	if request.CategoryID != nil && *request.CategoryID != "" {
 		product.CategoryID = request.CategoryID
+	} else {
+		// Default to "OTHER" category if not provided
+		if s.categoryRepo != nil {
+			otherCategory, err := s.categoryRepo.GetByName("OTHER")
+			if err == nil && otherCategory != nil {
+				product.CategoryID = &otherCategory.ID
+				s.logger.Debug("Defaulting to OTHER category",
+					zap.String("category_id", otherCategory.ID))
+			}
+		}
 	}
 
 	// Set subcategory ID if provided

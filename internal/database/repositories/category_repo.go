@@ -37,10 +37,22 @@ func (r *CategoryRepository) GetByID(id string) (*models.Category, error) {
 	return &category, nil
 }
 
-// GetByName retrieves a category by name
+// GetByName retrieves a category by name (exact match)
 func (r *CategoryRepository) GetByName(name string) (*models.Category, error) {
 	var category models.Category
 	if err := r.db.Where("name = ?", name).First(&category).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil // Not found, but not an error for idempotent operations
+		}
+		return nil, errors.NewInternalServerError("Failed to retrieve category by name")
+	}
+	return &category, nil
+}
+
+// GetByNameCaseInsensitive retrieves a category by name (case-insensitive)
+func (r *CategoryRepository) GetByNameCaseInsensitive(name string) (*models.Category, error) {
+	var category models.Category
+	if err := r.db.Where("LOWER(name) = LOWER(?)", name).First(&category).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil // Not found, but not an error for idempotent operations
 		}
@@ -54,15 +66,6 @@ func (r *CategoryRepository) GetAll() ([]models.Category, error) {
 	var categories []models.Category
 	if err := r.db.Find(&categories).Error; err != nil {
 		return nil, errors.NewInternalServerError("Failed to retrieve categories")
-	}
-	return categories, nil
-}
-
-// GetAllWithSubcategories retrieves all categories with their subcategories
-func (r *CategoryRepository) GetAllWithSubcategories() ([]models.Category, error) {
-	var categories []models.Category
-	if err := r.db.Preload("Subcategories").Find(&categories).Error; err != nil {
-		return nil, errors.NewInternalServerError("Failed to retrieve categories with subcategories")
 	}
 	return categories, nil
 }

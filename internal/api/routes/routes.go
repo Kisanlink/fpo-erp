@@ -86,7 +86,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 
 	// Initialize services
 	warehouseService := services.NewWarehouseService(warehouseRepo, addressClient, logger)
-	productService := services.NewProductService(productRepo, priceRepo, productVariantRepo, s3Service, logger)
+	productService := services.NewProductService(productRepo, priceRepo, productVariantRepo, categoryRepo, s3Service, logger)
 	priceService := services.NewProductPriceService(priceRepo, productRepo, productVariantRepo, logger)
 	inventoryService := services.NewInventoryService(inventoryRepo, warehouseRepo, productRepo, productVariantRepo, addressClient, logger)
 	discountsService := services.NewDiscountsService(discountRepo, productRepo, warehouseRepo, logger)

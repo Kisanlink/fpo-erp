@@ -27,31 +27,67 @@ func NewCategoryService(categoryRepo *repositories.CategoryRepository, subcatego
 	}
 }
 
-// predefinedCategories contains the default category and subcategory hierarchy
-var predefinedCategories = []struct {
+// SubcategoryDef defines a subcategory with name and description
+type SubcategoryDef struct {
+	Name        string
+	Description string
+}
+
+// CategoryDef defines a category with its subcategories
+type CategoryDef struct {
 	Name          string
-	Subcategories []string
-}{
-	{"Seeds", nil},
-	{"Fertilizers", []string{"BULK", "Water Soluble", "Micronutrients", "Macronutrients"}},
-	{"Pesticides", []string{"Weedicides", "Insecticides", "Fungicides", "Organic"}},
-	{"Bio Products", []string{"Bulk", "Liquids", "Others"}},
-	{"Implements", []string{"Weeding", "Sowing", "Sprayers"}},
-	{"Irrigation", []string{"Pipes", "Drippers", "Sprinklers", "Automation Machines", "Others"}},
-	{"Others", nil},
+	Description   string
+	Subcategories []SubcategoryDef
+}
+
+// PredefinedCategories contains the default category and subcategory hierarchy (EXPORTED)
+// Names are in ALL_CAPS_SNAKE_CASE to indicate they are enumerations
+// Used by both CategoryService.SeedCategories() and database migration
+var PredefinedCategories = []CategoryDef{
+	{"SEEDS", "Agricultural seeds and planting materials", nil},
+	{"FERTILIZERS", "Chemical and organic fertilizers", []SubcategoryDef{
+		{"BULK", "Bulk fertilizers"},
+		{"WATER_SOLUBLE", "Water soluble fertilizers"},
+		{"MICRONUTRIENTS", "Micronutrient fertilizers"},
+		{"MACRONUTRIENTS", "Macronutrient fertilizers"},
+	}},
+	{"PESTICIDES", "Pest control products", []SubcategoryDef{
+		{"WEEDICIDES", "Weed control products"},
+		{"INSECTICIDES", "Insect control products"},
+		{"FUNGICIDES", "Fungus control products"},
+		{"ORGANIC", "Organic pest control"},
+	}},
+	{"BIO_PRODUCTS", "Biological and eco-friendly products", []SubcategoryDef{
+		{"BULK", "Bulk bio products"},
+		{"LIQUIDS", "Liquid bio products"},
+		{"OTHER", "Other bio products"},
+	}},
+	{"IMPLEMENTS", "Agricultural tools and implements", []SubcategoryDef{
+		{"WEEDING", "Weeding tools"},
+		{"SOWING", "Sowing implements"},
+		{"SPRAYERS", "Sprayer equipment"},
+	}},
+	{"IRRIGATION", "Irrigation equipment and systems", []SubcategoryDef{
+		{"PIPES", "Irrigation pipes"},
+		{"DRIPPERS", "Drip irrigation"},
+		{"SPRINKLERS", "Sprinkler systems"},
+		{"AUTOMATION_MACHINES", "Automated irrigation"},
+		{"OTHER", "Other irrigation equipment"},
+	}},
+	{"OTHER", "Miscellaneous agricultural products", nil},
 }
 
 // SeedCategories seeds all predefined categories and subcategories (idempotent)
+// Uses case-insensitive checks for idempotency
 func (s *CategoryService) SeedCategories(ctx context.Context) (*models.SeedCategoriesResponse, error) {
 	s.logger.Info("Starting category seeding")
 
 	categoriesCreated := 0
 	subcategoriesCreated := 0
 
-	for _, cat := range predefinedCategories {
-		// Create or get category
-		category := models.NewCategory(cat.Name, nil)
-		existingCat, err := s.categoryRepo.GetByName(cat.Name)
+	for _, cat := range PredefinedCategories {
+		// Check if category already exists (case-insensitive)
+		existingCat, err := s.categoryRepo.GetByNameCaseInsensitive(cat.Name)
 		if err != nil {
 			s.logger.Error("Failed to check category existence",
 				zap.Error(err),
@@ -59,45 +95,54 @@ func (s *CategoryService) SeedCategories(ctx context.Context) (*models.SeedCateg
 			return nil, err
 		}
 
+		var categoryID string
 		if existingCat == nil {
+			// Create category with description
+			description := cat.Description
+			category := models.NewCategory(cat.Name, &description)
 			if err := s.categoryRepo.Create(category); err != nil {
 				s.logger.Error("Failed to create category",
 					zap.Error(err),
 					zap.String("name", cat.Name))
 				return nil, err
 			}
+			categoryID = category.ID
 			categoriesCreated++
 			s.logger.Info("Created category", zap.String("name", cat.Name))
 		} else {
+			categoryID = existingCat.ID
 			s.logger.Debug("Category already exists", zap.String("name", cat.Name))
 		}
 
-		// Create subcategories
-		for _, subName := range cat.Subcategories {
-			existingSub, err := s.subcategoryRepo.GetByName(subName)
+		// Create subcategories using category ID (not category name)
+		for _, sub := range cat.Subcategories {
+			// Check if subcategory exists (case-insensitive name + category_id)
+			existingSub, err := s.subcategoryRepo.GetByNameAndCategoryID(sub.Name, categoryID)
 			if err != nil {
 				s.logger.Error("Failed to check subcategory existence",
 					zap.Error(err),
-					zap.String("name", subName))
+					zap.String("name", sub.Name))
 				return nil, err
 			}
 
 			if existingSub == nil {
-				subcategory := models.NewSubcategory(subName, cat.Name, nil)
+				// Create subcategory with description using category ID
+				description := sub.Description
+				subcategory := models.NewSubcategory(sub.Name, categoryID, &description)
 				if err := s.subcategoryRepo.Create(subcategory); err != nil {
 					s.logger.Error("Failed to create subcategory",
 						zap.Error(err),
-						zap.String("name", subName),
-						zap.String("category", cat.Name))
+						zap.String("name", sub.Name),
+						zap.String("category_id", categoryID))
 					return nil, err
 				}
 				subcategoriesCreated++
 				s.logger.Info("Created subcategory",
-					zap.String("name", subName),
-					zap.String("category", cat.Name))
+					zap.String("name", sub.Name),
+					zap.String("category_id", categoryID))
 			} else {
 				s.logger.Debug("Subcategory already exists",
-					zap.String("name", subName))
+					zap.String("name", sub.Name))
 			}
 		}
 	}
@@ -220,26 +265,37 @@ func (s *CategoryService) GetAllCategories(ctx context.Context) ([]models.Catego
 }
 
 // GetAllCategoriesWithSubcategories retrieves all categories with their subcategories
+// Note: Subcategories are fetched separately using GetByCategoryID since we removed
+// the association from the Category model to reduce database load.
 func (s *CategoryService) GetAllCategoriesWithSubcategories(ctx context.Context) ([]models.CategoryResponse, error) {
 	s.logger.Info("Retrieving all categories with subcategories")
 
-	categories, err := s.categoryRepo.GetAllWithSubcategories()
+	categories, err := s.categoryRepo.GetAll()
 	if err != nil {
-		s.logger.Error("Failed to retrieve categories with subcategories", zap.Error(err))
+		s.logger.Error("Failed to retrieve categories", zap.Error(err))
 		return nil, err
 	}
 
 	var responses []models.CategoryResponse
 	for _, category := range categories {
+		// Fetch subcategories for this category using category ID
+		subcategories, err := s.subcategoryRepo.GetByCategoryID(category.ID)
+		if err != nil {
+			s.logger.Error("Failed to retrieve subcategories for category",
+				zap.Error(err),
+				zap.String("category_id", category.ID))
+			return nil, err
+		}
+
 		var subcatResponses []models.SubcategoryResponse
-		for _, subcat := range category.Subcategories {
+		for _, subcat := range subcategories {
 			subcatResponse := models.SubcategoryResponse{
-				ID:           subcat.ID,
-				Name:         subcat.Name,
-				Description:  subcat.Description,
-				CategoryName: subcat.CategoryName,
-				CreatedAt:    subcat.CreatedAt.Format("2006-01-02T15:04:05Z"),
-				UpdatedAt:    subcat.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+				ID:          subcat.ID,
+				Name:        subcat.Name,
+				Description: subcat.Description,
+				CategoryID:  subcat.CategoryID,
+				CreatedAt:   subcat.CreatedAt.Format("2006-01-02T15:04:05Z"),
+				UpdatedAt:   subcat.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 			}
 			subcatResponses = append(subcatResponses, subcatResponse)
 		}

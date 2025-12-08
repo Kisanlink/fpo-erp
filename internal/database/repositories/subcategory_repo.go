@@ -37,7 +37,9 @@ func (r *SubcategoryRepository) GetByID(id string) (*models.Subcategory, error) 
 	return &subcategory, nil
 }
 
-// GetByName retrieves a subcategory by name
+// GetByName retrieves a subcategory by name (exact match, first match)
+// Note: Name is not globally unique - same name can exist in different categories.
+// Use GetByNameAndCategoryID for precise lookup.
 func (r *SubcategoryRepository) GetByName(name string) (*models.Subcategory, error) {
 	var subcategory models.Subcategory
 	if err := r.db.Where("name = ?", name).First(&subcategory).Error; err != nil {
@@ -49,10 +51,23 @@ func (r *SubcategoryRepository) GetByName(name string) (*models.Subcategory, err
 	return &subcategory, nil
 }
 
-// GetByCategoryName retrieves all subcategories for a category
-func (r *SubcategoryRepository) GetByCategoryName(categoryName string) ([]models.Subcategory, error) {
+// GetByNameAndCategoryID retrieves a subcategory by name and category ID (case-insensitive name)
+// This is the correct way to check for existing subcategories since name is unique per category
+func (r *SubcategoryRepository) GetByNameAndCategoryID(name string, categoryID string) (*models.Subcategory, error) {
+	var subcategory models.Subcategory
+	if err := r.db.Where("LOWER(name) = LOWER(?) AND category_id = ?", name, categoryID).First(&subcategory).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil // Not found, but not an error for idempotent operations
+		}
+		return nil, errors.NewInternalServerError("Failed to retrieve subcategory by name and category")
+	}
+	return &subcategory, nil
+}
+
+// GetByCategoryID retrieves all subcategories for a category by ID
+func (r *SubcategoryRepository) GetByCategoryID(categoryID string) ([]models.Subcategory, error) {
 	var subcategories []models.Subcategory
-	if err := r.db.Where("category_name = ?", categoryName).Find(&subcategories).Error; err != nil {
+	if err := r.db.Where("category_id = ?", categoryID).Find(&subcategories).Error; err != nil {
 		return nil, errors.NewInternalServerError("Failed to retrieve subcategories by category")
 	}
 	return subcategories, nil

@@ -40,6 +40,8 @@ This document describes all breaking changes, new features, and response format 
 | PO `verified` status | LOW | Add to status handling |
 | Product `category_name` → `category_id` | HIGH | Use ID-based category reference (changed from name-based) |
 | Product `subcategory_name` → `subcategory_id` | HIGH | Use ID-based subcategory reference (changed from name-based) |
+| Subcategory `category_name` → `category_id` | HIGH | Subcategory model uses ID-based FK (changed from name-based) |
+| Subcategory endpoint `/category/:category` → `/category/:categoryId` | HIGH | Use category ID in URL path |
 | **`customer_id` → Customer Details** | **HIGH** | Replace `customer_id` with `customer_phone`, `customer_name`, `is_org_member` |
 
 ---
@@ -192,17 +194,55 @@ Product categorization system with predefined hierarchy.
 | `/api/v1/categories/:id` | DELETE | Delete category |
 | `/api/v1/categories/seed` | POST | Seed predefined categories (admin-only, idempotent) |
 
-### 5. Subcategories API (NEW)
+### 5. Subcategories API (UPDATED - ID-BASED)
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
 | `/api/v1/subcategories` | GET | List all subcategories |
 | `/api/v1/subcategories/:id` | GET | Get subcategory by ID |
 | `/api/v1/subcategories/name/:name` | GET | Get subcategory by name |
-| `/api/v1/subcategories/category/:category` | GET | Get subcategories by category |
+| `/api/v1/subcategories/category/:categoryId` | GET | Get subcategories by category ID (**CHANGED** from `:category` name) |
 | `/api/v1/subcategories` | POST | Create new subcategory |
 | `/api/v1/subcategories/:id` | PATCH | Update subcategory |
 | `/api/v1/subcategories/:id` | DELETE | Delete subcategory |
+
+**Breaking Change:** Subcategory model now uses `category_id` instead of `category_name`.
+
+**CreateSubcategoryRequest:**
+```json
+{
+  "name": "WATER_SOLUBLE",
+  "category_id": "CATG00000001",
+  "description": "Water soluble fertilizers"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | `string` | **Yes** | Subcategory name (ALL_CAPS_SNAKE_CASE recommended) |
+| `category_id` | `string` | **Yes** | Category ID (NOT category name) |
+| `description` | `*string` | No | Subcategory description |
+
+**SubcategoryResponse:**
+```json
+{
+  "id": "SCAT00000001",
+  "name": "WATER_SOLUBLE",
+  "description": "Water soluble fertilizers",
+  "category_id": "CATG00000001",
+  "created_at": "2025-12-08T10:30:00Z",
+  "updated_at": "2025-12-08T10:30:00Z"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `string` | Subcategory ID |
+| `name` | `string` | Subcategory name |
+| `description` | `*string` | Subcategory description (nullable) |
+| `category_id` | `string` | Category ID (**CHANGED** from `category_name`) |
+| `created_at` | `string` | Creation timestamp |
+| `updated_at` | `string` | Last update timestamp |
 
 ### 6. Products by Category (NEW)
 
@@ -1966,11 +2006,11 @@ await api.post('/categories/seed');
 ```javascript
 // Get all categories with their subcategories
 const categories = await api.get('/categories/with-subcategories');
-// Returns: [{ id: "CATG00000001", name: "Fertilizers", description: "...", subcategories: [...] }, ...]
+// Returns: [{ id: "CATG00000001", name: "FERTILIZERS", description: "Chemical and organic fertilizers", subcategories: [...] }, ...]
 
-// Get subcategories for a selected category
-const subcategories = await api.get(`/subcategories/category/${categoryName}`);
-// Returns: [{ id: "SCAT00000001", name: "Water Soluble", category_name: "Fertilizers" }, ...]
+// Get subcategories for a selected category (CHANGED - now uses categoryId)
+const subcategories = await api.get(`/subcategories/category/${categoryId}`);
+// Returns: [{ id: "SCAT00000001", name: "WATER_SOLUBLE", description: "...", category_id: "CATG00000001" }, ...]
 ```
 
 **Create Product with Category (ID-BASED):**
@@ -2003,15 +2043,22 @@ const updated = await api.patch(`/products/${productId}`, {
 ```
 
 **Predefined Categories (Seeded via `/categories/seed`):**
-| Category | Subcategories |
-|----------|---------------|
-| Seeds | - |
-| Fertilizers | BULK, Water Soluble, Micronutrients, Macronutrients |
-| Pesticides | Weedicides, Insecticides, Fungicides, Organic |
-| Bio Products | Bulk, Liquids, Others |
-| Implements | Weeding, Sowing, Sprayers |
-| Irrigation | Pipes, Drippers, Sprinklers, Automation Machines, Others |
-| Others | - |
+
+**Naming Convention:** ALL_CAPS_SNAKE_CASE (e.g., `WATER_SOLUBLE`, `BIO_PRODUCTS`)
+
+**Idempotency:** Seeding is case-insensitive idempotent (won't create duplicates regardless of case)
+
+| Category | Description | Subcategories |
+|----------|-------------|---------------|
+| SEEDS | Agricultural seeds and planting materials | - |
+| FERTILIZERS | Chemical and organic fertilizers | BULK, WATER_SOLUBLE, MICRONUTRIENTS, MACRONUTRIENTS |
+| PESTICIDES | Pest control products | WEEDICIDES, INSECTICIDES, FUNGICIDES, ORGANIC |
+| BIO_PRODUCTS | Biological and eco-friendly products | BULK, LIQUIDS, OTHER |
+| IMPLEMENTS | Agricultural tools and implements | WEEDING, SOWING, SPRAYERS |
+| IRRIGATION | Irrigation equipment and systems | PIPES, DRIPPERS, SPRINKLERS, AUTOMATION_MACHINES, OTHER |
+| OTHER | Miscellaneous agricultural products | - |
+
+**Note:** Same subcategory name can exist in different categories (e.g., `BULK` exists in both `FERTILIZERS` and `BIO_PRODUCTS`). This is enforced by composite unique index: `UNIQUE(name, category_id)`.
 
 ---
 

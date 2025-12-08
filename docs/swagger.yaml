@@ -837,14 +837,14 @@ definitions:
     type: object
   models.CreateSubcategoryRequest:
     properties:
-      category_name:
+      category_id:
         type: string
       description:
         type: string
       name:
         type: string
     required:
-    - category_name
+    - category_id
     - name
     type: object
   models.CreateWarehouseRequest:
@@ -2315,7 +2315,7 @@ definitions:
     type: object
   models.SubcategoryResponse:
     properties:
-      category_name:
+      category_id:
         type: string
       created_at:
         type: string
@@ -10027,14 +10027,14 @@ paths:
       summary: Update Subcategory
       tags:
       - Subcategories
-  /api/v1/subcategories/category/{category}:
+  /api/v1/subcategories/category/{categoryId}:
     get:
-      description: Retrieve all subcategories for a specific category
+      description: Retrieve all subcategories for a specific category by ID
       parameters:
-      - description: Category name
-        example: Fertilizers
+      - description: 'Category ID (format: CATG_xxxxxxxx)'
+        example: CATG_12345678
         in: path
-        name: category
+        name: categoryId
         required: true
         type: string
       produces:

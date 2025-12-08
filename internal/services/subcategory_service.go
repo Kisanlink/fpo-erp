@@ -31,10 +31,10 @@ func NewSubcategoryService(subcategoryRepo *repositories.SubcategoryRepository, 
 func (s *SubcategoryService) CreateSubcategory(ctx context.Context, request *models.CreateSubcategoryRequest) (*models.SubcategoryResponse, error) {
 	s.logger.Info("Creating subcategory",
 		zap.String("name", request.Name),
-		zap.String("category", request.CategoryName))
+		zap.String("category_id", request.CategoryID))
 
-	// Validate category exists
-	categoryExists, err := s.categoryRepo.ExistsByName(request.CategoryName)
+	// Validate category exists by ID
+	categoryExists, err := s.categoryRepo.Exists(request.CategoryID)
 	if err != nil {
 		s.logger.Error("Failed to check category existence", zap.Error(err))
 		return nil, err
@@ -43,17 +43,17 @@ func (s *SubcategoryService) CreateSubcategory(ctx context.Context, request *mod
 		return nil, errors.NewBadRequestError("Category does not exist")
 	}
 
-	// Check if subcategory already exists
-	existing, err := s.subcategoryRepo.GetByName(request.Name)
+	// Check if subcategory already exists in this category (name is unique per category)
+	existing, err := s.subcategoryRepo.GetByNameAndCategoryID(request.Name, request.CategoryID)
 	if err != nil {
 		s.logger.Error("Failed to check subcategory existence", zap.Error(err))
 		return nil, err
 	}
 	if existing != nil {
-		return nil, errors.NewBadRequestError("Subcategory with this name already exists")
+		return nil, errors.NewBadRequestError("Subcategory with this name already exists in this category")
 	}
 
-	subcategory := models.NewSubcategory(request.Name, request.CategoryName, request.Description)
+	subcategory := models.NewSubcategory(request.Name, request.CategoryID, request.Description)
 
 	if err := s.subcategoryRepo.Create(subcategory); err != nil {
 		s.logger.Error("Failed to create subcategory", zap.Error(err))
@@ -61,12 +61,12 @@ func (s *SubcategoryService) CreateSubcategory(ctx context.Context, request *mod
 	}
 
 	response := &models.SubcategoryResponse{
-		ID:           subcategory.ID,
-		Name:         subcategory.Name,
-		Description:  subcategory.Description,
-		CategoryName: subcategory.CategoryName,
-		CreatedAt:    subcategory.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt:    subcategory.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		ID:          subcategory.ID,
+		Name:        subcategory.Name,
+		Description: subcategory.Description,
+		CategoryID:  subcategory.CategoryID,
+		CreatedAt:   subcategory.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt:   subcategory.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 	}
 
 	s.logger.Info("Subcategory created successfully", zap.String("id", subcategory.ID))
@@ -84,18 +84,19 @@ func (s *SubcategoryService) GetSubcategory(ctx context.Context, id string) (*mo
 	}
 
 	response := &models.SubcategoryResponse{
-		ID:           subcategory.ID,
-		Name:         subcategory.Name,
-		Description:  subcategory.Description,
-		CategoryName: subcategory.CategoryName,
-		CreatedAt:    subcategory.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt:    subcategory.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		ID:          subcategory.ID,
+		Name:        subcategory.Name,
+		Description: subcategory.Description,
+		CategoryID:  subcategory.CategoryID,
+		CreatedAt:   subcategory.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt:   subcategory.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 	}
 
 	return response, nil
 }
 
 // GetSubcategoryByName retrieves a subcategory by name
+// Note: Name is not globally unique - returns first match
 func (s *SubcategoryService) GetSubcategoryByName(ctx context.Context, name string) (*models.SubcategoryResponse, error) {
 	s.logger.Info("Retrieving subcategory by name", zap.String("name", name))
 
@@ -109,22 +110,22 @@ func (s *SubcategoryService) GetSubcategoryByName(ctx context.Context, name stri
 	}
 
 	response := &models.SubcategoryResponse{
-		ID:           subcategory.ID,
-		Name:         subcategory.Name,
-		Description:  subcategory.Description,
-		CategoryName: subcategory.CategoryName,
-		CreatedAt:    subcategory.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt:    subcategory.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		ID:          subcategory.ID,
+		Name:        subcategory.Name,
+		Description: subcategory.Description,
+		CategoryID:  subcategory.CategoryID,
+		CreatedAt:   subcategory.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt:   subcategory.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 	}
 
 	return response, nil
 }
 
-// GetSubcategoriesByCategory retrieves all subcategories for a category
-func (s *SubcategoryService) GetSubcategoriesByCategory(ctx context.Context, categoryName string) ([]models.SubcategoryResponse, error) {
-	s.logger.Info("Retrieving subcategories by category", zap.String("category", categoryName))
+// GetSubcategoriesByCategory retrieves all subcategories for a category by ID
+func (s *SubcategoryService) GetSubcategoriesByCategory(ctx context.Context, categoryID string) ([]models.SubcategoryResponse, error) {
+	s.logger.Info("Retrieving subcategories by category", zap.String("category_id", categoryID))
 
-	subcategories, err := s.subcategoryRepo.GetByCategoryName(categoryName)
+	subcategories, err := s.subcategoryRepo.GetByCategoryID(categoryID)
 	if err != nil {
 		s.logger.Error("Failed to retrieve subcategories by category", zap.Error(err))
 		return nil, err
@@ -133,18 +134,18 @@ func (s *SubcategoryService) GetSubcategoriesByCategory(ctx context.Context, cat
 	var responses []models.SubcategoryResponse
 	for _, subcategory := range subcategories {
 		response := models.SubcategoryResponse{
-			ID:           subcategory.ID,
-			Name:         subcategory.Name,
-			Description:  subcategory.Description,
-			CategoryName: subcategory.CategoryName,
-			CreatedAt:    subcategory.CreatedAt.Format("2006-01-02T15:04:05Z"),
-			UpdatedAt:    subcategory.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+			ID:          subcategory.ID,
+			Name:        subcategory.Name,
+			Description: subcategory.Description,
+			CategoryID:  subcategory.CategoryID,
+			CreatedAt:   subcategory.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			UpdatedAt:   subcategory.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 		}
 		responses = append(responses, response)
 	}
 
 	s.logger.Info("Retrieved subcategories by category",
-		zap.String("category", categoryName),
+		zap.String("category_id", categoryID),
 		zap.Int("count", len(responses)))
 	return responses, nil
 }
@@ -162,12 +163,12 @@ func (s *SubcategoryService) GetAllSubcategories(ctx context.Context) ([]models.
 	var responses []models.SubcategoryResponse
 	for _, subcategory := range subcategories {
 		response := models.SubcategoryResponse{
-			ID:           subcategory.ID,
-			Name:         subcategory.Name,
-			Description:  subcategory.Description,
-			CategoryName: subcategory.CategoryName,
-			CreatedAt:    subcategory.CreatedAt.Format("2006-01-02T15:04:05Z"),
-			UpdatedAt:    subcategory.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+			ID:          subcategory.ID,
+			Name:        subcategory.Name,
+			Description: subcategory.Description,
+			CategoryID:  subcategory.CategoryID,
+			CreatedAt:   subcategory.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			UpdatedAt:   subcategory.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 		}
 		responses = append(responses, response)
 	}
@@ -187,13 +188,13 @@ func (s *SubcategoryService) UpdateSubcategory(ctx context.Context, id string, r
 	}
 
 	if request.Name != nil {
-		// Check if new name already exists
-		existing, err := s.subcategoryRepo.GetByName(*request.Name)
+		// Check if new name already exists in the same category
+		existing, err := s.subcategoryRepo.GetByNameAndCategoryID(*request.Name, subcategory.CategoryID)
 		if err != nil {
 			return nil, err
 		}
 		if existing != nil && existing.ID != id {
-			return nil, errors.NewBadRequestError("Subcategory with this name already exists")
+			return nil, errors.NewBadRequestError("Subcategory with this name already exists in this category")
 		}
 		subcategory.Name = *request.Name
 	}
@@ -207,12 +208,12 @@ func (s *SubcategoryService) UpdateSubcategory(ctx context.Context, id string, r
 	}
 
 	response := &models.SubcategoryResponse{
-		ID:           subcategory.ID,
-		Name:         subcategory.Name,
-		Description:  subcategory.Description,
-		CategoryName: subcategory.CategoryName,
-		CreatedAt:    subcategory.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt:    subcategory.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		ID:          subcategory.ID,
+		Name:        subcategory.Name,
+		Description: subcategory.Description,
+		CategoryID:  subcategory.CategoryID,
+		CreatedAt:   subcategory.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt:   subcategory.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 	}
 
 	s.logger.Info("Subcategory updated successfully", zap.String("id", id))

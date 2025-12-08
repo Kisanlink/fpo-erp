@@ -33,6 +33,10 @@ func RunPreMigrationFixes(db *gorm.DB) error {
 		return fmt.Errorf("failed to migrate product category columns: %w", err)
 	}
 
+	if err := migrateSubcategoryCategoryColumn(db); err != nil {
+		return fmt.Errorf("failed to migrate subcategory category column: %w", err)
+	}
+
 	log.Println("Pre-migration fixes completed successfully")
 	return nil
 }
@@ -338,7 +342,7 @@ func migrateProductCategoryColumns(db *gorm.DB) error {
 			UPDATE products p
 			SET category_id = c.id
 			FROM categories c
-			WHERE p.category_name = c.name AND p.category_id IS NULL
+			WHERE LOWER(p.category_name) = LOWER(c.name) AND p.category_id IS NULL
 		`
 		if err := db.Exec(migrateCategory).Error; err != nil {
 			log.Printf("Warning: Could not migrate category_name to category_id: %v", err)
@@ -351,8 +355,8 @@ func migrateProductCategoryColumns(db *gorm.DB) error {
 			UPDATE products p
 			SET subcategory_id = s.id
 			FROM subcategories s
-			WHERE p.subcategory_name = s.name
-			AND p.category_name = s.category_name
+			WHERE LOWER(p.subcategory_name) = LOWER(s.name)
+			AND LOWER(p.category_name) = LOWER(s.category_name)
 			AND p.subcategory_id IS NULL
 		`
 		if err := db.Exec(migrateSubcategory).Error; err != nil {
@@ -465,5 +469,67 @@ func migrateCustomerIDToPhone(db *gorm.DB) error {
 	}
 
 	log.Println("Successfully migrated customer_id to customer_phone")
+	return nil
+}
+
+// migrateSubcategoryCategoryColumn migrates subcategories table from category_name
+// (string-based) to category_id (ID-based foreign key reference)
+// This is idempotent - checks if old column exists before migrating
+func migrateSubcategoryCategoryColumn(db *gorm.DB) error {
+	if !db.Migrator().HasTable("subcategories") {
+		log.Println("Subcategories table does not exist yet - will be created by AutoMigrate")
+		return nil
+	}
+
+	// Check if old category_name column exists
+	var hasOldColumn bool
+	query := `
+		SELECT EXISTS (
+			SELECT 1 FROM information_schema.columns
+			WHERE table_name = 'subcategories' AND column_name = 'category_name'
+		)
+	`
+	if err := db.Raw(query).Scan(&hasOldColumn).Error; err != nil {
+		log.Printf("Could not check for category_name column: %v - skipping", err)
+		return nil
+	}
+
+	if !hasOldColumn {
+		log.Println("subcategories.category_name column does not exist - already migrated to ID-based")
+		return nil
+	}
+
+	log.Println("Migrating subcategories from category_name to category_id...")
+
+	// Step 1: Add category_id column if it doesn't exist
+	log.Println("Adding category_id column if not exists...")
+	db.Exec("ALTER TABLE subcategories ADD COLUMN IF NOT EXISTS category_id VARCHAR(50)")
+
+	// Step 2: Migrate data from category_name to category_id
+	if db.Migrator().HasTable("categories") {
+		log.Println("Migrating category_name to category_id...")
+		migrateSQL := `
+			UPDATE subcategories s
+			SET category_id = c.id
+			FROM categories c
+			WHERE LOWER(s.category_name) = LOWER(c.name) AND s.category_id IS NULL
+		`
+		if err := db.Exec(migrateSQL).Error; err != nil {
+			log.Printf("Warning: Could not migrate category_name to category_id: %v", err)
+		}
+	}
+
+	// Step 3: Drop old FK constraints (if any)
+	log.Println("Dropping old FK constraints...")
+	db.Exec("ALTER TABLE subcategories DROP CONSTRAINT IF EXISTS fk_subcategories_category")
+	db.Exec("ALTER TABLE subcategories DROP CONSTRAINT IF EXISTS subcategories_category_name_fkey")
+
+	// Step 4: Drop old category_name column
+	log.Println("Dropping old category_name column...")
+	if err := db.Exec("ALTER TABLE subcategories DROP COLUMN IF EXISTS category_name").Error; err != nil {
+		log.Printf("Warning: Could not drop category_name column: %v", err)
+	}
+
+	log.Println("Successfully migrated subcategories to ID-based category reference")
 	return nil
 }
