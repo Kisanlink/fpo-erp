@@ -262,10 +262,11 @@ func (s *CollaboratorService) createCollaboratorViaEcommerce(ctx context.Context
 
 	resp, err := s.ecomClient.CreateCollaborator(ecomCtx, pbReq)
 	if err != nil {
-		s.logger.Error("Failed to sync collaborator to e-commerce",
+		s.logger.Warn("E-commerce sync failed, falling back to legacy mode",
 			zap.Error(err),
-			zap.String("error_message", grpcErrorMessage(err)))
-		return nil, errors.NewInternalServerError(fmt.Sprintf("failed to sync collaborator to e-commerce: %s", grpcErrorMessage(err)))
+			zap.String("error_message", grpcErrorMessage(err)),
+			zap.String("company_name", request.CompanyName))
+		return s.createCollaboratorLegacy(ctx, request, userID, jwtToken)
 	}
 
 	remote := resp.GetCollaborator()
@@ -500,10 +501,11 @@ func (s *CollaboratorService) updateCollaboratorViaEcommerce(ctx context.Context
 
 		resp, err := s.ecomClient.UpdateCollaborator(ecomCtx, pbReq)
 		if err != nil {
-			s.logger.Error("Failed to update collaborator in e-commerce",
+			s.logger.Warn("E-commerce update sync failed, falling back to legacy mode",
 				zap.Error(err),
-				zap.String("external_id", *collaborator.ExternalID))
-			return nil, errors.NewInternalServerError(fmt.Sprintf("failed to update collaborator in e-commerce: %s", grpcErrorMessage(err)))
+				zap.String("external_id", *collaborator.ExternalID),
+				zap.String("collaborator_id", id))
+			return s.updateCollaboratorLegacy(ctx, id, request, jwtToken)
 		}
 		if resp != nil && resp.Collaborator != nil {
 			if addrID := extractAddressID(resp.Collaborator); addrID != nil {
@@ -648,7 +650,11 @@ func (s *CollaboratorService) deleteCollaboratorViaEcommerce(ctx context.Context
 			zap.String("external_id", *collaborator.ExternalID))
 
 		if err := s.syncCollaboratorStatus(ctx, *collaborator.ExternalID, pb.CollaboratorStatus_COLLABORATOR_STATUS_INACTIVE, organizationID, ""); err != nil {
-			return err
+			s.logger.Warn("E-commerce deactivation sync failed, continuing with local delete",
+				zap.Error(err),
+				zap.String("external_id", *collaborator.ExternalID),
+				zap.String("collaborator_id", id))
+			// Continue with local deletion - don't fail the operation
 		}
 	}
 

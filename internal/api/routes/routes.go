@@ -78,10 +78,15 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	}
 	// Note: Connection will be closed when the application shuts down
 
-	// Initialize E-commerce collaborator gRPC client
-	ecommerceClient, err := newEcommerceCollaboratorClient(&cfg.Ecommerce)
-	if err != nil {
-		panic("Failed to initialize E-commerce collaborator gRPC client: " + err.Error())
+	// Initialize E-commerce collaborator gRPC client (only if enabled)
+	var ecommerceClient pb.CollaboratorServiceClient
+	if cfg.Ecommerce.Enabled {
+		ecommerceClient, err = newEcommerceCollaboratorClient(&cfg.Ecommerce)
+		if err != nil {
+			panic("Failed to initialize E-commerce collaborator gRPC client: " + err.Error())
+		}
+	} else {
+		utils.Info("⚠️  E-commerce sync is DISABLED - collaborators will use legacy mode")
 	}
 
 	// Initialize services

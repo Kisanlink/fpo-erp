@@ -73,6 +73,7 @@ type WebhookConfig struct {
 }
 
 type EcommerceConfig struct {
+	Enabled        bool   `mapstructure:"enabled"`         // Enable/disable e-commerce sync (default: true)
 	GRPCAddress    string `mapstructure:"grpc_address"`
 	TimeoutSeconds int    `mapstructure:"timeout_seconds"`
 	AuthToken      string `mapstructure:"auth_token"`
@@ -191,6 +192,16 @@ func Load() *Config {
 		}
 	}
 
+	// Parse ECOMMERCE_ENABLED (default: true for backward compatibility)
+	ecommerceEnabled := true
+	if ecommerceEnabledStr := os.Getenv("ECOMMERCE_ENABLED"); ecommerceEnabledStr != "" {
+		if parsed, err := strconv.ParseBool(ecommerceEnabledStr); err == nil {
+			ecommerceEnabled = parsed
+		} else {
+			utils.Info("Invalid ECOMMERCE_ENABLED value, defaulting to true:", ecommerceEnabledStr)
+		}
+	}
+
 	// Parse AAA TLS flag
 	aaaUseTLS := false
 	if aaaUseTLSStr := os.Getenv("AAA_GRPC_USE_TLS"); aaaUseTLSStr != "" {
@@ -247,6 +258,7 @@ func Load() *Config {
 			MaxPayloadBytes: webhookMaxPayload,
 		},
 		Ecommerce: EcommerceConfig{
+			Enabled:        ecommerceEnabled,
 			GRPCAddress:    os.Getenv("ECOMMERCE_GRPC_ADDRESS"),
 			TimeoutSeconds: ecommerceTimeout,
 			AuthToken:      os.Getenv("ECOMMERCE_GRPC_AUTH_TOKEN"),
@@ -260,6 +272,11 @@ func Load() *Config {
 	// Log warning if AAA is disabled
 	if !aaaEnabled {
 		utils.Info("⚠️  WARNING: AAA authentication is DISABLED - For development/testing only!")
+	}
+
+	// Log warning if E-commerce sync is disabled
+	if !ecommerceEnabled {
+		utils.Info("⚠️  WARNING: E-commerce sync is DISABLED - Collaborators will use legacy mode!")
 	}
 
 	utils.Info("Configuration loaded successfully")
