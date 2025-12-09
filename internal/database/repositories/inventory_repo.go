@@ -378,6 +378,8 @@ func (r *InventoryRepository) ReserveBatchStockWithTx(tx *gorm.DB, batchID strin
 
 // ReleaseBatchReservationWithTx releases a reservation (decrements reserved_quantity)
 // Uses atomic conditional update to prevent race conditions
+// This operation is idempotent: if reservation is already released or doesn't exist (legacy sale),
+// it logs a warning and returns nil instead of an error
 func (r *InventoryRepository) ReleaseBatchReservationWithTx(tx *gorm.DB, batchID string, quantity int64) error {
 	// Atomic conditional update: check sufficient reservation AND update in single operation
 	result := tx.Model(&models.InventoryBatch{}).
@@ -391,13 +393,20 @@ func (r *InventoryRepository) ReleaseBatchReservationWithTx(tx *gorm.DB, batchID
 
 	// If no rows affected, either batch doesn't exist or insufficient reservation
 	if result.RowsAffected == 0 {
-		// Check if batch exists to provide better error message
-		var exists bool
-		if err := tx.Model(&models.InventoryBatch{}).Select("1").Where("id = ?", batchID).Find(&exists).Error; err == nil && !exists {
+		// Check if batch exists using Count (GORM Find with bool doesn't work correctly)
+		var count int64
+		if err := tx.Model(&models.InventoryBatch{}).Where("id = ?", batchID).Count(&count).Error; err != nil {
+			log.Printf("[ERROR] Failed to check batch existence: %v", err)
+			return errors.NewInternalServerError("Failed to check batch status")
+		}
+		if count == 0 {
 			return errors.NewNotFoundError("Inventory batch")
 		}
-		log.Printf("[ERROR] Cannot release more than reserved: batch=%s, release_requested=%d", batchID, quantity)
-		return errors.NewBadRequestError("Cannot release more than reserved quantity")
+
+		// Batch exists but has insufficient reservation - this is OK for legacy sales
+		// or if reservation was already released (idempotent operation)
+		log.Printf("[WARN] Release reservation skipped (already released or legacy sale): batch=%s, release_requested=%d", batchID, quantity)
+		return nil // Idempotent: return success even if nothing to release
 	}
 	return nil
 }
