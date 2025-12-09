@@ -212,6 +212,56 @@ func (s *ProductPriceService) GetVariantPrices(variantID string) ([]models.Produ
 	return responses, nil
 }
 
+// GetVariantPricesPaginated retrieves prices for a variant with pagination
+func (s *ProductPriceService) GetVariantPricesPaginated(variantID string, limit, offset int) ([]models.ProductPriceResponse, int64, error) {
+	s.logger.Info("Retrieving variant prices with pagination",
+		zap.String("variant_id", variantID),
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
+
+	prices, total, err := s.priceRepo.GetByVariantIDPaginated(variantID, limit, offset)
+	if err != nil {
+		s.logger.Error("Failed to retrieve paginated variant prices",
+			zap.Error(err),
+			zap.String("variant_id", variantID))
+		return nil, 0, err
+	}
+
+	var responses []models.ProductPriceResponse
+	for _, price := range prices {
+		isActiveValue := false
+		if price.IsActive != nil {
+			isActiveValue = *price.IsActive
+		}
+
+		response := models.ProductPriceResponse{
+			ID:            price.ID,
+			VariantID:     price.VariantID,
+			PriceType:     price.PriceType,
+			Price:         price.Price,
+			Currency:      price.Currency,
+			EffectiveFrom: price.EffectiveFrom.Format(time.RFC3339),
+			IsActive:      isActiveValue,
+			CreatedAt:     price.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:     price.UpdatedAt.Format(time.RFC3339),
+		}
+
+		if price.EffectiveTo != nil {
+			effectiveToStr := price.EffectiveTo.Format(time.RFC3339)
+			response.EffectiveTo = &effectiveToStr
+		}
+
+		responses = append(responses, response)
+	}
+
+	s.logger.Info("Paginated variant prices retrieved successfully",
+		zap.String("variant_id", variantID),
+		zap.Int("count", len(responses)),
+		zap.Int64("total", total))
+
+	return responses, total, nil
+}
+
 // GetCurrentPrice retrieves the current active price for a variant and type
 func (s *ProductPriceService) GetCurrentPrice(variantID, priceType string) (*models.ProductPriceResponse, error) {
 	s.logger.Info("Retrieving current price",
@@ -411,4 +461,51 @@ func (s *ProductPriceService) GetExpiredPrices() ([]models.ProductPriceResponse,
 		zap.Int("count", len(responses)))
 
 	return responses, nil
+}
+
+// GetExpiredPricesPaginated retrieves expired prices with pagination
+func (s *ProductPriceService) GetExpiredPricesPaginated(limit, offset int) ([]models.ProductPriceResponse, int64, error) {
+	s.logger.Info("Retrieving expired prices with pagination",
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
+
+	prices, total, err := s.priceRepo.GetExpiredPricesPaginated(limit, offset)
+	if err != nil {
+		s.logger.Error("Failed to retrieve paginated expired prices",
+			zap.Error(err))
+		return nil, 0, err
+	}
+
+	var responses []models.ProductPriceResponse
+	for _, price := range prices {
+		isActiveValue := false
+		if price.IsActive != nil {
+			isActiveValue = *price.IsActive
+		}
+
+		response := models.ProductPriceResponse{
+			ID:            price.ID,
+			VariantID:     price.VariantID,
+			PriceType:     price.PriceType,
+			Price:         price.Price,
+			Currency:      price.Currency,
+			EffectiveFrom: price.EffectiveFrom.Format(time.RFC3339),
+			IsActive:      isActiveValue,
+			CreatedAt:     price.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:     price.UpdatedAt.Format(time.RFC3339),
+		}
+
+		if price.EffectiveTo != nil {
+			effectiveToStr := price.EffectiveTo.Format(time.RFC3339)
+			response.EffectiveTo = &effectiveToStr
+		}
+
+		responses = append(responses, response)
+	}
+
+	s.logger.Info("Paginated expired prices retrieved successfully",
+		zap.Int("count", len(responses)),
+		zap.Int64("total", total))
+
+	return responses, total, nil
 }

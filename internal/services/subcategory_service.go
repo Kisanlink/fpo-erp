@@ -289,15 +289,21 @@ func (s *SubcategoryService) UpdateSubcategory(ctx context.Context, id string, r
 	}
 
 	if request.Name != nil {
+		// Normalize name to UPPER_SNAKE_CASE
+		normalizedName := toSnakeCase(*request.Name)
+		s.logger.Info("Updating subcategory name",
+			zap.String("original_name", *request.Name),
+			zap.String("normalized_name", normalizedName))
+
 		// Check if new name already exists in the same category
-		existing, err := s.subcategoryRepo.GetByNameAndCategoryID(*request.Name, subcategory.CategoryID)
+		existing, err := s.subcategoryRepo.GetByNameAndCategoryID(normalizedName, subcategory.CategoryID)
 		if err != nil {
 			return nil, err
 		}
 		if existing != nil && existing.ID != id {
 			return nil, errors.NewBadRequestError("Subcategory with this name already exists in this category")
 		}
-		subcategory.Name = *request.Name
+		subcategory.Name = normalizedName
 	}
 	if request.Description != nil {
 		subcategory.Description = request.Description

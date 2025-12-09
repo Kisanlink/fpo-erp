@@ -4561,30 +4561,6 @@ paths:
       summary: Seed Categories
       tags:
       - Categories
-  /api/v1/categories/with-subcategories:
-    get:
-      description: Retrieve all categories with their subcategories
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Categories with subcategories retrieved successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.Response'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/models.CategoryResponse'
-                  type: array
-              type: object
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      summary: Get All Categories with Subcategories
-      tags:
-      - Categories
   /api/v1/collaborators:
     get:
       description: Retrieve all collaborators with pagination (requires authentication)
@@ -6365,7 +6341,18 @@ paths:
       - Product Prices
   /api/v1/prices/expired:
     get:
-      description: Retrieve all expired product prices
+      description: Retrieve all expired product prices with pagination
+      parameters:
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -6373,7 +6360,7 @@ paths:
           description: Expired prices retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -6817,7 +6804,7 @@ paths:
       - Product Prices
   /api/v1/products/{id}/variants:
     get:
-      description: Retrieve all variants for a specific product
+      description: Retrieve all variants for a specific product with pagination
       parameters:
       - description: 'Product ID (format: PROD_xxxxxxxx)'
         example: PROD_12345678
@@ -6825,6 +6812,16 @@ paths:
         name: id
         required: true
         type: string
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -6832,7 +6829,7 @@ paths:
           description: Variants retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -10651,7 +10648,7 @@ paths:
       - Inventory
   /api/v1/variants/{id}/prices:
     get:
-      description: Retrieve all prices for a specific product variant
+      description: Retrieve all prices for a specific product variant with pagination
       parameters:
       - description: Variant ID
         example: PVAR_12345678
@@ -10659,6 +10656,16 @@ paths:
         name: id
         required: true
         type: string
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -10666,7 +10673,7 @@ paths:
           description: Variant prices retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:

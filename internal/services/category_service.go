@@ -459,57 +459,6 @@ func (s *CategoryService) SearchCategories(ctx context.Context, query string, li
 	return responses, total, nil
 }
 
-// GetAllCategoriesWithSubcategories retrieves all categories with their subcategories
-// Note: Subcategories are fetched separately using GetByCategoryID since we removed
-// the association from the Category model to reduce database load.
-func (s *CategoryService) GetAllCategoriesWithSubcategories(ctx context.Context) ([]models.CategoryResponse, error) {
-	s.logger.Info("Retrieving all categories with subcategories")
-
-	categories, err := s.categoryRepo.GetAll()
-	if err != nil {
-		s.logger.Error("Failed to retrieve categories", zap.Error(err))
-		return nil, err
-	}
-
-	var responses []models.CategoryResponse
-	for _, category := range categories {
-		// Fetch subcategories for this category using category ID
-		subcategories, err := s.subcategoryRepo.GetByCategoryID(category.ID)
-		if err != nil {
-			s.logger.Error("Failed to retrieve subcategories for category",
-				zap.Error(err),
-				zap.String("category_id", category.ID))
-			return nil, err
-		}
-
-		var subcatResponses []models.SubcategoryResponse
-		for _, subcat := range subcategories {
-			subcatResponse := models.SubcategoryResponse{
-				ID:          subcat.ID,
-				Name:        subcat.Name,
-				Description: subcat.Description,
-				CategoryID:  subcat.CategoryID,
-				CreatedAt:   subcat.CreatedAt.Format("2006-01-02T15:04:05Z"),
-				UpdatedAt:   subcat.UpdatedAt.Format("2006-01-02T15:04:05Z"),
-			}
-			subcatResponses = append(subcatResponses, subcatResponse)
-		}
-
-		response := models.CategoryResponse{
-			ID:            category.ID,
-			Name:          category.Name,
-			Description:   category.Description,
-			Subcategories: subcatResponses,
-			CreatedAt:     category.CreatedAt.Format("2006-01-02T15:04:05Z"),
-			UpdatedAt:     category.UpdatedAt.Format("2006-01-02T15:04:05Z"),
-		}
-		responses = append(responses, response)
-	}
-
-	s.logger.Info("Retrieved all categories with subcategories", zap.Int("count", len(responses)))
-	return responses, nil
-}
-
 // UpdateCategory updates a category
 func (s *CategoryService) UpdateCategory(ctx context.Context, id string, request *models.UpdateCategoryRequest) (*models.CategoryResponse, error) {
 	s.logger.Info("Updating category", zap.String("id", id))
@@ -521,15 +470,21 @@ func (s *CategoryService) UpdateCategory(ctx context.Context, id string, request
 	}
 
 	if request.Name != nil {
+		// Normalize name to UPPER_SNAKE_CASE
+		normalizedName := toSnakeCase(*request.Name)
+		s.logger.Info("Updating category name",
+			zap.String("original_name", *request.Name),
+			zap.String("normalized_name", normalizedName))
+
 		// Check if new name already exists
-		existing, err := s.categoryRepo.GetByName(*request.Name)
+		existing, err := s.categoryRepo.GetByName(normalizedName)
 		if err != nil {
 			return nil, err
 		}
 		if existing != nil && existing.ID != id {
 			return nil, errors.NewBadRequestError("Category with this name already exists")
 		}
-		category.Name = *request.Name
+		category.Name = normalizedName
 	}
 	if request.Description != nil {
 		category.Description = request.Description

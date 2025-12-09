@@ -204,6 +204,48 @@ func (s *ProductVariantService) GetVariantsByProduct(ctx context.Context, produc
 	return responses, nil
 }
 
+// GetVariantsByProductPaginated retrieves variants for a product with pagination
+func (s *ProductVariantService) GetVariantsByProductPaginated(ctx context.Context, productID string, limit, offset int) ([]models.ProductVariantResponse, int64, error) {
+	s.logger.Info("Retrieving variants by product with pagination",
+		zap.String("product_id", productID),
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
+
+	// Validate product exists
+	product, err := s.productRepo.GetByID(productID)
+	if err != nil {
+		s.logger.Error("Product not found",
+			zap.Error(err),
+			zap.String("product_id", productID))
+		return nil, 0, err
+	}
+
+	// Get paginated variants for this product
+	variants, total, err := s.variantRepo.GetByProductIDPaginated(productID, limit, offset)
+	if err != nil {
+		s.logger.Error("Failed to retrieve paginated variants",
+			zap.Error(err),
+			zap.String("product_id", productID))
+		return nil, 0, err
+	}
+
+	var responses []models.ProductVariantResponse
+	for _, variant := range variants {
+		response, err := s.buildProductVariantResponse(ctx, &variant, product)
+		if err != nil {
+			continue // Skip on error
+		}
+		responses = append(responses, *response)
+	}
+
+	s.logger.Info("Paginated variants retrieved successfully",
+		zap.String("product_id", productID),
+		zap.Int("count", len(responses)),
+		zap.Int64("total", total))
+
+	return responses, total, nil
+}
+
 // GetVariantBySKU retrieves a product variant by SKU
 func (s *ProductVariantService) GetVariantBySKU(ctx context.Context, sku string) (*models.ProductVariantResponse, error) {
 	variant, err := s.variantRepo.GetBySKU(sku)

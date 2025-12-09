@@ -131,11 +131,13 @@ func (h *ProductPriceHandler) GetProductPrice(c *gin.Context) {
 
 // GetVariantPrices handles GET /api/v1/variants/:id/prices
 // @Summary Get Variant Prices
-// @Description Retrieve all prices for a specific product variant
+// @Description Retrieve all prices for a specific product variant with pagination
 // @Tags Product Prices
 // @Produce json
 // @Param id path string true "Variant ID" example(PVAR_12345678)
-// @Success 200 {object} utils.Response{data=[]models.ProductPriceResponse} "Variant prices retrieved successfully"
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.ProductPriceResponse} "Variant prices retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
@@ -159,11 +161,16 @@ func (h *ProductPriceHandler) GetVariantPrices(c *gin.Context) {
 		return
 	}
 
-	h.logger.Debug("Calling price service to get variant prices",
-		zap.String("variant_id", variantID))
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
 
-	// Get variant prices
-	response, err := h.priceService.GetVariantPrices(variantID)
+	h.logger.Debug("Calling price service to get variant prices",
+		zap.String("variant_id", variantID),
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
+
+	// Get variant prices with pagination
+	response, total, err := h.priceService.GetVariantPricesPaginated(variantID, params.Limit, params.Offset)
 	if err != nil {
 		h.logger.Error("Failed to get variant prices via service",
 			zap.Error(err),
@@ -174,9 +181,10 @@ func (h *ProductPriceHandler) GetVariantPrices(c *gin.Context) {
 
 	h.logger.Info("Variant prices retrieved successfully via handler",
 		zap.String("variant_id", variantID),
-		zap.Int("count", len(response)))
+		zap.Int("count", len(response)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "Variant prices retrieved successfully", response)
+	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
 }
 
 // GetCurrentPrice handles GET /api/v1/products/:id/prices/current
@@ -353,10 +361,12 @@ func (h *ProductPriceHandler) DeleteProductPrice(c *gin.Context) {
 
 // GetExpiredPrices handles GET /api/v1/prices/expired
 // @Summary Get Expired Prices
-// @Description Retrieve all expired product prices
+// @Description Retrieve all expired product prices with pagination
 // @Tags Product Prices
 // @Produce json
-// @Success 200 {object} utils.Response{data=[]models.ProductPriceResponse} "Expired prices retrieved successfully"
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.ProductPriceResponse} "Expired prices retrieved successfully"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
@@ -369,10 +379,15 @@ func (h *ProductPriceHandler) GetExpiredPrices(c *gin.Context) {
 		zap.String("method", c.Request.Method),
 		zap.String("path", c.Request.URL.Path))
 
-	h.logger.Debug("Calling price service to get expired prices")
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
 
-	// Get expired prices
-	response, err := h.priceService.GetExpiredPrices()
+	h.logger.Debug("Calling price service to get expired prices",
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
+
+	// Get expired prices with pagination
+	response, total, err := h.priceService.GetExpiredPricesPaginated(params.Limit, params.Offset)
 	if err != nil {
 		h.logger.Error("Failed to get expired prices via service",
 			zap.Error(err))
@@ -381,9 +396,10 @@ func (h *ProductPriceHandler) GetExpiredPrices(c *gin.Context) {
 	}
 
 	h.logger.Info("Expired prices retrieved successfully via handler",
-		zap.Int("count", len(response)))
+		zap.Int("count", len(response)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "Expired prices retrieved successfully", response)
+	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
 }
 
 // CreateProductPriceForProduct handles POST /api/v1/products/:id/prices

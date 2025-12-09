@@ -283,34 +283,6 @@ func (h *CategoryHandler) SearchCategories(c *gin.Context) {
 	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
 }
 
-// GetAllCategoriesWithSubcategories handles GET /api/v1/categories/with-subcategories
-// @Summary Get All Categories with Subcategories
-// @Description Retrieve all categories with their subcategories
-// @Tags Categories
-// @Produce json
-// @Success 200 {object} utils.Response{data=[]models.CategoryResponse} "Categories with subcategories retrieved successfully"
-// @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
-// @Router /api/v1/categories/with-subcategories [get]
-func (h *CategoryHandler) GetAllCategoriesWithSubcategories(c *gin.Context) {
-	h.logger.Info("Handling get all categories with subcategories request",
-		zap.String("method", c.Request.Method),
-		zap.String("path", c.Request.URL.Path))
-
-	// Get all categories with subcategories
-	response, err := h.categoryService.GetAllCategoriesWithSubcategories(c.Request.Context())
-	if err != nil {
-		h.logger.Error("Service error retrieving categories with subcategories",
-			zap.Error(err))
-		utils.HandleServiceError(c, "Failed to retrieve categories", err)
-		return
-	}
-
-	h.logger.Info("All categories with subcategories retrieved successfully",
-		zap.Int("category_count", len(response)))
-
-	utils.OKResponse(c, "Categories retrieved successfully", response)
-}
-
 // UpdateCategory handles PATCH /api/v1/categories/:id
 // @Summary Update Category
 // @Description Update an existing category by ID
@@ -419,7 +391,6 @@ func (h *CategoryHandler) RegisterRoutes(v1 *gin.RouterGroup) {
 		// Public endpoints (read operations)
 		categories.GET("", h.GetAllCategories)
 		categories.GET("/search", h.SearchCategories)
-		categories.GET("/with-subcategories", h.GetAllCategoriesWithSubcategories)
 		categories.GET("/name/:name", h.GetCategoryByName)
 		categories.GET("/:id", h.GetCategory)
 

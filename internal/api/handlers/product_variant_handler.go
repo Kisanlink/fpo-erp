@@ -146,11 +146,13 @@ func (h *ProductVariantHandler) GetProductVariant(c *gin.Context) {
 
 // GetVariantsByProduct handles GET /api/v1/products/:id/variants
 // @Summary Get Variants by Product
-// @Description Retrieve all variants for a specific product
+// @Description Retrieve all variants for a specific product with pagination
 // @Tags Product Variants
 // @Produce json
 // @Param id path string true "Product ID (format: PROD_xxxxxxxx)" example(PROD_12345678)
-// @Success 200 {object} utils.Response{data=[]models.ProductVariantResponse} "Variants retrieved successfully"
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.ProductVariantResponse} "Variants retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 404 {object} utils.ErrorResponseModel "Product not found"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
@@ -168,11 +170,16 @@ func (h *ProductVariantHandler) GetVariantsByProduct(c *gin.Context) {
 		return
 	}
 
-	h.logger.Debug("Calling variant service to get variants by product",
-		zap.String("product_id", productID))
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
 
-	// Get variants
-	response, err := h.variantService.GetVariantsByProduct(c.Request.Context(), productID)
+	h.logger.Debug("Calling variant service to get variants by product",
+		zap.String("product_id", productID),
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
+
+	// Get variants with pagination
+	response, total, err := h.variantService.GetVariantsByProductPaginated(c.Request.Context(), productID, params.Limit, params.Offset)
 	if err != nil {
 		h.logger.Error("Failed to retrieve variants for product via service",
 			zap.Error(err),
@@ -183,9 +190,10 @@ func (h *ProductVariantHandler) GetVariantsByProduct(c *gin.Context) {
 
 	h.logger.Info("Product variants retrieved successfully via handler",
 		zap.String("product_id", productID),
-		zap.Int("count", len(response)))
+		zap.Int("count", len(response)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "Variants retrieved successfully", response)
+	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
 }
 
 // GetVariantBySKU handles GET /api/v1/variants/sku/:sku

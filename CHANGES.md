@@ -17,6 +17,7 @@ This document describes all breaking changes, new features, and response format 
    - [Categories API](#4-categories-api-new)
    - [Subcategories API](#5-subcategories-api-new)
    - [Products by Category](#6-products-by-category-new)
+   - [Reports API](#7-reports-api-new)
 4. [Response Format Changes](#response-format-changes)
 5. [Endpoints with Query Parameters](#endpoints-with-query-parameters)
 6. [Frontend Migration Guide](#frontend-migration-guide)
@@ -44,8 +45,9 @@ This document describes all breaking changes, new features, and response format 
 | Subcategory endpoint `/category/:category` → `/category/:categoryId` | HIGH | Use category ID in URL path |
 | **`customer_id` → Customer Details** | **HIGH** | Replace `customer_id` with `customer_phone`, `customer_name`, `is_org_member` |
 | **Category responses include subcategories** | **LOW** | All category endpoints now include `subcategories` array (additive change) |
-| **`/categories/with-subcategories` deprecated** | **LOW** | Use `/categories` instead (same response format now) |
-| **Category/Subcategory names auto-normalized to UPPER_SNAKE_CASE** | **LOW** | Input like "water soluble" becomes "WATER_SOLUBLE" automatically |
+| **`/categories/with-subcategories` REMOVED** | **MEDIUM** | Use `/categories` instead (same response format now) |
+| **Category/Subcategory names auto-normalized to UPPER_SNAKE_CASE** | **LOW** | Now applies during both CREATE and UPDATE operations |
+| **Pagination added to 3 new endpoints** | **LOW** | GetVariantPrices, GetExpiredPrices, GetVariantsByProduct now return paginated responses |
 
 ---
 
@@ -162,11 +164,11 @@ Reduces frontend API calls by 75-85% through data aggregation.
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/api/v1/aggregation/products/:id` | GET | Full product with variants, prices, inventory |
-| `/api/v1/aggregation/variants/:id` | GET | Variant with product and collaborator context |
-| `/api/v1/aggregation/sales-context/:warehouseId` | GET | POS/sales context data |
-| `/api/v1/aggregation/purchase-orders/:id` | GET | Full PO with items, GRNs, payments |
-| `/api/v1/aggregation/inventory` | GET | Inventory list with filters |
+| `/api/v1/products/:id/detail` | GET | Full product with variants, prices, inventory |
+| `/api/v1/products/variants/:id/detail` | GET | Variant with product and collaborator context |
+| `/api/v1/sales/context` | GET | POS/sales context data |
+| `/api/v1/purchase-orders/:id/detail` | GET | Full PO with items, GRNs, payments |
+| `/api/v1/inventory/batches/list` | GET | Inventory list with filters |
 
 ### 2. Sales Cancellation Endpoints
 
@@ -314,6 +316,142 @@ const products = await api.get('/products/category/CATG00000001');
 
 // Get products filtered by subcategory
 const filtered = await api.get('/products/category/CATG00000001?subcategory_id=SUBC00000001');
+```
+
+### 7. Reports API (NEW)
+
+Generate and export various business reports with filtering, pagination, and export to XLSX/PDF formats.
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/v1/reports/products` | GET | Product master report |
+| `/api/v1/reports/vendors` | GET | Vendor master report |
+| `/api/v1/reports/customers` | GET | Customer report (sales by farmer/customer) |
+| `/api/v1/reports/inventory` | GET | Inventory report with expiry tracking |
+| `/api/v1/reports/purchases` | GET | Purchase orders report |
+| `/api/v1/reports/sales` | GET | Sales report with margins |
+| `/api/v1/reports/returns` | GET | Returns and refunds report |
+
+**Common Query Parameters (All Reports):**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `format` | `string` | `json` | Output format: `json`, `xlsx`, `pdf` |
+| `limit` | `integer` | `50` | Records per page (max: 500) |
+| `offset` | `integer` | `0` | Records to skip for pagination |
+| `start_date` | `string` | - | Filter start date (YYYY-MM-DD) |
+| `end_date` | `string` | - | Filter end date (YYYY-MM-DD) |
+| `sort_by` | `string` | `created_at` | Sort field |
+| `sort_order` | `string` | `desc` | Sort order: `asc`, `desc` |
+
+**Report-Specific Query Parameters:**
+
+| Report | Additional Parameters |
+|--------|----------------------|
+| Products | `search`, `has_variants`, `is_active` |
+| Vendors | `search`, `is_active`, `has_gst` |
+| Customers | `search`, `warehouse_id`, `min_purchase_value`, `max_purchase_value` |
+| Inventory | `warehouse_id`, `product_id`, `variant_id`, `low_stock`, `expiring_soon`, `expired`, `min_quantity`, `max_quantity` |
+| Purchases | `collaborator_id`, `warehouse_id`, `status` (array), `payment_status` (array), `po_number` |
+| Sales | `warehouse_id`, `customer_id`, `status` (array), `payment_mode` (array), `sale_type` (array), `min_amount`, `max_amount` |
+| Returns | `sale_id`, `warehouse_id`, `status` (array), `min_refund`, `max_refund` |
+
+**Response Structure:**
+```json
+{
+  "status": "success",
+  "message": "Report generated successfully",
+  "data": {
+    "report_type": "sales",
+    "generated_at": "2025-12-09T10:30:00Z",
+    "filters_applied": {
+      "warehouse_id": "WRHS00000001",
+      "start_date": "2025-12-01",
+      "end_date": "2025-12-09"
+    },
+    "summary": {
+      "total_sales": 156,
+      "total_revenue": 125000.50,
+      "total_purchase_value": 95000.00,
+      "total_tax": 5250.00,
+      "total_margin": 24750.50,
+      "average_sale_value": 801.28,
+      "by_payment_mode": {
+        "cash": 80,
+        "upi": 56,
+        "online": 20
+      },
+      "by_sale_type": {
+        "in_store": 120,
+        "delivery": 36
+      }
+    },
+    "records": [
+      {
+        "id": "SALE00000001",
+        "warehouse_name": "Main Warehouse",
+        "sale_date": "2025-12-09T10:00:00Z",
+        "status": "completed",
+        "customer_phone": "9876543210",
+        "customer_name": "John Farmer",
+        "payment_mode": "cash",
+        "sale_type": "in_store",
+        "total_amount": 1500.00,
+        "landing_price": 1350.00,
+        "purchase_value": 1100.00,
+        "apply_taxes": true,
+        "total_tax": 67.50,
+        "total_margin": 332.50,
+        "item_count": 3,
+        "created_at": "2025-12-09T10:00:00Z",
+        "updated_at": "2025-12-09T10:00:00Z"
+      }
+    ],
+    "pagination": {
+      "total": 156,
+      "limit": 50,
+      "offset": 0,
+      "has_more": true
+    }
+  }
+}
+```
+
+**Export Formats:**
+- **JSON**: Default, returns data in response body
+- **XLSX**: Downloads Excel file with filename `{report_type}_report_{date}.xlsx`
+- **PDF**: Downloads PDF file with filename `{report_type}_report_{date}.pdf`
+
+**Example Usage:**
+```javascript
+// Get sales report as JSON
+const salesReport = await api.get('/reports/sales', {
+  params: {
+    start_date: '2025-12-01',
+    end_date: '2025-12-09',
+    warehouse_id: 'WRHS00000001',
+    limit: 100
+  }
+});
+
+// Download inventory report as Excel
+const response = await api.get('/reports/inventory', {
+  params: {
+    format: 'xlsx',
+    expiring_soon: true
+  },
+  responseType: 'blob'
+});
+
+// Download sales report as PDF
+const pdfResponse = await api.get('/reports/sales', {
+  params: {
+    format: 'pdf',
+    start_date: '2025-12-01',
+    end_date: '2025-12-09'
+  },
+  responseType: 'blob'
+});
 ```
 
 ---
@@ -955,11 +1093,11 @@ is_inter_state: true
 ### Aggregation API (NEW)
 | Endpoint | Query Parameters |
 |----------|------------------|
-| `GET /api/v1/aggregation/products/:id` | `include` (variants,prices,inventory,collaborators,taxes), `warehouse_id`, `price_type` (retail,wholesale,bulk,all), `active_only` (default: true), `in_stock_only` |
-| `GET /api/v1/aggregation/variants/:id` | `include` (product,collaborators,prices,inventory) |
-| `GET /api/v1/aggregation/sales-context/:warehouseId` | `include_zero_stock`, `price_type`, `effective_date` (ISO date) |
-| `GET /api/v1/aggregation/purchase-orders/:id` | `include` (collaborator,warehouse,items,grns,inventory,payments) |
-| `GET /api/v1/aggregation/inventory` | `warehouse_id`, `variant_id`, `product_id`, `expiring_within_days`, `low_stock_threshold`, `include_zero_stock`, `page`, `page_size` |
+| `GET /api/v1/products/:id/detail` | `include` (variants,prices,inventory,collaborators,taxes), `warehouse_id`, `price_type` (retail,wholesale,bulk,all), `active_only` (default: true), `in_stock_only` |
+| `GET /api/v1/products/variants/:id/detail` | `include` (prices,inventory,product,collaborator,taxes), `warehouse_id` |
+| `GET /api/v1/sales/context` | `warehouse_id`, `include_zero_stock`, `price_type`, `effective_date` (ISO date) |
+| `GET /api/v1/purchase-orders/:id/detail` | `include` (collaborator,warehouse,items,grns,inventory,payments,timeline) |
+| `GET /api/v1/inventory/batches/list` | `warehouse_id`, `variant_id`, `product_id`, `category`, `in_stock_only`, `expiring_soon`, `low_stock_threshold`, `include` (variant,product,warehouse,prices,taxes), `sort_by`, `sort_order`, `limit`, `offset` |
 
 #### Aggregation Response Model Refactoring (December 2025)
 
@@ -983,7 +1121,7 @@ is_inter_state: true
 
 #### Complete Response Body Examples for Aggregation Endpoints
 
-##### 1. GET /api/v1/aggregation/products/:id - Product Detail
+##### 1. GET /api/v1/products/:id/detail - Product Detail
 
 **Query Parameters:**
 - `include` - Comma-separated list: `variants`, `prices`, `inventory`, `collaborators`, `taxes`
@@ -1140,7 +1278,7 @@ is_inter_state: true
 }
 ```
 
-##### 2. GET /api/v1/aggregation/variants/:id - Variant Detail
+##### 2. GET /api/v1/products/variants/:id/detail - Variant Detail
 
 **Query Parameters:**
 - `include` - Comma-separated list: `product`, `collaborators`, `prices`, `inventory`
@@ -1247,7 +1385,7 @@ is_inter_state: true
 }
 ```
 
-##### 3. GET /api/v1/aggregation/sales-context/:warehouseId - Sales Context
+##### 3. GET /api/v1/sales/context - Sales Context
 
 **Query Parameters:**
 - `include_zero_stock` - Include items with zero stock (default: false)
@@ -1422,7 +1560,7 @@ is_inter_state: true
 }
 ```
 
-##### 4. GET /api/v1/aggregation/purchase-orders/:id - PO Detail
+##### 4. GET /api/v1/purchase-orders/:id/detail - PO Detail
 
 **Query Parameters:**
 - `include` - Comma-separated list: `collaborator`, `warehouse`, `items`, `grns`, `inventory`, `payments`
@@ -1589,7 +1727,7 @@ is_inter_state: true
 }
 ```
 
-##### 5. GET /api/v1/aggregation/inventory - Inventory List
+##### 5. GET /api/v1/inventory/batches/list - Inventory List
 
 **Query Parameters:**
 - `warehouse_id` - Filter by warehouse
@@ -1779,12 +1917,11 @@ api.delete('/collaborator-products/:id', ...)
 
 **Before (Beta):**
 ```javascript
-// Create variant
-const variant = await api.post('/product-variants', {
-  product_id: 'PROD00000001',
+// Create variant under a product
+const variant = await api.post(`/products/${productId}/variants`, {
   variant_name: '500g',
   quantity: '500g',
-  collaborator_id: 'CLAB00000001',  // Single collaborator
+  collaborator_id: 'CLAB00000001',  // Single collaborator (old format)
   brand_name: 'Fresh Farms'
 });
 
@@ -2003,7 +2140,7 @@ const memberSale = await api.post('/sales', {
 **Before (Beta) - 5+ API calls:**
 ```javascript
 const product = await api.get(`/products/${productId}`);
-const variants = await api.get(`/product-variants?product_id=${productId}`);
+const variants = await api.get(`/products/${productId}/variants`);
 const prices = await Promise.all(variants.map(v =>
   api.get(`/prices?variant_id=${v.id}`)
 ));

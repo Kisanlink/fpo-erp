@@ -12,7 +12,6 @@ type CategoryServiceInterface interface {
 	GetCategoryByName(ctx context.Context, name string) (*models.CategoryResponse, error)
 	GetAllCategories(ctx context.Context) ([]models.CategoryResponse, error)
 	GetAllCategoriesPaginated(ctx context.Context, limit, offset int) ([]models.CategoryResponse, int64, error)
-	GetAllCategoriesWithSubcategories(ctx context.Context) ([]models.CategoryResponse, error)
 	SearchCategories(ctx context.Context, query string, limit, offset int) ([]models.CategoryResponse, int64, error)
 	UpdateCategory(ctx context.Context, id string, request *models.UpdateCategoryRequest) (*models.CategoryResponse, error)
 	DeleteCategory(ctx context.Context, id string) error
