@@ -98,9 +98,11 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 		}
 
 		// Get selling price from product_prices table (by variant_id)
+		// Price selection depends on membership status: member price for members, retail for non-members
 		s.logger.Debug("Getting selling price for variant",
-			zap.String("variant_id", itemReq.VariantID))
-		sellingPrice, err := s.getSellingPrice(itemReq.VariantID)
+			zap.String("variant_id", itemReq.VariantID),
+			zap.Bool("is_org_member", req.IsOrgMember))
+		sellingPrice, err := s.getSellingPrice(itemReq.VariantID, req.IsOrgMember)
 		if err != nil {
 			s.logger.Error("Failed to get selling price",
 				zap.Error(err),
@@ -108,7 +110,8 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 			return nil, errors.NewNotFoundError("selling price not found for product")
 		}
 		s.logger.Debug("Selling price retrieved",
-			zap.Float64("selling_price", sellingPrice))
+			zap.Float64("selling_price", sellingPrice),
+			zap.Bool("is_org_member", req.IsOrgMember))
 
 		// Get batches for this variant in the warehouse ordered by expiry date (FEFO)
 		s.logger.Debug("Getting batches for variant",
@@ -768,31 +771,55 @@ func (s *SalesService) GetTopSellingProducts(limit int) ([]models.TopSellingProd
 	return responses, nil
 }
 
-// getSellingPrice retrieves the current MRP (Maximum Retail Price) for a variant from variant.Prices array
-func (s *SalesService) getSellingPrice(variantID string) (float64, error) {
+// getSellingPrice retrieves the appropriate selling price for a variant based on membership status
+// For members (isOrgMember=true): member price → retail → MRP → any active
+// For non-members (isOrgMember=false): retail → MRP → any active
+func (s *SalesService) getSellingPrice(variantID string, isOrgMember bool) (float64, error) {
 	// Get prices from product_prices table
 	if s.priceRepo == nil {
 		return 0, errors.NewInternalServerError("price repository not configured")
 	}
 
-	// Try to get MRP (Maximum Retail Price) first
-	mrpPrice, err := s.priceRepo.GetCurrentPrice(variantID, models.PriceTypeMRP)
-	if err == nil && mrpPrice != nil {
-		return mrpPrice.Price, nil
+	// 1. For FPO members: try member price first
+	if isOrgMember {
+		memberPrice, err := s.priceRepo.GetCurrentPrice(variantID, models.PriceTypeMember)
+		if err == nil && memberPrice != nil {
+			s.logger.Debug("Using member price",
+				zap.String("variant_id", variantID),
+				zap.Float64("price", memberPrice.Price))
+			return memberPrice.Price, nil
+		}
+		// Member fallback continues to retail below
 	}
 
-	// Try retail price as fallback
-	retailPrice, err := s.priceRepo.GetCurrentPrice(variantID, "retail")
+	// 2. For non-members OR member fallback: use retail price
+	retailPrice, err := s.priceRepo.GetCurrentPrice(variantID, models.PriceTypeRetail)
 	if err == nil && retailPrice != nil {
+		s.logger.Debug("Using retail price",
+			zap.String("variant_id", variantID),
+			zap.Float64("price", retailPrice.Price),
+			zap.Bool("is_org_member", isOrgMember))
 		return retailPrice.Price, nil
 	}
 
-	// Try any active price as final fallback
+	// 3. Fallback to MRP (for backwards compatibility)
+	mrpPrice, err := s.priceRepo.GetCurrentPrice(variantID, models.PriceTypeMRP)
+	if err == nil && mrpPrice != nil {
+		s.logger.Debug("Using MRP price (fallback)",
+			zap.String("variant_id", variantID),
+			zap.Float64("price", mrpPrice.Price))
+		return mrpPrice.Price, nil
+	}
+
+	// 4. Final fallback: any active price
 	prices, err := s.priceRepo.GetActiveByVariantID(variantID)
 	if err != nil || len(prices) == 0 {
 		return 0, errors.NewNotFoundError("no pricing information found for variant")
 	}
 
+	s.logger.Debug("Using first available price (final fallback)",
+		zap.String("variant_id", variantID),
+		zap.Float64("price", prices[0].Price))
 	return prices[0].Price, nil
 }
 

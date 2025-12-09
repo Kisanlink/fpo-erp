@@ -9,8 +9,10 @@ import (
 
 // Price type constants
 const (
-	PriceTypeMRP = "MRP" // Maximum Retail Price
-	PriceTypeMSP = "MSP" // Minimum Selling Price
+	PriceTypeMRP    = "MRP"    // Maximum Retail Price
+	PriceTypeMSP    = "MSP"    // Minimum Selling Price
+	PriceTypeMember = "member" // FPO Member Price (discounted)
+	PriceTypeRetail = "retail" // Retail Price (non-member default)
 )
 
 // VariantPrice represents a price point for a variant
