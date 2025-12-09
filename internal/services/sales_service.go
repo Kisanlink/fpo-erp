@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"time"
 
 	"kisanlink-erp/internal/database/models"
@@ -15,6 +16,19 @@ import (
 // Helper function to convert string to pointer
 func stringPtr(s string) *string {
 	return &s
+}
+
+// generateInvoiceNumber generates an invoice number in the format MMYYNNNN
+// - MM: 2-digit month (01-12)
+// - YY: 2-digit year (e.g., 25 for 2025)
+// - NNNN: 4-digit sequence number (does NOT reset each month)
+// Example: 12250001 = December 2025, sequence 1
+func generateInvoiceNumber(lastSequence int) string {
+	now := time.Now()
+	month := now.Format("01") // MM
+	year := now.Format("06")  // YY
+	sequence := lastSequence + 1
+	return fmt.Sprintf("%s%s%04d", month, year, sequence)
 }
 
 type SalesService struct {
@@ -190,17 +204,32 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 			applyTaxes = *req.ApplyTaxes
 		}
 
+		// Generate invoice number within transaction for concurrency safety
+		s.logger.Debug("Generating invoice number")
+		lastSequence, err := s.salesRepo.GetLastInvoiceSequenceWithTx(tx)
+		if err != nil {
+			s.logger.Error("Failed to get last invoice sequence",
+				zap.Error(err))
+			return errors.NewInternalServerError("failed to generate invoice number")
+		}
+		invoiceNumber := generateInvoiceNumber(lastSequence)
+		s.logger.Debug("Invoice number generated",
+			zap.String("invoice_number", invoiceNumber),
+			zap.Int("last_sequence", lastSequence))
+
 		// Create sale using the proper constructor with BRD requirements
 		s.logger.Debug("Creating sale",
 			zap.String("warehouse_id", req.WarehouseID),
+			zap.String("invoice_number", invoiceNumber),
 			zap.Time("sale_date", saleDate),
 			zap.String("payment_mode", req.PaymentMode),
 			zap.String("sale_type", req.SaleType),
 			zap.Bool("apply_taxes", applyTaxes),
 			zap.Bool("is_org_member", req.IsOrgMember))
-		sale := models.NewSale(req.WarehouseID, saleDate, 0, models.SaleStatusPending, req.CustomerPhone, req.CustomerName, req.IsOrgMember, req.PaymentMode, req.SaleType, applyTaxes)
+		sale := models.NewSale(req.WarehouseID, invoiceNumber, saleDate, 0, models.SaleStatusPending, req.CustomerPhone, req.CustomerName, req.IsOrgMember, req.PaymentMode, req.SaleType, applyTaxes)
 		s.logger.Info("Sale created",
 			zap.String("sale_id", sale.ID),
+			zap.String("invoice_number", sale.InvoiceNumber),
 			zap.Bool("apply_taxes", sale.ApplyTaxes))
 
 		if err := s.salesRepo.CreateSaleWithTx(tx, sale); err != nil {
@@ -841,11 +870,12 @@ func (s *SalesService) validateSaleRequest(req *models.CreateSaleRequest) error 
 
 func (s *SalesService) mapSaleToResponse(sale *models.Sale) *models.SaleResponse {
 	response := &models.SaleResponse{
-		ID:          sale.ID,
-		WarehouseID: sale.WarehouseID,
-		SaleDate:    sale.SaleDate.Format("2006-01-02T15:04:05Z07:00"),
-		TotalAmount: sale.TotalAmount,
-		Status:      sale.Status,
+		ID:            sale.ID,
+		InvoiceNumber: sale.InvoiceNumber,
+		WarehouseID:   sale.WarehouseID,
+		SaleDate:      sale.SaleDate.Format("2006-01-02T15:04:05Z07:00"),
+		TotalAmount:   sale.TotalAmount,
+		Status:        sale.Status,
 		// BRD Requirements - Customer tracking
 		CustomerPhone: sale.CustomerPhone,
 		CustomerName:  sale.CustomerName,

@@ -323,8 +323,8 @@ func FixtureGRNItemWithID(id, grnID, poItemID, variantID string, quantity int64)
 // ========================================
 
 func FixtureSale(warehouseID string, totalAmount float64) *models.Sale {
-	// NewSale(warehouseID, saleDate, totalAmount, status, customerPhone, customerName, isOrgMember, paymentMode, saleType, applyTaxes)
-	sale := models.NewSale(warehouseID, time.Now(), totalAmount, "completed", nil, nil, false, "cash", "in_store", false)
+	// NewSale(warehouseID, invoiceNumber, saleDate, totalAmount, status, customerPhone, customerName, isOrgMember, paymentMode, saleType, applyTaxes)
+	sale := models.NewSale(warehouseID, "12250001", time.Now(), totalAmount, "completed", nil, nil, false, "cash", "in_store", false)
 	sale.ID = "SALE-TEST-001"
 	return sale
 }

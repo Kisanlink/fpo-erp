@@ -48,18 +48,19 @@ func ValidateStatusTransition(fromStatus, toStatus string) error {
 // Sale represents a sale transaction
 type Sale struct {
 	base.BaseModel
-	WarehouseID string    `gorm:"type:varchar(100);not null" json:"warehouse_id"`
-	SaleDate    time.Time `gorm:"type:timestamptz;not null;default:now()" json:"sale_date"`
-	TotalAmount float64   `gorm:"type:numeric(14,4);not null" json:"total_amount"`
-	Status      string    `gorm:"type:varchar(20);not null" json:"status"`
+	WarehouseID   string    `gorm:"type:varchar(100);not null" json:"warehouse_id"`
+	InvoiceNumber string    `gorm:"type:varchar(10);uniqueIndex" json:"invoice_number"` // Format: MMYYNNNN (e.g., 12250001)
+	SaleDate      time.Time `gorm:"type:timestamptz;not null;default:now()" json:"sale_date"`
+	TotalAmount   float64   `gorm:"type:numeric(14,4);not null" json:"total_amount"`
+	Status        string    `gorm:"type:varchar(20);not null" json:"status"`
 
 	// BRD Requirements - Customer tracking
-	CustomerPhone *string `gorm:"type:varchar(20)" json:"customer_phone"`                 // Customer phone number
-	CustomerName  *string `gorm:"type:varchar(255)" json:"customer_name"`                 // Customer name
+	CustomerPhone *string `gorm:"type:varchar(20)" json:"customer_phone"`                   // Customer phone number
+	CustomerName  *string `gorm:"type:varchar(255)" json:"customer_name"`                   // Customer name
 	IsOrgMember   bool    `gorm:"type:boolean;not null;default:false" json:"is_org_member"` // Whether customer belongs to the FPO/organization
-	PaymentMode   string  `gorm:"type:varchar(20);not null" json:"payment_mode"`          // cash, upi, online
-	SaleType      string  `gorm:"type:varchar(20);not null" json:"sale_type"`             // in_store, delivery
-	ApplyTaxes    bool    `gorm:"type:boolean;not null;default:false" json:"apply_taxes"` // Controls tax calculation for this sale
+	PaymentMode   string  `gorm:"type:varchar(20);not null" json:"payment_mode"`            // cash, upi, online
+	SaleType      string  `gorm:"type:varchar(20);not null" json:"sale_type"`               // in_store, delivery
+	ApplyTaxes    bool    `gorm:"type:boolean;not null;default:false" json:"apply_taxes"`   // Controls tax calculation for this sale
 
 	// Cancellation fields
 	CancelledAt        *time.Time `gorm:"type:timestamptz" json:"cancelled_at,omitempty"`
@@ -119,11 +120,12 @@ func (SaleSummary) TableName() string {
 }
 
 // NewSale creates a new Sale with initialized fields
-func NewSale(warehouseID string, saleDate time.Time, totalAmount float64, status string, customerPhone, customerName *string, isOrgMember bool, paymentMode, saleType string, applyTaxes bool) *Sale {
+func NewSale(warehouseID, invoiceNumber string, saleDate time.Time, totalAmount float64, status string, customerPhone, customerName *string, isOrgMember bool, paymentMode, saleType string, applyTaxes bool) *Sale {
 	baseModel := base.NewBaseModel(constants.TableSale, hash.Medium)
 	return &Sale{
 		BaseModel:     *baseModel,
 		WarehouseID:   warehouseID,
+		InvoiceNumber: invoiceNumber,
 		SaleDate:      saleDate,
 		TotalAmount:   totalAmount,
 		Status:        status,
@@ -193,11 +195,12 @@ func NewSaleSummary(summaryDate time.Time, warehouseID string, totalSales float6
 
 // SaleResponse represents the API response for sale
 type SaleResponse struct {
-	ID          string  `json:"id"`
-	WarehouseID string  `json:"warehouse_id"`
-	SaleDate    string  `json:"sale_date"`
-	TotalAmount float64 `json:"total_amount"`
-	Status      string  `json:"status"`
+	ID            string  `json:"id"`
+	InvoiceNumber string  `json:"invoice_number"` // Format: MMYYNNNN (e.g., 12250001)
+	WarehouseID   string  `json:"warehouse_id"`
+	SaleDate      string  `json:"sale_date"`
+	TotalAmount   float64 `json:"total_amount"`
+	Status        string  `json:"status"`
 
 	// BRD Requirements - Customer tracking
 	CustomerPhone *string `json:"customer_phone,omitempty"`

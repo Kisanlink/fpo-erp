@@ -835,6 +835,19 @@ definitions:
     - sale_type
     - warehouse_id
     type: object
+  models.CreateSettingRequest:
+    properties:
+      display_label:
+        type: string
+      display_order:
+        type: integer
+      is_header_field:
+        type: boolean
+      value:
+        type: string
+    required:
+    - value
+    type: object
   models.CreateSubcategoryRequest:
     properties:
       category_id:
@@ -1210,6 +1223,17 @@ definitions:
       tax_calculation_method:
         type: string
     type: object
+  models.HeaderFieldResponse:
+    properties:
+      display_label:
+        type: string
+      display_order:
+        type: integer
+      key:
+        type: string
+      value:
+        type: string
+    type: object
   models.InventoryBatchResponse:
     properties:
       available_quantity:
@@ -1372,6 +1396,15 @@ definitions:
         $ref: '#/definitions/models.ProductVariantResponse'
       variant_id:
         type: string
+    type: object
+  models.InvoiceRequirementsResponse:
+    properties:
+      missing_settings:
+        items:
+          type: string
+        type: array
+      ready:
+        type: boolean
     type: object
   models.MarginInfo:
     properties:
@@ -2203,6 +2236,9 @@ definitions:
         type: string
       id:
         type: string
+      invoice_number:
+        description: 'Format: MMYYNNNN (e.g., 12250001)'
+        type: string
       is_org_member:
         type: boolean
       items:
@@ -2292,6 +2328,23 @@ definitions:
       price_id:
         type: string
       price_type:
+        type: string
+    type: object
+  models.SettingResponse:
+    properties:
+      created_at:
+        type: string
+      display_label:
+        type: string
+      display_order:
+        type: integer
+      is_header_field:
+        type: boolean
+      key:
+        type: string
+      updated_at:
+        type: string
+      value:
         type: string
     type: object
   models.StockSummary:
@@ -9626,6 +9679,44 @@ paths:
       summary: Get Sale Cancellations
       tags:
       - Sales
+  /api/v1/sales/{id}/invoice:
+    get:
+      description: Generate and download a PDF invoice for a specific sale
+      parameters:
+      - description: Sale ID
+        example: SALE00000001
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/pdf
+      responses:
+        "200":
+          description: PDF invoice file
+          schema:
+            type: file
+        "400":
+          description: Bad request - missing required settings
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Sale not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Download Invoice PDF
+      tags:
+      - Sales
   /api/v1/sales/{id}/returns:
     get:
       description: Retrieve all returns associated with a specific sale
@@ -9878,6 +9969,29 @@ paths:
       summary: Get Sales by Date Range
       tags:
       - Sales
+  /api/v1/sales/invoice-requirements:
+    get:
+      description: Check if all required settings for invoice generation exist
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Invoice requirements check complete
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Check Invoice Requirements
+      tags:
+      - Sales
   /api/v1/sales/status/{status}:
     get:
       description: Retrieve all sales with a specific status with pagination
@@ -10104,6 +10218,225 @@ paths:
       summary: Get Total Sales Amount
       tags:
       - Sales
+  /api/v1/settings:
+    get:
+      description: Retrieve all FPO settings
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Settings retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.SettingResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get All Settings
+      tags:
+      - Settings
+  /api/v1/settings/{key}:
+    delete:
+      description: Delete a setting by key
+      parameters:
+      - description: Setting key
+        example: fpo_name
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Setting deleted successfully
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Setting not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Delete Setting
+      tags:
+      - Settings
+    get:
+      description: Retrieve a specific setting by key
+      parameters:
+      - description: Setting key
+        example: fpo_name
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Setting retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.SettingResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Setting not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Setting
+      tags:
+      - Settings
+    put:
+      consumes:
+      - application/json
+      description: Create a new setting or update an existing one by key
+      parameters:
+      - description: Setting key
+        example: fpo_name
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: Setting data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateSettingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Setting saved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.SettingResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Create or Update Setting
+      tags:
+      - Settings
+  /api/v1/settings/header-fields:
+    get:
+      description: Retrieve settings configured as invoice header fields, ordered
+        by display_order
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Header fields retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.HeaderFieldResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Header Fields
+      tags:
+      - Settings
+  /api/v1/settings/invoice-requirements:
+    get:
+      description: Check if all required settings for invoice generation exist
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Invoice requirements check complete
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.InvoiceRequirementsResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Check Invoice Requirements
+      tags:
+      - Settings
   /api/v1/subcategories:
     get:
       description: Retrieve all subcategories with pagination

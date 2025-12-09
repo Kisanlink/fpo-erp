@@ -87,6 +87,9 @@ func AutoMigrate(db *gorm.DB) error {
 		// Webhook integration
 		&models.WebhookEvent{},
 		&models.WebhookDeliveryAttempt{},
+
+		// Settings (FPO configuration)
+		&models.Setting{},
 	}
 
 	// Perform auto-migration for remaining models

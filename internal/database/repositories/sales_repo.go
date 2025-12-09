@@ -156,6 +156,87 @@ func (r *SalesRepository) DeleteSaleSummary(id string) error {
 	return r.db.Delete(&models.SaleSummary{}, "id = ?", id).Error
 }
 
+// Invoice Number operations
+
+// GetLastInvoiceSequence returns the last sequence number used in invoice numbers
+// Invoice format: MMYYNNNN (e.g., 12250001)
+// Returns 0 if no invoices exist yet
+func (r *SalesRepository) GetLastInvoiceSequence() (int, error) {
+	var maxInvoiceNumber string
+
+	// Get the last invoice number by ordering desc (it's a string but sequential)
+	err := r.db.Model(&models.Sale{}).
+		Where("invoice_number IS NOT NULL AND invoice_number != ''").
+		Order("invoice_number DESC").
+		Limit(1).
+		Pluck("invoice_number", &maxInvoiceNumber).Error
+
+	if err != nil {
+		return 0, err
+	}
+
+	// If no invoice numbers found, return 0
+	if maxInvoiceNumber == "" {
+		return 0, nil
+	}
+
+	// Extract sequence from MMYYNNNN format (last 4 digits)
+	if len(maxInvoiceNumber) < 4 {
+		return 0, nil
+	}
+
+	// Parse the last 4 characters as the sequence number
+	var sequence int
+	_, err = time.Parse("0102", maxInvoiceNumber[:4]) // Just to validate format
+	if err == nil && len(maxInvoiceNumber) >= 8 {
+		// Extract last 4 digits as sequence
+		sequenceStr := maxInvoiceNumber[4:]
+		for i := 0; i < len(sequenceStr); i++ {
+			sequence = sequence*10 + int(sequenceStr[i]-'0')
+		}
+	}
+
+	return sequence, nil
+}
+
+// GetLastInvoiceSequenceWithTx returns the last sequence number within a transaction (for locking)
+func (r *SalesRepository) GetLastInvoiceSequenceWithTx(tx *gorm.DB) (int, error) {
+	var maxInvoiceNumber string
+
+	// Get the last invoice number with lock
+	err := tx.Model(&models.Sale{}).
+		Where("invoice_number IS NOT NULL AND invoice_number != ''").
+		Order("invoice_number DESC").
+		Limit(1).
+		Pluck("invoice_number", &maxInvoiceNumber).Error
+
+	if err != nil {
+		return 0, err
+	}
+
+	// If no invoice numbers found, return 0
+	if maxInvoiceNumber == "" {
+		return 0, nil
+	}
+
+	// Extract sequence from MMYYNNNN format (last 4 digits)
+	if len(maxInvoiceNumber) < 4 {
+		return 0, nil
+	}
+
+	// Parse the last 4 characters as the sequence number
+	var sequence int
+	if len(maxInvoiceNumber) >= 8 {
+		// Extract last 4 digits as sequence
+		sequenceStr := maxInvoiceNumber[4:]
+		for i := 0; i < len(sequenceStr); i++ {
+			sequence = sequence*10 + int(sequenceStr[i]-'0')
+		}
+	}
+
+	return sequence, nil
+}
+
 // Analytics
 func (r *SalesRepository) GetTotalSalesAmount(startDate, endDate time.Time) (float64, error) {
 	var total float64

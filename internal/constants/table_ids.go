@@ -57,4 +57,7 @@ const (
 	// Categories
 	TableCategory    = "CATG" // Product Categories
 	TableSubcategory = "SCAT" // Product Subcategories
+
+	// Settings
+	TableSetting = "STNG" // FPO Settings (key-value configuration)
 )

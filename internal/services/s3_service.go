@@ -130,6 +130,18 @@ func (s *S3Service) DownloadFile(ctx context.Context, s3URL string) (io.ReadClos
 	return result.Body, aws.ToString(result.ContentType), nil
 }
 
+// DownloadFileByKey downloads a file from S3 using the key directly (without s3://bucket/ prefix)
+func (s *S3Service) DownloadFileByKey(ctx context.Context, key string) (io.ReadCloser, string, error) {
+	result, err := s.client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return nil, "", errors.NewInternalServerError(fmt.Sprintf("Failed to get object from S3: %v", err))
+	}
+	return result.Body, aws.ToString(result.ContentType), nil
+}
+
 // DeleteFile deletes a file from S3 (expects s3://bucket/key format)
 func (s *S3Service) DeleteFile(ctx context.Context, s3URL string) error {
 	// Extract key from S3 URL

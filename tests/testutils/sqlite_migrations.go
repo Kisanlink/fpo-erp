@@ -56,6 +56,7 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 		CREATE TABLE sales (
 			id TEXT PRIMARY KEY,
 			warehouse_id TEXT NOT NULL,
+			invoice_number TEXT UNIQUE,
 			sale_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			total_amount REAL NOT NULL,
 			status TEXT NOT NULL,
@@ -75,6 +76,13 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 			updated_by TEXT,
 			deleted_by TEXT
 		)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Create index for invoice_number
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_sales_invoice_number ON sales(invoice_number)
 	`).Error; err != nil {
 		return err
 	}
@@ -1311,6 +1319,33 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 
 	if err := db.Exec(`
 		CREATE INDEX IF NOT EXISTS idx_webhook_attempt_number ON webhook_delivery_attempts(webhook_event_id, attempt_number)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Settings table (FPO configuration)
+	// Drop table first to ensure schema is correct
+	if err := db.Exec(`DROP TABLE IF EXISTS settings`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE TABLE settings (
+			key TEXT PRIMARY KEY,
+			value TEXT NOT NULL,
+			display_label TEXT,
+			display_order INTEGER DEFAULT 0,
+			is_header_field INTEGER DEFAULT 0,
+			created_at DATETIME,
+			updated_at DATETIME
+		)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Create index for header fields query
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_settings_header ON settings(is_header_field, display_order)
 	`).Error; err != nil {
 		return err
 	}

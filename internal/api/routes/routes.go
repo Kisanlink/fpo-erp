@@ -56,6 +56,9 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	categoryRepo := repositories.NewCategoryRepository(db)
 	subcategoryRepo := repositories.NewSubcategoryRepository(db)
 
+	// Settings repository
+	settingsRepo := repositories.NewSettingsRepository(db)
+
 	// Initialize S3 service
 	s3Service, err := services.NewS3Service(cfg)
 	if err != nil {
@@ -123,6 +126,12 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	// Category services
 	categoryService := services.NewCategoryService(categoryRepo, subcategoryRepo, logger)
 	subcategoryService := services.NewSubcategoryService(subcategoryRepo, categoryRepo, logger)
+
+	// Settings service
+	settingsService := services.NewSettingsService(settingsRepo, logger)
+
+	// Invoice service
+	invoiceService := services.NewInvoiceService(salesRepo, settingsRepo, inventoryRepo, productVariantRepo, productRepo, warehouseRepo, attachmentRepo, s3Service, logger)
 
 	// Webhook services
 	webhookSecurityService := services.NewWebhookSecurityService(cfg.Webhook.Secret)
@@ -201,6 +210,12 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	categoryHandler := handlers.NewCategoryHandler(categoryService, logger)
 	subcategoryHandler := handlers.NewSubcategoryHandler(subcategoryService, logger)
 
+	// Settings handler
+	settingsHandler := handlers.NewSettingsHandler(settingsService, logger)
+
+	// Invoice handler
+	invoiceHandler := handlers.NewInvoiceHandler(invoiceService, logger)
+
 	// Webhook handler (no AAA middleware - uses HMAC signature verification)
 	ecommerceWebhookHandler := handlers.NewEcommerceWebhookHandler(
 		ecommerceWebhookService,
@@ -243,6 +258,12 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 		// Category handlers
 		categoryHandler.RegisterRoutes(v1)
 		subcategoryHandler.RegisterRoutes(v1)
+
+		// Settings handler
+		settingsHandler.RegisterRoutes(v1)
+
+		// Invoice handler (adds routes to /sales)
+		invoiceHandler.RegisterRoutes(v1)
 
 		// Webhook handler
 		ecommerceWebhookHandler.RegisterRoutes(v1)
