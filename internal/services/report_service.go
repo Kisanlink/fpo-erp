@@ -155,7 +155,7 @@ func (s *ReportService) GenerateVendorReport(filter *models.VendorReportFilter) 
 		filter.Limit = 50
 	}
 
-	// Build query
+	// Build query - product_count uses product_variants.collaborator_ids JSON array
 	query := s.db.Model(&models.Collaborator{}).Select(`
 		collaborators.id,
 		collaborators.company_name,
@@ -168,12 +168,12 @@ func (s *ReportService) GenerateVendorReport(filter *models.VendorReportFilter) 
 		collaborators.bank_ifsc,
 		collaborators.bank_name,
 		collaborators.is_active,
-		COUNT(DISTINCT collaborator_products.id) as product_count,
+		COUNT(DISTINCT pv.id) as product_count,
 		COALESCE(SUM(purchase_orders.total_amount), 0) as total_po_value,
 		collaborators.created_at,
 		collaborators.updated_at
 	`).
-		Joins("LEFT JOIN collaborator_products ON collaborator_products.collaborator_id = collaborators.id").
+		Joins("LEFT JOIN product_variants pv ON pv.collaborator_ids::jsonb @> to_jsonb(collaborators.id::text)").
 		Joins("LEFT JOIN purchase_orders ON purchase_orders.collaborator_id = collaborators.id").
 		Group("collaborators.id")
 
@@ -235,9 +235,10 @@ func (s *ReportService) GenerateCustomerReport(filter *models.CustomerReportFilt
 		filter.Limit = 50
 	}
 
-	// Build query
+	// Build query - uses customer_phone as the customer identifier
 	query := s.db.Model(&models.Sale{}).Select(`
-		sales.customer_id,
+		sales.customer_phone as customer_id,
+		sales.customer_name,
 		COUNT(*) as total_purchases,
 		SUM(sales.total_amount) as total_amount,
 		MAX(sales.sale_date) as last_purchase_date,
@@ -246,25 +247,24 @@ func (s *ReportService) GenerateCustomerReport(filter *models.CustomerReportFilt
 		COUNT(*) as purchase_count
 	`).
 		Joins("JOIN warehouses ON warehouses.id = sales.warehouse_id").
-		Where("sales.customer_id IS NOT NULL AND sales.customer_id != ''").
+		Where("sales.customer_phone IS NOT NULL AND sales.customer_phone != ''").
 		Where("sales.status != 'cancelled'").
-		Group("sales.customer_id, sales.warehouse_id, warehouses.name")
+		Group("sales.customer_phone, sales.customer_name, sales.warehouse_id, warehouses.name")
 
 	// Apply filters
 	builder := utils.NewReportQueryBuilder(query)
 	if filter.Search != "" {
-		builder.Build().Where("sales.customer_id ILIKE ?", "%"+filter.Search+"%")
+		builder.Build().Where("(sales.customer_phone ILIKE ? OR sales.customer_name ILIKE ?)", "%"+filter.Search+"%", "%"+filter.Search+"%")
 	}
 	builder.ApplyStringFilter("sales.warehouse_id", filter.WarehouseID)
-	builder.ApplyRangeFilter("SUM(sales.total_amount)", filter.MinPurchaseValue, filter.MaxPurchaseValue)
 	builder.ApplyDateFilter("sales.sale_date", filter.StartDate, filter.EndDate)
 
 	// Get total count
 	var total int64
 	countQuery := s.db.Model(&models.Sale{}).
-		Where("customer_id IS NOT NULL AND customer_id != ''").
+		Where("customer_phone IS NOT NULL AND customer_phone != ''").
 		Where("status != 'cancelled'").
-		Distinct("customer_id")
+		Distinct("customer_phone")
 	countQuery.Count(&total)
 
 	// Apply pagination
@@ -281,12 +281,12 @@ func (s *ReportService) GenerateCustomerReport(filter *models.CustomerReportFilt
 	// Calculate summary
 	var summary models.CustomerReportSummary
 	s.db.Model(&models.Sale{}).
-		Where("customer_id IS NOT NULL AND customer_id != ''").
+		Where("customer_phone IS NOT NULL AND customer_phone != ''").
 		Where("status != 'cancelled'").
-		Distinct("customer_id").
+		Distinct("customer_phone").
 		Count(&summary.TotalCustomers)
 	s.db.Model(&models.Sale{}).
-		Where("customer_id IS NOT NULL").
+		Where("customer_phone IS NOT NULL").
 		Where("status != 'cancelled'").
 		Select("COALESCE(SUM(total_amount), 0)").
 		Scan(&summary.TotalRevenue)
@@ -317,7 +317,7 @@ func (s *ReportService) GenerateInventoryReport(filter *models.InventoryReportFi
 		filter.Limit = 50
 	}
 
-	// Build query
+	// Build query - tax rates are on product_variants, not inventory_batches
 	query := s.db.Model(&models.InventoryBatch{}).Select(`
 		inventory_batches.id as batch_id,
 		inventory_batches.warehouse_id,
@@ -331,8 +331,8 @@ func (s *ReportService) GenerateInventoryReport(filter *models.InventoryReportFi
 		inventory_batches.cost_price,
 		(inventory_batches.total_quantity * inventory_batches.cost_price) as total_value,
 		inventory_batches.expiry_date,
-		EXTRACT(DAY FROM (inventory_batches.expiry_date - CURRENT_DATE)) as days_to_expiry,
-		EXTRACT(DAY FROM (CURRENT_DATE - DATE(inventory_batches.created_at))) as days_on_shelf,
+		(inventory_batches.expiry_date - CURRENT_DATE) as days_to_expiry,
+		(CURRENT_DATE - inventory_batches.created_at::date) as days_on_shelf,
 		grn_items.batch_number,
 		goods_receipt_notes.received_date,
 		goods_receipt_notes.quality_status,
@@ -341,13 +341,10 @@ func (s *ReportService) GenerateInventoryReport(filter *models.InventoryReportFi
 		CASE WHEN inventory_batches.expiry_date < CURRENT_DATE THEN true ELSE false END as is_expired,
 		CASE
 			WHEN inventory_batches.expiry_date < CURRENT_DATE THEN 'expired'
-			WHEN EXTRACT(DAY FROM (inventory_batches.expiry_date - CURRENT_DATE)) < 7 THEN 'critical'
-			WHEN EXTRACT(DAY FROM (inventory_batches.expiry_date - CURRENT_DATE)) <= 30 THEN 'warning'
+			WHEN (inventory_batches.expiry_date - CURRENT_DATE) < 7 THEN 'critical'
+			WHEN (inventory_batches.expiry_date - CURRENT_DATE) <= 30 THEN 'warning'
 			ELSE 'safe'
 		END as expiry_category,
-		inventory_batches.cgst_rate,
-		inventory_batches.sgst_rate,
-		inventory_batches.is_tax_exempt,
 		inventory_batches.created_at,
 		inventory_batches.updated_at
 	`).
@@ -430,8 +427,8 @@ func (s *ReportService) GeneratePurchaseReport(filter *models.PurchaseReportFilt
 		purchase_orders.warehouse_id,
 		warehouses.name as warehouse_name,
 		purchase_orders.order_date,
-		purchase_orders.expected_delivery_date,
-		purchase_orders.actual_delivery_date,
+		purchase_orders.expected_delivery,
+		purchase_orders.actual_delivery,
 		purchase_orders.status,
 		purchase_orders.payment_status,
 		purchase_orders.total_amount,
@@ -533,7 +530,7 @@ func (s *ReportService) GenerateSalesReport(filter *models.SalesReportFilter) (*
 		filter.Limit = 50
 	}
 
-	// Build query
+	// Build query - sale_items has cgst_amount, sgst_amount, igst_amount (not rates)
 	query := s.db.Model(&models.Sale{}).Select(`
 		sales.id,
 		warehouses.name as warehouse_name,
@@ -548,10 +545,10 @@ func (s *ReportService) GenerateSalesReport(filter *models.SalesReportFilter) (*
 		COALESCE(SUM(sale_items.cost_price * sale_items.quantity), 0) as purchase_value,
 		sales.apply_taxes,
 		COALESCE(SUM(sale_items.total_tax_amount), 0) as total_tax,
-		COALESCE(SUM(CASE WHEN sale_items.igst_rate > 0 THEN 0 ELSE sale_items.cgst_amount END), 0) as cgst_amount,
-		COALESCE(SUM(CASE WHEN sale_items.igst_rate > 0 THEN 0 ELSE sale_items.sgst_amount END), 0) as sgst_amount,
-		COALESCE(SUM(CASE WHEN sale_items.igst_rate > 0 THEN sale_items.igst_amount ELSE 0 END), 0) as igst_amount,
-		COALESCE(SUM(CASE WHEN sale_items.is_tax_exempt THEN (sale_items.price * sale_items.quantity) ELSE 0 END), 0) as tax_exempt_amount,
+		COALESCE(SUM(sale_items.cgst_amount), 0) as cgst_amount,
+		COALESCE(SUM(sale_items.sgst_amount), 0) as sgst_amount,
+		COALESCE(SUM(sale_items.igst_amount), 0) as igst_amount,
+		COALESCE(SUM(CASE WHEN sale_items.total_tax_amount = 0 THEN sale_items.line_total ELSE 0 END), 0) as tax_exempt_amount,
 		CASE
 			WHEN sales.total_amount > 0 THEN (COALESCE(SUM(sale_items.total_tax_amount), 0) / sales.total_amount * 100)
 			ELSE 0

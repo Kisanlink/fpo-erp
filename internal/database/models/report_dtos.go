@@ -228,6 +228,7 @@ type CustomerReportRecord struct {
 }
 
 // InventoryReportRecord for inventory report rows
+// Note: Tax rates are on product_variants, not inventory_batches
 type InventoryReportRecord struct {
 	BatchID           string  `json:"batch_id"`
 	WarehouseID       string  `json:"warehouse_id"`
@@ -250,9 +251,6 @@ type InventoryReportRecord struct {
 	IsExpiringSoon    bool    `json:"is_expiring_soon"`
 	IsExpired         bool    `json:"is_expired"`
 	ExpiryCategory    string  `json:"expiry_category"`
-	CGSTRate          float64 `json:"cgst_rate"`
-	SGSTRate          float64 `json:"sgst_rate"`
-	IsTaxExempt       bool    `json:"is_tax_exempt"`
 	CreatedAt         string  `json:"created_at"`
 	UpdatedAt         string  `json:"updated_at"`
 }
@@ -267,8 +265,8 @@ type PurchaseReportRecord struct {
 	WarehouseID           string  `json:"warehouse_id"`
 	WarehouseName         string  `json:"warehouse_name"`
 	OrderDate             string  `json:"order_date"`
-	ExpectedDeliveryDate  string  `json:"expected_delivery_date"`
-	ActualDeliveryDate    *string `json:"actual_delivery_date,omitempty"`
+	ExpectedDelivery      string  `json:"expected_delivery"`
+	ActualDelivery        *string `json:"actual_delivery,omitempty"`
 	Status                string  `json:"status"`
 	PaymentStatus         string  `json:"payment_status"`
 	TotalAmount           float64 `json:"total_amount"`
