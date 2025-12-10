@@ -118,31 +118,49 @@ func (e *PDFExporter) writeDataTablePDF(pdf *gofpdf.Fpdf, records interface{}) e
 		firstRecord = firstRecord.Elem()
 	}
 
-	// Extract field names and create headers (limit to first 6 fields for PDF width)
+	// Extract field names and create headers (no field limit)
 	headers := []string{}
 	fieldIndexes := []int{}
 	recordType := firstRecord.Type()
 
-	maxFields := 6 // Limit columns to fit PDF width
-	fieldCount := 0
-
-	for i := 0; i < recordType.NumField() && fieldCount < maxFields; i++ {
+	for i := 0; i < recordType.NumField(); i++ {
 		field := recordType.Field(i)
 		jsonTag := field.Tag.Get("json")
 		if jsonTag != "" && jsonTag != "-" {
 			fieldName := strings.Split(jsonTag, ",")[0]
 			headers = append(headers, e.truncateHeader(strings.Title(strings.ReplaceAll(fieldName, "_", " "))))
 			fieldIndexes = append(fieldIndexes, i)
-			fieldCount++
 		}
 	}
 
-	// Calculate column width
-	pageWidth := 277.0 // A4 landscape width in mm minus margins
+	// Determine orientation and page size based on number of fields
+	numFields := len(headers)
+	var pageWidth float64
+	var fontSize float64
+	var headerFontSize float64
+
+	if numFields > 10 {
+		// Use landscape A4 for many columns with smaller fonts
+		pageWidth = 277.0 // A4 landscape width in mm minus margins
+		fontSize = 6.0
+		headerFontSize = 7.0
+	} else if numFields > 6 {
+		// Use landscape A4 for medium number of columns
+		pageWidth = 277.0
+		fontSize = 7.0
+		headerFontSize = 8.0
+	} else {
+		// Use landscape A4 for few columns with normal fonts
+		pageWidth = 277.0
+		fontSize = 8.0
+		headerFontSize = 9.0
+	}
+
+	// Calculate column width dynamically
 	colWidth := pageWidth / float64(len(headers))
 
 	// Write headers
-	pdf.SetFont("Arial", "B", 9)
+	pdf.SetFont("Arial", "B", headerFontSize)
 	pdf.SetFillColor(220, 220, 220)
 	for _, header := range headers {
 		pdf.CellFormat(colWidth, 8, header, "1", 0, "C", true, 0, "")
@@ -150,7 +168,7 @@ func (e *PDFExporter) writeDataTablePDF(pdf *gofpdf.Fpdf, records interface{}) e
 	pdf.Ln(8)
 
 	// Write data rows
-	pdf.SetFont("Arial", "", 8)
+	pdf.SetFont("Arial", "", fontSize)
 	for i := 0; i < recordsValue.Len(); i++ {
 		record := recordsValue.Index(i)
 		if record.Kind() == reflect.Ptr {
@@ -161,13 +179,13 @@ func (e *PDFExporter) writeDataTablePDF(pdf *gofpdf.Fpdf, records interface{}) e
 		if pdf.GetY() > 180 {
 			pdf.AddPage()
 			// Re-print headers
-			pdf.SetFont("Arial", "B", 9)
+			pdf.SetFont("Arial", "B", headerFontSize)
 			pdf.SetFillColor(220, 220, 220)
 			for _, header := range headers {
 				pdf.CellFormat(colWidth, 8, header, "1", 0, "C", true, 0, "")
 			}
 			pdf.Ln(8)
-			pdf.SetFont("Arial", "", 8)
+			pdf.SetFont("Arial", "", fontSize)
 		}
 
 		for _, fieldIdx := range fieldIndexes {
