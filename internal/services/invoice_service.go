@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
+	"time"
 
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
@@ -162,8 +164,8 @@ func (s *InvoiceService) GenerateInvoicePDF(ctx context.Context, saleID string) 
 	// 7. Fetch logo if configured (don't fail if not available)
 	var logoBytes []byte
 	var logoContentType string
-	if logoAttachmentID, ok := settingsMap[models.SettingKeyFPOLogoAttachmentID]; ok && logoAttachmentID != "" {
-		logoBytes, logoContentType, _ = s.getLogoBytes(ctx, logoAttachmentID)
+	if logoURL, ok := settingsMap[models.SettingKeyFPOLogoURL]; ok && logoURL != "" {
+		logoBytes, logoContentType, _ = s.getLogoFromURL(ctx, logoURL)
 		if logoBytes != nil {
 			s.logger.Info("Logo loaded for invoice", "size_bytes", len(logoBytes))
 		}
@@ -233,36 +235,34 @@ func (s *InvoiceService) buildLineItems(sale *models.Sale) ([]InvoiceLineItem, e
 	return items, nil
 }
 
-// getLogoBytes fetches the logo image bytes from S3
-func (s *InvoiceService) getLogoBytes(ctx context.Context, attachmentID string) ([]byte, string, error) {
-	if s.attachmentRepo == nil || s.s3Service == nil {
-		s.logger.Debug("Attachment repo or S3 service not available for logo fetch")
+// getLogoFromURL fetches logo bytes directly from a URL
+func (s *InvoiceService) getLogoFromURL(ctx context.Context, logoURL string) ([]byte, string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, logoURL, nil)
+	if err != nil {
+		s.logger.Warn("Failed to create logo request", "url", logoURL, "error", err)
 		return nil, "", nil
 	}
 
-	// Get attachment record
-	attachment, err := s.attachmentRepo.GetByID(attachmentID)
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
 	if err != nil {
-		s.logger.Warn("Failed to get logo attachment", "attachment_id", attachmentID, "error", err)
-		return nil, "", nil // Don't fail invoice generation for missing logo
+		s.logger.Warn("Failed to fetch logo from URL", "url", logoURL, "error", err)
+		return nil, "", nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		s.logger.Warn("Logo URL returned non-200 status", "url", logoURL, "status", resp.StatusCode)
+		return nil, "", nil
 	}
 
-	// Download from S3 using the file path (S3 key)
-	reader, contentType, err := s.s3Service.DownloadFileByKey(ctx, attachment.FilePath)
-	if err != nil {
-		s.logger.Warn("Failed to download logo from S3", "file_path", attachment.FilePath, "error", err)
-		return nil, "", nil // Don't fail invoice generation for S3 errors
-	}
-	defer reader.Close()
-
-	// Read all bytes
-	logoBytes, err := io.ReadAll(reader)
+	logoBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		s.logger.Warn("Failed to read logo bytes", "error", err)
 		return nil, "", nil
 	}
 
-	return logoBytes, contentType, nil
+	return logoBytes, resp.Header.Get("Content-Type"), nil
 }
 
 // renderPDF creates the actual PDF document

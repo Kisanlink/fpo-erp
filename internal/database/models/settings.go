@@ -112,7 +112,7 @@ type InvoiceRequirementsResponse struct {
 // Predefined setting keys for FPO configuration
 const (
 	SettingKeyFPOName              = "fpo_name"
-	SettingKeyFPOLogoAttachmentID  = "fpo_logo_attachment_id"
+	SettingKeyFPOLogoURL           = "fpo_logo_url"
 	SettingKeyFPOBranchAddress     = "fpo_branch_address"
 	SettingKeyFPORegisteredAddress = "fpo_registered_address"
 	SettingKeyFPOGSTIN             = "fpo_gstin"
@@ -123,7 +123,7 @@ const (
 func RequiredSettingsForInvoice() []string {
 	return []string{
 		SettingKeyFPOName,
-		SettingKeyFPOLogoAttachmentID,
+		SettingKeyFPOLogoURL,
 		SettingKeyFPOBranchAddress,
 	}
 }
