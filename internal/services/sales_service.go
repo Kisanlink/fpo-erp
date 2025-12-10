@@ -1861,7 +1861,15 @@ func (s *SalesService) CancelItems(saleID string, req *models.CancelItemsRequest
 					return errors.NewInternalServerError("Failed to update sale item")
 				}
 			} else {
-				// Full item cancelled - soft delete
+				// Full item cancelled - manually clean up all FK references before deleting
+				// Delete all SaleCancellationItem records that reference this SaleItem
+				// (they were just created in this same transaction for audit purposes)
+				if err := tx.Where("sale_item_id = ?", saleItem.ID).Delete(&models.SaleCancellationItem{}).Error; err != nil {
+					s.logger.Error("Failed to delete sale cancellation item references", zap.Error(err))
+					return errors.NewInternalServerError("Failed to clean up cancellation records")
+				}
+
+				// Now safe to delete the SaleItem (no foreign key references remain)
 				if err := tx.Delete(&models.SaleItem{}, "id = ?", saleItem.ID).Error; err != nil {
 					s.logger.Error("Failed to delete sale item", zap.Error(err))
 					return errors.NewInternalServerError("Failed to remove cancelled item")

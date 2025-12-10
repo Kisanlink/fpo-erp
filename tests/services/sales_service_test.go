@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -60,7 +61,7 @@ func setupSalesService(t *testing.T) (*services.SalesService, *gorm.DB, func()) 
 func createTestSale(t *testing.T, db *gorm.DB, warehouseID string, totalAmount float64, status string) *models.Sale {
 	t.Helper()
 
-	sale := models.NewSale(warehouseID, time.Now().UTC(), totalAmount, status, nil, nil, false, "cash", "in_store", false)
+	sale := models.NewSale(warehouseID, fmt.Sprintf("INV-%d", time.Now().UnixNano()), time.Now().UTC(), totalAmount, status, nil, nil, false, "cash", "in_store", false)
 
 	if err := db.Create(sale).Error; err != nil {
 		t.Fatalf("Failed to create test sale: %v", err)
@@ -280,9 +281,9 @@ func TestSalesService_GetSalesByDateRange_Success(t *testing.T) {
 
 	// Create sales with different dates
 	now := time.Now().UTC()
-	sale1 := models.NewSale(warehouse.ID, now.Add(-5*24*time.Hour), 1000.00, "completed", nil, nil, false, "cash", "in_store", false)
-	sale2 := models.NewSale(warehouse.ID, now.Add(-3*24*time.Hour), 2000.00, "completed", nil, nil, false, "upi", "in_store", false)
-	sale3 := models.NewSale(warehouse.ID, now.Add(-10*24*time.Hour), 3000.00, "completed", nil, nil, false, "cash", "delivery", false)
+	sale1 := models.NewSale(warehouse.ID, "INV-001", now.Add(-5*24*time.Hour), 1000.00, "completed", nil, nil, false, "cash", "in_store", false)
+	sale2 := models.NewSale(warehouse.ID, "INV-002", now.Add(-3*24*time.Hour), 2000.00, "completed", nil, nil, false, "upi", "in_store", false)
+	sale3 := models.NewSale(warehouse.ID, "INV-003", now.Add(-10*24*time.Hour), 3000.00, "completed", nil, nil, false, "cash", "delivery", false)
 
 	db.Create(sale1)
 	db.Create(sale2)
@@ -308,7 +309,7 @@ func TestSalesService_GetSalesByDateRange_Empty(t *testing.T) {
 
 	// Create sale outside of range
 	pastDate := time.Now().UTC().Add(-30 * 24 * time.Hour)
-	sale := models.NewSale(warehouse.ID, pastDate, 1000.00, "completed", nil, nil, false, "cash", "in_store", false)
+	sale := models.NewSale(warehouse.ID, "INV-PAST-001", pastDate, 1000.00, "completed", nil, nil, false, "cash", "in_store", false)
 	db.Create(sale)
 
 	// Execute - Get sales from last 7 days
@@ -398,8 +399,8 @@ func TestSalesService_GetTotalSalesAmount_Success(t *testing.T) {
 	warehouse := createTestWarehouse(t, db, "WH-001")
 
 	now := time.Now().UTC()
-	sale1 := models.NewSale(warehouse.ID, now.Add(-2*24*time.Hour), 1000.00, "completed", nil, nil, false, "cash", "in_store", false)
-	sale2 := models.NewSale(warehouse.ID, now.Add(-1*24*time.Hour), 2000.00, "completed", nil, nil, false, "upi", "in_store", false)
+	sale1 := models.NewSale(warehouse.ID, "INV-TOTAL-001", now.Add(-2*24*time.Hour), 1000.00, "completed", nil, nil, false, "cash", "in_store", false)
+	sale2 := models.NewSale(warehouse.ID, "INV-TOTAL-002", now.Add(-1*24*time.Hour), 2000.00, "completed", nil, nil, false, "upi", "in_store", false)
 
 	db.Create(sale1)
 	db.Create(sale2)

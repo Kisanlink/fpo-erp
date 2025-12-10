@@ -52,6 +52,8 @@ func TestCollaboratorHandler_CreateCollaborator_Success(t *testing.T) {
 	emailReq := "test@vendor.com"
 	panNumber := "AAAAA0000A"
 	bankName := "State Bank of India"
+	bankAccountNo := "1234567890123456"
+	bankIFSC := "SBIN0001234"
 	reqBody := models.CreateCollaboratorRequest{
 		CompanyName:   "Test Vendor Inc",
 		ContactPerson: "John Doe",
@@ -59,8 +61,8 @@ func TestCollaboratorHandler_CreateCollaborator_Success(t *testing.T) {
 		Email:         &emailReq,
 		GSTNumber:     "22AAAAA0000A1Z5",
 		PANNumber:     &panNumber,
-		BankAccountNo: "1234567890123456",
-		BankIFSC:      "SBIN0001234",
+		BankAccountNo: &bankAccountNo,
+		BankIFSC:      &bankIFSC,
 		BankName:      &bankName,
 	}
 	body, _ := json.Marshal(reqBody)
@@ -129,6 +131,8 @@ func TestCollaboratorHandler_CreateCollaborator_ServiceError(t *testing.T) {
 	email := "test@vendor.com"
 	panNumber := "AAAAA0000A"
 	bankName := "State Bank of India"
+	bankAccountNo := "1234567890123456"
+	bankIFSC := "SBIN0001234"
 	reqBody := models.CreateCollaboratorRequest{
 		CompanyName:   "Test Vendor Inc",
 		ContactPerson: "John Doe",
@@ -136,8 +140,8 @@ func TestCollaboratorHandler_CreateCollaborator_ServiceError(t *testing.T) {
 		Email:         &email,
 		GSTNumber:     "22AAAAA0000A1Z5",
 		PANNumber:     &panNumber,
-		BankAccountNo: "1234567890123456",
-		BankIFSC:      "SBIN0001234",
+		BankAccountNo: &bankAccountNo,
+		BankIFSC:      &bankIFSC,
 		BankName:      &bankName,
 	}
 	body, _ := json.Marshal(reqBody)

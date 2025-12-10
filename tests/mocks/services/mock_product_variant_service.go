@@ -37,6 +37,14 @@ func (m *MockProductVariantService) GetVariantsByProduct(ctx context.Context, pr
 	return args.Get(0).([]models.ProductVariantResponse), args.Error(1)
 }
 
+func (m *MockProductVariantService) GetVariantsByProductPaginated(ctx context.Context, productID string, limit, offset int) ([]models.ProductVariantResponse, int64, error) {
+	args := m.Called(ctx, productID, limit, offset)
+	if args.Get(0) == nil {
+		return nil, 0, args.Error(2)
+	}
+	return args.Get(0).([]models.ProductVariantResponse), args.Get(1).(int64), args.Error(2)
+}
+
 func (m *MockProductVariantService) GetVariantBySKU(ctx context.Context, sku string) (*models.ProductVariantResponse, error) {
 	args := m.Called(ctx, sku)
 	if args.Get(0) == nil {

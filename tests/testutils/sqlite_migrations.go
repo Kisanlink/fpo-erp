@@ -518,6 +518,7 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 	// InventoryBatch table
 	// Drop table first to ensure schema is correct
 	// IMPORTANT: Created after warehouses and product_variants since it references them
+	// NOTE: December 2025 GST simplification removed tax fields (cgst_rate, sgst_rate, custom_tax_ids, is_tax_exempt)
 	if err := db.Exec(`DROP TABLE IF EXISTS inventory_batches`).Error; err != nil {
 		return err
 	}
@@ -531,10 +532,7 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 			expiry_date DATETIME NOT NULL,
 			total_quantity INTEGER NOT NULL CHECK (total_quantity >= 0),
 			reserved_quantity INTEGER NOT NULL DEFAULT 0 CHECK (reserved_quantity >= 0),
-			cgst_rate REAL DEFAULT 0,
-			sgst_rate REAL DEFAULT 0,
-			custom_tax_ids TEXT DEFAULT '[]',
-			is_tax_exempt INTEGER DEFAULT 0,
+			batch_number TEXT,
 			created_at DATETIME,
 			updated_at DATETIME,
 			deleted_at DATETIME,
@@ -778,64 +776,8 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 		return err
 	}
 
-	// Tax table
-	// Drop table first to ensure schema is correct
-	if err := db.Exec(`DROP TABLE IF EXISTS taxes`).Error; err != nil {
-		return err
-	}
-
-	if err := db.Exec(`
-		CREATE TABLE taxes (
-			id TEXT PRIMARY KEY,
-			code TEXT NOT NULL UNIQUE,
-			name TEXT NOT NULL,
-			description TEXT,
-			tax_type TEXT NOT NULL,
-			calculation_type TEXT NOT NULL,
-			rate REAL NOT NULL,
-			min_amount REAL,
-			max_amount REAL,
-			min_order_value REAL,
-			max_order_value REAL,
-			applicable_products TEXT,
-			excluded_products TEXT,
-			applicable_categories TEXT,
-			excluded_categories TEXT,
-			applicable_warehouses TEXT,
-			excluded_warehouses TEXT,
-			applicable_states TEXT,
-			excluded_states TEXT,
-			applicable_customer_groups TEXT,
-			excluded_customer_groups TEXT,
-			valid_from DATETIME NOT NULL,
-			valid_until DATETIME,
-			is_active INTEGER DEFAULT 1,
-			priority INTEGER DEFAULT 0,
-			is_stackable INTEGER DEFAULT 1,
-			stacking_order INTEGER DEFAULT 0,
-			requires_gstin INTEGER DEFAULT 0,
-			requires_pan INTEGER DEFAULT 0,
-			is_inter_state INTEGER DEFAULT 0,
-			hsn_code TEXT,
-			sac_code TEXT,
-			tax_category TEXT,
-			created_at DATETIME,
-			updated_at DATETIME,
-			deleted_at DATETIME,
-			created_by TEXT,
-			updated_by TEXT,
-			deleted_by TEXT
-		)
-	`).Error; err != nil {
-		return err
-	}
-
-	// Create index for code
-	if err := db.Exec(`
-		CREATE INDEX IF NOT EXISTS idx_tax_code ON taxes(code)
-	`).Error; err != nil {
-		return err
-	}
+	// NOTE: Legacy Tax table REMOVED in December 2025 GST simplification
+	// Tax calculation now uses ProductVariant.GSTRate as single source of truth
 
 	// WebhookEvent table
 	// Drop table first to ensure schema is correct
@@ -1043,12 +985,10 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 	if err := db.Exec(`
 		CREATE TABLE sale_summaries (
 			id TEXT PRIMARY KEY,
-			summary_date DATE NOT NULL UNIQUE,
-			total_sales INTEGER NOT NULL,
-			total_amount REAL NOT NULL,
-			total_discount REAL DEFAULT 0,
-			total_tax REAL DEFAULT 0,
-			net_amount REAL NOT NULL,
+			summary_date DATE NOT NULL,
+			warehouse_id TEXT NOT NULL,
+			total_sales REAL NOT NULL,
+			total_items INTEGER NOT NULL,
 			created_at DATETIME,
 			updated_at DATETIME,
 			deleted_at DATETIME,
@@ -1097,82 +1037,11 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 		return err
 	}
 
-	// TaxTier table
-	// Drop table first to ensure schema is correct
-	if err := db.Exec(`DROP TABLE IF EXISTS tax_tiers`).Error; err != nil {
-		return err
-	}
+	// NOTE: Legacy TaxTier table REMOVED in December 2025 GST simplification
+	// GST rates now stored directly on ProductVariant table (hsn_code, gst_rate fields)
 
-	if err := db.Exec(`
-		CREATE TABLE tax_tiers (
-			id TEXT PRIMARY KEY,
-			tax_id TEXT NOT NULL,
-			min_amount REAL NOT NULL,
-			max_amount REAL,
-			rate REAL NOT NULL,
-			tier_order INTEGER NOT NULL,
-			created_at DATETIME,
-			updated_at DATETIME,
-			deleted_at DATETIME,
-			created_by TEXT,
-			updated_by TEXT,
-			deleted_by TEXT
-		)
-	`).Error; err != nil {
-		return err
-	}
-
-	// Create indexes for tax_tiers
-	if err := db.Exec(`
-		CREATE INDEX IF NOT EXISTS idx_tax_tier_tax_id ON tax_tiers(tax_id)
-	`).Error; err != nil {
-		return err
-	}
-
-	if err := db.Exec(`
-		CREATE INDEX IF NOT EXISTS idx_tax_tier_order ON tax_tiers(tax_id, tier_order)
-	`).Error; err != nil {
-		return err
-	}
-
-	// TaxApplication table
-	// Drop table first to ensure schema is correct
-	if err := db.Exec(`DROP TABLE IF EXISTS tax_applications`).Error; err != nil {
-		return err
-	}
-
-	if err := db.Exec(`
-		CREATE TABLE tax_applications (
-			id TEXT PRIMARY KEY,
-			tax_id TEXT NOT NULL,
-			entity_type TEXT NOT NULL,
-			entity_id TEXT NOT NULL,
-			tax_amount REAL NOT NULL,
-			taxable_amount REAL NOT NULL,
-			applied_at DATETIME NOT NULL,
-			created_at DATETIME,
-			updated_at DATETIME,
-			deleted_at DATETIME,
-			created_by TEXT,
-			updated_by TEXT,
-			deleted_by TEXT
-		)
-	`).Error; err != nil {
-		return err
-	}
-
-	// Create indexes for tax_applications
-	if err := db.Exec(`
-		CREATE INDEX IF NOT EXISTS idx_tax_application_entity ON tax_applications(entity_type, entity_id)
-	`).Error; err != nil {
-		return err
-	}
-
-	if err := db.Exec(`
-		CREATE INDEX IF NOT EXISTS idx_tax_application_tax_id ON tax_applications(tax_id)
-	`).Error; err != nil {
-		return err
-	}
+	// NOTE: Legacy TaxApplication table REMOVED in December 2025 GST simplification
+	// Tax amounts calculated on-the-fly during sales processing using ProductVariant.GSTRate
 
 	// TaxSummary table
 	// Drop table first to ensure schema is correct
