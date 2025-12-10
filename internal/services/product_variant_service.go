@@ -538,8 +538,10 @@ func (s *ProductVariantService) validatePrices(prices []models.VariantPrice) err
 	}
 
 	validPriceTypes := map[string]bool{
-		models.PriceTypeMRP: true,
-		models.PriceTypeMSP: true,
+		models.PriceTypeMRP:    true,
+		models.PriceTypeMSP:    true,
+		models.PriceTypeMember: true,
+		models.PriceTypeRetail: true,
 	}
 
 	priceTypeSeen := make(map[string]bool)
@@ -547,7 +549,7 @@ func (s *ProductVariantService) validatePrices(prices []models.VariantPrice) err
 	for i, price := range prices {
 		// Validate price_type
 		if !validPriceTypes[price.PriceType] {
-			return errors.NewValidationError("Invalid price_type at index " + strconv.Itoa(i) + ": must be 'MRP' or 'MSP'")
+			return errors.NewValidationError("Invalid price_type at index " + strconv.Itoa(i) + ": must be 'MRP', 'MSP', 'member', or 'retail'")
 		}
 
 		// Check for duplicate price types

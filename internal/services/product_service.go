@@ -475,7 +475,7 @@ func (s *ProductService) GetProductsByQuantityRange(ctx context.Context, minQty,
 	}
 
 	// Fetch products from repository
-	products, total, err := s.productRepo.GetProductsByQuantityRange(minQty, maxQty, limit, offset)
+	products, quantityMap, total, err := s.productRepo.GetProductsByQuantityRange(minQty, maxQty, limit, offset)
 	if err != nil {
 		s.logger.Error("Failed to retrieve products by quantity range",
 			zap.Error(err),
@@ -484,10 +484,16 @@ func (s *ProductService) GetProductsByQuantityRange(ctx context.Context, minQty,
 		return nil, 0, err
 	}
 
-	// Build responses with variant details
+	// Build responses with variant details and available quantity
 	var responses []models.ProductResponse
 	for _, product := range products {
 		response := s.buildProductResponse(ctx, &product)
+
+		// Set available quantity from the quantity map
+		if qty, exists := quantityMap[product.ID]; exists {
+			response.AvailableQuantity = &qty
+		}
+
 		responses = append(responses, *response)
 	}
 

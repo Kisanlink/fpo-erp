@@ -164,9 +164,11 @@ func (r *ProductRepository) GetWithFilters(categoryID *string, subcategoryID *st
 
 // GetProductsByQuantityRange retrieves products within a quantity range across all warehouses
 // Only counts non-expired batches (expiry_date > NOW()) with available stock
-func (r *ProductRepository) GetProductsByQuantityRange(minQty, maxQty int64, limit, offset int) ([]models.Product, int64, error) {
+// Returns products, productID->availableQuantity map, total count, and error
+func (r *ProductRepository) GetProductsByQuantityRange(minQty, maxQty int64, limit, offset int) ([]models.Product, map[string]int64, int64, error) {
 	var products []models.Product
 	var total int64
+	quantityMap := make(map[string]int64)
 
 	// Subquery to calculate total available quantity per product
 	// SUM(total_quantity) aggregates quantity across all warehouses and variants
@@ -182,30 +184,41 @@ func (r *ProductRepository) GetProductsByQuantityRange(minQty, maxQty int64, lim
 	countQuery := r.db.Table("(?) as filtered", subQuery).Count(&total)
 	if countQuery.Error != nil {
 		fmt.Printf("DEBUG: Database error counting products by quantity range: %v\n", countQuery.Error)
-		return nil, 0, errors.NewInternalServerError("Failed to count products by quantity range")
+		return nil, nil, 0, errors.NewInternalServerError("Failed to count products by quantity range")
 	}
 
-	// Get paginated products
-	var productIDs []string
+	// Get paginated products with their quantities
+	type ProductQuantity struct {
+		ProductID    string
+		AvailableQty int64
+	}
+	var productQuantities []ProductQuantity
 	if err := r.db.Table("(?) as filtered", subQuery).
-		Select("product_id").
+		Select("product_id, available_qty").
 		Limit(limit).
 		Offset(offset).
-		Pluck("product_id", &productIDs).Error; err != nil {
+		Scan(&productQuantities).Error; err != nil {
 		fmt.Printf("DEBUG: Database error retrieving products by quantity range: %v\n", err)
-		return nil, 0, errors.NewInternalServerError("Failed to retrieve products by quantity range")
+		return nil, nil, 0, errors.NewInternalServerError("Failed to retrieve products by quantity range")
 	}
 
 	// If no products found, return empty slice
-	if len(productIDs) == 0 {
-		return []models.Product{}, total, nil
+	if len(productQuantities) == 0 {
+		return []models.Product{}, quantityMap, total, nil
+	}
+
+	// Build product IDs list and quantity map
+	productIDs := make([]string, len(productQuantities))
+	for i, pq := range productQuantities {
+		productIDs[i] = pq.ProductID
+		quantityMap[pq.ProductID] = pq.AvailableQty
 	}
 
 	// Fetch full product details
 	if err := r.db.Where("id IN ?", productIDs).Order("created_at DESC").Find(&products).Error; err != nil {
 		fmt.Printf("DEBUG: Database error fetching product details: %v\n", err)
-		return nil, 0, errors.NewInternalServerError("Failed to fetch product details")
+		return nil, nil, 0, errors.NewInternalServerError("Failed to fetch product details")
 	}
 
-	return products, total, nil
+	return products, quantityMap, total, nil
 }
