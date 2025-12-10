@@ -115,9 +115,12 @@ func (r *InventoryRepository) GetBatchesByVariantOrderedByExpiry(variantID strin
 }
 
 // GetBatchesByVariantAndWarehouseOrderedByExpiry retrieves batches for a variant in a specific warehouse ordered by expiry date (FEFO)
+// Only returns batches with available quantity > 0 (total_quantity - reserved_quantity > 0)
 func (r *InventoryRepository) GetBatchesByVariantAndWarehouseOrderedByExpiry(variantID, warehouseID string) ([]models.InventoryBatch, error) {
 	var batches []models.InventoryBatch
-	if err := r.db.Preload("Warehouse").Where("variant_id = ? AND warehouse_id = ? AND total_quantity > 0", variantID, warehouseID).Order("expiry_date ASC").Find(&batches).Error; err != nil {
+	if err := r.db.Preload("Warehouse").
+		Where("variant_id = ? AND warehouse_id = ? AND (total_quantity - reserved_quantity) > 0", variantID, warehouseID).
+		Order("expiry_date ASC").Find(&batches).Error; err != nil {
 		return nil, errors.NewInternalServerError("Failed to retrieve variant batches in warehouse ordered by expiry")
 	}
 	return batches, nil
@@ -255,8 +258,31 @@ func (r *InventoryRepository) GetBatchStockLevel(batchID string) (int64, error) 
 	return batch.TotalQuantity, nil
 }
 
-// UpdateBatchStock updates the stock level for a batch
+// UpdateBatchStock updates the stock level for a batch (non-transactional)
+// Note: For transactional operations with row locking, use UpdateBatchStockWithTx instead
 func (r *InventoryRepository) UpdateBatchStock(batchID string, quantityChange int64) error {
+	// First get current batch to validate
+	var batch models.InventoryBatch
+	if err := r.db.Where("id = ?", batchID).First(&batch).Error; err != nil {
+		log.Printf("[ERROR] Failed to get batch for stock update: %v", err)
+		return errors.NewInternalServerError("Failed to get batch for stock update")
+	}
+
+	newTotalQty := batch.TotalQuantity + quantityChange
+
+	// Validate: new total must not be negative
+	if newTotalQty < 0 {
+		log.Printf("[ERROR] Insufficient stock: current=%d, requested=%d", batch.TotalQuantity, -quantityChange)
+		return errors.NewBadRequestError("Insufficient stock available")
+	}
+
+	// Validate: new total must not be less than reserved quantity
+	if newTotalQty < batch.ReservedQuantity {
+		log.Printf("[ERROR] Cannot reduce stock below reserved quantity: new_total=%d, reserved=%d",
+			newTotalQty, batch.ReservedQuantity)
+		return errors.NewBadRequestError("Cannot reduce stock below reserved quantity")
+	}
+
 	if err := r.db.Model(&models.InventoryBatch{}).Where("id = ?", batchID).Update("total_quantity", gorm.Expr("total_quantity + ?", quantityChange)).Error; err != nil {
 		log.Printf("[ERROR] Database error updating batch stock: %v", err)
 		return errors.NewInternalServerError("Failed to update batch stock")
@@ -273,10 +299,19 @@ func (r *InventoryRepository) UpdateBatchStockWithTx(tx *gorm.DB, batchID string
 		return errors.NewInternalServerError("Failed to lock batch for stock update")
 	}
 
+	newTotalQty := batch.TotalQuantity + quantityChange
+
 	// Check for sufficient stock before update
-	if batch.TotalQuantity+quantityChange < 0 {
+	if newTotalQty < 0 {
 		log.Printf("[ERROR] Insufficient stock: current=%d, requested=%d", batch.TotalQuantity, -quantityChange)
 		return errors.NewBadRequestError("Insufficient stock available")
+	}
+
+	// Ensure new total doesn't go below reserved quantity (constraint: reserved_quantity <= total_quantity)
+	if newTotalQty < batch.ReservedQuantity {
+		log.Printf("[ERROR] Cannot reduce stock below reserved quantity: new_total=%d, reserved=%d",
+			newTotalQty, batch.ReservedQuantity)
+		return errors.NewBadRequestError("Cannot reduce stock below reserved quantity")
 	}
 
 	if err := tx.Model(&models.InventoryBatch{}).Where("id = ?", batchID).Update("total_quantity", gorm.Expr("total_quantity + ?", quantityChange)).Error; err != nil {
@@ -291,6 +326,126 @@ func (r *InventoryRepository) CreateTransactionWithTx(tx *gorm.DB, transaction *
 	if err := tx.Create(transaction).Error; err != nil {
 		log.Printf("[ERROR] Database error creating inventory transaction: %v", err)
 		return errors.NewInternalServerError("Failed to create inventory transaction")
+	}
+	return nil
+}
+
+// GetBatchByIDWithTx retrieves a batch by ID within a transaction (includes soft-deleted)
+func (r *InventoryRepository) GetBatchByIDWithTx(tx *gorm.DB, id string) (*models.InventoryBatch, error) {
+	var batch models.InventoryBatch
+	if err := tx.Unscoped().Preload("Warehouse").Preload("Variant").Where("id = ?", id).First(&batch).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, errors.NewNotFoundError("Inventory batch")
+		}
+		return nil, errors.NewInternalServerError("Failed to retrieve inventory batch")
+	}
+	return &batch, nil
+}
+
+// ReserveBatchStockWithTx reserves inventory for a pending sale (increments reserved_quantity)
+// Uses atomic conditional update to prevent race conditions
+func (r *InventoryRepository) ReserveBatchStockWithTx(tx *gorm.DB, batchID string, quantity int64) error {
+	// Atomic conditional update: check availability AND update in single operation
+	// This prevents race conditions where two concurrent requests both pass the check
+	result := tx.Model(&models.InventoryBatch{}).
+		Where("id = ? AND (total_quantity - reserved_quantity) >= ?", batchID, quantity).
+		Update("reserved_quantity", gorm.Expr("reserved_quantity + ?", quantity))
+
+	if result.Error != nil {
+		log.Printf("[ERROR] Database error reserving batch stock: %v", result.Error)
+		return errors.NewInternalServerError("Failed to reserve batch stock")
+	}
+
+	// If no rows affected, either batch doesn't exist or insufficient stock
+	if result.RowsAffected == 0 {
+		// Re-fetch batch to provide accurate error message
+		var batch models.InventoryBatch
+		if err := tx.Where("id = ?", batchID).First(&batch).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return errors.NewNotFoundError("Inventory batch")
+			}
+			return errors.NewInternalServerError("Failed to check batch status")
+		}
+		// Batch exists, so insufficient stock - provide detailed error
+		available := batch.TotalQuantity - batch.ReservedQuantity
+		log.Printf("[ERROR] Insufficient available stock for reservation: batch=%s, requested=%d, available=%d",
+			batchID, quantity, available)
+		return errors.NewBadRequestError(fmt.Sprintf(
+			"Insufficient available stock: requested %d, available %d", quantity, available))
+	}
+	return nil
+}
+
+// ReleaseBatchReservationWithTx releases a reservation (decrements reserved_quantity)
+// Uses atomic conditional update to prevent race conditions
+// This operation is idempotent: if reservation is already released or doesn't exist (legacy sale),
+// it logs a warning and returns nil instead of an error
+func (r *InventoryRepository) ReleaseBatchReservationWithTx(tx *gorm.DB, batchID string, quantity int64) error {
+	// Atomic conditional update: check sufficient reservation AND update in single operation
+	result := tx.Model(&models.InventoryBatch{}).
+		Where("id = ? AND reserved_quantity >= ?", batchID, quantity).
+		Update("reserved_quantity", gorm.Expr("reserved_quantity - ?", quantity))
+
+	if result.Error != nil {
+		log.Printf("[ERROR] Database error releasing batch reservation: %v", result.Error)
+		return errors.NewInternalServerError("Failed to release batch reservation")
+	}
+
+	// If no rows affected, either batch doesn't exist or insufficient reservation
+	if result.RowsAffected == 0 {
+		// Check if batch exists using Count (GORM Find with bool doesn't work correctly)
+		var count int64
+		if err := tx.Model(&models.InventoryBatch{}).Where("id = ?", batchID).Count(&count).Error; err != nil {
+			log.Printf("[ERROR] Failed to check batch existence: %v", err)
+			return errors.NewInternalServerError("Failed to check batch status")
+		}
+		if count == 0 {
+			return errors.NewNotFoundError("Inventory batch")
+		}
+
+		// Batch exists but has insufficient reservation - this is OK for legacy sales
+		// or if reservation was already released (idempotent operation)
+		log.Printf("[WARN] Release reservation skipped (already released or legacy sale): batch=%s, release_requested=%d", batchID, quantity)
+		return nil // Idempotent: return success even if nothing to release
+	}
+	return nil
+}
+
+// ConvertReservationToDeductionWithTx converts a reservation to actual stock deduction
+// Used when a pending sale is completed - decrements both reserved_quantity and total_quantity
+// Uses atomic conditional update to prevent race conditions
+func (r *InventoryRepository) ConvertReservationToDeductionWithTx(tx *gorm.DB, batchID string, quantity int64) error {
+	// Atomic conditional update: check both constraints AND update both fields in single operation
+	result := tx.Model(&models.InventoryBatch{}).
+		Where("id = ? AND reserved_quantity >= ? AND total_quantity >= ?", batchID, quantity, quantity).
+		Updates(map[string]interface{}{
+			"reserved_quantity": gorm.Expr("reserved_quantity - ?", quantity),
+			"total_quantity":    gorm.Expr("total_quantity - ?", quantity),
+		})
+
+	if result.Error != nil {
+		log.Printf("[ERROR] Database error converting reservation to deduction: %v", result.Error)
+		return errors.NewInternalServerError("Failed to convert reservation to deduction")
+	}
+
+	// If no rows affected, check which constraint failed for better error message
+	if result.RowsAffected == 0 {
+		var batch models.InventoryBatch
+		if err := tx.Where("id = ?", batchID).First(&batch).Error; err != nil {
+			return errors.NewNotFoundError("Inventory batch")
+		}
+		if batch.ReservedQuantity < quantity {
+			log.Printf("[ERROR] Cannot convert more than reserved: reserved=%d, convert_requested=%d",
+				batch.ReservedQuantity, quantity)
+			return errors.NewBadRequestError("Cannot convert more than reserved quantity")
+		}
+		if batch.TotalQuantity < quantity {
+			log.Printf("[ERROR] Cannot deduct more than total: total=%d, deduct_requested=%d",
+				batch.TotalQuantity, quantity)
+			return errors.NewBadRequestError("Cannot deduct more than total quantity")
+		}
+		// Shouldn't reach here, but handle gracefully
+		return errors.NewBadRequestError("Insufficient quantity for conversion")
 	}
 	return nil
 }

@@ -38,6 +38,8 @@ type SaleCancellation struct {
 	CancelledAt      time.Time `gorm:"type:timestamptz;not null;default:now()" json:"cancelled_at"`
 
 	// Financial impact
+	// OriginalAmount: Sale total BEFORE this cancellation (not the initial sale total)
+	// For multi-cancellation scenarios, this tracks the state at each cancellation
 	OriginalAmount   float64 `gorm:"type:numeric(14,4);not null" json:"original_amount"`
 	CancelledAmount  float64 `gorm:"type:numeric(14,4);not null" json:"cancelled_amount"`
 	DiscountReversed float64 `gorm:"type:numeric(14,4);default:0" json:"discount_reversed"`
@@ -60,7 +62,7 @@ type SaleCancellationItem struct {
 	BatchID           string  `gorm:"type:varchar(100);not null" json:"batch_id"`
 	QuantityCancelled int64   `gorm:"type:bigint;not null;check:quantity_cancelled > 0" json:"quantity_cancelled"`
 	RefundAmount      float64 `gorm:"type:numeric(14,4);not null" json:"refund_amount"`
-	InventoryRestored bool    `gorm:"type:boolean;not null;default:true" json:"inventory_restored"`
+	InventoryRestored bool    `gorm:"type:boolean;not null;default:false" json:"inventory_restored"`
 	TransactionID     *string `gorm:"type:varchar(100)" json:"transaction_id"` // Inventory transaction ID
 
 	// Associations
@@ -92,7 +94,8 @@ func NewSaleCancellation(saleID, cancellationType, reason string, cancelledBy *s
 }
 
 // NewSaleCancellationItem creates a new SaleCancellationItem with initialized fields
-func NewSaleCancellationItem(cancellationID, saleItemID, batchID string, quantityCancelled int64, refundAmount float64, transactionID *string) *SaleCancellationItem {
+// inventoryRestored indicates whether inventory was actually restored to the batch
+func NewSaleCancellationItem(cancellationID, saleItemID, batchID string, quantityCancelled int64, refundAmount float64, transactionID *string, inventoryRestored bool) *SaleCancellationItem {
 	baseModel := base.NewBaseModel(constants.TableSaleCancellationItem, hash.Medium)
 	return &SaleCancellationItem{
 		BaseModel:         *baseModel,
@@ -101,7 +104,7 @@ func NewSaleCancellationItem(cancellationID, saleItemID, batchID string, quantit
 		BatchID:           batchID,
 		QuantityCancelled: quantityCancelled,
 		RefundAmount:      refundAmount,
-		InventoryRestored: true,
+		InventoryRestored: inventoryRestored,
 		TransactionID:     transactionID,
 	}
 }
@@ -178,4 +181,42 @@ type DiscountReversedInfo struct {
 type TaxVoidedInfo struct {
 	TaxSummaryID string  `json:"tax_summary_id"`
 	AmountVoided float64 `json:"amount_voided"`
+}
+
+// CancelItemsRequest represents the request to cancel specific items in a sale
+type CancelItemsRequest struct {
+	Reason        string             `json:"reason" binding:"required,oneof=customer_request payment_failed out_of_stock pricing_error duplicate_order fraud_suspected system_error other"`
+	ReasonDetails *string            `json:"reason_details" binding:"omitempty,max=1000"`
+	PerformedBy   string             `json:"performed_by" binding:"required"`
+	Items         []CancelItemDetail `json:"items" binding:"required,min=1,dive"`
+}
+
+// CancelItemDetail represents details for cancelling a specific item
+type CancelItemDetail struct {
+	SaleItemID string `json:"sale_item_id" binding:"required"`
+	Quantity   int64  `json:"quantity" binding:"required,min=1"`
+}
+
+// CancelItemsResponse represents the response after cancelling specific items
+type CancelItemsResponse struct {
+	Sale                 SaleResponse                  `json:"sale"`
+	ItemsCancelled       []CancelledItemInfo           `json:"items_cancelled"`
+	InventoryRestored    []InventoryRestoredItem       `json:"inventory_restored"`
+	FinancialAdjustments *FinancialAdjustmentsResponse `json:"financial_adjustments,omitempty"`
+	CancellationID       string                        `json:"cancellation_id"`
+	NewSaleTotal         float64                       `json:"new_sale_total"`
+}
+
+// CancelledItemInfo represents information about a cancelled item
+type CancelledItemInfo struct {
+	SaleItemID        string  `json:"sale_item_id"`
+	QuantityCancelled int64   `json:"quantity_cancelled"`
+	AmountRefunded    float64 `json:"amount_refunded"`
+}
+
+// GetCancellationsResponse represents the response for getting cancellation history
+type GetCancellationsResponse struct {
+	SaleID        string                     `json:"sale_id"`
+	Cancellations []SaleCancellationResponse `json:"cancellations"`
+	TotalCount    int                        `json:"total_count"`
 }

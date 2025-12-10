@@ -18,6 +18,14 @@ type Product struct {
 	Name        string  `gorm:"type:varchar(150);not null" json:"name"`
 	Description *string `gorm:"type:text" json:"description"`
 
+	// Category fields - ID-based references
+	// CategoryID: Optional, defaults to null. Application logic should default to "OTHER" category.
+	// SubcategoryID: Optional, nullable. Subcategory is not required.
+	// NOTE: Category and Subcategory associations removed to reduce database load.
+	// Use CategoryRepository.GetByID() or SubcategoryRepository.GetByID() to fetch related data if needed.
+	CategoryID    *string `gorm:"type:varchar(50);index:idx_products_category_id;default:null" json:"category_id"`
+	SubcategoryID *string `gorm:"type:varchar(50);index:idx_products_subcategory_id;default:null" json:"subcategory_id"`
+
 	// Associations
 	Variants []ProductVariant `gorm:"foreignKey:ProductID" json:"variants,omitempty"`
 }
@@ -38,22 +46,28 @@ func (Product) TableName() string {
 
 // ProductResponse represents the API response for product
 type ProductResponse struct {
-	ID          string                   `json:"id"`
-	Name        string                   `json:"name"`
-	Description *string                  `json:"description"`
-	Variants    []ProductVariantResponse `json:"variants,omitempty"` // Preloaded variants with image URLs
-	CreatedAt   string                   `json:"created_at"`
-	UpdatedAt   string                   `json:"updated_at"`
+	ID            string                   `json:"id"`
+	Name          string                   `json:"name"`
+	Description   *string                  `json:"description"`
+	CategoryID    *string                  `json:"category_id,omitempty"`
+	SubcategoryID *string                  `json:"subcategory_id,omitempty"`
+	Variants      []ProductVariantResponse `json:"variants,omitempty"` // Preloaded variants with image URLs
+	CreatedAt     string                   `json:"created_at"`
+	UpdatedAt     string                   `json:"updated_at"`
 }
 
 // CreateProductRequest represents the request to create a product
 type CreateProductRequest struct {
-	Name        string  `json:"name" binding:"required"`
-	Description *string `json:"description"`
+	Name          string  `json:"name" binding:"required"`
+	Description   *string `json:"description"`
+	CategoryID    *string `json:"category_id"`    // Optional
+	SubcategoryID *string `json:"subcategory_id"` // Optional
 }
 
 // UpdateProductRequest represents the request to update a product
 type UpdateProductRequest struct {
-	Name        *string `json:"name,omitempty"`
-	Description *string `json:"description,omitempty"`
+	Name          *string `json:"name,omitempty"`
+	Description   *string `json:"description,omitempty"`
+	CategoryID    *string `json:"category_id,omitempty"`
+	SubcategoryID *string `json:"subcategory_id,omitempty"`
 }

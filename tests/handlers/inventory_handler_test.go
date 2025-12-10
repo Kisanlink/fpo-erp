@@ -39,26 +39,18 @@ func TestInventoryHandler_CreateBatch_Success(t *testing.T) {
 		CostPrice:     100.50,
 		ExpiryDate:    "2025-12-31",
 		TotalQuantity: 500,
-		CGSTRate:      9.0,
-		SGSTRate:      9.0,
-		CustomTaxIDs:  []string{},
-		IsTaxExempt:   false,
 	}
 	mockService.On("CreateBatch",
-		"WHSE00000001", "PVAR00000001", 100.50, mock.Anything, int64(500), 9.0, 9.0, []string{}, false).
+		"WHSE00000001", "PVAR00000001", 100.50, mock.Anything, int64(500)).
 		Return(expectedResponse, nil)
 
 	// Create request
 	reqBody := models.CreateInventoryBatchRequest{
-		WarehouseID:  "WHSE00000001",
-		VariantID:    "PVAR00000001",
-		CostPrice:    100.50,
-		ExpiryDate:   "2025-12-31",
-		Quantity:     500,
-		CGSTRate:     9.0,
-		SGSTRate:     9.0,
-		CustomTaxIDs: []string{},
-		IsTaxExempt:  false,
+		WarehouseID: "WHSE00000001",
+		VariantID:   "PVAR00000001",
+		CostPrice:   100.50,
+		ExpiryDate:  "2025-12-31",
+		Quantity:    500,
 	}
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest("POST", "/api/v1/batches", bytes.NewReader(body))
@@ -141,20 +133,16 @@ func TestInventoryHandler_CreateBatch_ServiceError(t *testing.T) {
 
 	// Mock service error
 	mockService.On("CreateBatch",
-		"WHSE00000001", "PVAR00000001", 100.50, mock.Anything, int64(500), 9.0, 9.0, []string{}, false).
+		"WHSE00000001", "PVAR00000001", 100.50, mock.Anything, int64(500)).
 		Return(nil, errors.New("warehouse not found"))
 
 	// Create request
 	reqBody := models.CreateInventoryBatchRequest{
-		WarehouseID:  "WHSE00000001",
-		VariantID:    "PVAR00000001",
-		CostPrice:    100.50,
-		ExpiryDate:   "2025-12-31",
-		Quantity:     500,
-		CGSTRate:     9.0,
-		SGSTRate:     9.0,
-		CustomTaxIDs: []string{},
-		IsTaxExempt:  false,
+		WarehouseID: "WHSE00000001",
+		VariantID:   "PVAR00000001",
+		CostPrice:   100.50,
+		ExpiryDate:  "2025-12-31",
+		Quantity:    500,
 	}
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest("POST", "/api/v1/batches", bytes.NewReader(body))
@@ -189,8 +177,6 @@ func TestInventoryHandler_GetBatch_Success(t *testing.T) {
 		CostPrice:     100.50,
 		ExpiryDate:    "2025-12-31",
 		TotalQuantity: 500,
-		CGSTRate:      9.0,
-		SGSTRate:      9.0,
 	}
 	mockService.On("GetBatch", "BATC00000001").
 		Return(expectedResponse, nil)

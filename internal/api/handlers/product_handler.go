@@ -376,6 +376,59 @@ func (h *ProductHandler) GetProductWithPrices(c *gin.Context) {
 	utils.OKResponse(c, "Product with prices retrieved successfully", response)
 }
 
+// GetProductsByCategory handles GET /api/v1/products/category/:categoryId
+// @Summary Get Products by Category
+// @Description Retrieve all products in a specific category (requires authentication)
+// @Tags Products
+// @Produce json
+// @Param categoryId path string true "Category ID" example(CATG00000001)
+// @Param subcategory_id query string false "Subcategory ID (optional filter)"
+// @Success 200 {object} utils.Response{data=[]models.ProductResponse} "Products retrieved successfully"
+// @Failure 400 {object} utils.ErrorResponseModel "Bad request"
+// @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
+// @Security BearerAuth
+// @Router /api/v1/products/category/{categoryId} [get]
+func (h *ProductHandler) GetProductsByCategory(c *gin.Context) {
+	h.logger.Info("Handling get products by category request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
+	// Get category ID from URL
+	categoryID := c.Param("categoryId")
+	if categoryID == "" {
+		h.logger.Error("Category ID is required but not provided")
+		utils.BadRequestResponse(c, "Category ID is required", nil)
+		return
+	}
+
+	// Get optional subcategory_id from query params
+	var subcategoryID *string
+	if subID := c.Query("subcategory_id"); subID != "" {
+		subcategoryID = &subID
+	}
+
+	h.logger.Debug("Fetching products by category",
+		zap.String("category_id", categoryID))
+
+	// Get products by category
+	response, err := h.productService.GetProductsByCategory(c.Request.Context(), categoryID, subcategoryID)
+	if err != nil {
+		h.logger.Error("Service error retrieving products by category",
+			zap.Error(err),
+			zap.String("category_id", categoryID))
+		utils.HandleServiceError(c, "Failed to retrieve products by category", err)
+		return
+	}
+
+	h.logger.Info("Products by category retrieved successfully",
+		zap.String("category_id", categoryID),
+		zap.Int("count", len(response)))
+
+	utils.OKResponse(c, "Products retrieved successfully", response)
+}
+
 // RegisterRoutes registers product routes
 func (h *ProductHandler) RegisterRoutes(router *gin.RouterGroup) {
 	products := router.Group("/products")
@@ -391,6 +444,7 @@ func (h *ProductHandler) RegisterRoutes(router *gin.RouterGroup) {
 		// Read routes - Director=R, CEO=CRUD, Auditor=R, Accountant=–, Tech_Support=R/W (temp), Store_Manager=CRUD, Store_Staff=R
 		products.GET("", h.aaaMiddleware.RequireOrgPermission("product", "read"), h.GetAllProducts)
 		products.GET("/search", h.aaaMiddleware.RequireOrgPermission("product", "read"), h.SearchProducts)
+		products.GET("/category/:categoryId", h.aaaMiddleware.RequireOrgPermission("product", "read"), h.GetProductsByCategory)
 		products.GET("/:id", h.aaaMiddleware.RequireOrgPermission("product", "read"), h.GetProduct)
 		products.GET("/:id/with-prices", h.aaaMiddleware.RequireOrgPermission("product", "read"), h.GetProductWithPrices)
 	}

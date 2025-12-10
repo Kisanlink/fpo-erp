@@ -7,8 +7,32 @@ import (
 	"github.com/Kisanlink/kisanlink-db/pkg/core/hash"
 )
 
+// ============================================================================
+// DEPRECATED: CollaboratorProduct model and related types are deprecated.
+//
+// This model has been replaced by the ProductVariant unified architecture.
+// Collaborator-specific products are now stored as ProductVariant records
+// with the collaborator_ids field (JSON array).
+//
+// Migration Path:
+//   - Use ProductVariant table with collaborator_ids field instead
+//   - Use POST /api/v1/products/{id}/variants endpoint to create variants
+//   - Include collaborator_ids array in the request to link to collaborators
+//   - Use PATCH /api/v1/product-variants/{id} to update collaborator list
+//
+// Reason for Deprecation:
+//   - Unified architecture: Both regular and collaborator products use same table
+//   - Simplified queries: Single table for all product variants
+//   - Better scalability: Many-to-many via JSON array
+//
+// Deprecated Since: v1.5.0 (November 2025)
+// Will Be Removed: v2.0.0
+// ============================================================================
+
 // CollaboratorProduct represents the junction table linking collaborators to products
 // with additional metadata from the collaborator's perspective
+//
+// DEPRECATED: Use ProductVariant with collaborator_ids field instead.
 type CollaboratorProduct struct {
 	base.BaseModel
 

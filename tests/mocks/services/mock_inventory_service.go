@@ -14,8 +14,8 @@ type MockInventoryService struct {
 	mock.Mock
 }
 
-func (m *MockInventoryService) CreateBatch(warehouseID, variantID string, costPrice float64, expiryDate time.Time, quantity int64, cgstRate, sgstRate float64, customTaxIDs []string, isTaxExempt bool) (*models.InventoryBatchResponse, error) {
-	args := m.Called(warehouseID, variantID, costPrice, expiryDate, quantity, cgstRate, sgstRate, customTaxIDs, isTaxExempt)
+func (m *MockInventoryService) CreateBatch(warehouseID, variantID string, costPrice float64, expiryDate time.Time, quantity int64) (*models.InventoryBatchResponse, error) {
+	args := m.Called(warehouseID, variantID, costPrice, expiryDate, quantity)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

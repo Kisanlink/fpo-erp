@@ -30,29 +30,34 @@ func TestSalesHandler_CreateSale_Success(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
-	customerID := "CUST_123"
+	customerPhone := "9876543210"
+	customerName := "Test Customer"
 	applyTaxes := false
 	expectedResponse := &models.SaleResponse{
-		ID:          "SALE00000001",
-		WarehouseID: "WRHS00000001",
-		SaleDate:    time.Now().Format(time.RFC3339),
-		TotalAmount: 1500.00,
-		Status:      "completed",
-		CustomerID:  &customerID,
-		PaymentMode: "cash",
-		SaleType:    "in_store",
-		ApplyTaxes:  applyTaxes,
+		ID:            "SALE00000001",
+		WarehouseID:   "WRHS00000001",
+		SaleDate:      time.Now().Format(time.RFC3339),
+		TotalAmount:   1500.00,
+		Status:        "completed",
+		CustomerPhone: &customerPhone,
+		CustomerName:  &customerName,
+		IsOrgMember:   false,
+		PaymentMode:   "cash",
+		SaleType:      "in_store",
+		ApplyTaxes:    applyTaxes,
 	}
 	mockService.On("CreateSale", mock.AnythingOfType("*models.CreateSaleRequest")).
 		Return(expectedResponse, nil)
 
 	// Create request
 	reqBody := models.CreateSaleRequest{
-		WarehouseID: "WRHS00000001",
-		CustomerID:  &customerID,
-		PaymentMode: "cash",
-		SaleType:    "in_store",
-		ApplyTaxes:  &applyTaxes,
+		WarehouseID:   "WRHS00000001",
+		CustomerPhone: &customerPhone,
+		CustomerName:  &customerName,
+		IsOrgMember:   false,
+		PaymentMode:   "cash",
+		SaleType:      "in_store",
+		ApplyTaxes:    &applyTaxes,
 		Items: []models.CreateSaleItemRequest{
 			{
 				VariantID: "PVAR00000001",
@@ -251,17 +256,20 @@ func TestSalesHandler_GetSale_Success(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
-	customerID := "CUST_123"
+	customerPhone := "9876543210"
+	customerName := "Test Customer"
 	expectedResponse := &models.SaleResponse{
-		ID:          "SALE00000001",
-		WarehouseID: "WRHS00000001",
-		SaleDate:    time.Now().Format(time.RFC3339),
-		TotalAmount: 1500.00,
-		Status:      "completed",
-		CustomerID:  &customerID,
-		PaymentMode: "cash",
-		SaleType:    "in_store",
-		ApplyTaxes:  false,
+		ID:            "SALE00000001",
+		WarehouseID:   "WRHS00000001",
+		SaleDate:      time.Now().Format(time.RFC3339),
+		TotalAmount:   1500.00,
+		Status:        "completed",
+		CustomerPhone: &customerPhone,
+		CustomerName:  &customerName,
+		IsOrgMember:   false,
+		PaymentMode:   "cash",
+		SaleType:      "in_store",
+		ApplyTaxes:    false,
 	}
 	mockService.On("GetSale", "SALE00000001").
 		Return(expectedResponse, nil)

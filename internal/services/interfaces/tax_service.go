@@ -2,26 +2,19 @@ package interfaces
 
 import (
 	"kisanlink-erp/internal/database/models"
-
-	"gorm.io/gorm"
 )
 
+// TaxServiceInterface defines the simplified GST-only tax service
+// Tax rates are now stored on ProductVariant (GSTRate field)
+// This service only handles GST calculation (CGST+SGST for intra-state, IGST for inter-state)
 type TaxServiceInterface interface {
-	CreateTax(req *models.CreateTaxRequest, userID string) (*models.TaxResponse, error)
-	GetTax(id string) (*models.TaxResponse, error)
-	GetAllTaxes(limit, offset int) ([]models.TaxResponse, int64, error)
-	GetActiveTaxes(limit, offset int) ([]models.TaxResponse, int64, error)
-	GetTaxesByType(taxType models.TaxType, limit, offset int) ([]models.TaxResponse, int64, error)
-	GetTaxesByStatus(status string, limit, offset int) ([]models.TaxResponse, int64, error)
-	UpdateTax(id string, req *models.UpdateTaxRequest, userID string) (*models.TaxResponse, error)
-	DeleteTax(id string) error
-	CalculateTax(req *models.TaxCalculationRequest) (*models.TaxCalculationResponse, error)
-	ApplyTaxesToSale(saleID string, items []models.SaleItem, req *models.TaxCalculationRequest, userID string) (*models.TaxSummary, error)
-	ApplyTaxesToSaleWithTx(tx *gorm.DB, saleID string, items []models.SaleItem, req *models.TaxCalculationRequest, userID string) (*models.TaxSummary, error)
-	ApplyTaxesToReturn(returnID string, items []models.ReturnItem, req *models.TaxCalculationRequest, userID string) (*models.TaxSummary, error)
+	// CalculateGST calculates GST for a line item based on variant's GST rate
+	// If isInterState is true, returns IGST; otherwise returns CGST+SGST (split 50-50)
+	CalculateGST(lineTotal float64, gstRate float64, isInterState bool) *models.GSTCalculation
+
+	// GetTaxSummaryBySale retrieves the tax summary for a sale
 	GetTaxSummaryBySale(saleID string) (*models.TaxSummary, error)
+
+	// GetTaxSummaryByReturn retrieves the tax summary for a return
 	GetTaxSummaryByReturn(returnID string) (*models.TaxSummary, error)
-	GetTaxApplicationsBySale(saleID string) ([]models.TaxApplication, error)
-	GetTaxApplicationsByReturn(returnID string) ([]models.TaxApplication, error)
-	CalculateBatchTax(batch models.InventoryBatch, quantity int64, unitPrice float64) (*models.BatchTaxCalculation, error)
 }

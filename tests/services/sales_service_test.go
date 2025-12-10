@@ -28,17 +28,19 @@ func setupSalesService(t *testing.T) (*services.SalesService, *gorm.DB, func()) 
 	salesRepo := repositories.NewSalesRepository(db)
 	productRepo := repositories.NewProductRepository(db)
 	inventoryRepo := repositories.NewInventoryRepository(db)
-	priceRepo := repositories.NewProductPriceRepository(db)
+	variantRepo := repositories.NewProductVariantRepository(db)
 	discountsRepo := repositories.NewDiscountsRepository(db)
 	taxRepo := repositories.NewTaxRepository(db)
 	warehouseRepo := repositories.NewWarehouseRepository(db)
 	saleCancellationRepo := repositories.NewSaleCancellationRepository(db)
 
 	// Create service
+	priceRepo := repositories.NewProductPriceRepository(db)
 	service := services.NewSalesService(
 		salesRepo,
 		productRepo,
 		inventoryRepo,
+		variantRepo,
 		priceRepo,
 		discountsRepo,
 		taxRepo,
@@ -58,7 +60,7 @@ func setupSalesService(t *testing.T) (*services.SalesService, *gorm.DB, func()) 
 func createTestSale(t *testing.T, db *gorm.DB, warehouseID string, totalAmount float64, status string) *models.Sale {
 	t.Helper()
 
-	sale := models.NewSale(warehouseID, time.Now().UTC(), totalAmount, status, nil, "cash", "in_store", false)
+	sale := models.NewSale(warehouseID, time.Now().UTC(), totalAmount, status, nil, nil, false, "cash", "in_store", false)
 
 	if err := db.Create(sale).Error; err != nil {
 		t.Fatalf("Failed to create test sale: %v", err)
@@ -278,9 +280,9 @@ func TestSalesService_GetSalesByDateRange_Success(t *testing.T) {
 
 	// Create sales with different dates
 	now := time.Now().UTC()
-	sale1 := models.NewSale(warehouse.ID, now.Add(-5*24*time.Hour), 1000.00, "completed", nil, "cash", "in_store", false)
-	sale2 := models.NewSale(warehouse.ID, now.Add(-3*24*time.Hour), 2000.00, "completed", nil, "upi", "in_store", false)
-	sale3 := models.NewSale(warehouse.ID, now.Add(-10*24*time.Hour), 3000.00, "completed", nil, "cash", "delivery", false)
+	sale1 := models.NewSale(warehouse.ID, now.Add(-5*24*time.Hour), 1000.00, "completed", nil, nil, false, "cash", "in_store", false)
+	sale2 := models.NewSale(warehouse.ID, now.Add(-3*24*time.Hour), 2000.00, "completed", nil, nil, false, "upi", "in_store", false)
+	sale3 := models.NewSale(warehouse.ID, now.Add(-10*24*time.Hour), 3000.00, "completed", nil, nil, false, "cash", "delivery", false)
 
 	db.Create(sale1)
 	db.Create(sale2)
@@ -306,7 +308,7 @@ func TestSalesService_GetSalesByDateRange_Empty(t *testing.T) {
 
 	// Create sale outside of range
 	pastDate := time.Now().UTC().Add(-30 * 24 * time.Hour)
-	sale := models.NewSale(warehouse.ID, pastDate, 1000.00, "completed", nil, "cash", "in_store", false)
+	sale := models.NewSale(warehouse.ID, pastDate, 1000.00, "completed", nil, nil, false, "cash", "in_store", false)
 	db.Create(sale)
 
 	// Execute - Get sales from last 7 days
@@ -396,8 +398,8 @@ func TestSalesService_GetTotalSalesAmount_Success(t *testing.T) {
 	warehouse := createTestWarehouse(t, db, "WH-001")
 
 	now := time.Now().UTC()
-	sale1 := models.NewSale(warehouse.ID, now.Add(-2*24*time.Hour), 1000.00, "completed", nil, "cash", "in_store", false)
-	sale2 := models.NewSale(warehouse.ID, now.Add(-1*24*time.Hour), 2000.00, "completed", nil, "upi", "in_store", false)
+	sale1 := models.NewSale(warehouse.ID, now.Add(-2*24*time.Hour), 1000.00, "completed", nil, nil, false, "cash", "in_store", false)
+	sale2 := models.NewSale(warehouse.ID, now.Add(-1*24*time.Hour), 2000.00, "completed", nil, nil, false, "upi", "in_store", false)
 
 	db.Create(sale1)
 	db.Create(sale2)
@@ -510,29 +512,19 @@ func setupSaleTestData(t *testing.T, db *gorm.DB) (*models.Warehouse, *models.Pr
 	product := testutils.CreateTestProduct(t, db, "PROD-TEST-001", "Test Product")
 	variant := testutils.CreateTestVariant(t, db, "VAR-TEST-001", product.ID, "VAR-SKU-001", "1kg")
 
-	// Create price for variant (set effectiveFrom to past to avoid timing issues)
-	effectiveFrom := time.Now().UTC().Add(-1 * time.Hour) // 1 hour ago
-	price := testutils.FixtureProductPriceWithDates(variant.ID, "retail", 100.00, effectiveFrom, nil)
+	// Create price in product_prices table (unified pricing architecture)
+	price := testutils.FixtureProductPrice(variant.ID, models.PriceTypeMRP, 100.00)
 	if err := db.Create(price).Error; err != nil {
-		t.Fatalf("Failed to create product price: %v", err)
+		t.Fatalf("Failed to create price: %v", err)
 	}
 
-	// Verify price was created by querying it back
+	// Verify price was saved by querying product_prices table
 	var verifyPrice models.ProductPrice
-	if err := db.Where("variant_id = ? AND price_type = ?", variant.ID, "retail").First(&verifyPrice).Error; err != nil {
+	if err := db.First(&verifyPrice, "variant_id = ?", variant.ID).Error; err != nil {
 		t.Fatalf("Price verification failed: %v", err)
 	}
-	t.Logf("Price created successfully: ID=%s, VariantID=%s, Price=%.2f, IsActive=%v, EffectiveFrom=%v",
-		verifyPrice.ID, verifyPrice.VariantID, verifyPrice.Price, verifyPrice.IsActive, verifyPrice.EffectiveFrom)
-
-	// Now test GetCurrentPrice like the sales service does
-	now := time.Now()
-	var testPrice models.ProductPrice
-	if err := db.Where("variant_id = ? AND price_type = ? AND is_active = ? AND effective_from <= ? AND (effective_to IS NULL OR effective_to > ?)",
-		variant.ID, "retail", true, now, now).First(&testPrice).Error; err != nil {
-		t.Fatalf("GetCurrentPrice-style query failed: %v. This is the same query the sales service uses.", err)
-	}
-	t.Logf("GetCurrentPrice query succeeded: Price=%.2f", testPrice.Price)
+	t.Logf("Price saved successfully: PriceType=%s, Price=%.2f, Currency=%s",
+		verifyPrice.PriceType, verifyPrice.Price, verifyPrice.Currency)
 
 	// Create inventory batch with sufficient stock
 	expiryDate := time.Now().UTC().Add(30 * 24 * time.Hour) // 30 days from now
@@ -541,7 +533,8 @@ func setupSaleTestData(t *testing.T, db *gorm.DB) (*models.Warehouse, *models.Pr
 		t.Fatalf("Failed to create inventory batch: %v", err)
 	}
 
-	return warehouse, product, variant, price, batch
+	// Return nil for price since we're using embedded prices now
+	return warehouse, product, variant, nil, batch
 }
 
 func TestSalesService_CreateSale_Success_SingleItem(t *testing.T) {
@@ -613,8 +606,8 @@ func TestSalesService_CreateSale_Success_MultipleItems(t *testing.T) {
 	product2 := testutils.CreateTestProduct(t, db, "PROD-TEST-002", "Test Product 2")
 	variant2 := testutils.CreateTestVariant(t, db, "VAR-TEST-002", product2.ID, "VAR-SKU-002", "2kg")
 
-	// Create price for second variant
-	price2 := testutils.FixtureProductPrice(variant2.ID, "retail", 200.00)
+	// Create price in product_prices table for second variant
+	price2 := testutils.FixtureProductPrice(variant2.ID, models.PriceTypeMRP, 200.00)
 	db.Create(price2)
 
 	// Create inventory for second variant
@@ -713,8 +706,8 @@ func TestSalesService_CreateSale_Failure_InsufficientInventory(t *testing.T) {
 	product := testutils.CreateTestProduct(t, db, "PROD-LIMITED", "Limited Product")
 	variant := testutils.CreateTestVariant(t, db, "VAR-LIMITED", product.ID, "VAR-SKU-LIMITED", "1kg")
 
-	// Create price for limited variant
-	price := testutils.FixtureProductPrice(variant.ID, "retail", 100.00)
+	// Create price in product_prices table
+	price := testutils.FixtureProductPrice(variant.ID, models.PriceTypeMRP, 100.00)
 	db.Create(price)
 
 	// Create inventory batch with only 5 units
@@ -740,4 +733,714 @@ func TestSalesService_CreateSale_Failure_InsufficientInventory(t *testing.T) {
 
 	// Assert
 	testutils.AssertError(t, err, "Should return error for insufficient inventory")
+}
+
+// =============================================================================
+// CompleteSale Tests
+// =============================================================================
+
+func TestSalesService_CompleteSale_Success(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// ARRANGE: Setup test data with inventory
+	warehouse, _, variant, _, batch := setupSaleTestData(t, db)
+
+	// Create sale via service (creates reservation)
+	request := &models.CreateSaleRequest{
+		WarehouseID: warehouse.ID,
+		PaymentMode: "cash",
+		SaleType:    "in_store",
+		Items: []models.CreateSaleItemRequest{
+			{
+				VariantID: variant.ID,
+				Quantity:  10,
+			},
+		},
+	}
+	saleResp, err := service.CreateSale(request)
+	testutils.AssertNoError(t, err, "CreateSale should succeed")
+	testutils.AssertEqual(t, saleResp.Status, models.SaleStatusPending, "Sale should be pending")
+
+	// Verify reservation was created
+	var updatedBatch models.InventoryBatch
+	db.First(&updatedBatch, "id = ?", batch.ID)
+	testutils.AssertEqual(t, updatedBatch.ReservedQuantity, int64(10), "Reservation should be 10")
+	initialTotal := updatedBatch.TotalQuantity
+
+	// ACT: Complete the sale
+	completedSale, err := service.CompleteSale(saleResp.ID, "test-user")
+
+	// ASSERT
+	testutils.AssertNoError(t, err, "CompleteSale should succeed")
+	testutils.AssertNotNil(t, completedSale, "Response should not be nil")
+	testutils.AssertEqual(t, completedSale.Status, models.SaleStatusCompleted, "Status should be completed")
+
+	// Verify reservation converted to deduction
+	db.First(&updatedBatch, "id = ?", batch.ID)
+	testutils.AssertEqual(t, updatedBatch.ReservedQuantity, int64(0), "Reservation should be cleared")
+	testutils.AssertEqual(t, updatedBatch.TotalQuantity, initialTotal-10, "Total should be reduced by 10")
+}
+
+func TestSalesService_CompleteSale_NotPending_Error(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// ARRANGE: Create sale directly with "completed" status
+	warehouse := createTestWarehouse(t, db, "WH-COMPLETE-001")
+	sale := createTestSale(t, db, warehouse.ID, 1000.00, models.SaleStatusCompleted)
+
+	// ACT: Try to complete the already completed sale
+	_, err := service.CompleteSale(sale.ID, "test-user")
+
+	// ASSERT
+	testutils.AssertError(t, err, "Should return error for non-pending sale")
+	testutils.AssertContains(t, err.Error(), "Only pending sales can be completed", "Error message should mention pending")
+}
+
+func TestSalesService_CompleteSale_NotFound_Error(t *testing.T) {
+	service, _, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// ACT: Try to complete non-existent sale
+	_, err := service.CompleteSale("INVALID-SALE-ID", "test-user")
+
+	// ASSERT
+	testutils.AssertError(t, err, "Should return error for non-existent sale")
+}
+
+// =============================================================================
+// CancelSale Tests - Reservation vs Stock Restore
+// =============================================================================
+
+func TestSalesService_CancelSale_Pending_ReleasesReservation(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// ARRANGE: Setup test data with inventory
+	warehouse, _, variant, _, batch := setupSaleTestData(t, db)
+
+	// Create sale via service (creates reservation)
+	request := &models.CreateSaleRequest{
+		WarehouseID: warehouse.ID,
+		PaymentMode: "cash",
+		SaleType:    "in_store",
+		Items: []models.CreateSaleItemRequest{
+			{
+				VariantID: variant.ID,
+				Quantity:  10,
+			},
+		},
+	}
+	saleResp, err := service.CreateSale(request)
+	testutils.AssertNoError(t, err, "CreateSale should succeed")
+
+	// Record initial quantities
+	var updatedBatch models.InventoryBatch
+	db.First(&updatedBatch, "id = ?", batch.ID)
+	initialTotal := updatedBatch.TotalQuantity
+
+	// ACT: Cancel the pending sale
+	cancelResp, err := service.CancelSale(saleResp.ID, &models.CancelSaleRequest{
+		Reason:      "customer_request",
+		PerformedBy: "test-user",
+	})
+
+	// ASSERT
+	testutils.AssertNoError(t, err, "CancelSale should succeed")
+	testutils.AssertNotNil(t, cancelResp, "Cancel response should not be nil")
+
+	// Verify reservation released (not stock restored)
+	db.First(&updatedBatch, "id = ?", batch.ID)
+	testutils.AssertEqual(t, updatedBatch.TotalQuantity, initialTotal, "Total should be unchanged for pending cancellation")
+	testutils.AssertEqual(t, updatedBatch.ReservedQuantity, int64(0), "Reserved should be 0 after release")
+}
+
+func TestSalesService_CancelSale_Completed_RestoresStock(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// ARRANGE: Setup test data with inventory
+	warehouse, _, variant, _, batch := setupSaleTestData(t, db)
+
+	// Create and complete sale
+	request := &models.CreateSaleRequest{
+		WarehouseID: warehouse.ID,
+		PaymentMode: "cash",
+		SaleType:    "in_store",
+		Items: []models.CreateSaleItemRequest{
+			{
+				VariantID: variant.ID,
+				Quantity:  10,
+			},
+		},
+	}
+	saleResp, err := service.CreateSale(request)
+	testutils.AssertNoError(t, err, "CreateSale should succeed")
+
+	// Complete the sale (deducts stock)
+	_, err = service.CompleteSale(saleResp.ID, "test-user")
+	testutils.AssertNoError(t, err, "CompleteSale should succeed")
+
+	// Record quantities after completion
+	var batchAfterComplete models.InventoryBatch
+	db.First(&batchAfterComplete, "id = ?", batch.ID)
+	totalAfterComplete := batchAfterComplete.TotalQuantity
+
+	// ACT: Cancel the completed sale
+	cancelResp, err := service.CancelSale(saleResp.ID, &models.CancelSaleRequest{
+		Reason:      "customer_request",
+		PerformedBy: "test-user",
+	})
+
+	// ASSERT
+	testutils.AssertNoError(t, err, "CancelSale should succeed")
+	testutils.AssertNotNil(t, cancelResp, "Cancel response should not be nil")
+
+	// Verify stock restored (TotalQuantity increased)
+	var batchAfterCancel models.InventoryBatch
+	db.First(&batchAfterCancel, "id = ?", batch.ID)
+	testutils.AssertEqual(t, batchAfterCancel.TotalQuantity, totalAfterComplete+10, "Total should be restored for completed cancellation")
+}
+
+func TestSalesService_CancelSale_InventoryRestoredFlag_Pending(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// ARRANGE: Setup test data with inventory
+	warehouse, _, variant, _, _ := setupSaleTestData(t, db)
+
+	// Create pending sale
+	request := &models.CreateSaleRequest{
+		WarehouseID: warehouse.ID,
+		PaymentMode: "cash",
+		SaleType:    "in_store",
+		Items: []models.CreateSaleItemRequest{
+			{
+				VariantID: variant.ID,
+				Quantity:  10,
+			},
+		},
+	}
+	saleResp, err := service.CreateSale(request)
+	testutils.AssertNoError(t, err, "CreateSale should succeed")
+
+	// ACT: Cancel the pending sale
+	_, err = service.CancelSale(saleResp.ID, &models.CancelSaleRequest{
+		Reason:      "customer_request",
+		PerformedBy: "test-user",
+	})
+	testutils.AssertNoError(t, err, "CancelSale should succeed")
+
+	// ASSERT: Check cancellation item has InventoryRestored = false
+	var cancellationItem models.SaleCancellationItem
+	err = db.Joins("JOIN sale_cancellations ON sale_cancellations.id = sale_cancellation_items.cancellation_id").
+		Where("sale_cancellations.sale_id = ?", saleResp.ID).
+		First(&cancellationItem).Error
+	testutils.AssertNoError(t, err, "Should find cancellation item")
+	testutils.AssertEqual(t, cancellationItem.InventoryRestored, false, "InventoryRestored should be false for pending sale cancellation")
+}
+
+func TestSalesService_CancelSale_InventoryRestoredFlag_Completed(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// ARRANGE: Setup test data with inventory
+	warehouse, _, variant, _, _ := setupSaleTestData(t, db)
+
+	// Create and complete sale
+	request := &models.CreateSaleRequest{
+		WarehouseID: warehouse.ID,
+		PaymentMode: "cash",
+		SaleType:    "in_store",
+		Items: []models.CreateSaleItemRequest{
+			{
+				VariantID: variant.ID,
+				Quantity:  10,
+			},
+		},
+	}
+	saleResp, err := service.CreateSale(request)
+	testutils.AssertNoError(t, err, "CreateSale should succeed")
+
+	// Complete the sale
+	_, err = service.CompleteSale(saleResp.ID, "test-user")
+	testutils.AssertNoError(t, err, "CompleteSale should succeed")
+
+	// ACT: Cancel the completed sale
+	_, err = service.CancelSale(saleResp.ID, &models.CancelSaleRequest{
+		Reason:      "customer_request",
+		PerformedBy: "test-user",
+	})
+	testutils.AssertNoError(t, err, "CancelSale should succeed")
+
+	// ASSERT: Check cancellation item has InventoryRestored = true
+	var cancellationItem models.SaleCancellationItem
+	err = db.Joins("JOIN sale_cancellations ON sale_cancellations.id = sale_cancellation_items.cancellation_id").
+		Where("sale_cancellations.sale_id = ?", saleResp.ID).
+		First(&cancellationItem).Error
+	testutils.AssertNoError(t, err, "Should find cancellation item")
+	testutils.AssertEqual(t, cancellationItem.InventoryRestored, true, "InventoryRestored should be true for completed sale cancellation")
+}
+
+// =============================================================================
+// CancelSale Tests - Discount Reversal
+// =============================================================================
+
+func TestSalesService_CancelSale_WithDiscount_ReversesUsage(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// ARRANGE: Setup test data with inventory
+	warehouse, _, variant, _, _ := setupSaleTestData(t, db)
+
+	// Create an active discount
+	discount := testutils.FixtureDiscountPercentage("Test Discount", "TEST10", 10.0)
+	discount.IsActive = true
+	if err := db.Create(discount).Error; err != nil {
+		t.Fatalf("Failed to create discount: %v", err)
+	}
+
+	// Create a sale (without applying discount in this test as it requires more complex setup)
+	request := &models.CreateSaleRequest{
+		WarehouseID: warehouse.ID,
+		PaymentMode: "cash",
+		SaleType:    "in_store",
+		Items: []models.CreateSaleItemRequest{
+			{
+				VariantID: variant.ID,
+				Quantity:  10,
+			},
+		},
+	}
+	saleResp, err := service.CreateSale(request)
+	testutils.AssertNoError(t, err, "CreateSale should succeed")
+
+	// Manually create a discount usage record to simulate applied discount
+	discountUsage := models.NewDiscountUsage(discount.ID, saleResp.ID, 100.0) // 10% of 1000
+	if err := db.Create(discountUsage).Error; err != nil {
+		t.Fatalf("Failed to create discount usage: %v", err)
+	}
+
+	// Update discount usage count
+	discount.CurrentUsage = 1
+	db.Save(discount)
+
+	// Complete the sale
+	_, err = service.CompleteSale(saleResp.ID, "test-user")
+	testutils.AssertNoError(t, err, "CompleteSale should succeed")
+
+	// ACT: Cancel the completed sale
+	cancelResp, err := service.CancelSale(saleResp.ID, &models.CancelSaleRequest{
+		Reason:      "customer_request",
+		PerformedBy: "test-user",
+	})
+
+	// ASSERT
+	testutils.AssertNoError(t, err, "CancelSale should succeed")
+	testutils.AssertNotNil(t, cancelResp, "Cancel response should not be nil")
+
+	// Check that discount usage was deleted
+	var usageCount int64
+	db.Model(&models.DiscountUsage{}).Where("sale_id = ?", saleResp.ID).Count(&usageCount)
+	testutils.AssertEqual(t, usageCount, int64(0), "Discount usage should be deleted")
+
+	// Check that discount usage count was decremented
+	var updatedDiscount models.Discount
+	db.First(&updatedDiscount, "id = ?", discount.ID)
+	testutils.AssertEqual(t, updatedDiscount.CurrentUsage, 0, "Discount usage count should be decremented")
+
+	// Check cancellation record has discount reversal info
+	var cancellation models.SaleCancellation
+	db.Where("sale_id = ?", saleResp.ID).First(&cancellation)
+	testutils.AssertTrue(t, cancellation.DiscountReversed > 0, "DiscountReversed should be recorded")
+}
+
+// =============================================================================
+// CancelSale Tests - Tax Voiding
+// =============================================================================
+
+func TestSalesService_CancelSale_WithTax_VoidsRecords(t *testing.T) {
+	// Skip on SQLite - this test interleaves direct db.Create() with service transactions,
+	// which causes deadlocks with SQLite's pure-Go driver mutex handling.
+	// Requires PostgreSQL's MVCC for proper concurrent transaction handling.
+	t.Skip("Skipping test that requires PostgreSQL - SQLite deadlock with interleaved transactions")
+
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// ARRANGE: Setup test data with inventory
+	warehouse, _, variant, _, _ := setupSaleTestData(t, db)
+
+	// Create a sale with taxes
+	applyTaxes := true
+	request := &models.CreateSaleRequest{
+		WarehouseID: warehouse.ID,
+		PaymentMode: "cash",
+		SaleType:    "in_store",
+		ApplyTaxes:  &applyTaxes,
+		Items: []models.CreateSaleItemRequest{
+			{
+				VariantID: variant.ID,
+				Quantity:  10,
+			},
+		},
+	}
+	saleResp, err := service.CreateSale(request)
+	testutils.AssertNoError(t, err, "CreateSale should succeed")
+
+	// Manually create tax summary and application to simulate applied tax
+	saleID := saleResp.ID
+	taxSummary := &models.TaxSummary{
+		SaleID:     &saleID,
+		CGSTAmount: 90.0,
+		SGSTAmount: 90.0,
+	}
+	if err := db.Create(taxSummary).Error; err != nil {
+		t.Fatalf("Failed to create tax summary: %v", err)
+	}
+
+	// Complete the sale
+	_, err = service.CompleteSale(saleResp.ID, "test-user")
+	testutils.AssertNoError(t, err, "CompleteSale should succeed")
+
+	// Record initial tax summary count
+	var initialTaxCount int64
+	db.Model(&models.TaxSummary{}).Where("sale_id = ?", saleResp.ID).Count(&initialTaxCount)
+	testutils.AssertEqual(t, initialTaxCount, int64(1), "Should have 1 tax summary")
+
+	// ACT: Cancel the completed sale
+	cancelResp, err := service.CancelSale(saleResp.ID, &models.CancelSaleRequest{
+		Reason:      "customer_request",
+		PerformedBy: "test-user",
+	})
+
+	// ASSERT
+	testutils.AssertNoError(t, err, "CancelSale should succeed")
+	testutils.AssertNotNil(t, cancelResp, "Cancel response should not be nil")
+
+	// Check that tax summary was deleted
+	var taxSummaryCount int64
+	db.Model(&models.TaxSummary{}).Where("sale_id = ?", saleResp.ID).Count(&taxSummaryCount)
+	testutils.AssertEqual(t, taxSummaryCount, int64(0), "Tax summary should be deleted")
+
+	// Check cancellation record has tax reversal info
+	var cancellation models.SaleCancellation
+	db.Where("sale_id = ?", saleResp.ID).First(&cancellation)
+	testutils.AssertTrue(t, cancellation.TaxReversed > 0, "TaxReversed should be recorded")
+}
+
+// =============================================================================
+// GetCancellations Tests
+// =============================================================================
+
+func TestSalesService_GetCancellations_Success(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// ARRANGE: Setup and create a cancelled sale
+	warehouse, _, variant, _, _ := setupSaleTestData(t, db)
+
+	request := &models.CreateSaleRequest{
+		WarehouseID: warehouse.ID,
+		PaymentMode: "cash",
+		SaleType:    "in_store",
+		Items: []models.CreateSaleItemRequest{
+			{
+				VariantID: variant.ID,
+				Quantity:  10,
+			},
+		},
+	}
+	saleResp, err := service.CreateSale(request)
+	testutils.AssertNoError(t, err, "CreateSale should succeed")
+
+	// Cancel the sale
+	_, err = service.CancelSale(saleResp.ID, &models.CancelSaleRequest{
+		Reason:      "customer_request",
+		PerformedBy: "test-user",
+	})
+	testutils.AssertNoError(t, err, "CancelSale should succeed")
+
+	// ACT: Get cancellations
+	cancellationsResp, err := service.GetCancellations(saleResp.ID)
+
+	// ASSERT
+	testutils.AssertNoError(t, err, "GetCancellations should succeed")
+	testutils.AssertNotNil(t, cancellationsResp, "Response should not be nil")
+	testutils.AssertTrue(t, len(cancellationsResp.Cancellations) > 0, "Should have at least 1 cancellation")
+	testutils.AssertEqual(t, cancellationsResp.Cancellations[0].Reason, "customer_request", "Reason should match")
+}
+
+func TestSalesService_GetCancellations_NotFound(t *testing.T) {
+	service, _, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// ACT: Get cancellations for non-existent sale
+	_, err := service.GetCancellations("INVALID-SALE-ID")
+
+	// ASSERT
+	testutils.AssertError(t, err, "Should return error for non-existent sale")
+}
+
+func TestSalesService_GetCancellations_NoCancellations(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// ARRANGE: Create a sale but don't cancel it
+	warehouse, _, variant, _, _ := setupSaleTestData(t, db)
+
+	request := &models.CreateSaleRequest{
+		WarehouseID: warehouse.ID,
+		PaymentMode: "cash",
+		SaleType:    "in_store",
+		Items: []models.CreateSaleItemRequest{
+			{
+				VariantID: variant.ID,
+				Quantity:  10,
+			},
+		},
+	}
+	saleResp, err := service.CreateSale(request)
+	testutils.AssertNoError(t, err, "CreateSale should succeed")
+
+	// ACT: Get cancellations for non-cancelled sale
+	cancellationsResp, err := service.GetCancellations(saleResp.ID)
+
+	// ASSERT
+	testutils.AssertNoError(t, err, "GetCancellations should succeed")
+	testutils.AssertNotNil(t, cancellationsResp, "Response should not be nil")
+	testutils.AssertEqual(t, len(cancellationsResp.Cancellations), 0, "Should have no cancellations")
+}
+
+// =============================================================================
+// CancelSale Edge Cases
+// =============================================================================
+
+func TestSalesService_CancelSale_DoubleCancellation_Error(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// ARRANGE: Setup and cancel a sale once
+	warehouse, _, variant, _, _ := setupSaleTestData(t, db)
+
+	request := &models.CreateSaleRequest{
+		WarehouseID: warehouse.ID,
+		PaymentMode: "cash",
+		SaleType:    "in_store",
+		Items: []models.CreateSaleItemRequest{
+			{
+				VariantID: variant.ID,
+				Quantity:  10,
+			},
+		},
+	}
+	saleResp, err := service.CreateSale(request)
+	testutils.AssertNoError(t, err, "CreateSale should succeed")
+
+	// First cancellation
+	_, err = service.CancelSale(saleResp.ID, &models.CancelSaleRequest{
+		Reason:      "customer_request",
+		PerformedBy: "test-user",
+	})
+	testutils.AssertNoError(t, err, "First CancelSale should succeed")
+
+	// ACT: Try to cancel again
+	_, err = service.CancelSale(saleResp.ID, &models.CancelSaleRequest{
+		Reason:      "another_reason",
+		PerformedBy: "test-user",
+	})
+
+	// ASSERT
+	testutils.AssertError(t, err, "Second CancelSale should return error")
+}
+
+func TestSalesService_CancelSale_InvalidID_Error(t *testing.T) {
+	service, _, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// ACT: Try to cancel non-existent sale
+	_, err := service.CancelSale("INVALID-SALE-ID", &models.CancelSaleRequest{
+		Reason:      "customer_request",
+		PerformedBy: "test-user",
+	})
+
+	// ASSERT
+	testutils.AssertError(t, err, "Should return error for non-existent sale")
+}
+
+func TestSalesService_CancelSale_EmptyReason_Success(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// ARRANGE: Setup and create a sale
+	warehouse, _, variant, _, _ := setupSaleTestData(t, db)
+
+	request := &models.CreateSaleRequest{
+		WarehouseID: warehouse.ID,
+		PaymentMode: "cash",
+		SaleType:    "in_store",
+		Items: []models.CreateSaleItemRequest{
+			{
+				VariantID: variant.ID,
+				Quantity:  10,
+			},
+		},
+	}
+	saleResp, err := service.CreateSale(request)
+	testutils.AssertNoError(t, err, "CreateSale should succeed")
+
+	// ACT: Cancel with empty reason (should still work)
+	cancelResp, err := service.CancelSale(saleResp.ID, &models.CancelSaleRequest{
+		Reason:      "",
+		PerformedBy: "test-user",
+	})
+
+	// ASSERT
+	testutils.AssertNoError(t, err, "CancelSale should succeed even with empty reason")
+	testutils.AssertNotNil(t, cancelResp, "Response should not be nil")
+}
+
+// =============================================================================
+// CancelItems Tests - Partial Cancellation
+// =============================================================================
+
+func TestSalesService_CancelItems_PartialCancellation(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// ARRANGE: Setup test data with multiple items
+	warehouse, _, variant1, _, _ := setupSaleTestData(t, db)
+
+	// Create second variant
+	product2 := testutils.CreateTestProduct(t, db, "PROD-002", "Test Product 2")
+	variant2 := testutils.CreateTestVariant(t, db, "VAR-002", product2.ID, "VAR-SKU-002", "1kg")
+
+	// Create price in product_prices table for second variant (unified pricing architecture)
+	price2 := testutils.FixtureProductPrice(variant2.ID, models.PriceTypeMRP, 200.0)
+	db.Create(price2)
+
+	// Create inventory for second variant
+	expiryDate := time.Now().UTC().Add(30 * 24 * time.Hour)
+	batch2 := testutils.FixtureInventoryBatchWithExpiry(warehouse.ID, variant2.ID, 500, expiryDate)
+	db.Create(batch2)
+
+	// Create sale with multiple items
+	request := &models.CreateSaleRequest{
+		WarehouseID: warehouse.ID,
+		PaymentMode: "cash",
+		SaleType:    "in_store",
+		Items: []models.CreateSaleItemRequest{
+			{
+				VariantID: variant1.ID,
+				Quantity:  10,
+			},
+			{
+				VariantID: variant2.ID,
+				Quantity:  5,
+			},
+		},
+	}
+	saleResp, err := service.CreateSale(request)
+	testutils.AssertNoError(t, err, "CreateSale should succeed")
+	testutils.AssertEqual(t, len(saleResp.Items), 2, "Should have 2 items")
+
+	// Complete the sale
+	_, err = service.CompleteSale(saleResp.ID, "test-user")
+	testutils.AssertNoError(t, err, "CompleteSale should succeed")
+
+	// ACT: Cancel only the first item
+	cancelResp, err := service.CancelItems(saleResp.ID, &models.CancelItemsRequest{
+		Reason:      "customer_request",
+		PerformedBy: "test-user",
+		Items: []models.CancelItemDetail{
+			{
+				SaleItemID: saleResp.Items[0].ID,
+				Quantity:   10, // Cancel all of first item
+			},
+		},
+	})
+
+	// ASSERT
+	testutils.AssertNoError(t, err, "CancelItems should succeed")
+	testutils.AssertNotNil(t, cancelResp, "Response should not be nil")
+	testutils.AssertEqual(t, len(cancelResp.ItemsCancelled), 1, "Should have 1 cancelled item")
+
+	// Verify the sale is still active (partial cancellation doesn't cancel whole sale)
+	sale, _ := service.GetSale(saleResp.ID)
+	testutils.AssertNotEqual(t, sale.Status, "cancelled", "Sale should not be fully cancelled")
+}
+
+func TestSalesService_CancelItems_InvalidItemID_Error(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// ARRANGE: Setup and create a sale
+	warehouse, _, variant, _, _ := setupSaleTestData(t, db)
+
+	request := &models.CreateSaleRequest{
+		WarehouseID: warehouse.ID,
+		PaymentMode: "cash",
+		SaleType:    "in_store",
+		Items: []models.CreateSaleItemRequest{
+			{
+				VariantID: variant.ID,
+				Quantity:  10,
+			},
+		},
+	}
+	saleResp, err := service.CreateSale(request)
+	testutils.AssertNoError(t, err, "CreateSale should succeed")
+
+	// ACT: Try to cancel with invalid item ID
+	_, err = service.CancelItems(saleResp.ID, &models.CancelItemsRequest{
+		Reason:      "customer_request",
+		PerformedBy: "test-user",
+		Items: []models.CancelItemDetail{
+			{
+				SaleItemID: "INVALID-ITEM-ID",
+				Quantity:   10,
+			},
+		},
+	})
+
+	// ASSERT
+	testutils.AssertError(t, err, "Should return error for invalid item ID")
+}
+
+func TestSalesService_CancelItems_ExceedsQuantity_Error(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// ARRANGE: Setup and create a sale
+	warehouse, _, variant, _, _ := setupSaleTestData(t, db)
+
+	request := &models.CreateSaleRequest{
+		WarehouseID: warehouse.ID,
+		PaymentMode: "cash",
+		SaleType:    "in_store",
+		Items: []models.CreateSaleItemRequest{
+			{
+				VariantID: variant.ID,
+				Quantity:  10,
+			},
+		},
+	}
+	saleResp, err := service.CreateSale(request)
+	testutils.AssertNoError(t, err, "CreateSale should succeed")
+
+	// ACT: Try to cancel more than available quantity
+	_, err = service.CancelItems(saleResp.ID, &models.CancelItemsRequest{
+		Reason:      "customer_request",
+		PerformedBy: "test-user",
+		Items: []models.CancelItemDetail{
+			{
+				SaleItemID: saleResp.Items[0].ID,
+				Quantity:   100, // More than original quantity
+			},
+		},
+	})
+
+	// ASSERT
+	testutils.AssertError(t, err, "Should return error when cancelling more than available")
 }

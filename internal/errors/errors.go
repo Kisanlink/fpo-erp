@@ -91,6 +91,15 @@ func NewInternalServerError(message string) *AppError {
 	}
 }
 
+// NewServiceUnavailableError creates a service unavailable error
+func NewServiceUnavailableError(message string) *AppError {
+	return &AppError{
+		Code:       503,
+		Message:    message,
+		StatusCode: http.StatusServiceUnavailable,
+	}
+}
+
 // Common error messages
 const (
 	ErrInvalidID           = "Invalid ID format"

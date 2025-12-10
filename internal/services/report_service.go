@@ -330,6 +330,7 @@ func (s *ReportService) GenerateInventoryReport(filter *models.InventoryReportFi
 		(inventory_batches.total_quantity * inventory_batches.cost_price) as total_value,
 		inventory_batches.expiry_date,
 		EXTRACT(DAY FROM (inventory_batches.expiry_date - CURRENT_DATE)) as days_to_expiry,
+		EXTRACT(DAY FROM (CURRENT_DATE - DATE(inventory_batches.created_at))) as days_on_shelf,
 		inventory_batches.cgst_rate,
 		inventory_batches.sgst_rate,
 		inventory_batches.is_tax_exempt,
@@ -500,14 +501,16 @@ func (s *ReportService) GenerateSalesReport(filter *models.SalesReportFilter) (*
 	// Build query
 	query := s.db.Model(&models.Sale{}).Select(`
 		sales.id,
-		sales.warehouse_id,
 		warehouses.name as warehouse_name,
 		sales.sale_date,
 		sales.status,
-		sales.customer_id,
+		sales.customer_phone,
+		sales.customer_name,
 		sales.payment_mode,
 		sales.sale_type,
 		sales.total_amount,
+		sales.total_amount as landing_price,
+		COALESCE(SUM(sale_items.cost_price * sale_items.quantity), 0) as purchase_value,
 		sales.apply_taxes,
 		COALESCE(SUM(sale_items.total_tax_amount), 0) as total_tax,
 		COALESCE(SUM(sale_items.margin * sale_items.quantity), 0) as total_margin,
@@ -524,7 +527,6 @@ func (s *ReportService) GenerateSalesReport(filter *models.SalesReportFilter) (*
 	// Apply filters
 	builder := utils.NewReportQueryBuilder(query)
 	builder.ApplyStringFilter("sales.warehouse_id", filter.WarehouseID)
-	builder.ApplyStringFilter("sales.customer_id", filter.CustomerID)
 	builder.ApplyStatusFilter("sales.status", filter.Status)
 	builder.ApplyStatusFilter("sales.payment_mode", filter.PaymentMode)
 	builder.ApplyStatusFilter("sales.sale_type", filter.SaleType)
@@ -553,6 +555,7 @@ func (s *ReportService) GenerateSalesReport(filter *models.SalesReportFilter) (*
 	var summary models.SalesReportSummary
 	s.db.Model(&models.Sale{}).Count(&summary.TotalSales)
 	s.db.Model(&models.Sale{}).Select("COALESCE(SUM(total_amount), 0)").Scan(&summary.TotalRevenue)
+	s.db.Model(&models.SaleItem{}).Select("COALESCE(SUM(cost_price * quantity), 0)").Scan(&summary.TotalPurchaseValue)
 	s.db.Model(&models.SaleItem{}).Select("COALESCE(SUM(total_tax_amount), 0)").Scan(&summary.TotalTax)
 	s.db.Model(&models.SaleItem{}).Select("COALESCE(SUM(margin * quantity), 0)").Scan(&summary.TotalMargin)
 	if summary.TotalSales > 0 {

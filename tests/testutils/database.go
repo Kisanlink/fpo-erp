@@ -111,7 +111,9 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 	// Use :memory: database with shared cache mode for transaction visibility
 	// This allows transactions to see data committed outside the transaction
 	// Enable WAL mode for better concurrent access and read_uncommitted for transaction visibility
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared&_journal_mode=WAL&_read_uncommitted=true"), &gorm.Config{
+	// Added _busy_timeout to wait for locks instead of failing immediately
+	// Added _txlock=immediate to acquire locks immediately and avoid deadlocks
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared&_journal_mode=WAL&_read_uncommitted=true&_busy_timeout=5000&_txlock=immediate"), &gorm.Config{
 		Logger:                                   silentLogger,
 		NamingStrategy:                           SQLiteJSONNamingStrategy{},
 		DisableForeignKeyConstraintWhenMigrating: true,

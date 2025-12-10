@@ -70,6 +70,13 @@ type GRNItem struct {
 	AcceptedQuantity int64 `gorm:"type:bigint;not null" json:"accepted_quantity"`
 	RejectedQuantity int64 `gorm:"type:bigint;default:0" json:"rejected_quantity"`
 
+	// Return tracking (for rejected items)
+	ReturnStatus       *string    `gorm:"type:varchar(30)" json:"return_status"`        // pending, sent, received_by_vendor, closed
+	ReturnSentDate     *time.Time `gorm:"type:timestamptz" json:"return_sent_date"`     // When shipped to vendor
+	ReturnReceivedDate *time.Time `gorm:"type:timestamptz" json:"return_received_date"` // When vendor confirmed receipt
+	ReturnClosedDate   *time.Time `gorm:"type:timestamptz" json:"return_closed_date"`   // When return process closed
+	ReturnRemarks      *string    `gorm:"type:text" json:"return_remarks"`              // Notes about return
+
 	// Batch tracking
 	ExpiryDate  time.Time `gorm:"type:date;not null" json:"expiry_date"`
 	BatchNumber *string   `gorm:"type:varchar(50)" json:"batch_number"` // Vendor's batch number
@@ -141,7 +148,13 @@ type GRNItemResponse struct {
 	ExpiryDate       string  `json:"expiry_date"`
 	BatchNumber      *string `json:"batch_number"`
 	InventoryBatchID *string `json:"inventory_batch_id"`
-	CreatedAt        string  `json:"created_at"`
+	// Return tracking fields
+	ReturnStatus       *string `json:"return_status,omitempty"`
+	ReturnSentDate     *string `json:"return_sent_date,omitempty"`
+	ReturnReceivedDate *string `json:"return_received_date,omitempty"`
+	ReturnClosedDate   *string `json:"return_closed_date,omitempty"`
+	ReturnRemarks      *string `json:"return_remarks,omitempty"`
+	CreatedAt          string  `json:"created_at"`
 }
 
 // CreateGRNRequest represents the request to create a goods receipt note
@@ -170,4 +183,37 @@ type UpdateGRNRequest struct {
 	GRNDocument   *string `json:"grn_document,omitempty"` // Attachment ID for vendor's GRN PDF
 	Remarks       *string `json:"remarks,omitempty"`
 	QualityStatus *string `json:"quality_status,omitempty"` // accepted, rejected, partial
+}
+
+// UpdateItemReturnStatusRequest represents the request to update return status of a rejected item
+type UpdateItemReturnStatusRequest struct {
+	ReturnStatus  string  `json:"return_status" binding:"required"` // pending, sent, received_by_vendor, closed
+	ReturnRemarks *string `json:"return_remarks"`                   // Optional notes
+}
+
+// RejectedItemsResponse represents the response for rejected items endpoint
+type RejectedItemsResponse struct {
+	GRNID                 string               `json:"grn_id"`
+	GRNNumber             string               `json:"grn_number"`
+	POID                  string               `json:"po_id"`
+	PONumber              string               `json:"po_number"`
+	RejectedItems         []RejectedItemDetail `json:"rejected_items"`
+	TotalRejectedValue    float64              `json:"total_rejected_value"`
+	ReturnStatusBreakdown map[string]int       `json:"return_status_breakdown"`
+}
+
+// RejectedItemDetail represents a single rejected item with return tracking
+type RejectedItemDetail struct {
+	ID                 string  `json:"id"`
+	VariantID          string  `json:"variant_id"`
+	ProductName        string  `json:"product_name"`
+	ProductSKU         string  `json:"product_sku"`
+	RejectedQuantity   int64   `json:"rejected_quantity"`
+	UnitPrice          float64 `json:"unit_price"`
+	TotalValue         float64 `json:"total_value"`
+	ReturnStatus       *string `json:"return_status"`
+	ReturnSentDate     *string `json:"return_sent_date,omitempty"`
+	ReturnReceivedDate *string `json:"return_received_date,omitempty"`
+	ReturnClosedDate   *string `json:"return_closed_date,omitempty"`
+	ReturnRemarks      *string `json:"return_remarks,omitempty"`
 }

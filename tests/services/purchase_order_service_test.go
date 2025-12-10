@@ -34,7 +34,7 @@ func setupPurchaseOrderService(t *testing.T) (*services.PurchaseOrderService, *g
 	grnRepo := repositories.NewGRNRepository(db)
 	inventoryRepo := repositories.NewInventoryRepository(db)
 
-	// Create service
+	// Create service (nil AAA client for tests that don't need address service)
 	service := services.NewPurchaseOrderService(
 		poRepo,
 		collaboratorRepo,
@@ -43,6 +43,7 @@ func setupPurchaseOrderService(t *testing.T) (*services.PurchaseOrderService, *g
 		variantRepo,
 		grnRepo,
 		inventoryRepo,
+		nil, // AddressGRPCClient - nil for tests
 		utils.NewLoggerAdapter(utils.GetZapLogger()),
 	)
 
@@ -159,7 +160,7 @@ func TestPurchaseOrderService_CreatePurchaseOrder_Success(t *testing.T) {
 
 	// Execute
 	ctx := context.Background()
-	response, err := service.CreatePurchaseOrder(ctx, request)
+	response, err := service.CreatePurchaseOrder(ctx, request, "")
 
 	// Assert
 	testutils.AssertNoError(t, err, "CreatePurchaseOrder should succeed")
@@ -188,7 +189,7 @@ func TestPurchaseOrderService_CreatePurchaseOrder_CollaboratorNotFound(t *testin
 	}
 
 	ctx := context.Background()
-	_, err := service.CreatePurchaseOrder(ctx, request)
+	_, err := service.CreatePurchaseOrder(ctx, request, "")
 
 	testutils.AssertError(t, err, "Should return error for invalid collaborator")
 }
@@ -217,7 +218,7 @@ func TestPurchaseOrderService_CreatePurchaseOrder_CollaboratorNotActive(t *testi
 	}
 
 	ctx := context.Background()
-	_, err := service.CreatePurchaseOrder(ctx, request)
+	_, err := service.CreatePurchaseOrder(ctx, request, "")
 
 	testutils.AssertError(t, err, "Should return error for inactive collaborator")
 	testutils.AssertContains(t, err.Error(), "not active", "Error message should mention inactive")
@@ -238,7 +239,7 @@ func TestPurchaseOrderService_CreatePurchaseOrder_WarehouseNotFound(t *testing.T
 	}
 
 	ctx := context.Background()
-	_, err := service.CreatePurchaseOrder(ctx, request)
+	_, err := service.CreatePurchaseOrder(ctx, request, "")
 
 	testutils.AssertError(t, err, "Should return error for invalid warehouse")
 }
@@ -261,7 +262,7 @@ func TestPurchaseOrderService_CreatePurchaseOrder_InvalidOrderDateFormat(t *test
 	}
 
 	ctx := context.Background()
-	_, err := service.CreatePurchaseOrder(ctx, request)
+	_, err := service.CreatePurchaseOrder(ctx, request, "")
 
 	testutils.AssertError(t, err, "Should return error for invalid order date format")
 	testutils.AssertContains(t, err.Error(), "order_date", "Error should mention order_date")
@@ -282,7 +283,7 @@ func TestPurchaseOrderService_CreatePurchaseOrder_InvalidExpectedDeliveryFormat(
 	}
 
 	ctx := context.Background()
-	_, err := service.CreatePurchaseOrder(ctx, request)
+	_, err := service.CreatePurchaseOrder(ctx, request, "")
 
 	testutils.AssertError(t, err, "Should return error for invalid expected delivery format")
 	testutils.AssertContains(t, err.Error(), "expected_delivery", "Error should mention expected_delivery")
@@ -307,7 +308,7 @@ func TestPurchaseOrderService_CreatePurchaseOrder_ExpectedDeliveryBeforeOrderDat
 	}
 
 	ctx := context.Background()
-	_, err := service.CreatePurchaseOrder(ctx, request)
+	_, err := service.CreatePurchaseOrder(ctx, request, "")
 
 	testutils.AssertError(t, err, "Should return error when expected delivery is before order date")
 	testutils.AssertContains(t, err.Error(), "after order date", "Error should mention date order")
@@ -329,7 +330,7 @@ func TestPurchaseOrderService_CreatePurchaseOrder_NoItems(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	_, err := service.CreatePurchaseOrder(ctx, request)
+	_, err := service.CreatePurchaseOrder(ctx, request, "")
 
 	testutils.AssertError(t, err, "Should return error when no items provided")
 	testutils.AssertContains(t, err.Error(), "at least one item", "Error should mention items requirement")
@@ -357,7 +358,7 @@ func TestPurchaseOrderService_CreatePurchaseOrder_InvalidVariant(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	_, err := service.CreatePurchaseOrder(ctx, request)
+	_, err := service.CreatePurchaseOrder(ctx, request, "")
 
 	testutils.AssertError(t, err, "Should return error for invalid variant")
 	testutils.AssertContains(t, err.Error(), "variant", "Error should mention variant")
@@ -396,7 +397,7 @@ func TestPurchaseOrderService_CreatePurchaseOrder_MultipleItems(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	response, err := service.CreatePurchaseOrder(ctx, request)
+	response, err := service.CreatePurchaseOrder(ctx, request, "")
 
 	testutils.AssertNoError(t, err, "CreatePurchaseOrder should succeed")
 	testutils.AssertNotNil(t, response, "Response should not be nil")
@@ -669,8 +670,11 @@ func TestPurchaseOrderService_UpdateStatus_OutForDeliveryToDelivered_NoGRN(t *te
 	warehouse := createTestWarehouse(t, db, "WAREHOUSE-001")
 	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "out_for_delivery")
 
+	// Bug #14 fix: actual_delivery_date is now required when marking as delivered
+	actualDelivery := time.Now()
 	request := &models.UpdatePOStatusRequest{
-		Status: "delivered",
+		Status:         "delivered",
+		ActualDelivery: &actualDelivery,
 		// No delivery details = traditional flow (no auto-GRN)
 	}
 
@@ -682,13 +686,14 @@ func TestPurchaseOrderService_UpdateStatus_OutForDeliveryToDelivered_NoGRN(t *te
 	testutils.AssertNotNil(t, response.ActualDelivery, "Actual delivery should be set")
 }
 
-func TestPurchaseOrderService_UpdateStatus_DeliveredToPaid_Success(t *testing.T) {
+func TestPurchaseOrderService_UpdateStatus_VerifiedToPaid_Success(t *testing.T) {
+	// Note: Workflow is delivered → verified → paid
 	service, db, cleanup := setupPurchaseOrderService(t)
 	defer cleanup()
 
 	collaborator := createTestCollaborator(t, db, "COLLAB-001", true)
 	warehouse := createTestWarehouse(t, db, "WAREHOUSE-001")
-	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "delivered")
+	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "verified")
 
 	request := &models.UpdatePOStatusRequest{
 		Status: "paid",
@@ -758,6 +763,7 @@ func TestPurchaseOrderService_UpdateStatus_PONotFound(t *testing.T) {
 // =============================================================================
 
 func TestPurchaseOrderService_UpdateStatus_AcceptAll_Success(t *testing.T) {
+	// Note: Auto-GRN triggers on "verified" status, workflow: delivered → verified → paid
 	service, db, cleanup := setupPurchaseOrderService(t)
 	defer cleanup()
 
@@ -767,13 +773,15 @@ func TestPurchaseOrderService_UpdateStatus_AcceptAll_Success(t *testing.T) {
 	product := testutils.CreateTestProduct(t, db, "PROD-001", "Tomato")
 	variant := testutils.CreateTestVariant(t, db, "VAR-001", product.ID, "TOM-1KG", "1.0")
 
-	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "out_for_delivery")
+	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "delivered")
 	createTestPOItem(t, db, po.ID, variant.ID, 100, 25.50)
 
 	acceptAll := true
 	defaultExpiry := time.Now().UTC().Add(90 * 24 * time.Hour).Format("2006-01-02")
+	actualDelivery := time.Now().UTC()
 	request := &models.UpdatePOStatusRequest{
-		Status:            "delivered",
+		Status:            "verified",
+		ActualDelivery:    &actualDelivery,
 		AcceptAll:         &acceptAll,
 		DefaultExpiryDate: &defaultExpiry,
 	}
@@ -783,7 +791,7 @@ func TestPurchaseOrderService_UpdateStatus_AcceptAll_Success(t *testing.T) {
 
 	testutils.AssertNoError(t, err, "UpdatePurchaseOrderStatus with AcceptAll should succeed")
 	testutils.AssertNotNil(t, response, "Response should not be nil")
-	testutils.AssertEqual(t, response.Status, "delivered", "Status should be delivered")
+	testutils.AssertEqual(t, response.Status, "verified", "Status should be verified")
 
 	// Verify GRN was created
 	var grn models.GRN
@@ -793,6 +801,7 @@ func TestPurchaseOrderService_UpdateStatus_AcceptAll_Success(t *testing.T) {
 }
 
 func TestPurchaseOrderService_UpdateStatus_AcceptAll_MissingExpiryDate(t *testing.T) {
+	// Note: Auto-GRN triggers on "verified" status
 	service, db, cleanup := setupPurchaseOrderService(t)
 	defer cleanup()
 
@@ -801,13 +810,15 @@ func TestPurchaseOrderService_UpdateStatus_AcceptAll_MissingExpiryDate(t *testin
 	product := testutils.CreateTestProduct(t, db, "PROD-001", "Tomato")
 	variant := testutils.CreateTestVariant(t, db, "VAR-001", product.ID, "TOM-1KG", "1.0")
 
-	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "out_for_delivery")
+	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "delivered")
 	createTestPOItem(t, db, po.ID, variant.ID, 100, 25.50)
 
 	acceptAll := true
+	actualDelivery := time.Now().UTC()
 	request := &models.UpdatePOStatusRequest{
-		Status:    "delivered",
-		AcceptAll: &acceptAll,
+		Status:         "verified",
+		ActualDelivery: &actualDelivery,
+		AcceptAll:      &acceptAll,
 		// Missing DefaultExpiryDate
 	}
 
@@ -819,6 +830,7 @@ func TestPurchaseOrderService_UpdateStatus_AcceptAll_MissingExpiryDate(t *testin
 }
 
 func TestPurchaseOrderService_UpdateStatus_GRNAlreadyExists(t *testing.T) {
+	// Note: Auto-GRN triggers on "verified" status
 	service, db, cleanup := setupPurchaseOrderService(t)
 	defer cleanup()
 
@@ -827,7 +839,7 @@ func TestPurchaseOrderService_UpdateStatus_GRNAlreadyExists(t *testing.T) {
 	product := testutils.CreateTestProduct(t, db, "PROD-001", "Tomato")
 	variant := testutils.CreateTestVariant(t, db, "VAR-001", product.ID, "TOM-1KG", "1.0")
 
-	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "out_for_delivery")
+	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "delivered")
 	createTestPOItem(t, db, po.ID, variant.ID, 100, 25.50)
 
 	// Create existing GRN
@@ -838,8 +850,10 @@ func TestPurchaseOrderService_UpdateStatus_GRNAlreadyExists(t *testing.T) {
 
 	acceptAll := true
 	defaultExpiry := time.Now().UTC().Add(90 * 24 * time.Hour).Format("2006-01-02")
+	actualDelivery := time.Now().UTC()
 	request := &models.UpdatePOStatusRequest{
-		Status:            "delivered",
+		Status:            "verified",
+		ActualDelivery:    &actualDelivery,
 		AcceptAll:         &acceptAll,
 		DefaultExpiryDate: &defaultExpiry,
 	}
@@ -856,6 +870,7 @@ func TestPurchaseOrderService_UpdateStatus_GRNAlreadyExists(t *testing.T) {
 // =============================================================================
 
 func TestPurchaseOrderService_UpdateStatus_AcceptReject_AllAccepted(t *testing.T) {
+	// Note: Auto-GRN triggers on "verified" status
 	service, db, cleanup := setupPurchaseOrderService(t)
 	defer cleanup()
 
@@ -866,14 +881,16 @@ func TestPurchaseOrderService_UpdateStatus_AcceptReject_AllAccepted(t *testing.T
 	product2 := testutils.CreateTestProduct(t, db, "PROD-002", "Onion")
 	variant2 := testutils.CreateTestVariant(t, db, "VAR-002", product2.ID, "ONI-1KG", "1.0")
 
-	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "out_for_delivery")
+	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "delivered")
 	item1 := createTestPOItem(t, db, po.ID, variant1.ID, 100, 25.50)
 	item2 := createTestPOItem(t, db, po.ID, variant2.ID, 50, 30.00)
 
 	acceptTrue := true
 	expiryDate := time.Now().UTC().Add(90 * 24 * time.Hour).Format("2006-01-02")
+	actualDelivery := time.Now().UTC()
 	request := &models.UpdatePOStatusRequest{
-		Status: "delivered",
+		Status:         "verified",
+		ActualDelivery: &actualDelivery,
 		Items: []models.DeliveryItemRequest{
 			{
 				POItemID:   item1.ID,
@@ -892,7 +909,7 @@ func TestPurchaseOrderService_UpdateStatus_AcceptReject_AllAccepted(t *testing.T
 	response, err := service.UpdatePurchaseOrderStatus(ctx, po.ID, request, "USER-001")
 
 	testutils.AssertNoError(t, err, "UpdatePurchaseOrderStatus should succeed")
-	testutils.AssertEqual(t, response.Status, "delivered", "Status should be delivered")
+	testutils.AssertEqual(t, response.Status, "verified", "Status should be verified")
 
 	// Verify GRN quality status
 	var grn models.GRN
@@ -902,6 +919,7 @@ func TestPurchaseOrderService_UpdateStatus_AcceptReject_AllAccepted(t *testing.T
 }
 
 func TestPurchaseOrderService_UpdateStatus_AcceptReject_Partial(t *testing.T) {
+	// Note: Auto-GRN triggers on "verified" status
 	service, db, cleanup := setupPurchaseOrderService(t)
 	defer cleanup()
 
@@ -912,15 +930,17 @@ func TestPurchaseOrderService_UpdateStatus_AcceptReject_Partial(t *testing.T) {
 	product2 := testutils.CreateTestProduct(t, db, "PROD-002", "Onion")
 	variant2 := testutils.CreateTestVariant(t, db, "VAR-002", product2.ID, "ONI-1KG", "1.0")
 
-	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "out_for_delivery")
+	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "delivered")
 	item1 := createTestPOItem(t, db, po.ID, variant1.ID, 100, 25.50)
 	item2 := createTestPOItem(t, db, po.ID, variant2.ID, 50, 30.00)
 
 	acceptTrue := true
 	acceptFalse := false
 	expiryDate := time.Now().UTC().Add(90 * 24 * time.Hour).Format("2006-01-02")
+	actualDelivery := time.Now().UTC()
 	request := &models.UpdatePOStatusRequest{
-		Status: "delivered",
+		Status:         "verified",
+		ActualDelivery: &actualDelivery,
 		Items: []models.DeliveryItemRequest{
 			{
 				POItemID:   item1.ID,
@@ -939,7 +959,7 @@ func TestPurchaseOrderService_UpdateStatus_AcceptReject_Partial(t *testing.T) {
 	response, err := service.UpdatePurchaseOrderStatus(ctx, po.ID, request, "USER-001")
 
 	testutils.AssertNoError(t, err, "UpdatePurchaseOrderStatus should succeed")
-	testutils.AssertEqual(t, response.Status, "delivered", "Status should be delivered")
+	testutils.AssertEqual(t, response.Status, "verified", "Status should be verified")
 
 	// Verify GRN quality status
 	var grn models.GRN
@@ -949,6 +969,7 @@ func TestPurchaseOrderService_UpdateStatus_AcceptReject_Partial(t *testing.T) {
 }
 
 func TestPurchaseOrderService_UpdateStatus_AcceptReject_AllRejected(t *testing.T) {
+	// Note: Auto-GRN triggers on "verified" status
 	service, db, cleanup := setupPurchaseOrderService(t)
 	defer cleanup()
 
@@ -957,13 +978,15 @@ func TestPurchaseOrderService_UpdateStatus_AcceptReject_AllRejected(t *testing.T
 	product := testutils.CreateTestProduct(t, db, "PROD-001", "Tomato")
 	variant := testutils.CreateTestVariant(t, db, "VAR-001", product.ID, "TOM-1KG", "1.0")
 
-	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "out_for_delivery")
+	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "delivered")
 	item := createTestPOItem(t, db, po.ID, variant.ID, 100, 25.50)
 
 	acceptFalse := false
 	expiryDate := time.Now().UTC().Add(90 * 24 * time.Hour).Format("2006-01-02")
+	actualDelivery := time.Now().UTC()
 	request := &models.UpdatePOStatusRequest{
-		Status: "delivered",
+		Status:         "verified",
+		ActualDelivery: &actualDelivery,
 		Items: []models.DeliveryItemRequest{
 			{
 				POItemID:   item.ID,
@@ -977,7 +1000,7 @@ func TestPurchaseOrderService_UpdateStatus_AcceptReject_AllRejected(t *testing.T
 	response, err := service.UpdatePurchaseOrderStatus(ctx, po.ID, request, "USER-001")
 
 	testutils.AssertNoError(t, err, "UpdatePurchaseOrderStatus should succeed")
-	testutils.AssertEqual(t, response.Status, "delivered", "Status should be delivered")
+	testutils.AssertEqual(t, response.Status, "verified", "Status should be verified")
 
 	// Verify GRN quality status
 	var grn models.GRN
@@ -991,6 +1014,7 @@ func TestPurchaseOrderService_UpdateStatus_AcceptReject_AllRejected(t *testing.T
 // =============================================================================
 
 func TestPurchaseOrderService_UpdateStatus_DetailedQuantities_PartialAcceptance(t *testing.T) {
+	// Note: Auto-GRN triggers on "verified" status
 	service, db, cleanup := setupPurchaseOrderService(t)
 	defer cleanup()
 
@@ -999,14 +1023,16 @@ func TestPurchaseOrderService_UpdateStatus_DetailedQuantities_PartialAcceptance(
 	product := testutils.CreateTestProduct(t, db, "PROD-001", "Tomato")
 	variant := testutils.CreateTestVariant(t, db, "VAR-001", product.ID, "TOM-1KG", "1.0")
 
-	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "out_for_delivery")
+	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "delivered")
 	item := createTestPOItem(t, db, po.ID, variant.ID, 100, 25.50)
 
 	receivedQty := int64(100)
 	acceptedQty := int64(80) // Partial acceptance
 	expiryDate := time.Now().UTC().Add(90 * 24 * time.Hour).Format("2006-01-02")
+	actualDelivery := time.Now().UTC()
 	request := &models.UpdatePOStatusRequest{
-		Status: "delivered",
+		Status:         "verified",
+		ActualDelivery: &actualDelivery,
 		Items: []models.DeliveryItemRequest{
 			{
 				POItemID:         item.ID,
@@ -1021,7 +1047,7 @@ func TestPurchaseOrderService_UpdateStatus_DetailedQuantities_PartialAcceptance(
 	response, err := service.UpdatePurchaseOrderStatus(ctx, po.ID, request, "USER-001")
 
 	testutils.AssertNoError(t, err, "UpdatePurchaseOrderStatus should succeed")
-	testutils.AssertEqual(t, response.Status, "delivered", "Status should be delivered")
+	testutils.AssertEqual(t, response.Status, "verified", "Status should be verified")
 
 	// Verify GRN quality status
 	var grn models.GRN
@@ -1031,6 +1057,7 @@ func TestPurchaseOrderService_UpdateStatus_DetailedQuantities_PartialAcceptance(
 }
 
 func TestPurchaseOrderService_UpdateStatus_DetailedQuantities_FullAcceptance(t *testing.T) {
+	// Note: Auto-GRN triggers on "verified" status
 	service, db, cleanup := setupPurchaseOrderService(t)
 	defer cleanup()
 
@@ -1039,14 +1066,16 @@ func TestPurchaseOrderService_UpdateStatus_DetailedQuantities_FullAcceptance(t *
 	product := testutils.CreateTestProduct(t, db, "PROD-001", "Tomato")
 	variant := testutils.CreateTestVariant(t, db, "VAR-001", product.ID, "TOM-1KG", "1.0")
 
-	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "out_for_delivery")
+	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "delivered")
 	item := createTestPOItem(t, db, po.ID, variant.ID, 100, 25.50)
 
 	receivedQty := int64(100)
 	acceptedQty := int64(100) // Full acceptance
 	expiryDate := time.Now().UTC().Add(90 * 24 * time.Hour).Format("2006-01-02")
+	actualDelivery := time.Now().UTC()
 	request := &models.UpdatePOStatusRequest{
-		Status: "delivered",
+		Status:         "verified",
+		ActualDelivery: &actualDelivery,
 		Items: []models.DeliveryItemRequest{
 			{
 				POItemID:         item.ID,
@@ -1061,7 +1090,7 @@ func TestPurchaseOrderService_UpdateStatus_DetailedQuantities_FullAcceptance(t *
 	response, err := service.UpdatePurchaseOrderStatus(ctx, po.ID, request, "USER-001")
 
 	testutils.AssertNoError(t, err, "UpdatePurchaseOrderStatus should succeed")
-	testutils.AssertEqual(t, response.Status, "delivered", "Status should be delivered")
+	testutils.AssertEqual(t, response.Status, "verified", "Status should be verified")
 
 	// Verify GRN quality status
 	var grn models.GRN
@@ -1071,6 +1100,7 @@ func TestPurchaseOrderService_UpdateStatus_DetailedQuantities_FullAcceptance(t *
 }
 
 func TestPurchaseOrderService_UpdateStatus_DetailedQuantities_AcceptedExceedsReceived(t *testing.T) {
+	// Note: Auto-GRN triggers on "verified" status
 	service, db, cleanup := setupPurchaseOrderService(t)
 	defer cleanup()
 
@@ -1079,14 +1109,16 @@ func TestPurchaseOrderService_UpdateStatus_DetailedQuantities_AcceptedExceedsRec
 	product := testutils.CreateTestProduct(t, db, "PROD-001", "Tomato")
 	variant := testutils.CreateTestVariant(t, db, "VAR-001", product.ID, "TOM-1KG", "1.0")
 
-	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "out_for_delivery")
+	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "delivered")
 	item := createTestPOItem(t, db, po.ID, variant.ID, 100, 25.50)
 
 	receivedQty := int64(80)
 	acceptedQty := int64(100) // Accepted > Received - INVALID
 	expiryDate := time.Now().UTC().Add(90 * 24 * time.Hour).Format("2006-01-02")
+	actualDelivery := time.Now().UTC()
 	request := &models.UpdatePOStatusRequest{
-		Status: "delivered",
+		Status:         "verified",
+		ActualDelivery: &actualDelivery,
 		Items: []models.DeliveryItemRequest{
 			{
 				POItemID:         item.ID,
@@ -1105,6 +1137,7 @@ func TestPurchaseOrderService_UpdateStatus_DetailedQuantities_AcceptedExceedsRec
 }
 
 func TestPurchaseOrderService_UpdateStatus_DetailedQuantities_ReceivedExceedsOrdered(t *testing.T) {
+	// Note: Auto-GRN triggers on "verified" status
 	service, db, cleanup := setupPurchaseOrderService(t)
 	defer cleanup()
 
@@ -1113,14 +1146,16 @@ func TestPurchaseOrderService_UpdateStatus_DetailedQuantities_ReceivedExceedsOrd
 	product := testutils.CreateTestProduct(t, db, "PROD-001", "Tomato")
 	variant := testutils.CreateTestVariant(t, db, "VAR-001", product.ID, "TOM-1KG", "1.0")
 
-	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "out_for_delivery")
+	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "delivered")
 	item := createTestPOItem(t, db, po.ID, variant.ID, 100, 25.50)
 
 	receivedQty := int64(150) // Received > Ordered - INVALID
 	acceptedQty := int64(100)
 	expiryDate := time.Now().UTC().Add(90 * 24 * time.Hour).Format("2006-01-02")
+	actualDelivery := time.Now().UTC()
 	request := &models.UpdatePOStatusRequest{
-		Status: "delivered",
+		Status:         "verified",
+		ActualDelivery: &actualDelivery,
 		Items: []models.DeliveryItemRequest{
 			{
 				POItemID:         item.ID,
@@ -1139,6 +1174,7 @@ func TestPurchaseOrderService_UpdateStatus_DetailedQuantities_ReceivedExceedsOrd
 }
 
 func TestPurchaseOrderService_UpdateStatus_InvalidExpiryDateFormat(t *testing.T) {
+	// Note: Auto-GRN triggers on "verified" status
 	service, db, cleanup := setupPurchaseOrderService(t)
 	defer cleanup()
 
@@ -1147,12 +1183,14 @@ func TestPurchaseOrderService_UpdateStatus_InvalidExpiryDateFormat(t *testing.T)
 	product := testutils.CreateTestProduct(t, db, "PROD-001", "Tomato")
 	variant := testutils.CreateTestVariant(t, db, "VAR-001", product.ID, "TOM-1KG", "1.0")
 
-	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "out_for_delivery")
+	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "delivered")
 	item := createTestPOItem(t, db, po.ID, variant.ID, 100, 25.50)
 
 	acceptTrue := true
+	actualDelivery := time.Now().UTC()
 	request := &models.UpdatePOStatusRequest{
-		Status: "delivered",
+		Status:         "verified",
+		ActualDelivery: &actualDelivery,
 		Items: []models.DeliveryItemRequest{
 			{
 				POItemID:   item.ID,
@@ -1170,6 +1208,7 @@ func TestPurchaseOrderService_UpdateStatus_InvalidExpiryDateFormat(t *testing.T)
 }
 
 func TestPurchaseOrderService_UpdateStatus_DuplicateItemIDs(t *testing.T) {
+	// Note: Auto-GRN triggers on "verified" status
 	service, db, cleanup := setupPurchaseOrderService(t)
 	defer cleanup()
 
@@ -1178,13 +1217,15 @@ func TestPurchaseOrderService_UpdateStatus_DuplicateItemIDs(t *testing.T) {
 	product := testutils.CreateTestProduct(t, db, "PROD-001", "Tomato")
 	variant := testutils.CreateTestVariant(t, db, "VAR-001", product.ID, "TOM-1KG", "1.0")
 
-	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "out_for_delivery")
+	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "delivered")
 	item := createTestPOItem(t, db, po.ID, variant.ID, 100, 25.50)
 
 	acceptTrue := true
 	expiryDate := time.Now().UTC().Add(90 * 24 * time.Hour).Format("2006-01-02")
+	actualDelivery := time.Now().UTC()
 	request := &models.UpdatePOStatusRequest{
-		Status: "delivered",
+		Status:         "verified",
+		ActualDelivery: &actualDelivery,
 		Items: []models.DeliveryItemRequest{
 			{
 				POItemID:   item.ID,
@@ -1207,18 +1248,21 @@ func TestPurchaseOrderService_UpdateStatus_DuplicateItemIDs(t *testing.T) {
 }
 
 func TestPurchaseOrderService_UpdateStatus_ItemNotInPO(t *testing.T) {
+	// Note: Auto-GRN triggers on "verified" status
 	service, db, cleanup := setupPurchaseOrderService(t)
 	defer cleanup()
 
 	collaborator := createTestCollaborator(t, db, "COLLAB-001", true)
 	warehouse := createTestWarehouse(t, db, "WAREHOUSE-001")
 
-	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "out_for_delivery")
+	po := createTestPurchaseOrder(t, db, "PO-2025-0001", collaborator.ID, warehouse.ID, "delivered")
 
 	acceptTrue := true
 	expiryDate := time.Now().UTC().Add(90 * 24 * time.Hour).Format("2006-01-02")
+	actualDelivery := time.Now().UTC()
 	request := &models.UpdatePOStatusRequest{
-		Status: "delivered",
+		Status:         "verified",
+		ActualDelivery: &actualDelivery,
 		Items: []models.DeliveryItemRequest{
 			{
 				POItemID:   "INVALID-ITEM-ID",

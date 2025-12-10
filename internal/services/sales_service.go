@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"time"
 
 	"kisanlink-erp/internal/database/models"
@@ -17,24 +18,39 @@ func stringPtr(s string) *string {
 	return &s
 }
 
+// generateInvoiceNumber generates an invoice number in the format MMYYNNNN
+// - MM: 2-digit month (01-12)
+// - YY: 2-digit year (e.g., 25 for 2025)
+// - NNNN: 4-digit sequence number (does NOT reset each month)
+// Example: 12250001 = December 2025, sequence 1
+func generateInvoiceNumber(lastSequence int) string {
+	now := time.Now()
+	month := now.Format("01") // MM
+	year := now.Format("06")  // YY
+	sequence := lastSequence + 1
+	return fmt.Sprintf("%s%s%04d", month, year, sequence)
+}
+
 type SalesService struct {
 	salesRepo            *repositories.SalesRepository
 	productRepo          *repositories.ProductRepository
 	inventoryRepo        *repositories.InventoryRepository
-	priceRepo            *repositories.ProductPriceRepository
+	variantRepo          *repositories.ProductVariantRepository
+	priceRepo            *repositories.ProductPriceRepository // Prices from product_prices table
 	discountsRepo        *repositories.DiscountsRepository
 	taxRepo              *repositories.TaxRepository
 	taxService           *TaxService
 	warehouseRepo        *repositories.WarehouseRepository
-	saleCancellationRepo *repositories.SaleCancellationRepository
+	saleCancellationRepo *repositories.SaleCancellationRepository // Order cancellation feature
 	logger               interfaces.Logger
 }
 
-func NewSalesService(salesRepo *repositories.SalesRepository, productRepo *repositories.ProductRepository, inventoryRepo *repositories.InventoryRepository, priceRepo *repositories.ProductPriceRepository, discountsRepo *repositories.DiscountsRepository, taxRepo *repositories.TaxRepository, warehouseRepo *repositories.WarehouseRepository, saleCancellationRepo *repositories.SaleCancellationRepository, logger interfaces.Logger) *SalesService {
+func NewSalesService(salesRepo *repositories.SalesRepository, productRepo *repositories.ProductRepository, inventoryRepo *repositories.InventoryRepository, variantRepo *repositories.ProductVariantRepository, priceRepo *repositories.ProductPriceRepository, discountsRepo *repositories.DiscountsRepository, taxRepo *repositories.TaxRepository, warehouseRepo *repositories.WarehouseRepository, saleCancellationRepo *repositories.SaleCancellationRepository, logger interfaces.Logger) *SalesService {
 	return &SalesService{
 		salesRepo:            salesRepo,
 		productRepo:          productRepo,
 		inventoryRepo:        inventoryRepo,
+		variantRepo:          variantRepo,
 		priceRepo:            priceRepo,
 		discountsRepo:        discountsRepo,
 		taxRepo:              taxRepo,
@@ -65,14 +81,28 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 	type itemData struct {
 		sellingPrice float64
 		batches      []models.InventoryBatch
+		variant      *models.ProductVariant // For GST rate
 	}
 
 	itemDataMap := make(map[string]*itemData)
 	for _, itemReq := range req.Items {
-		// Get selling price from product_prices table (by variant_id)
-		s.logger.Debug("Getting selling price for variant",
+		// Get variant for GST rate (GST-only tax system)
+		s.logger.Debug("Getting variant for GST rate",
 			zap.String("variant_id", itemReq.VariantID))
-		sellingPrice, err := s.getSellingPrice(itemReq.VariantID)
+		variant, err := s.variantRepo.GetByID(itemReq.VariantID)
+		if err != nil {
+			s.logger.Error("Failed to get variant",
+				zap.Error(err),
+				zap.String("variant_id", itemReq.VariantID))
+			return nil, errors.NewNotFoundError("variant not found")
+		}
+
+		// Get selling price from product_prices table (by variant_id)
+		// Price selection depends on membership status: member price for members, retail for non-members
+		s.logger.Debug("Getting selling price for variant",
+			zap.String("variant_id", itemReq.VariantID),
+			zap.Bool("is_org_member", req.IsOrgMember))
+		sellingPrice, err := s.getSellingPrice(itemReq.VariantID, req.IsOrgMember)
 		if err != nil {
 			s.logger.Error("Failed to get selling price",
 				zap.Error(err),
@@ -80,7 +110,8 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 			return nil, errors.NewNotFoundError("selling price not found for product")
 		}
 		s.logger.Debug("Selling price retrieved",
-			zap.Float64("selling_price", sellingPrice))
+			zap.Float64("selling_price", sellingPrice),
+			zap.Bool("is_org_member", req.IsOrgMember))
 
 		// Get batches for this variant in the warehouse ordered by expiry date (FEFO)
 		s.logger.Debug("Getting batches for variant",
@@ -105,9 +136,13 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 			zap.Int("batch_count", len(batches)))
 
 		// Calculate total available quantity across all batches
+		// Available = TotalQuantity - ReservedQuantity (reservation system)
+		// NOTE: This pre-transaction check is an optimization for early failure detection.
+		// The real race-condition-safe check happens in ReserveBatchStockWithTx (atomic conditional update).
+		// Concurrent sales may pass this check but the atomic reservation will fail safely.
 		totalAvailable := int64(0)
 		for _, batch := range batches {
-			totalAvailable += batch.TotalQuantity
+			totalAvailable += batch.AvailableQuantity()
 		}
 
 		if totalAvailable < itemReq.Quantity {
@@ -124,6 +159,7 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 		itemDataMap[itemReq.VariantID] = &itemData{
 			sellingPrice: sellingPrice,
 			batches:      batches,
+			variant:      variant,
 		}
 	}
 
@@ -171,16 +207,32 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 			applyTaxes = *req.ApplyTaxes
 		}
 
+		// Generate invoice number within transaction for concurrency safety
+		s.logger.Debug("Generating invoice number")
+		lastSequence, err := s.salesRepo.GetLastInvoiceSequenceWithTx(tx)
+		if err != nil {
+			s.logger.Error("Failed to get last invoice sequence",
+				zap.Error(err))
+			return errors.NewInternalServerError("failed to generate invoice number")
+		}
+		invoiceNumber := generateInvoiceNumber(lastSequence)
+		s.logger.Debug("Invoice number generated",
+			zap.String("invoice_number", invoiceNumber),
+			zap.Int("last_sequence", lastSequence))
+
 		// Create sale using the proper constructor with BRD requirements
 		s.logger.Debug("Creating sale",
 			zap.String("warehouse_id", req.WarehouseID),
+			zap.String("invoice_number", invoiceNumber),
 			zap.Time("sale_date", saleDate),
 			zap.String("payment_mode", req.PaymentMode),
 			zap.String("sale_type", req.SaleType),
-			zap.Bool("apply_taxes", applyTaxes))
-		sale := models.NewSale(req.WarehouseID, saleDate, 0, "pending", req.CustomerID, req.PaymentMode, req.SaleType, applyTaxes)
+			zap.Bool("apply_taxes", applyTaxes),
+			zap.Bool("is_org_member", req.IsOrgMember))
+		sale := models.NewSale(req.WarehouseID, invoiceNumber, saleDate, 0, models.SaleStatusPending, req.CustomerPhone, req.CustomerName, req.IsOrgMember, req.PaymentMode, req.SaleType, applyTaxes)
 		s.logger.Info("Sale created",
 			zap.String("sale_id", sale.ID),
+			zap.String("invoice_number", sale.InvoiceNumber),
 			zap.Bool("apply_taxes", sale.ApplyTaxes))
 
 		if err := s.salesRepo.CreateSaleWithTx(tx, sale); err != nil {
@@ -205,6 +257,7 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 			itemData := itemDataMap[itemReq.VariantID]
 			sellingPrice := itemData.sellingPrice
 			batches := itemData.batches
+			variant := itemData.variant
 
 			// Allocate quantity across batches using FEFO (First Expired, First Out)
 			remainingQuantity := itemReq.Quantity
@@ -215,10 +268,15 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 					break
 				}
 
-				// Calculate how much to take from this batch
+				// Calculate how much to take from this batch using available quantity
+				availableInBatch := batch.AvailableQuantity()
+				if availableInBatch <= 0 {
+					continue // Skip batches with no available stock
+				}
+
 				quantityFromBatch := remainingQuantity
-				if batch.TotalQuantity < remainingQuantity {
-					quantityFromBatch = batch.TotalQuantity
+				if availableInBatch < remainingQuantity {
+					quantityFromBatch = availableInBatch
 				}
 
 				s.logger.Debug("FEFO: Allocating from batch",
@@ -236,25 +294,25 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 				// Calculate line total for this batch allocation
 				batchLineTotal := sellingPrice * float64(quantityFromBatch)
 
-				// Calculate taxes for this batch allocation
-				s.logger.Debug("Calculating taxes for batch allocation")
-				taxCalculation, err := s.taxService.CalculateBatchTax(batch, quantityFromBatch, sellingPrice)
-				if err != nil {
-					s.logger.Error("Failed to calculate taxes",
-						zap.Error(err))
-					return err
-				}
-				s.logger.Debug("Tax calculation completed",
+				// Calculate GST using variant's GSTRate (GST-only tax system)
+				// For now, assume intra-state (CGST+SGST) - inter-state detection can be added later
+				// TODO: Implement inter-state detection via warehouse state vs delivery state
+				isInterState := false
+				s.logger.Debug("Calculating GST for batch allocation",
+					zap.Float64("gst_rate", variant.GSTRate),
+					zap.Bool("is_inter_state", isInterState))
+				taxCalculation := s.taxService.CalculateGST(batchLineTotal, variant.GSTRate, isInterState)
+				s.logger.Debug("GST calculation completed",
 					zap.Float64("cgst_amount", taxCalculation.CGSTAmount),
 					zap.Float64("sgst_amount", taxCalculation.SGSTAmount),
-					zap.Float64("custom_tax_amount", taxCalculation.CustomTaxAmount),
+					zap.Float64("igst_amount", taxCalculation.IGSTAmount),
 					zap.Float64("total_tax_amount", taxCalculation.TotalTaxAmount))
 
 				itemTotal += batchLineTotal
 
 				// Create sale item with tax amounts and cost price (BRD requirement)
 				saleItem := models.NewSaleItemWithTax(sale.ID, batch.ID, quantityFromBatch, sellingPrice, costPrice, batchLineTotal,
-					taxCalculation.CGSTAmount, taxCalculation.SGSTAmount, taxCalculation.CustomTaxAmount)
+					taxCalculation.CGSTAmount, taxCalculation.SGSTAmount, taxCalculation.IGSTAmount)
 				s.logger.Info("Sale item created",
 					zap.String("sale_item_id", saleItem.ID),
 					zap.Float64("cost_price", costPrice),
@@ -270,30 +328,31 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 				// Add to collection for tax calculation
 				saleItems = append(saleItems, *saleItem)
 
-				// Update inventory using the proper constructor
-				s.logger.Debug("Creating inventory transaction",
+				// Create reservation transaction (not deduction - that happens on CompleteSale)
+				// Use positive quantity to indicate amount reserved (negative deduction happens on CompleteSale)
+				s.logger.Debug("Creating reservation transaction",
 					zap.String("batch_id", batch.ID))
-				transaction := models.NewInventoryTransaction(batch.ID, "sale", -quantityFromBatch, &sale.ID, nil, stringPtr("Sale transaction"), time.Now())
-				s.logger.Debug("Inventory transaction created",
+				transaction := models.NewInventoryTransaction(batch.ID, models.TransactionTypeReservation, quantityFromBatch, &sale.ID, nil, stringPtr("Stock reserved for pending sale"), time.Now())
+				s.logger.Debug("Reservation transaction created",
 					zap.String("transaction_id", transaction.ID))
 
 				if err := s.inventoryRepo.CreateTransactionWithTx(tx, transaction); err != nil {
-					s.logger.Error("Failed to create inventory transaction",
+					s.logger.Error("Failed to create reservation transaction",
 						zap.Error(err))
 					return err
 				}
-				s.logger.Debug("Inventory transaction created successfully")
+				s.logger.Debug("Reservation transaction created successfully")
 
-				// Update batch stock level with row lock to prevent race conditions
-				s.logger.Debug("Updating batch stock",
+				// Reserve stock instead of deducting (actual deduction happens on CompleteSale)
+				s.logger.Debug("Reserving batch stock",
 					zap.String("batch_id", batch.ID),
-					zap.Int64("quantity_change", -quantityFromBatch))
-				if err := s.inventoryRepo.UpdateBatchStockWithTx(tx, batch.ID, -quantityFromBatch); err != nil {
-					s.logger.Error("Failed to update batch stock",
+					zap.Int64("quantity_reserved", quantityFromBatch))
+				if err := s.inventoryRepo.ReserveBatchStockWithTx(tx, batch.ID, quantityFromBatch); err != nil {
+					s.logger.Error("Failed to reserve batch stock",
 						zap.Error(err))
 					return err
 				}
-				s.logger.Debug("Batch stock updated successfully")
+				s.logger.Debug("Batch stock reserved successfully")
 
 				remainingQuantity -= quantityFromBatch
 			}
@@ -389,6 +448,7 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 		response = s.mapSaleToResponse(sale)
 
 		// Add breakdown information
+		// GST-only tax system - no VAT or other taxes
 		var taxBreakdown *models.TaxSummaryBreakdown
 		if taxAmount > 0 {
 			taxSummary, err := s.taxRepo.GetTaxSummaryBySale(sale.ID)
@@ -397,8 +457,6 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 					CGSTAmount:     taxSummary.CGSTAmount,
 					SGSTAmount:     taxSummary.SGSTAmount,
 					IGSTAmount:     taxSummary.IGSTAmount,
-					VATAmount:      taxSummary.VATAmount,
-					OtherTaxAmount: taxSummary.OtherTaxAmount,
 					TotalTaxAmount: taxSummary.TotalTaxAmount,
 				}
 			}
@@ -451,28 +509,211 @@ func (s *SalesService) GetAllSales(limit, offset int) ([]models.SaleResponse, in
 	return responses, total, nil
 }
 
-// UpdateSale updates a sale
+// UpdateSale updates a sale with proper inventory handling for status transitions
 func (s *SalesService) UpdateSale(id string, req *models.UpdateSaleRequest) (*models.SaleResponse, error) {
-	sale, err := s.salesRepo.GetSaleByID(id)
+	s.logger.Info("Starting sale update",
+		zap.String("sale_id", id))
+
+	var response *models.SaleResponse
+
+	err := s.salesRepo.WithTransaction(func(tx *gorm.DB) error {
+		// 1. Lock and retrieve sale with items
+		sale, err := s.salesRepo.GetSaleForUpdateWithTx(tx, id)
+		if err != nil {
+			s.logger.Error("Failed to get sale for update",
+				zap.Error(err),
+				zap.String("sale_id", id))
+			if err == gorm.ErrRecordNotFound {
+				return errors.NewNotFoundError("Sale")
+			}
+			return errors.NewInternalServerError("Failed to lock sale")
+		}
+
+		// 2. If status change requested, validate and handle inventory
+		if req.Status != nil && *req.Status != sale.Status {
+			newStatus := *req.Status
+			oldStatus := sale.Status
+
+			s.logger.Info("Status change requested",
+				zap.String("sale_id", id),
+				zap.String("old_status", oldStatus),
+				zap.String("new_status", newStatus))
+
+			// Validate the status transition
+			if err := models.ValidateStatusTransition(oldStatus, newStatus); err != nil {
+				s.logger.Error("Invalid status transition",
+					zap.Error(err),
+					zap.String("old_status", oldStatus),
+					zap.String("new_status", newStatus))
+				return errors.NewBadRequestError(err.Error())
+			}
+
+			// Get performedBy from request or default to system
+			performedBy := req.PerformedBy
+			if performedBy == "" {
+				performedBy = "system"
+			}
+
+			// Handle inventory based on the transition
+			switch newStatus {
+			case models.SaleStatusCompleted:
+				// pending → completed: Convert reservations to actual deductions
+				s.logger.Info("Processing completion inventory transition",
+					zap.String("sale_id", id))
+				if err := s.handleCompletionInventory(tx, sale, performedBy); err != nil {
+					return err
+				}
+
+			case models.SaleStatusCancelled:
+				// pending/completed → cancelled: Release reservations or restore stock
+				s.logger.Info("Processing cancellation inventory transition",
+					zap.String("sale_id", id),
+					zap.String("current_status", oldStatus))
+				if err := s.handleCancellationInventory(tx, sale, performedBy); err != nil {
+					return err
+				}
+			}
+
+			sale.Status = newStatus
+		}
+
+		// 3. Save the sale
+		if err := s.salesRepo.UpdateSaleWithTx(tx, sale); err != nil {
+			s.logger.Error("Failed to save sale",
+				zap.Error(err),
+				zap.String("sale_id", id))
+			return errors.NewInternalServerError("Failed to update sale")
+		}
+
+		response = s.mapSaleToResponse(sale)
+		return nil
+	})
+
 	if err != nil {
+		s.logger.Error("Sale update failed",
+			zap.Error(err),
+			zap.String("sale_id", id))
 		return nil, err
 	}
 
-	// Update fields
-	if req.Status != nil {
-		sale.Status = *req.Status
-	}
+	s.logger.Info("Sale updated successfully",
+		zap.String("sale_id", id))
 
-	if err := s.salesRepo.UpdateSale(sale); err != nil {
-		return nil, err
-	}
-
-	return s.mapSaleToResponse(sale), nil
+	return response, nil
 }
 
 // DeleteSale deletes a sale
 func (s *SalesService) DeleteSale(id string) error {
 	return s.salesRepo.DeleteSale(id)
+}
+
+// handleCompletionInventory converts reservations to actual deductions when sale status changes to completed
+func (s *SalesService) handleCompletionInventory(tx *gorm.DB, sale *models.Sale, performedBy string) error {
+	s.logger.Debug("Converting reservations to deductions for sale completion",
+		zap.String("sale_id", sale.ID),
+		zap.Int("item_count", len(sale.Items)))
+
+	for _, saleItem := range sale.Items {
+		// Convert reservation to deduction (decrements both reserved_quantity and total_quantity)
+		if err := s.inventoryRepo.ConvertReservationToDeductionWithTx(tx, saleItem.BatchID, saleItem.Quantity); err != nil {
+			s.logger.Error("Failed to convert reservation to deduction",
+				zap.Error(err),
+				zap.String("batch_id", saleItem.BatchID),
+				zap.Int64("quantity", saleItem.Quantity))
+			return errors.NewInternalServerError("Failed to convert reservation to stock deduction")
+		}
+
+		// Create inventory transaction for the sale
+		note := "Sale completed - stock deducted from reservation"
+		transaction := models.NewInventoryTransaction(
+			saleItem.BatchID,
+			models.TransactionTypeSale,
+			-saleItem.Quantity, // Negative for deduction
+			&sale.ID,
+			&performedBy,
+			&note,
+			time.Now(),
+		)
+
+		if err := s.inventoryRepo.CreateTransactionWithTx(tx, transaction); err != nil {
+			s.logger.Error("Failed to create sale transaction",
+				zap.Error(err),
+				zap.String("batch_id", saleItem.BatchID))
+			return errors.NewInternalServerError("Failed to record sale transaction")
+		}
+
+		s.logger.Debug("Reservation converted to deduction",
+			zap.String("batch_id", saleItem.BatchID),
+			zap.Int64("quantity", saleItem.Quantity))
+	}
+
+	return nil
+}
+
+// handleCancellationInventory releases reservations or restores stock based on current sale status
+func (s *SalesService) handleCancellationInventory(tx *gorm.DB, sale *models.Sale, performedBy string) error {
+	isPendingSale := models.IsReservationStatus(sale.Status)
+
+	s.logger.Debug("Handling cancellation inventory",
+		zap.String("sale_id", sale.ID),
+		zap.Bool("is_pending_sale", isPendingSale),
+		zap.Int("item_count", len(sale.Items)))
+
+	for _, saleItem := range sale.Items {
+		var transactionType string
+		var note string
+
+		if isPendingSale {
+			// Pending sale: release reservation (reserved_quantity decreases, total unchanged)
+			if err := s.inventoryRepo.ReleaseBatchReservationWithTx(tx, saleItem.BatchID, saleItem.Quantity); err != nil {
+				s.logger.Error("Failed to release reservation",
+					zap.Error(err),
+					zap.String("batch_id", saleItem.BatchID))
+				return errors.NewInternalServerError("Failed to release reservation")
+			}
+			transactionType = models.TransactionTypeReservationRelease
+			note = "Reservation released - sale cancelled via status update"
+		} else {
+			// Completed sale: restore actual stock (total_quantity increases)
+			if err := s.inventoryRepo.UpdateBatchStockWithTx(tx, saleItem.BatchID, saleItem.Quantity); err != nil {
+				s.logger.Error("Failed to restore stock",
+					zap.Error(err),
+					zap.String("batch_id", saleItem.BatchID))
+				return errors.NewInternalServerError("Failed to restore stock")
+			}
+			transactionType = models.TransactionTypeCancellationReturn
+			note = "Stock restored - completed sale cancelled via status update"
+		}
+
+		// Create inventory transaction
+		transaction := models.NewInventoryTransaction(
+			saleItem.BatchID,
+			transactionType,
+			saleItem.Quantity, // Positive for restoration/release
+			&sale.ID,
+			&performedBy,
+			&note,
+			time.Now(),
+		)
+
+		if err := s.inventoryRepo.CreateTransactionWithTx(tx, transaction); err != nil {
+			s.logger.Error("Failed to create inventory transaction",
+				zap.Error(err),
+				zap.String("batch_id", saleItem.BatchID))
+			return errors.NewInternalServerError("Failed to record inventory transaction")
+		}
+
+		s.logger.Debug("Inventory operation completed for cancellation",
+			zap.String("batch_id", saleItem.BatchID),
+			zap.String("transaction_type", transactionType),
+			zap.Int64("quantity", saleItem.Quantity))
+	}
+
+	// Update cancellation timestamp
+	now := time.Now()
+	sale.CancelledAt = &now
+
+	return nil
 }
 
 // GetSalesByDateRange retrieves sales within a date range
@@ -530,23 +771,56 @@ func (s *SalesService) GetTopSellingProducts(limit int) ([]models.TopSellingProd
 	return responses, nil
 }
 
-// getSellingPrice retrieves the current retail price for a variant
-func (s *SalesService) getSellingPrice(variantID string) (float64, error) {
-	// Get the active retail price for the variant
-	price, err := s.priceRepo.GetCurrentPrice(variantID, "retail")
-	if err != nil {
-		// Try to get any active price if retail price is not found
-		prices, err2 := s.priceRepo.GetActiveByVariantID(variantID)
-		if err2 != nil {
-			return 0, errors.NewNotFoundError("no pricing information found for variant")
-		}
-		if len(prices) == 0 {
-			return 0, errors.NewNotFoundError("no active prices found for variant")
-		}
-		// Use the first active price as fallback
-		return prices[0].Price, nil
+// getSellingPrice retrieves the appropriate selling price for a variant based on membership status
+// For members (isOrgMember=true): member price → retail → MRP → any active
+// For non-members (isOrgMember=false): retail → MRP → any active
+func (s *SalesService) getSellingPrice(variantID string, isOrgMember bool) (float64, error) {
+	// Get prices from product_prices table
+	if s.priceRepo == nil {
+		return 0, errors.NewInternalServerError("price repository not configured")
 	}
-	return price.Price, nil
+
+	// 1. For FPO members: try member price first
+	if isOrgMember {
+		memberPrice, err := s.priceRepo.GetCurrentPrice(variantID, models.PriceTypeMember)
+		if err == nil && memberPrice != nil {
+			s.logger.Debug("Using member price",
+				zap.String("variant_id", variantID),
+				zap.Float64("price", memberPrice.Price))
+			return memberPrice.Price, nil
+		}
+		// Member fallback continues to retail below
+	}
+
+	// 2. For non-members OR member fallback: use retail price
+	retailPrice, err := s.priceRepo.GetCurrentPrice(variantID, models.PriceTypeRetail)
+	if err == nil && retailPrice != nil {
+		s.logger.Debug("Using retail price",
+			zap.String("variant_id", variantID),
+			zap.Float64("price", retailPrice.Price),
+			zap.Bool("is_org_member", isOrgMember))
+		return retailPrice.Price, nil
+	}
+
+	// 3. Fallback to MRP (for backwards compatibility)
+	mrpPrice, err := s.priceRepo.GetCurrentPrice(variantID, models.PriceTypeMRP)
+	if err == nil && mrpPrice != nil {
+		s.logger.Debug("Using MRP price (fallback)",
+			zap.String("variant_id", variantID),
+			zap.Float64("price", mrpPrice.Price))
+		return mrpPrice.Price, nil
+	}
+
+	// 4. Final fallback: any active price
+	prices, err := s.priceRepo.GetActiveByVariantID(variantID)
+	if err != nil || len(prices) == 0 {
+		return 0, errors.NewNotFoundError("no pricing information found for variant")
+	}
+
+	s.logger.Debug("Using first available price (final fallback)",
+		zap.String("variant_id", variantID),
+		zap.Float64("price", prices[0].Price))
+	return prices[0].Price, nil
 }
 
 // isValidPaymentMode validates payment mode (BRD requirement)
@@ -623,18 +897,21 @@ func (s *SalesService) validateSaleRequest(req *models.CreateSaleRequest) error 
 
 func (s *SalesService) mapSaleToResponse(sale *models.Sale) *models.SaleResponse {
 	response := &models.SaleResponse{
-		ID:          sale.ID,
-		WarehouseID: sale.WarehouseID,
-		SaleDate:    sale.SaleDate.Format("2006-01-02T15:04:05Z07:00"),
-		TotalAmount: sale.TotalAmount,
-		Status:      sale.Status,
-		// BRD Requirements
-		CustomerID:  sale.CustomerID,
-		PaymentMode: sale.PaymentMode,
-		SaleType:    sale.SaleType,
-		ApplyTaxes:  sale.ApplyTaxes,
-		CreatedAt:   sale.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt:   sale.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		ID:            sale.ID,
+		InvoiceNumber: sale.InvoiceNumber,
+		WarehouseID:   sale.WarehouseID,
+		SaleDate:      sale.SaleDate.Format("2006-01-02T15:04:05Z07:00"),
+		TotalAmount:   sale.TotalAmount,
+		Status:        sale.Status,
+		// BRD Requirements - Customer tracking
+		CustomerPhone: sale.CustomerPhone,
+		CustomerName:  sale.CustomerName,
+		IsOrgMember:   sale.IsOrgMember,
+		PaymentMode:   sale.PaymentMode,
+		SaleType:      sale.SaleType,
+		ApplyTaxes:    sale.ApplyTaxes,
+		CreatedAt:     sale.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:     sale.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 
 	// Add cancellation fields if present
@@ -656,13 +933,13 @@ func (s *SalesService) mapSaleToResponse(sale *models.Sale) *models.SaleResponse
 			SellingPrice: item.SellingPrice,
 			LineTotal:    item.LineTotal,
 			// BRD Requirements - Cost and Margin
-			CostPrice:       item.CostPrice,
-			Margin:          item.Margin,
-			CGSTAmount:      item.CGSTAmount,
-			SGSTAmount:      item.SGSTAmount,
-			CustomTaxAmount: item.CustomTaxAmount,
-			TotalTaxAmount:  item.TotalTaxAmount,
-			CreatedAt:       item.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			CostPrice:      item.CostPrice,
+			Margin:         item.Margin,
+			CGSTAmount:     item.CGSTAmount,
+			SGSTAmount:     item.SGSTAmount,
+			IGSTAmount:     item.IGSTAmount,
+			TotalTaxAmount: item.TotalTaxAmount,
+			CreatedAt:      item.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		})
 	}
 
@@ -853,84 +1130,84 @@ func (s *SalesService) resolveDiscountsWithPriority(req *models.CreateSaleReques
 	return finalDiscounts, applications, totalDiscountAmount, nil
 }
 
-// applyTaxesToSaleWithTx applies taxes to a sale using warehouse-based calculation within a transaction
+// applyTaxesToSaleWithTx aggregates taxes from sale items and creates TaxSummary within a transaction
+// GST-only tax system: taxes are already calculated per-item, this just aggregates them
 func (s *SalesService) applyTaxesToSaleWithTx(tx *gorm.DB, saleID string, saleItems []models.SaleItem, warehouseID string) (*models.TaxSummary, error) {
-	// Convert sale items to tax calculation items
-	var taxItems []models.TaxCalculationItem
+	// Aggregate tax amounts from sale items (already calculated during item creation)
+	var totalCGST, totalSGST, totalIGST, totalTax, subTotal float64
+	isInterState := false
+
 	for _, item := range saleItems {
-		// Get batch to retrieve product ID
-		batch, err := s.inventoryRepo.GetBatchByID(item.BatchID)
-		if err != nil {
-			return nil, err
+		totalCGST += item.CGSTAmount
+		totalSGST += item.SGSTAmount
+		totalIGST += item.IGSTAmount
+		totalTax += item.TotalTaxAmount
+		subTotal += item.LineTotal
+		// If any item has IGST, it's an inter-state sale
+		if item.IGSTAmount > 0 {
+			isInterState = true
 		}
-
-		taxItem := models.TaxCalculationItem{
-			ProductID:  batch.VariantID,
-			CategoryID: nil, // No category management in current model
-			Quantity:   int(item.Quantity),
-			UnitPrice:  item.SellingPrice,
-			LineTotal:  item.LineTotal,
-		}
-		taxItems = append(taxItems, taxItem)
 	}
 
-	// Default state since warehouse doesn't store state directly (can be configurable)
-	defaultState := "DefaultState" // This should be configurable or fetched from address service
+	grandTotal := subTotal + totalTax
 
-	// Create tax calculation request without customer information
-	taxReq := &models.TaxCalculationRequest{
-		CustomerID:     nil, // No customer management
-		CustomerState:  nil, // No customer management
-		CustomerGSTIN:  nil, // No customer GSTIN
-		CustomerPAN:    nil, // No customer PAN
-		WarehouseID:    warehouseID,
-		WarehouseState: defaultState, // Use default state for warehouse
-		Items:          taxItems,
-		IsInterState:   false, // Default to intra-state for warehouse-based taxation
+	// Create tax summary
+	taxSummary := models.NewTaxSummary()
+	taxSummary.SaleID = &saleID
+	taxSummary.CGSTAmount = totalCGST
+	taxSummary.SGSTAmount = totalSGST
+	taxSummary.IGSTAmount = totalIGST
+	taxSummary.TotalTaxAmount = totalTax
+	taxSummary.SubTotal = subTotal
+	taxSummary.GrandTotal = grandTotal
+	taxSummary.IsInterState = isInterState
+
+	// Save tax summary using transaction
+	if err := s.taxRepo.CreateTaxSummaryWithTx(tx, taxSummary); err != nil {
+		return nil, err
 	}
 
-	// Use the tax service to apply taxes and create summary within transaction
-	return s.taxService.ApplyTaxesToSaleWithTx(tx, saleID, saleItems, taxReq, "system")
+	return taxSummary, nil
 }
 
-// applyTaxesToSale applies taxes to a sale using warehouse-based calculation (no customer data needed)
+// applyTaxesToSale aggregates taxes from sale items and creates TaxSummary (no transaction)
+// GST-only tax system: taxes are already calculated per-item, this just aggregates them
 func (s *SalesService) applyTaxesToSale(saleID string, saleItems []models.SaleItem, warehouseID string) (*models.TaxSummary, error) {
-	// Convert sale items to tax calculation items
-	var taxItems []models.TaxCalculationItem
+	// Aggregate tax amounts from sale items (already calculated during item creation)
+	var totalCGST, totalSGST, totalIGST, totalTax, subTotal float64
+	isInterState := false
+
 	for _, item := range saleItems {
-		// Get batch to retrieve product ID
-		batch, err := s.inventoryRepo.GetBatchByID(item.BatchID)
-		if err != nil {
-			return nil, err
+		totalCGST += item.CGSTAmount
+		totalSGST += item.SGSTAmount
+		totalIGST += item.IGSTAmount
+		totalTax += item.TotalTaxAmount
+		subTotal += item.LineTotal
+		// If any item has IGST, it's an inter-state sale
+		if item.IGSTAmount > 0 {
+			isInterState = true
 		}
-
-		taxItem := models.TaxCalculationItem{
-			ProductID:  batch.VariantID,
-			CategoryID: nil, // No category management in current model
-			Quantity:   int(item.Quantity),
-			UnitPrice:  item.SellingPrice,
-			LineTotal:  item.LineTotal,
-		}
-		taxItems = append(taxItems, taxItem)
 	}
 
-	// Default state since warehouse doesn't store state directly (can be configurable)
-	defaultState := "DefaultState" // This should be configurable or fetched from address service
+	grandTotal := subTotal + totalTax
 
-	// Create tax calculation request without customer information
-	taxReq := &models.TaxCalculationRequest{
-		CustomerID:     nil, // No customer management
-		CustomerState:  nil, // No customer management
-		CustomerGSTIN:  nil, // No customer GSTIN
-		CustomerPAN:    nil, // No customer PAN
-		WarehouseID:    warehouseID,
-		WarehouseState: defaultState, // Use default state for warehouse
-		Items:          taxItems,
-		IsInterState:   false, // Default to intra-state for warehouse-based taxation
+	// Create tax summary
+	taxSummary := models.NewTaxSummary()
+	taxSummary.SaleID = &saleID
+	taxSummary.CGSTAmount = totalCGST
+	taxSummary.SGSTAmount = totalSGST
+	taxSummary.IGSTAmount = totalIGST
+	taxSummary.TotalTaxAmount = totalTax
+	taxSummary.SubTotal = subTotal
+	taxSummary.GrandTotal = grandTotal
+	taxSummary.IsInterState = isInterState
+
+	// Save tax summary
+	if err := s.taxRepo.CreateTaxSummary(taxSummary); err != nil {
+		return nil, err
 	}
 
-	// Use the existing tax service to apply taxes
-	return s.taxService.ApplyTaxesToSale(saleID, saleItems, taxReq, "system")
+	return taxSummary, nil
 }
 
 // calculateDiscountAmount calculates discount amount based on discount type
@@ -960,18 +1237,16 @@ func (s *SalesService) calculateDiscountAmount(discount *models.Discount, orderV
 }
 
 // CanCancelSale determines if a sale can be cancelled based on its status
+// Uses ValidStatusTransitions from models to determine if cancellation is allowed
 func (s *SalesService) CanCancelSale(sale *models.Sale) (bool, string) {
 	switch sale.Status {
-	case "cancelled":
+	case models.SaleStatusCancelled:
 		return false, "Sale is already cancelled"
-	case "shipped", "delivered":
-		return false, "Cannot cancel shipped/delivered orders. Use Returns instead."
-	case "returned":
-		return false, "Sale has already been returned"
-	case "pending", "confirmed", "processing":
+	case models.SaleStatusPending, models.SaleStatusCompleted:
+		// Both pending and completed sales can be cancelled per state machine
 		return true, ""
 	default:
-		return false, "Unknown sale status"
+		return false, "Unknown sale status: " + sale.Status
 	}
 }
 
@@ -1053,8 +1328,8 @@ func (s *SalesService) CancelSale(saleID string, req *models.CancelSaleRequest) 
 				zap.String("batch_id", saleItem.BatchID),
 				zap.Int64("quantity", saleItem.Quantity))
 
-			// Get batch to retrieve variant ID for response
-			batch, err := s.inventoryRepo.GetBatchByID(saleItem.BatchID)
+			// Bug #3 Fix: Use transactional batch read (includes soft-deleted batches)
+			batch, err := s.inventoryRepo.GetBatchByIDWithTx(tx, saleItem.BatchID)
 			if err != nil {
 				s.logger.Error("Failed to get batch",
 					zap.Error(err),
@@ -1062,48 +1337,89 @@ func (s *SalesService) CancelSale(saleID string, req *models.CancelSaleRequest) 
 				return errors.NewInternalServerError("Failed to get batch information")
 			}
 
-			// Restore inventory: Create inventory transaction
-			note := "Inventory restored for cancelled sale " + sale.ID
-			transaction := models.NewInventoryTransaction(
-				saleItem.BatchID,
-				"cancellation_return",
-				saleItem.Quantity, // Positive to add back
-				&cancellation.ID,
-				&req.PerformedBy,
-				&note,
-				time.Now(),
-			)
+			// Track whether inventory was actually restored
+			inventoryWasRestored := false
+			var transactionID *string
 
-			if err := s.inventoryRepo.CreateTransactionWithTx(tx, transaction); err != nil {
-				s.logger.Error("Failed to create inventory transaction",
-					zap.Error(err),
-					zap.String("batch_id", saleItem.BatchID))
-				return errors.NewInternalServerError("Failed to restore inventory")
-			}
-			s.logger.Debug("Inventory transaction created",
-				zap.String("transaction_id", transaction.ID))
-
-			// Update batch stock level (add back the quantity)
+			// Smart release/restore based on sale status and SkipInventoryReturn flag
 			if !req.SkipInventoryReturn {
-				if err := s.inventoryRepo.UpdateBatchStockWithTx(tx, saleItem.BatchID, saleItem.Quantity); err != nil {
-					s.logger.Error("Failed to update batch stock",
+				// Determine transaction type and action based on sale status
+				isPendingSale := models.IsReservationStatus(sale.Status)
+
+				var transactionType string
+				var note string
+
+				if isPendingSale {
+					// PENDING SALE: Release reservation (reserved_quantity decreases, total_quantity unchanged)
+					transactionType = "reservation_release"
+					note = "Reservation released for cancelled pending sale " + sale.ID
+
+					if err := s.inventoryRepo.ReleaseBatchReservationWithTx(tx, saleItem.BatchID, saleItem.Quantity); err != nil {
+						s.logger.Error("Failed to release batch reservation",
+							zap.Error(err),
+							zap.String("batch_id", saleItem.BatchID))
+						return errors.NewInternalServerError("Failed to release reservation")
+					}
+					s.logger.Info("Reservation released from batch",
+						zap.String("batch_id", saleItem.BatchID),
+						zap.Int64("quantity_released", saleItem.Quantity))
+
+					// For pending sales, we released reservation but didn't restore stock (it was never deducted)
+					inventoryWasRestored = false
+				} else {
+					// COMPLETED SALE: Restore actual stock (total_quantity increases)
+					transactionType = "cancellation_return"
+					note = "Inventory restored for cancelled completed sale " + sale.ID
+
+					if err := s.inventoryRepo.UpdateBatchStockWithTx(tx, saleItem.BatchID, saleItem.Quantity); err != nil {
+						s.logger.Error("Failed to restore batch stock",
+							zap.Error(err),
+							zap.String("batch_id", saleItem.BatchID))
+						return errors.NewInternalServerError("Failed to restore batch stock")
+					}
+					s.logger.Info("Inventory restored to batch",
+						zap.String("batch_id", saleItem.BatchID),
+						zap.Int64("quantity_restored", saleItem.Quantity))
+
+					inventoryWasRestored = true
+				}
+
+				// Create inventory transaction for audit trail
+				transaction := models.NewInventoryTransaction(
+					saleItem.BatchID,
+					transactionType,
+					saleItem.Quantity, // Positive for release/restore
+					&cancellation.ID,
+					&req.PerformedBy,
+					&note,
+					time.Now(),
+				)
+
+				if err := s.inventoryRepo.CreateTransactionWithTx(tx, transaction); err != nil {
+					s.logger.Error("Failed to create inventory transaction",
 						zap.Error(err),
 						zap.String("batch_id", saleItem.BatchID))
-					return errors.NewInternalServerError("Failed to restore batch stock")
+					return errors.NewInternalServerError("Failed to record inventory transaction")
 				}
-				s.logger.Info("Inventory restored to batch",
-					zap.String("batch_id", saleItem.BatchID),
-					zap.Int64("quantity_restored", saleItem.Quantity))
+				s.logger.Debug("Inventory transaction created",
+					zap.String("transaction_id", transaction.ID),
+					zap.String("transaction_type", transactionType))
+
+				transactionID = &transaction.ID
+			} else {
+				s.logger.Debug("Skipping inventory restoration as requested",
+					zap.String("batch_id", saleItem.BatchID))
 			}
 
-			// Create SaleCancellationItem record
+			// Bug #2 Fix: Create SaleCancellationItem with accurate inventoryRestored flag
 			cancellationItem := models.NewSaleCancellationItem(
 				cancellation.ID,
 				saleItem.ID,
 				saleItem.BatchID,
 				saleItem.Quantity,
 				saleItem.LineTotal,
-				&transaction.ID,
+				transactionID,
+				inventoryWasRestored, // Now accurately reflects whether inventory was restored
 			)
 
 			if err := s.saleCancellationRepo.CreateCancellationItemWithTx(tx, cancellationItem); err != nil {
@@ -1113,27 +1429,130 @@ func (s *SalesService) CancelSale(saleID string, req *models.CancelSaleRequest) 
 				return errors.NewInternalServerError("Failed to create cancellation item")
 			}
 
-			// Add to restored items list
-			inventoryRestored = append(inventoryRestored, models.InventoryRestoredItem{
-				BatchID:          saleItem.BatchID,
-				VariantID:        batch.VariantID,
-				QuantityRestored: saleItem.Quantity,
-				TransactionID:    transaction.ID,
-			})
+			// Add to restored items list (only if inventory was actually restored)
+			if inventoryWasRestored {
+				inventoryRestored = append(inventoryRestored, models.InventoryRestoredItem{
+					BatchID:          saleItem.BatchID,
+					VariantID:        batch.VariantID,
+					QuantityRestored: saleItem.Quantity,
+					TransactionID:    *transactionID,
+				})
+			}
 		}
 
 		// 5. Reverse discounts (if any were applied)
-		// TODO: Implement discount reversal logic
-		s.logger.Debug("Discount reversal not yet implemented - skipping")
+		s.logger.Debug("Checking for discounts to reverse", zap.String("sale_id", sale.ID))
+		var discountReversedInfo *models.DiscountReversedInfo
+		discountUsages, err := s.discountsRepo.GetDiscountUsageBySaleWithTx(tx, sale.ID)
+		if err != nil {
+			s.logger.Warn("Failed to get discount usages for sale",
+				zap.Error(err),
+				zap.String("sale_id", sale.ID))
+			// Non-critical - continue with cancellation
+		} else if len(discountUsages) > 0 {
+			s.logger.Info("Found discounts to reverse",
+				zap.String("sale_id", sale.ID),
+				zap.Int("discount_count", len(discountUsages)))
+
+			var totalDiscountReversed float64
+			var lastDiscountID string
+			for _, usage := range discountUsages {
+				// Decrement usage count for the discount
+				if err := s.discountsRepo.DecrementUsageWithTx(tx, usage.DiscountID); err != nil {
+					s.logger.Warn("Failed to decrement discount usage",
+						zap.Error(err),
+						zap.String("discount_id", usage.DiscountID))
+					// Non-critical - continue
+				} else {
+					s.logger.Debug("Decremented discount usage",
+						zap.String("discount_id", usage.DiscountID))
+				}
+				totalDiscountReversed += usage.Amount
+				lastDiscountID = usage.DiscountID
+			}
+
+			// Delete the discount usage records
+			if err := s.discountsRepo.DeleteDiscountUsagesBySaleWithTx(tx, sale.ID); err != nil {
+				s.logger.Warn("Failed to delete discount usage records",
+					zap.Error(err),
+					zap.String("sale_id", sale.ID))
+				// Non-critical - continue
+			} else {
+				s.logger.Debug("Deleted discount usage records",
+					zap.String("sale_id", sale.ID))
+			}
+
+			// Update cancellation record with discount reversal info
+			cancellation.DiscountReversed = totalDiscountReversed
+			if err := s.saleCancellationRepo.UpdateCancellationWithTx(tx, cancellation); err != nil {
+				s.logger.Warn("Failed to update cancellation with discount info",
+					zap.Error(err),
+					zap.String("cancellation_id", cancellation.ID))
+				// Non-critical - continue
+			}
+
+			// Build discount reversal info for response
+			discountReversedInfo = &models.DiscountReversedInfo{
+				DiscountID:       lastDiscountID, // Use last discount ID (if multiple, frontend should query for full details)
+				AmountReversed:   totalDiscountReversed,
+				UsageDecremented: true,
+			}
+			s.logger.Info("Discount reversal completed",
+				zap.Float64("total_reversed", totalDiscountReversed))
+		}
 
 		// 6. Void tax records (if taxes were applied)
-		// TODO: Implement tax voiding logic
-		s.logger.Debug("Tax voiding not yet implemented - skipping")
+		s.logger.Debug("Checking for taxes to void", zap.String("sale_id", sale.ID))
+		var taxVoidedInfo *models.TaxVoidedInfo
+		taxSummary, err := s.taxRepo.GetTaxSummaryBySaleWithTx(tx, sale.ID)
+		if err != nil {
+			s.logger.Warn("Failed to get tax summary for sale",
+				zap.Error(err),
+				zap.String("sale_id", sale.ID))
+			// Non-critical - continue with cancellation
+		} else if taxSummary != nil && taxSummary.TotalTaxAmount > 0 {
+			s.logger.Info("Found taxes to void",
+				zap.String("sale_id", sale.ID),
+				zap.Float64("total_tax_amount", taxSummary.TotalTaxAmount))
 
-		// 7. Update Sale status to "cancelled"
+			// Store tax summary ID and amount before deleting
+			taxSummaryID := taxSummary.ID
+			totalTaxVoided := taxSummary.TotalTaxAmount
+
+			// GST-only tax system: No TaxApplications table, only TaxSummary
+			// Delete tax summary for this sale
+			if err := s.taxRepo.DeleteTaxSummaryBySaleWithTx(tx, sale.ID); err != nil {
+				s.logger.Warn("Failed to delete tax summary",
+					zap.Error(err),
+					zap.String("sale_id", sale.ID))
+				// Non-critical - continue
+			} else {
+				s.logger.Debug("Deleted tax summary",
+					zap.String("sale_id", sale.ID))
+			}
+
+			// Update cancellation record with tax reversal info
+			cancellation.TaxReversed = totalTaxVoided
+			if err := s.saleCancellationRepo.UpdateCancellationWithTx(tx, cancellation); err != nil {
+				s.logger.Warn("Failed to update cancellation with tax info",
+					zap.Error(err),
+					zap.String("cancellation_id", cancellation.ID))
+				// Non-critical - continue
+			}
+
+			// Build tax voided info for response
+			taxVoidedInfo = &models.TaxVoidedInfo{
+				TaxSummaryID: taxSummaryID,
+				AmountVoided: totalTaxVoided,
+			}
+			s.logger.Info("Tax voiding completed",
+				zap.Float64("total_voided", totalTaxVoided))
+		}
+
+		// 7. Update Sale status to cancelled
 		s.logger.Debug("Updating sale status to cancelled",
 			zap.String("sale_id", sale.ID))
-		sale.Status = "cancelled"
+		sale.Status = models.SaleStatusCancelled
 		now := time.Now()
 		sale.CancelledAt = &now
 		sale.CancellationReason = &req.Reason
@@ -1145,11 +1564,21 @@ func (s *SalesService) CancelSale(saleID string, req *models.CancelSaleRequest) 
 			return errors.NewInternalServerError("Failed to update sale status")
 		}
 
+		// Build financial adjustments if any
+		var financialAdjustments *models.FinancialAdjustmentsResponse
+		if discountReversedInfo != nil || taxVoidedInfo != nil {
+			financialAdjustments = &models.FinancialAdjustmentsResponse{
+				DiscountReversed: discountReversedInfo,
+				TaxVoided:        taxVoidedInfo,
+			}
+		}
+
 		// Build response
 		response = &models.CancelSaleResponse{
-			Sale:              *s.mapSaleToResponse(sale),
-			InventoryRestored: inventoryRestored,
-			CancellationID:    cancellation.ID,
+			Sale:                 *s.mapSaleToResponse(sale),
+			InventoryRestored:    inventoryRestored,
+			FinancialAdjustments: financialAdjustments,
+			CancellationID:       cancellation.ID,
 		}
 
 		return nil
@@ -1165,6 +1594,459 @@ func (s *SalesService) CancelSale(saleID string, req *models.CancelSaleRequest) 
 	s.logger.Info("Sale cancellation completed successfully",
 		zap.String("sale_id", saleID),
 		zap.String("cancellation_id", response.CancellationID))
+
+	return response, nil
+}
+
+// GetCancellations retrieves all cancellations for a sale
+func (s *SalesService) GetCancellations(saleID string) (*models.GetCancellationsResponse, error) {
+	s.logger.Info("Getting cancellations for sale", zap.String("sale_id", saleID))
+
+	// Verify sale exists
+	sale, err := s.salesRepo.GetSaleByID(saleID)
+	if err != nil {
+		s.logger.Error("Failed to get sale", zap.Error(err), zap.String("sale_id", saleID))
+		return nil, errors.NewNotFoundError("Sale")
+	}
+
+	// Get all cancellations for this sale
+	cancellations, err := s.saleCancellationRepo.GetCancellationsBySaleID(sale.ID)
+	if err != nil {
+		s.logger.Error("Failed to get cancellations", zap.Error(err), zap.String("sale_id", saleID))
+		return nil, errors.NewInternalServerError("Failed to retrieve cancellations")
+	}
+
+	// Map to response
+	var cancellationResponses []models.SaleCancellationResponse
+	for _, c := range cancellations {
+		var itemResponses []models.SaleCancellationItemResponse
+		for _, item := range c.Items {
+			itemResponses = append(itemResponses, models.SaleCancellationItemResponse{
+				ID:                item.ID,
+				CancellationID:    item.CancellationID,
+				SaleItemID:        item.SaleItemID,
+				BatchID:           item.BatchID,
+				QuantityCancelled: item.QuantityCancelled,
+				RefundAmount:      item.RefundAmount,
+				InventoryRestored: item.InventoryRestored,
+				TransactionID:     item.TransactionID,
+				CreatedAt:         item.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			})
+		}
+
+		cancellationResponses = append(cancellationResponses, models.SaleCancellationResponse{
+			ID:               c.ID,
+			SaleID:           c.SaleID,
+			CancellationType: c.CancellationType,
+			CancelledBy:      c.CancelledBy,
+			Reason:           c.Reason,
+			ReasonDetails:    c.ReasonDetails,
+			CancelledAt:      c.CancelledAt.Format("2006-01-02T15:04:05Z07:00"),
+			OriginalAmount:   c.OriginalAmount,
+			CancelledAmount:  c.CancelledAmount,
+			DiscountReversed: c.DiscountReversed,
+			TaxReversed:      c.TaxReversed,
+			Items:            itemResponses,
+			CreatedAt:        c.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			UpdatedAt:        c.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		})
+	}
+
+	s.logger.Info("Retrieved cancellations successfully",
+		zap.String("sale_id", saleID),
+		zap.Int("count", len(cancellations)))
+
+	return &models.GetCancellationsResponse{
+		SaleID:        saleID,
+		Cancellations: cancellationResponses,
+		TotalCount:    len(cancellations),
+	}, nil
+}
+
+// CancelItems cancels specific items in a sale (partial cancellation)
+func (s *SalesService) CancelItems(saleID string, req *models.CancelItemsRequest) (*models.CancelItemsResponse, error) {
+	s.logger.Info("Starting partial sale cancellation",
+		zap.String("sale_id", saleID),
+		zap.String("reason", req.Reason),
+		zap.Int("items_count", len(req.Items)))
+
+	// Validate reason - if "other", reason_details is required
+	if req.Reason == models.ReasonOther && (req.ReasonDetails == nil || *req.ReasonDetails == "") {
+		s.logger.Error("Reason details required for 'other' reason", zap.String("sale_id", saleID))
+		return nil, errors.NewValidationError("reason_details is required when reason is 'other'")
+	}
+
+	var response *models.CancelItemsResponse
+
+	err := s.salesRepo.WithTransaction(func(tx *gorm.DB) error {
+		// 1. Lock sale record (SELECT FOR UPDATE)
+		sale, err := s.salesRepo.GetSaleForUpdateWithTx(tx, saleID)
+		if err != nil {
+			s.logger.Error("Failed to get sale for update", zap.Error(err), zap.String("sale_id", saleID))
+			if err == gorm.ErrRecordNotFound {
+				return errors.NewNotFoundError("Sale")
+			}
+			return errors.NewInternalServerError("Failed to lock sale")
+		}
+
+		// 2. Check if sale can have items cancelled
+		// Valid statuses are: pending, completed, cancelled (see models/sales.go)
+		if sale.Status == models.SaleStatusCancelled {
+			return errors.NewBadRequestError("Sale is already fully cancelled")
+		}
+		// Note: Only pending and completed sales can have items cancelled
+		// - pending: releases reservation
+		// - completed: restores stock
+
+		// 3. Build a map of sale items for quick lookup
+		saleItemMap := make(map[string]*models.SaleItem)
+		for i := range sale.Items {
+			saleItemMap[sale.Items[i].ID] = &sale.Items[i]
+		}
+
+		// 4. Validate all requested items
+		var totalCancelledAmount float64
+		for _, itemReq := range req.Items {
+			// Validate quantity is positive
+			if itemReq.Quantity <= 0 {
+				return errors.NewBadRequestError("Cancellation quantity must be greater than 0 for item " + itemReq.SaleItemID)
+			}
+			saleItem, exists := saleItemMap[itemReq.SaleItemID]
+			if !exists {
+				return errors.NewBadRequestError("Sale item " + itemReq.SaleItemID + " not found in this sale")
+			}
+			if itemReq.Quantity > saleItem.Quantity {
+				return errors.NewBadRequestError("Cannot cancel more than available quantity for item " + itemReq.SaleItemID)
+			}
+		}
+
+		// 5. Create SaleCancellation record (partial)
+		cancellation := models.NewSaleCancellation(
+			sale.ID,
+			models.CancellationTypePartial,
+			req.Reason,
+			&req.PerformedBy,
+			req.ReasonDetails,
+			sale.TotalAmount,
+			0, // Will be calculated
+		)
+
+		if err := s.saleCancellationRepo.CreateCancellationWithTx(tx, cancellation); err != nil {
+			s.logger.Error("Failed to create cancellation record", zap.Error(err))
+			return errors.NewInternalServerError("Failed to create cancellation record")
+		}
+
+		// 6. Process each item
+		var inventoryRestored []models.InventoryRestoredItem
+		var cancelledItems []models.CancelledItemInfo
+
+		for _, itemReq := range req.Items {
+			saleItem := saleItemMap[itemReq.SaleItemID]
+
+			// Guard against division by zero (data integrity check)
+			if saleItem.Quantity <= 0 {
+				s.logger.Error("Invalid sale item: quantity is zero or negative",
+					zap.String("sale_item_id", saleItem.ID),
+					zap.Int64("quantity", saleItem.Quantity))
+				return errors.NewInternalServerError("Data integrity error: sale item has invalid quantity")
+			}
+
+			// Calculate refund amount for this item (including proportional taxes)
+			basePricePerUnit := saleItem.LineTotal / float64(saleItem.Quantity)
+			taxPerUnit := saleItem.TotalTaxAmount / float64(saleItem.Quantity)
+			totalPricePerUnit := basePricePerUnit + taxPerUnit
+			refundAmount := totalPricePerUnit * float64(itemReq.Quantity)
+			totalCancelledAmount += refundAmount
+
+			// Use transactional batch read (includes soft-deleted batches)
+			batch, err := s.inventoryRepo.GetBatchByIDWithTx(tx, saleItem.BatchID)
+			if err != nil {
+				s.logger.Error("Failed to get batch for partial cancellation",
+					zap.Error(err),
+					zap.String("batch_id", saleItem.BatchID))
+				return errors.NewInternalServerError("Failed to get batch information")
+			}
+
+			// Handle inventory based on sale status
+			isPendingSale := models.IsReservationStatus(sale.Status)
+			var transactionType string
+			var note string
+			var inventoryWasRestored bool
+
+			if isPendingSale {
+				// PENDING: Release reservation (reserved_quantity decreases, total unchanged)
+				if err := s.inventoryRepo.ReleaseBatchReservationWithTx(tx, saleItem.BatchID, itemReq.Quantity); err != nil {
+					s.logger.Error("Failed to release reservation for partial cancellation",
+						zap.Error(err),
+						zap.String("batch_id", saleItem.BatchID))
+					return errors.NewInternalServerError("Failed to release reservation")
+				}
+				transactionType = models.TransactionTypeReservationRelease
+				note = "Reservation released for partial cancellation " + cancellation.ID
+				inventoryWasRestored = false // Reservation released, not stock restored
+			} else {
+				// COMPLETED: Restore actual stock (total_quantity increases)
+				if err := s.inventoryRepo.UpdateBatchStockWithTx(tx, saleItem.BatchID, itemReq.Quantity); err != nil {
+					s.logger.Error("Failed to restore stock for partial cancellation",
+						zap.Error(err),
+						zap.String("batch_id", saleItem.BatchID))
+					return errors.NewInternalServerError("Failed to restore stock")
+				}
+				transactionType = models.TransactionTypeCancellationReturn
+				note = "Inventory restored for partial cancellation " + cancellation.ID
+				inventoryWasRestored = true // Actual stock was restored
+			}
+
+			// Create inventory transaction
+			transaction := models.NewInventoryTransaction(
+				saleItem.BatchID,
+				transactionType,
+				itemReq.Quantity,
+				&cancellation.ID,
+				&req.PerformedBy,
+				&note,
+				time.Now(),
+			)
+
+			if err := s.inventoryRepo.CreateTransactionWithTx(tx, transaction); err != nil {
+				s.logger.Error("Failed to create inventory transaction",
+					zap.Error(err),
+					zap.String("batch_id", saleItem.BatchID))
+				return errors.NewInternalServerError("Failed to record inventory change")
+			}
+
+			// Create cancellation item record with accurate inventoryRestored flag
+			cancellationItem := models.NewSaleCancellationItem(
+				cancellation.ID,
+				saleItem.ID,
+				saleItem.BatchID,
+				itemReq.Quantity,
+				refundAmount,
+				&transaction.ID,
+				inventoryWasRestored, // Accurate based on actual operation performed
+			)
+
+			if err := s.saleCancellationRepo.CreateCancellationItemWithTx(tx, cancellationItem); err != nil {
+				s.logger.Error("Failed to create cancellation item", zap.Error(err))
+				return errors.NewInternalServerError("Failed to create cancellation item")
+			}
+
+			// Update sale item quantity if partial
+			if itemReq.Quantity < saleItem.Quantity {
+				newQuantity := saleItem.Quantity - itemReq.Quantity
+				// Recalculate all proportional fields (GST-only tax system)
+				newLineTotal := basePricePerUnit * float64(newQuantity)
+				marginPerUnit := saleItem.Margin / float64(saleItem.Quantity)
+				cgstPerUnit := saleItem.CGSTAmount / float64(saleItem.Quantity)
+				sgstPerUnit := saleItem.SGSTAmount / float64(saleItem.Quantity)
+				igstPerUnit := saleItem.IGSTAmount / float64(saleItem.Quantity)
+
+				newMargin := marginPerUnit * float64(newQuantity)
+				newCGST := cgstPerUnit * float64(newQuantity)
+				newSGST := sgstPerUnit * float64(newQuantity)
+				newIGST := igstPerUnit * float64(newQuantity)
+				newTotalTax := newCGST + newSGST + newIGST
+
+				if err := tx.Model(&models.SaleItem{}).Where("id = ?", saleItem.ID).Updates(map[string]interface{}{
+					"quantity":         newQuantity,
+					"line_total":       newLineTotal,
+					"margin":           newMargin,
+					"cgst_amount":      newCGST,
+					"sgst_amount":      newSGST,
+					"igst_amount":      newIGST,
+					"total_tax_amount": newTotalTax,
+				}).Error; err != nil {
+					s.logger.Error("Failed to update sale item quantity", zap.Error(err))
+					return errors.NewInternalServerError("Failed to update sale item")
+				}
+			} else {
+				// Full item cancelled - soft delete
+				if err := tx.Delete(&models.SaleItem{}, "id = ?", saleItem.ID).Error; err != nil {
+					s.logger.Error("Failed to delete sale item", zap.Error(err))
+					return errors.NewInternalServerError("Failed to remove cancelled item")
+				}
+			}
+
+			// Add to response lists - only include in InventoryRestored if stock was actually restored
+			// (not for pending sales where only reservation was released)
+			if inventoryWasRestored && batch != nil {
+				inventoryRestored = append(inventoryRestored, models.InventoryRestoredItem{
+					BatchID:          saleItem.BatchID,
+					VariantID:        batch.VariantID,
+					QuantityRestored: itemReq.Quantity,
+					TransactionID:    transaction.ID,
+				})
+			}
+
+			cancelledItems = append(cancelledItems, models.CancelledItemInfo{
+				SaleItemID:        saleItem.ID,
+				QuantityCancelled: itemReq.Quantity,
+				AmountRefunded:    refundAmount,
+			})
+		}
+
+		// 7. Update cancellation with total amount
+		cancellation.CancelledAmount = totalCancelledAmount
+
+		// 7a. Calculate proportional discount/tax reversal for partial cancellation
+		var financialAdjustments *models.FinancialAdjustmentsResponse
+		if totalCancelledAmount > 0 && sale.TotalAmount > 0 {
+			cancelRatio := totalCancelledAmount / sale.TotalAmount
+
+			// Calculate proportional discount reversal (don't decrement usage - sale is still active)
+			discountUsages, err := s.discountsRepo.GetDiscountUsageBySaleWithTx(tx, sale.ID)
+			if err != nil {
+				s.logger.Warn("Failed to get discount usages for partial cancellation", zap.Error(err))
+			} else if len(discountUsages) > 0 {
+				var totalDiscountAmount float64
+				var lastDiscountID string
+				for _, usage := range discountUsages {
+					totalDiscountAmount += usage.Amount
+					lastDiscountID = usage.DiscountID
+				}
+				proportionalDiscount := totalDiscountAmount * cancelRatio
+				cancellation.DiscountReversed = proportionalDiscount
+
+				if financialAdjustments == nil {
+					financialAdjustments = &models.FinancialAdjustmentsResponse{}
+				}
+				financialAdjustments.DiscountReversed = &models.DiscountReversedInfo{
+					DiscountID:       lastDiscountID,
+					AmountReversed:   proportionalDiscount,
+					UsageDecremented: false, // Partial cancellation doesn't decrement usage
+				}
+				s.logger.Debug("Calculated proportional discount reversal",
+					zap.Float64("cancel_ratio", cancelRatio),
+					zap.Float64("proportional_discount", proportionalDiscount))
+			}
+
+			// Calculate proportional tax reversal (don't delete records - sale is still active)
+			taxSummary, err := s.taxRepo.GetTaxSummaryBySaleWithTx(tx, sale.ID)
+			if err != nil {
+				s.logger.Warn("Failed to get tax summary for partial cancellation", zap.Error(err))
+			} else if taxSummary != nil && taxSummary.TotalTaxAmount > 0 {
+				proportionalTax := taxSummary.TotalTaxAmount * cancelRatio
+				cancellation.TaxReversed = proportionalTax
+
+				if financialAdjustments == nil {
+					financialAdjustments = &models.FinancialAdjustmentsResponse{}
+				}
+				financialAdjustments.TaxVoided = &models.TaxVoidedInfo{
+					TaxSummaryID: taxSummary.ID,
+					AmountVoided: proportionalTax,
+				}
+				s.logger.Debug("Calculated proportional tax reversal",
+					zap.Float64("cancel_ratio", cancelRatio),
+					zap.Float64("proportional_tax", proportionalTax))
+			}
+		}
+
+		if err := s.saleCancellationRepo.UpdateCancellationWithTx(tx, cancellation); err != nil {
+			s.logger.Warn("Failed to update cancellation amount", zap.Error(err))
+		}
+
+		// 8. Update sale total (keep original status for partial cancellations)
+		newSaleTotal := sale.TotalAmount - totalCancelledAmount
+		if err := tx.Model(&models.Sale{}).Where("id = ?", sale.ID).Update("total_amount", newSaleTotal).Error; err != nil {
+			s.logger.Error("Failed to update sale total", zap.Error(err))
+			return errors.NewInternalServerError("Failed to update sale")
+		}
+		// Note: Status remains unchanged for partial cancellations (pending/completed)
+
+		// 9. Re-fetch sale to get updated items (avoids stale data in response)
+		updatedSale, err := s.salesRepo.GetSaleForUpdateWithTx(tx, sale.ID)
+		if err != nil {
+			s.logger.Warn("Failed to re-fetch sale for response, using original data", zap.Error(err))
+			updatedSale = sale
+			updatedSale.TotalAmount = newSaleTotal
+		}
+
+		// Build response with fresh data
+		response = &models.CancelItemsResponse{
+			Sale:                 *s.mapSaleToResponse(updatedSale),
+			ItemsCancelled:       cancelledItems,
+			InventoryRestored:    inventoryRestored,
+			FinancialAdjustments: financialAdjustments,
+			CancellationID:       cancellation.ID,
+			NewSaleTotal:         newSaleTotal,
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		s.logger.Error("Partial sale cancellation failed", zap.Error(err), zap.String("sale_id", saleID))
+		return nil, err
+	}
+
+	s.logger.Info("Partial sale cancellation completed successfully",
+		zap.String("sale_id", saleID),
+		zap.String("cancellation_id", response.CancellationID))
+
+	return response, nil
+}
+
+// CompleteSale converts a pending sale to completed by converting reservations to actual deductions
+// This is called when a pending sale is ready to be fulfilled (e.g., payment confirmed, order shipped)
+func (s *SalesService) CompleteSale(saleID string, performedBy string) (*models.SaleResponse, error) {
+	s.logger.Info("Starting sale completion",
+		zap.String("sale_id", saleID),
+		zap.String("performed_by", performedBy))
+
+	var response *models.SaleResponse
+
+	err := s.salesRepo.WithTransaction(func(tx *gorm.DB) error {
+		// 1. Lock and retrieve sale
+		sale, err := s.salesRepo.GetSaleForUpdateWithTx(tx, saleID)
+		if err != nil {
+			s.logger.Error("Failed to get sale for completion",
+				zap.Error(err),
+				zap.String("sale_id", saleID))
+			if err == gorm.ErrRecordNotFound {
+				return errors.NewNotFoundError("Sale")
+			}
+			return errors.NewInternalServerError("Failed to lock sale")
+		}
+
+		// 2. Validate sale status - must be pending to complete
+		if sale.Status != models.SaleStatusPending {
+			s.logger.Error("Sale is not in pending status",
+				zap.String("sale_id", saleID),
+				zap.String("current_status", sale.Status))
+			return errors.NewBadRequestError("Only pending sales can be completed. Current status: " + sale.Status)
+		}
+
+		// 3. Convert reservations to actual deductions using helper method
+		if err := s.handleCompletionInventory(tx, sale, performedBy); err != nil {
+			return err
+		}
+
+		// 4. Update sale status to completed
+		sale.Status = models.SaleStatusCompleted
+		if err := s.salesRepo.UpdateSaleWithTx(tx, sale); err != nil {
+			s.logger.Error("Failed to update sale status to completed",
+				zap.Error(err),
+				zap.String("sale_id", saleID))
+			return errors.NewInternalServerError("Failed to update sale status")
+		}
+
+		s.logger.Info("Sale status updated to completed",
+			zap.String("sale_id", saleID))
+
+		// Build response
+		response = s.mapSaleToResponse(sale)
+		return nil
+	})
+
+	if err != nil {
+		s.logger.Error("Sale completion failed",
+			zap.Error(err),
+			zap.String("sale_id", saleID))
+		return nil, err
+	}
+
+	s.logger.Info("Sale completion finished successfully",
+		zap.String("sale_id", saleID))
 
 	return response, nil
 }

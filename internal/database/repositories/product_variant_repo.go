@@ -44,6 +44,24 @@ func (r *ProductVariantRepository) GetByProductID(productID string) ([]models.Pr
 	return variants, nil
 }
 
+// GetByProductIDPaginated retrieves variants for a product with pagination
+func (r *ProductVariantRepository) GetByProductIDPaginated(productID string, limit, offset int) ([]models.ProductVariant, int64, error) {
+	var variants []models.ProductVariant
+	var total int64
+
+	query := r.db.Model(&models.ProductVariant{}).Where("product_id = ? AND is_active = ?", productID, true)
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count variants by product")
+	}
+
+	if err := query.Limit(limit).Offset(offset).Order("created_at DESC").Find(&variants).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve variants by product")
+	}
+
+	return variants, total, nil
+}
+
 // GetBySKU retrieves a product variant by SKU
 func (r *ProductVariantRepository) GetBySKU(sku string) (*models.ProductVariant, error) {
 	var variant models.ProductVariant
@@ -127,9 +145,12 @@ func (r *ProductVariantRepository) FindBySKU(sku string) (*models.ProductVariant
 }
 
 // GetByCollaboratorID retrieves all product variants for a specific collaborator
+// Now searches within the collaborator_ids JSON array
 func (r *ProductVariantRepository) GetByCollaboratorID(collaboratorID string) ([]models.ProductVariant, error) {
 	var variants []models.ProductVariant
-	if err := r.db.Where("collaborator_id = ? AND is_active = ?", collaboratorID, true).Find(&variants).Error; err != nil {
+	// Use JSON contains operator for PostgreSQL: collaborator_ids::jsonb @> '["CLAB001"]'::jsonb
+	// Both sides must be cast to jsonb for the @> operator to work
+	if err := r.db.Where("collaborator_ids::jsonb @> ?::jsonb", `["`+collaboratorID+`"]`).Where("is_active = ?", true).Find(&variants).Error; err != nil {
 		return nil, errors.NewInternalServerError("Failed to retrieve variants by collaborator")
 	}
 	return variants, nil

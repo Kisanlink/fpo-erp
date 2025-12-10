@@ -63,7 +63,7 @@ func TestInventoryService_CreateBatch_Success(t *testing.T) {
 
 	// Execute
 	expiryDate := time.Now().UTC().Add(90 * 24 * time.Hour) // 90 days from now
-	result, err := service.CreateBatch(warehouse.ID, variant.ID, 100.50, expiryDate, 500, 9.0, 9.0, []string{"TAX001"}, false)
+	result, err := service.CreateBatch(warehouse.ID, variant.ID, 100.50, expiryDate, 500)
 
 	// Assert
 	testutils.AssertNoError(t, err, "CreateBatch should succeed")
@@ -72,8 +72,6 @@ func TestInventoryService_CreateBatch_Success(t *testing.T) {
 	testutils.AssertEqual(t, result.VariantID, variant.ID, "VariantID should match")
 	testutils.AssertEqual(t, result.CostPrice, 100.50, "CostPrice should match")
 	testutils.AssertEqual(t, result.TotalQuantity, int64(500), "TotalQuantity should match")
-	testutils.AssertEqual(t, result.CGSTRate, 9.0, "CGSTRate should match")
-	testutils.AssertEqual(t, result.SGSTRate, 9.0, "SGSTRate should match")
 	testutils.AssertNotEqual(t, result.ID, "", "ID should be generated")
 
 	// Verify initial transaction was created
@@ -96,7 +94,7 @@ func TestInventoryService_CreateBatch_WarehouseNotFound(t *testing.T) {
 
 	// Execute with non-existent warehouse
 	expiryDate := time.Now().UTC().Add(90 * 24 * time.Hour)
-	_, err := service.CreateBatch("non-existent-warehouse", variant.ID, 100.50, expiryDate, 500, 9.0, 9.0, nil, false)
+	_, err := service.CreateBatch("non-existent-warehouse", variant.ID, 100.50, expiryDate, 500)
 
 	// Assert
 	testutils.AssertError(t, err, "Should fail when warehouse not found")
@@ -111,7 +109,7 @@ func TestInventoryService_CreateBatch_VariantNotFound(t *testing.T) {
 
 	// Execute with non-existent variant
 	expiryDate := time.Now().UTC().Add(90 * 24 * time.Hour)
-	_, err := service.CreateBatch(warehouse.ID, "non-existent-variant", 100.50, expiryDate, 500, 9.0, 9.0, nil, false)
+	_, err := service.CreateBatch(warehouse.ID, "non-existent-variant", 100.50, expiryDate, 500)
 
 	// Assert
 	testutils.AssertError(t, err, "Should fail when variant not found")
@@ -132,7 +130,7 @@ func TestInventoryService_CreateBatch_ExpiryInPast(t *testing.T) {
 
 	// Execute with past expiry date
 	expiryDate := time.Now().UTC().Add(-10 * 24 * time.Hour) // 10 days ago
-	_, err := service.CreateBatch(warehouse.ID, variant.ID, 100.50, expiryDate, 500, 9.0, 9.0, nil, false)
+	_, err := service.CreateBatch(warehouse.ID, variant.ID, 100.50, expiryDate, 500)
 
 	// Assert
 	testutils.AssertError(t, err, "Should fail when expiry date is in the past")
@@ -153,38 +151,10 @@ func TestInventoryService_CreateBatch_ZeroQuantity(t *testing.T) {
 
 	// Execute with zero quantity
 	expiryDate := time.Now().UTC().Add(90 * 24 * time.Hour)
-	_, err := service.CreateBatch(warehouse.ID, variant.ID, 100.50, expiryDate, 0, 9.0, 9.0, nil, false)
+	_, err := service.CreateBatch(warehouse.ID, variant.ID, 100.50, expiryDate, 0)
 
 	// Assert
 	testutils.AssertError(t, err, "Should fail when quantity is zero")
-}
-
-func TestInventoryService_CreateBatch_InvalidTaxRates(t *testing.T) {
-	service, db, cleanup := setupInventoryService(t)
-	defer cleanup()
-
-	warehouse := testutils.FixtureWarehouse("Main Warehouse")
-	db.Create(warehouse)
-
-	product := testutils.FixtureProduct("Rice")
-	db.Create(product)
-
-	variant := testutils.FixtureProductVariant(product.ID, "1kg")
-	db.Create(variant)
-
-	expiryDate := time.Now().UTC().Add(90 * 24 * time.Hour)
-
-	// Test CGST > 100
-	_, err := service.CreateBatch(warehouse.ID, variant.ID, 100.50, expiryDate, 500, 150.0, 9.0, nil, false)
-	testutils.AssertError(t, err, "Should fail when CGST rate > 100")
-
-	// Test SGST > 100
-	_, err = service.CreateBatch(warehouse.ID, variant.ID, 100.50, expiryDate, 500, 9.0, 150.0, nil, false)
-	testutils.AssertError(t, err, "Should fail when SGST rate > 100")
-
-	// Test negative tax rate
-	_, err = service.CreateBatch(warehouse.ID, variant.ID, 100.50, expiryDate, 500, -5.0, 9.0, nil, false)
-	testutils.AssertError(t, err, "Should fail when CGST rate is negative")
 }
 
 func TestInventoryService_CreateBatch_AtomicTransaction(t *testing.T) {
@@ -202,7 +172,7 @@ func TestInventoryService_CreateBatch_AtomicTransaction(t *testing.T) {
 
 	// Execute
 	expiryDate := time.Now().UTC().Add(90 * 24 * time.Hour)
-	result, err := service.CreateBatch(warehouse.ID, variant.ID, 100.50, expiryDate, 500, 9.0, 9.0, nil, false)
+	result, err := service.CreateBatch(warehouse.ID, variant.ID, 100.50, expiryDate, 500)
 
 	// Assert
 	testutils.AssertNoError(t, err, "CreateBatch should succeed")
@@ -972,34 +942,10 @@ func TestInventoryService_CreateBatch_ExpiryToday(t *testing.T) {
 
 	// Expiry date is today (should fail - must be in future)
 	expiryDate := time.Now().UTC().Truncate(24 * time.Hour) // Today at 00:00
-	_, err := service.CreateBatch(warehouse.ID, variant.ID, 100.50, expiryDate, 500, 9.0, 9.0, nil, false)
+	_, err := service.CreateBatch(warehouse.ID, variant.ID, 100.50, expiryDate, 500)
 
 	// Assert
 	testutils.AssertError(t, err, "Should fail when expiry date is today")
-}
-
-func TestInventoryService_CreateBatch_TaxExempt(t *testing.T) {
-	service, db, cleanup := setupInventoryService(t)
-	defer cleanup()
-
-	warehouse := testutils.FixtureWarehouse("Main Warehouse")
-	db.Create(warehouse)
-
-	product := testutils.FixtureProduct("Rice")
-	db.Create(product)
-
-	variant := testutils.FixtureProductVariant(product.ID, "1kg")
-	db.Create(variant)
-
-	// Create batch with tax exemption
-	expiryDate := time.Now().UTC().Add(90 * 24 * time.Hour)
-	result, err := service.CreateBatch(warehouse.ID, variant.ID, 100.50, expiryDate, 500, 0, 0, nil, true)
-
-	// Assert
-	testutils.AssertNoError(t, err, "CreateBatch should succeed with tax exemption")
-	testutils.AssertEqual(t, result.IsTaxExempt, true, "IsTaxExempt should be true")
-	testutils.AssertEqual(t, result.CGSTRate, 0.0, "CGSTRate should be 0")
-	testutils.AssertEqual(t, result.SGSTRate, 0.0, "SGSTRate should be 0")
 }
 
 // TestInventoryService_CreateBatch_CustomTaxIDs removed - redundant with TestInventoryService_CreateBatch_Success

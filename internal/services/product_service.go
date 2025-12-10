@@ -15,21 +15,23 @@ import (
 
 // ProductService handles product business logic
 type ProductService struct {
-	productRepo *repositories.ProductRepository
-	priceRepo   *repositories.ProductPriceRepository
-	variantRepo *repositories.ProductVariantRepository
-	s3Service   *S3Service
-	logger      interfaces.Logger
+	productRepo  *repositories.ProductRepository
+	priceRepo    *repositories.ProductPriceRepository
+	variantRepo  *repositories.ProductVariantRepository
+	categoryRepo *repositories.CategoryRepository
+	s3Service    *S3Service
+	logger       interfaces.Logger
 }
 
 // NewProductService creates a new product service
-func NewProductService(productRepo *repositories.ProductRepository, priceRepo *repositories.ProductPriceRepository, variantRepo *repositories.ProductVariantRepository, s3Service *S3Service, logger interfaces.Logger) *ProductService {
+func NewProductService(productRepo *repositories.ProductRepository, priceRepo *repositories.ProductPriceRepository, variantRepo *repositories.ProductVariantRepository, categoryRepo *repositories.CategoryRepository, s3Service *S3Service, logger interfaces.Logger) *ProductService {
 	return &ProductService{
-		productRepo: productRepo,
-		priceRepo:   priceRepo,
-		variantRepo: variantRepo,
-		s3Service:   s3Service,
-		logger:      logger,
+		productRepo:  productRepo,
+		priceRepo:    priceRepo,
+		variantRepo:  variantRepo,
+		categoryRepo: categoryRepo,
+		s3Service:    s3Service,
+		logger:       logger,
 	}
 }
 
@@ -41,7 +43,32 @@ func (s *ProductService) CreateProduct(request *models.CreateProductRequest) (*m
 	// Create product model using the proper constructor
 	product := models.NewProduct(request.Name, request.Description)
 
-	s.logger.Debug("Saving product to database")
+	// Set category ID if provided, otherwise default to "OTHER" category
+	if request.CategoryID != nil && *request.CategoryID != "" {
+		product.CategoryID = request.CategoryID
+	} else {
+		// Default to "OTHER" category if not provided
+		if s.categoryRepo != nil {
+			otherCategory, err := s.categoryRepo.GetByName("OTHER")
+			if err == nil && otherCategory != nil {
+				product.CategoryID = &otherCategory.ID
+				s.logger.Debug("Defaulting to OTHER category",
+					zap.String("category_id", otherCategory.ID))
+			}
+		}
+	}
+
+	// Set subcategory ID if provided
+	if request.SubcategoryID != nil && *request.SubcategoryID != "" {
+		product.SubcategoryID = request.SubcategoryID
+	}
+
+	categoryIDStr := ""
+	if product.CategoryID != nil {
+		categoryIDStr = *product.CategoryID
+	}
+	s.logger.Debug("Saving product to database",
+		zap.String("category_id", categoryIDStr))
 
 	// Save to database
 	if err := s.productRepo.Create(product); err != nil {
@@ -53,16 +80,19 @@ func (s *ProductService) CreateProduct(request *models.CreateProductRequest) (*m
 
 	// Convert to response
 	response := &models.ProductResponse{
-		ID:          product.ID,
-		Name:        product.Name,
-		Description: product.Description,
-		CreatedAt:   product.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt:   product.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		ID:            product.ID,
+		Name:          product.Name,
+		Description:   product.Description,
+		CategoryID:    product.CategoryID,
+		SubcategoryID: product.SubcategoryID,
+		CreatedAt:     product.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt:     product.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 	}
 
 	s.logger.Info("Product created successfully",
 		zap.String("product_id", product.ID),
-		zap.String("name", product.Name))
+		zap.String("name", product.Name),
+		zap.String("category_id", categoryIDStr))
 
 	return response, nil
 }
@@ -149,11 +179,13 @@ func (s *ProductService) UpdateProduct(id string, request *models.UpdateProductR
 	}
 
 	response := &models.ProductResponse{
-		ID:          product.ID,
-		Name:        product.Name,
-		Description: product.Description,
-		CreatedAt:   product.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt:   product.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		ID:            product.ID,
+		Name:          product.Name,
+		Description:   product.Description,
+		CategoryID:    product.CategoryID,
+		SubcategoryID: product.SubcategoryID,
+		CreatedAt:     product.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt:     product.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 	}
 
 	s.logger.Info("Product updated successfully",
@@ -227,7 +259,7 @@ func (s *ProductService) SearchProducts(query string) ([]models.ProductResponse,
 	return responses, nil
 }
 
-// GetProductWithPrices retrieves a product with all its prices
+// GetProductWithPrices retrieves a product with all its prices aggregated from variants
 func (s *ProductService) GetProductWithPrices(id string) (*models.ProductWithPricesResponse, error) {
 	s.logger.Info("Retrieving product with prices",
 		zap.String("product_id", id))
@@ -241,67 +273,53 @@ func (s *ProductService) GetProductWithPrices(id string) (*models.ProductWithPri
 		return nil, err
 	}
 
-	s.logger.Debug("Fetching variant prices for product",
-		zap.String("product_id", id))
-
-	// Get product prices (if priceRepo is available)
-	// NOTE: Prices are now variant-specific, not product-specific
-	// Query all variants of the product and aggregate their prices
-	var prices []models.ProductPrice
-	if s.priceRepo != nil && s.variantRepo != nil {
-		// Get all variants for this product
-		variants, err := s.variantRepo.GetByProductID(id)
+	// Get all variants for this product
+	var variants []models.ProductVariant
+	if s.variantRepo != nil {
+		variants, err = s.variantRepo.GetByProductID(id)
 		if err != nil {
-			s.logger.Error("Failed to retrieve product variants",
+			s.logger.Warn("Failed to get variants for product",
 				zap.Error(err),
 				zap.String("product_id", id))
-			return nil, err
-		}
-
-		s.logger.Debug("Retrieved variants for product",
-			zap.String("product_id", id),
-			zap.Int("variant_count", len(variants)))
-
-		// Get prices for each variant
-		for _, variant := range variants {
-			variantPrices, err := s.priceRepo.GetByVariantID(variant.ID)
-			if err != nil {
-				// Continue to next variant if price query fails
-				s.logger.Warn("Failed to retrieve prices for variant",
-					zap.Error(err),
-					zap.String("variant_id", variant.ID))
-				continue
-			}
-			prices = append(prices, variantPrices...)
+			variants = []models.ProductVariant{}
 		}
 	}
 
-	// Convert prices to response format
+	// Aggregate prices from product_prices table
 	var priceResponses []models.ProductPriceResponse
-	for _, price := range prices {
-		effectiveTo := ""
-		if price.EffectiveTo != nil {
-			effectiveTo = price.EffectiveTo.Format("2006-01-02T15:04:05Z")
-		}
 
-		isActiveValue := false
-		if price.IsActive != nil {
-			isActiveValue = *price.IsActive
-		}
+	for _, variant := range variants {
+		// Get prices from the product_prices table
+		if s.priceRepo != nil {
+			tablePrices, err := s.priceRepo.GetByVariantID(variant.ID)
+			if err == nil && len(tablePrices) > 0 {
+				for _, price := range tablePrices {
+					effectiveTo := ""
+					if price.EffectiveTo != nil {
+						effectiveTo = price.EffectiveTo.Format("2006-01-02T15:04:05Z")
+					}
 
-		priceResponse := models.ProductPriceResponse{
-			ID:            price.ID,
-			VariantID:     price.VariantID,
-			PriceType:     price.PriceType,
-			Price:         price.Price,
-			Currency:      price.Currency,
-			EffectiveFrom: price.EffectiveFrom.Format("2006-01-02T15:04:05Z"),
-			EffectiveTo:   &effectiveTo,
-			IsActive:      isActiveValue,
-			CreatedAt:     price.CreatedAt.Format("2006-01-02T15:04:05Z"),
-			UpdatedAt:     price.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+					isActive := false
+					if price.IsActive != nil {
+						isActive = *price.IsActive
+					}
+
+					priceResponse := models.ProductPriceResponse{
+						ID:            price.ID,
+						VariantID:     price.VariantID,
+						PriceType:     price.PriceType,
+						Price:         price.Price,
+						Currency:      price.Currency,
+						EffectiveFrom: price.EffectiveFrom.Format("2006-01-02T15:04:05Z"),
+						EffectiveTo:   &effectiveTo,
+						IsActive:      isActive,
+						CreatedAt:     price.CreatedAt.Format("2006-01-02T15:04:05Z"),
+						UpdatedAt:     price.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+					}
+					priceResponses = append(priceResponses, priceResponse)
+				}
+			}
 		}
-		priceResponses = append(priceResponses, priceResponse)
 	}
 
 	// Create response
@@ -317,6 +335,7 @@ func (s *ProductService) GetProductWithPrices(id string) (*models.ProductWithPri
 	s.logger.Info("Product with prices retrieved successfully",
 		zap.String("product_id", id),
 		zap.String("name", product.Name),
+		zap.Int("variant_count", len(variants)),
 		zap.Int("price_count", len(priceResponses)))
 
 	return response, nil
@@ -325,11 +344,13 @@ func (s *ProductService) GetProductWithPrices(id string) (*models.ProductWithPri
 // buildProductResponse builds a product response with variants and presigned image URLs
 func (s *ProductService) buildProductResponse(ctx context.Context, product *models.Product) *models.ProductResponse {
 	response := &models.ProductResponse{
-		ID:          product.ID,
-		Name:        product.Name,
-		Description: product.Description,
-		CreatedAt:   product.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt:   product.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		ID:            product.ID,
+		Name:          product.Name,
+		Description:   product.Description,
+		CategoryID:    product.CategoryID,
+		SubcategoryID: product.SubcategoryID,
+		CreatedAt:     product.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt:     product.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 	}
 
 	// Preload variants with presigned image URLs
@@ -346,6 +367,40 @@ func (s *ProductService) buildProductResponse(ctx context.Context, product *mode
 	}
 
 	return response
+}
+
+// GetProductsByCategory retrieves all products in a specific category
+func (s *ProductService) GetProductsByCategory(ctx context.Context, categoryID string, subcategoryID *string) ([]models.ProductResponse, error) {
+	s.logger.Info("Retrieving products by category",
+		zap.String("category_id", categoryID))
+
+	var products []models.Product
+	var err error
+
+	if subcategoryID != nil && *subcategoryID != "" {
+		products, err = s.productRepo.GetByCategoryAndSubcategory(categoryID, subcategoryID)
+	} else {
+		products, err = s.productRepo.GetByCategory(categoryID)
+	}
+
+	if err != nil {
+		s.logger.Error("Failed to retrieve products by category",
+			zap.Error(err),
+			zap.String("category_id", categoryID))
+		return nil, err
+	}
+
+	var responses []models.ProductResponse
+	for _, product := range products {
+		response := s.buildProductResponse(ctx, &product)
+		responses = append(responses, *response)
+	}
+
+	s.logger.Info("Retrieved products by category successfully",
+		zap.String("category_id", categoryID),
+		zap.Int("count", len(responses)))
+
+	return responses, nil
 }
 
 // buildVariantResponse builds a variant response with presigned image URLs
@@ -377,7 +432,7 @@ func (s *ProductService) buildVariantResponse(ctx context.Context, variant *mode
 		PackSize:           variant.PackSize,
 		SKU:                variant.SKU,
 		Barcode:            variant.Barcode,
-		CollaboratorID:     variant.CollaboratorID,
+		CollaboratorIDs:    variant.CollaboratorIDs,
 		BrandName:          variant.BrandName,
 		HSNCode:            variant.HSNCode,
 		GSTRate:            variant.GSTRate,

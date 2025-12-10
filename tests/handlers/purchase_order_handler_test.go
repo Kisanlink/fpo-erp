@@ -46,7 +46,7 @@ func TestPurchaseOrderHandler_CreatePurchaseOrder_Success(t *testing.T) {
 		PaymentStatus:    "unpaid",
 		PaidAmount:       0,
 	}
-	mockService.On("CreatePurchaseOrder", mock.Anything, mock.AnythingOfType("*models.CreatePurchaseOrderRequest")).
+	mockService.On("CreatePurchaseOrder", mock.Anything, mock.AnythingOfType("*models.CreatePurchaseOrderRequest"), mock.Anything).
 		Return(expectedResponse, nil)
 
 	// Create request
@@ -114,7 +114,7 @@ func TestPurchaseOrderHandler_CreatePurchaseOrder_ServiceError(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock service error
-	mockService.On("CreatePurchaseOrder", mock.Anything, mock.AnythingOfType("*models.CreatePurchaseOrderRequest")).
+	mockService.On("CreatePurchaseOrder", mock.Anything, mock.AnythingOfType("*models.CreatePurchaseOrderRequest"), mock.Anything).
 		Return(nil, errors.New("database error"))
 
 	// Create request

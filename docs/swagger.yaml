@@ -1,5 +1,20 @@
 basePath: /
 definitions:
+  models.ActiveTaxInfo:
+    properties:
+      cgst_rate:
+        type: number
+      id:
+        type: string
+      is_active:
+        type: boolean
+      name:
+        type: string
+      sgst_rate:
+        type: number
+      tax_type:
+        type: string
+    type: object
   models.AddressInfo:
     properties:
       country:
@@ -30,22 +45,14 @@ definitions:
         description: Village/Town/City
         type: string
     type: object
-  models.AppliedTax:
+  models.AlternatePriceInfo:
     properties:
-      amount:
+      min_quantity:
+        type: integer
+      price:
         type: number
-      base_amount:
-        type: number
-      rate:
-        type: number
-      tax_code:
+      price_type:
         type: string
-      tax_id:
-        type: string
-      tax_name:
-        type: string
-      tax_type:
-        $ref: '#/definitions/models.TaxType'
     type: object
   models.AttachmentInfoResponse:
     properties:
@@ -126,6 +133,153 @@ definitions:
       updated_at:
         type: string
     type: object
+  models.BatchDetails:
+    properties:
+      batch_number:
+        type: string
+      days_until_expiry:
+        type: integer
+      expiry_date:
+        type: string
+      expiry_status:
+        description: good, warning, critical, expired
+        type: string
+      manufacturing_date:
+        type: string
+    type: object
+  models.BatchMargin:
+    properties:
+      retail_margin:
+        type: number
+      retail_margin_percentage:
+        type: number
+    type: object
+  models.BatchMetadata:
+    properties:
+      created_at:
+        type: string
+      created_by:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  models.BatchPricing:
+    properties:
+      cost_price:
+        type: number
+      currency:
+        type: string
+      margin:
+        $ref: '#/definitions/models.BatchMargin'
+      selling_prices:
+        $ref: '#/definitions/models.BatchSellingPrices'
+    type: object
+  models.BatchSellingPrices:
+    properties:
+      bulk:
+        type: number
+      retail:
+        type: number
+      wholesale:
+        type: number
+    type: object
+  models.BatchTaxConfig:
+    properties:
+      cgst_rate:
+        description: CGST (50% of GSTRate) for intra-state
+        type: number
+      gst_rate:
+        description: Total GST rate from variant
+        type: number
+      hsn_code:
+        description: HSN code from variant
+        type: string
+      sgst_rate:
+        description: SGST (50% of GSTRate) for intra-state
+        type: number
+      total_gst_rate:
+        description: Same as GSTRate for compatibility
+        type: number
+    type: object
+  models.BatchWithContext:
+    properties:
+      batch_info:
+        $ref: '#/definitions/models.BatchDetails'
+      id:
+        type: string
+      metadata:
+        $ref: '#/definitions/models.BatchMetadata'
+      pricing:
+        $ref: '#/definitions/models.BatchPricing'
+      product:
+        $ref: '#/definitions/models.ProductResponse'
+      quantity_details:
+        $ref: '#/definitions/models.QuantityDetails'
+      tax_config:
+        $ref: '#/definitions/models.BatchTaxConfig'
+      variant:
+        $ref: '#/definitions/models.ProductVariantResponse'
+      warehouse:
+        $ref: '#/definitions/models.WarehouseResponse'
+    type: object
+  models.CancelItemDetail:
+    properties:
+      quantity:
+        minimum: 1
+        type: integer
+      sale_item_id:
+        type: string
+    required:
+    - quantity
+    - sale_item_id
+    type: object
+  models.CancelItemsRequest:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/models.CancelItemDetail'
+        minItems: 1
+        type: array
+      performed_by:
+        type: string
+      reason:
+        enum:
+        - customer_request
+        - payment_failed
+        - out_of_stock
+        - pricing_error
+        - duplicate_order
+        - fraud_suspected
+        - system_error
+        - other
+        type: string
+      reason_details:
+        maxLength: 1000
+        type: string
+    required:
+    - items
+    - performed_by
+    - reason
+    type: object
+  models.CancelItemsResponse:
+    properties:
+      cancellation_id:
+        type: string
+      financial_adjustments:
+        $ref: '#/definitions/models.FinancialAdjustmentsResponse'
+      inventory_restored:
+        items:
+          $ref: '#/definitions/models.InventoryRestoredItem'
+        type: array
+      items_cancelled:
+        items:
+          $ref: '#/definitions/models.CancelledItemInfo'
+        type: array
+      new_sale_total:
+        type: number
+      sale:
+        $ref: '#/definitions/models.SaleResponse'
+    type: object
   models.CancelSaleRequest:
     properties:
       performed_by:
@@ -163,44 +317,30 @@ definitions:
       sale:
         $ref: '#/definitions/models.SaleResponse'
     type: object
-  models.CollaboratorProductResponse:
+  models.CancelledItemInfo:
     properties:
-      brand_name:
+      amount_refunded:
+        type: number
+      quantity_cancelled:
+        type: integer
+      sale_item_id:
         type: string
-      collaborator_id:
-        type: string
-      collaborator_name:
-        type: string
+    type: object
+  models.CategoryResponse:
+    properties:
       created_at:
         type: string
-      dosage_instructions:
-        type: string
-      gst_rate:
-        type: number
-      hsn_code:
+      description:
         type: string
       id:
         type: string
-      images:
-        description: Parsed from JSON
+      name:
+        type: string
+      subcategories:
         items:
-          type: string
+          $ref: '#/definitions/models.SubcategoryResponse'
         type: array
-      is_active:
-        type: boolean
-      product:
-        allOf:
-        - $ref: '#/definitions/models.ProductSummary'
-        description: Embedded product info
-      product_id:
-        type: string
-      product_name:
-        type: string
-      product_sku:
-        type: string
       updated_at:
-        type: string
-      usage_details:
         type: string
     type: object
   models.CollaboratorResponse:
@@ -289,33 +429,14 @@ definitions:
     - amount
     - payment_method
     type: object
-  models.CreateCollaboratorProductRequest:
+  models.CreateCategoryRequest:
     properties:
-      brand_name:
+      description:
         type: string
-      dosage_instructions:
-        type: string
-      gst_rate:
-        maximum: 100
-        minimum: 0
-        type: number
-      hsn_code:
-        description: HSN codes are 8 digits
-        type: string
-      images:
-        description: Array of S3 paths
-        items:
-          type: string
-        type: array
-      product_id:
-        type: string
-      usage_details:
+      name:
         type: string
     required:
-    - brand_name
-    - gst_rate
-    - hsn_code
-    - product_id
+    - name
     type: object
   models.CreateCollaboratorRequest:
     properties:
@@ -464,27 +585,12 @@ definitions:
     type: object
   models.CreateInventoryBatchRequest:
     properties:
-      cgst_rate:
-        description: Tax Configuration
-        maximum: 100
-        minimum: 0
-        type: number
       cost_price:
         type: number
-      custom_tax_ids:
-        items:
-          type: string
-        type: array
       expiry_date:
         type: string
-      is_tax_exempt:
-        type: boolean
       quantity:
         type: integer
-      sgst_rate:
-        maximum: 100
-        minimum: 0
-        type: number
       variant_id:
         type: string
       warehouse_id:
@@ -533,9 +639,15 @@ definitions:
     type: object
   models.CreateProductRequest:
     properties:
+      category_id:
+        description: Optional
+        type: string
       description:
         type: string
       name:
+        type: string
+      subcategory_id:
+        description: Optional
         type: string
     required:
     - name
@@ -545,22 +657,24 @@ definitions:
       barcode:
         type: string
       brand_name:
-        description: Required if collaborator_id provided
+        description: 'Optional: collaborator''s brand'
         type: string
-      collaborator_id:
-        description: 'Optional: for collaborator-specific variants'
-        type: string
+      collaborator_ids:
+        description: 'Optional: multiple collaborators can supply same variant'
+        items:
+          type: string
+        type: array
       description:
         type: string
       dosage_instructions:
         type: string
       gst_rate:
-        description: Required if collaborator_id provided
-        maximum: 100
+        description: 'Required: GST rate (0, 5, 12, 18, or 28)'
+        maximum: 28
         minimum: 0
         type: number
       hsn_code:
-        description: Required if collaborator_id provided
+        description: 'Required: HSN code for GST classification'
         type: string
       images:
         items:
@@ -568,6 +682,11 @@ definitions:
         type: array
       pack_size:
         type: string
+      prices:
+        description: 'Optional: can create variant without prices'
+        items:
+          $ref: '#/definitions/models.VariantPrice'
+        type: array
       quantity:
         type: string
       sku:
@@ -577,6 +696,7 @@ definitions:
       variant_name:
         type: string
     required:
+    - hsn_code
     - pack_size
     - quantity
     - variant_name
@@ -680,12 +800,21 @@ definitions:
       coupon_code:
         description: Manual discount by code (second priority)
         type: string
-      customer_id:
-        description: BRD Requirements
+      customer_name:
+        description: Customer name
+        type: string
+      customer_phone:
+        description: BRD Requirements - Customer tracking
+        type: string
+      delivery_state:
+        description: GST Inter-state detection
         type: string
       discount_id:
         description: Manual discount by ID (highest priority)
         type: string
+      is_org_member:
+        description: Whether customer belongs to the FPO/organization
+        type: boolean
       items:
         items:
           $ref: '#/definitions/models.CreateSaleItemRequest'
@@ -706,100 +835,30 @@ definitions:
     - sale_type
     - warehouse_id
     type: object
-  models.CreateTaxRequest:
+  models.CreateSettingRequest:
     properties:
-      applicable_categories:
-        items:
-          type: string
-        type: array
-      applicable_customer_groups:
-        items:
-          type: string
-        type: array
-      applicable_products:
-        items:
-          type: string
-        type: array
-      applicable_states:
-        items:
-          type: string
-        type: array
-      applicable_warehouses:
-        items:
-          type: string
-        type: array
-      calculation_type:
-        $ref: '#/definitions/models.TaxCalculationType'
-      code:
+      display_label:
+        type: string
+      display_order:
+        type: integer
+      is_header_field:
+        type: boolean
+      value:
+        type: string
+    required:
+    - value
+    type: object
+  models.CreateSubcategoryRequest:
+    properties:
+      category_id:
         type: string
       description:
         type: string
-      excluded_categories:
-        items:
-          type: string
-        type: array
-      excluded_customer_groups:
-        items:
-          type: string
-        type: array
-      excluded_products:
-        items:
-          type: string
-        type: array
-      excluded_states:
-        items:
-          type: string
-        type: array
-      excluded_warehouses:
-        items:
-          type: string
-        type: array
-      hsn_code:
-        type: string
-      is_active:
-        type: boolean
-      is_inter_state:
-        type: boolean
-      is_stackable:
-        type: boolean
-      max_amount:
-        type: number
-      max_order_value:
-        type: number
-      min_amount:
-        type: number
-      min_order_value:
-        type: number
       name:
         type: string
-      priority:
-        type: integer
-      rate:
-        minimum: 0
-        type: number
-      requires_gstin:
-        type: boolean
-      requires_pan:
-        type: boolean
-      sac_code:
-        type: string
-      stacking_order:
-        type: integer
-      tax_category:
-        type: string
-      tax_type:
-        $ref: '#/definitions/models.TaxType'
-      valid_from:
-        type: string
-      valid_until:
-        type: string
     required:
-    - calculation_type
-    - code
+    - category_id
     - name
-    - rate
-    - tax_type
-    - valid_from
     type: object
   models.CreateWarehouseRequest:
     properties:
@@ -855,6 +914,31 @@ definitions:
       discount_name:
         type: string
       discount_type:
+        type: string
+    type: object
+  models.DiscountPolicy:
+    properties:
+      applicable_categories:
+        items:
+          type: string
+        type: array
+      discount_type:
+        type: string
+      discount_value:
+        type: number
+      end_date:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      min_amount:
+        type: number
+      min_quantity:
+        type: integer
+      name:
+        type: string
+      start_date:
         type: string
     type: object
   models.DiscountResponse:
@@ -940,12 +1024,6 @@ definitions:
     x-enum-comments:
       DiscountTypeFlat: Fixed amount discount
       DiscountTypePercentage: Percentage discount
-    x-enum-descriptions:
-    - Fixed amount discount
-    - Percentage discount
-    - ""
-    - ""
-    - ""
     x-enum-varnames:
     - DiscountTypeFlat
     - DiscountTypePercentage
@@ -995,6 +1073,56 @@ definitions:
       tax_voided:
         $ref: '#/definitions/models.TaxVoidedInfo'
     type: object
+  models.GRNDetail:
+    properties:
+      grn_number:
+        type: string
+      id:
+        type: string
+      inventory_created:
+        items:
+          $ref: '#/definitions/models.InventoryCreated'
+        type: array
+      items:
+        items:
+          $ref: '#/definitions/models.GRNItemDetail'
+        type: array
+      purchase_order_id:
+        type: string
+      quality_status:
+        type: string
+      received_by:
+        type: string
+      received_date:
+        type: string
+      remarks:
+        type: string
+      status:
+        type: string
+    type: object
+  models.GRNItemDetail:
+    properties:
+      accepted_quantity:
+        type: integer
+      batch_number:
+        type: string
+      expiry_date:
+        type: string
+      ordered_quantity:
+        type: integer
+      po_item_id:
+        type: string
+      received_quantity:
+        type: integer
+      rejected_quantity:
+        type: integer
+      total_cost:
+        type: number
+      unit_cost:
+        type: number
+      variant_id:
+        type: string
+    type: object
   models.GRNItemResponse:
     properties:
       accepted_quantity:
@@ -1023,6 +1151,17 @@ definitions:
         type: integer
       rejected_quantity:
         type: integer
+      return_closed_date:
+        type: string
+      return_received_date:
+        type: string
+      return_remarks:
+        type: string
+      return_sent_date:
+        type: string
+      return_status:
+        description: Return tracking fields
+        type: string
       variant_id:
         type: string
     type: object
@@ -1060,27 +1199,55 @@ definitions:
       warehouse_name:
         type: string
     type: object
+  models.GetCancellationsResponse:
+    properties:
+      cancellations:
+        items:
+          $ref: '#/definitions/models.SaleCancellationResponse'
+        type: array
+      sale_id:
+        type: string
+      total_count:
+        type: integer
+    type: object
+  models.GlobalTaxConfig:
+    properties:
+      active_taxes:
+        items:
+          $ref: '#/definitions/models.ActiveTaxInfo'
+        type: array
+      default_cgst_rate:
+        type: number
+      default_sgst_rate:
+        type: number
+      tax_calculation_method:
+        type: string
+    type: object
+  models.HeaderFieldResponse:
+    properties:
+      display_label:
+        type: string
+      display_order:
+        type: integer
+      key:
+        type: string
+      value:
+        type: string
+    type: object
   models.InventoryBatchResponse:
     properties:
-      cgst_rate:
-        description: Tax Configuration
-        type: number
+      available_quantity:
+        type: integer
       cost_price:
         type: number
       created_at:
         type: string
-      custom_tax_ids:
-        items:
-          type: string
-        type: array
       expiry_date:
         type: string
       id:
         type: string
-      is_tax_exempt:
-        type: boolean
-      sgst_rate:
-        type: number
+      reserved_quantity:
+        type: integer
       total_quantity:
         type: integer
       updated_at:
@@ -1089,6 +1256,59 @@ definitions:
         type: string
       warehouse_id:
         type: string
+    type: object
+  models.InventoryCreated:
+    properties:
+      batch_id:
+        type: string
+      batch_number:
+        type: string
+      cost_price:
+        type: number
+      expiry_date:
+        type: string
+      manufacturing_date:
+        type: string
+      quantity:
+        type: integer
+      variant_id:
+        type: string
+      warehouse_id:
+        type: string
+    type: object
+  models.InventoryListMetadata:
+    properties:
+      filters_applied:
+        additionalProperties: true
+        type: object
+      read_timestamp:
+        type: string
+    type: object
+  models.InventoryListResponse:
+    properties:
+      batches:
+        items:
+          $ref: '#/definitions/models.BatchWithContext'
+        type: array
+      metadata:
+        $ref: '#/definitions/models.InventoryListMetadata'
+      pagination:
+        $ref: '#/definitions/models.InventoryPagination'
+      summary:
+        $ref: '#/definitions/models.InventorySummary'
+    type: object
+  models.InventoryPagination:
+    properties:
+      has_more:
+        type: boolean
+      limit:
+        type: integer
+      next_offset:
+        type: integer
+      offset:
+        type: integer
+      total:
+        type: integer
     type: object
   models.InventoryRestoredItem:
     properties:
@@ -1100,6 +1320,25 @@ definitions:
         type: string
       variant_id:
         type: string
+    type: object
+  models.InventorySummary:
+    properties:
+      expiring_soon_count:
+        type: integer
+      low_stock_count:
+        type: integer
+      total_batches:
+        type: integer
+      total_products:
+        type: integer
+      total_stock_quantity:
+        type: integer
+      total_stock_value:
+        type: number
+      total_variants:
+        type: integer
+      zero_stock_count:
+        type: integer
     type: object
   models.InventoryTransactionResponse:
     properties:
@@ -1119,6 +1358,64 @@ definitions:
         type: string
       transaction_type:
         type: string
+    type: object
+  models.InventoryWithPricing:
+    properties:
+      alternate_prices:
+        items:
+          $ref: '#/definitions/models.AlternatePriceInfo'
+        type: array
+      batch_id:
+        type: string
+      batch_number:
+        type: string
+      cost_price:
+        type: number
+      expiry_date:
+        type: string
+      manufacturing_date:
+        type: string
+      margin:
+        $ref: '#/definitions/models.MarginInfo'
+      product:
+        $ref: '#/definitions/models.ProductResponse'
+      quantity_reserved:
+        description: Reserved by pending sales
+        type: integer
+      quantity_sellable:
+        description: Available for new sales
+        type: integer
+      quantity_total:
+        description: Total inventory
+        type: integer
+      selling_price:
+        $ref: '#/definitions/models.SellingPriceInfo'
+      tax_config:
+        $ref: '#/definitions/models.BatchTaxConfig'
+      variant:
+        $ref: '#/definitions/models.ProductVariantResponse'
+      variant_id:
+        type: string
+    type: object
+  models.InvoiceRequirementsResponse:
+    properties:
+      missing_settings:
+        items:
+          type: string
+        type: array
+      ready:
+        type: boolean
+    type: object
+  models.MarginInfo:
+    properties:
+      cost_price:
+        type: number
+      margin_amount:
+        type: number
+      margin_percentage:
+        type: number
+      selling_price:
+        type: number
     type: object
   models.MostReturnedProductResponse:
     properties:
@@ -1261,6 +1558,92 @@ definitions:
     - external_order_id
     - timestamp
     type: object
+  models.PODetailResponse:
+    properties:
+      collaborator:
+        $ref: '#/definitions/models.CollaboratorResponse'
+      grns:
+        items:
+          $ref: '#/definitions/models.GRNDetail'
+        type: array
+      items:
+        items:
+          $ref: '#/definitions/models.PurchaseOrderItemResponse'
+        type: array
+      metadata:
+        $ref: '#/definitions/models.ResponseMetadata'
+      payments:
+        items:
+          $ref: '#/definitions/models.POPaymentDetail'
+        type: array
+      purchase_order:
+        $ref: '#/definitions/models.PurchaseOrderResponse'
+      summary:
+        $ref: '#/definitions/models.POSummary'
+      timeline:
+        items:
+          $ref: '#/definitions/models.POTimelineEvent'
+        type: array
+      warehouse:
+        $ref: '#/definitions/models.WarehouseResponse'
+    type: object
+  models.POPaymentDetail:
+    properties:
+      amount:
+        type: number
+      created_by:
+        type: string
+      id:
+        type: string
+      notes:
+        type: string
+      payment_date:
+        type: string
+      payment_method:
+        type: string
+      purchase_order_id:
+        type: string
+      reference_number:
+        type: string
+      status:
+        type: string
+    type: object
+  models.POSummary:
+    properties:
+      completion_percentage:
+        type: number
+      fulfillment_status:
+        description: pending, partially_received, fully_received
+        type: string
+      payment_status:
+        type: string
+      total_items_ordered:
+        type: integer
+      total_items_pending:
+        type: integer
+      total_items_received:
+        type: integer
+      total_order_value:
+        type: number
+      total_pending_value:
+        type: number
+      total_received_value:
+        type: number
+      total_rejected_value:
+        type: number
+    type: object
+  models.POTimelineEvent:
+    properties:
+      actor:
+        type: string
+      description:
+        type: string
+      event:
+        description: purchase_order_created, payment_received, grn_created, status_changed
+        type: string
+      timestamp:
+        type: string
+    type: object
   models.PaginationInfo:
     properties:
       has_more:
@@ -1272,37 +1655,53 @@ definitions:
       total:
         type: integer
     type: object
+  models.PaymentMethodInfo:
+    properties:
+      credit_days:
+        type: integer
+      id:
+        type: string
+      is_active:
+        type: boolean
+      name:
+        type: string
+      type:
+        description: cash, card, upi, credit
+        type: string
+    type: object
+  models.PriceInfo:
+    properties:
+      effective_from:
+        type: string
+      effective_to:
+        type: string
+      price:
+        type: number
+    type: object
   models.ProductAvailabilityResponse:
     properties:
       address:
         allOf:
         - $ref: '#/definitions/models.AddressInfo'
         description: Embedded address info from AAA
-      cgst_rate:
-        description: Tax Configuration
-        type: number
+      available_quantity:
+        type: integer
       cost_price:
         type: number
       created_at:
         type: string
-      custom_tax_ids:
-        items:
-          type: string
-        type: array
       expiry_date:
         type: string
       id:
         type: string
-      is_tax_exempt:
-        type: boolean
       product_description:
         type: string
       product_name:
         type: string
       product_sku:
         type: string
-      sgst_rate:
-        type: number
+      reserved_quantity:
+        type: integer
       total_quantity:
         type: integer
       updated_at:
@@ -1313,6 +1712,32 @@ definitions:
         type: string
       warehouse_name:
         type: string
+    type: object
+  models.ProductDetailResponse:
+    properties:
+      collaborator:
+        $ref: '#/definitions/models.CollaboratorResponse'
+      metadata:
+        $ref: '#/definitions/models.ProductMetadata'
+      product:
+        $ref: '#/definitions/models.ProductResponse'
+      variants:
+        items:
+          $ref: '#/definitions/models.VariantWithAggData'
+        type: array
+    type: object
+  models.ProductMetadata:
+    properties:
+      active_variants:
+        type: integer
+      consistency_token:
+        type: string
+      read_timestamp:
+        type: string
+      total_stock_value:
+        type: number
+      total_variants:
+        type: integer
     type: object
   models.ProductPriceResponse:
     properties:
@@ -1339,6 +1764,8 @@ definitions:
     type: object
   models.ProductResponse:
     properties:
+      category_id:
+        type: string
       created_at:
         type: string
       description:
@@ -1346,6 +1773,8 @@ definitions:
       id:
         type: string
       name:
+        type: string
+      subcategory_id:
         type: string
       updated_at:
         type: string
@@ -1355,23 +1784,17 @@ definitions:
           $ref: '#/definitions/models.ProductVariantResponse'
         type: array
     type: object
-  models.ProductSummary:
-    properties:
-      description:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-    type: object
   models.ProductVariantResponse:
     properties:
       barcode:
         type: string
       brand_name:
         type: string
-      collaborator_id:
-        type: string
+      collaborator_ids:
+        description: Multiple collaborators
+        items:
+          type: string
+        type: array
       created_at:
         type: string
       description:
@@ -1379,8 +1802,10 @@ definitions:
       dosage_instructions:
         type: string
       gst_rate:
+        description: Required GST rate
         type: number
       hsn_code:
+        description: Required GST HSN code
         type: string
       id:
         type: string
@@ -1398,6 +1823,11 @@ definitions:
         type: boolean
       pack_size:
         type: string
+      prices:
+        description: Fetched from product_prices table
+        items:
+          $ref: '#/definitions/models.ProductPriceResponse'
+        type: array
       product_id:
         type: string
       quantity:
@@ -1430,10 +1860,25 @@ definitions:
     type: object
   models.PurchaseOrderItemResponse:
     properties:
+      base_price:
+        description: GST Breakdown
+        type: number
+      cgst_amount:
+        type: number
+      cgst_rate:
+        type: number
       created_at:
         type: string
+      gst_amount:
+        type: number
+      gst_rate:
+        type: number
       id:
         type: string
+      igst_amount:
+        type: number
+      igst_rate:
+        type: number
       line_total:
         type: number
       po_id:
@@ -1446,6 +1891,10 @@ definitions:
         type: integer
       received_quantity:
         type: integer
+      sgst_amount:
+        type: number
+      sgst_rate:
+        type: number
       unit_price:
         type: number
       variant_id:
@@ -1455,6 +1904,9 @@ definitions:
     properties:
       actual_delivery_date:
         type: string
+      amount_owed:
+        description: TotalAmount - TotalRejectedAmount
+        type: number
       collaborator_id:
         type: string
       collaborator_name:
@@ -1465,6 +1917,9 @@ definitions:
         type: string
       id:
         type: string
+      is_inter_state:
+        description: nil = unknown, true = inter-state, false = intra-state
+        type: boolean
       items:
         items:
           $ref: '#/definitions/models.PurchaseOrderItemResponse'
@@ -1481,12 +1936,47 @@ definitions:
         type: string
       total_amount:
         type: number
+      total_rejected_amount:
+        description: Total value of rejected items from GRN
+        type: number
       updated_at:
         type: string
       warehouse_id:
         type: string
       warehouse_name:
         type: string
+    type: object
+  models.QuantityDetails:
+    properties:
+      available_quantity:
+        type: integer
+      in_stock:
+        type: boolean
+      reserved_quantity:
+        type: integer
+      sold_quantity:
+        type: integer
+      total_quantity:
+        type: integer
+    type: object
+  models.RefundPolicyInfo:
+    properties:
+      conditions:
+        items:
+          type: string
+        type: array
+      description:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      name:
+        type: string
+      refund_percentage:
+        type: number
+      valid_days:
+        type: integer
     type: object
   models.RefundPolicyResponse:
     properties:
@@ -1505,6 +1995,54 @@ definitions:
       updated_at:
         type: string
     type: object
+  models.RejectedItemDetail:
+    properties:
+      id:
+        type: string
+      product_name:
+        type: string
+      product_sku:
+        type: string
+      rejected_quantity:
+        type: integer
+      return_closed_date:
+        type: string
+      return_received_date:
+        type: string
+      return_remarks:
+        type: string
+      return_sent_date:
+        type: string
+      return_status:
+        type: string
+      total_value:
+        type: number
+      unit_price:
+        type: number
+      variant_id:
+        type: string
+    type: object
+  models.RejectedItemsResponse:
+    properties:
+      grn_id:
+        type: string
+      grn_number:
+        type: string
+      po_id:
+        type: string
+      po_number:
+        type: string
+      rejected_items:
+        items:
+          $ref: '#/definitions/models.RejectedItemDetail'
+        type: array
+      return_status_breakdown:
+        additionalProperties:
+          type: integer
+        type: object
+      total_rejected_value:
+        type: number
+    type: object
   models.ReportResponse:
     properties:
       filters_applied:
@@ -1518,6 +2056,13 @@ definitions:
       report_type:
         type: string
       summary: {}
+    type: object
+  models.ResponseMetadata:
+    properties:
+      consistency_token:
+        type: string
+      read_timestamp:
+        type: string
     type: object
   models.ReturnItemResponse:
     properties:
@@ -1582,22 +2127,77 @@ definitions:
         description: Total discount savings
         type: number
     type: object
+  models.SaleCancellationItemResponse:
+    properties:
+      batch_id:
+        type: string
+      cancellation_id:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      inventory_restored:
+        type: boolean
+      quantity_cancelled:
+        type: integer
+      refund_amount:
+        type: number
+      sale_item_id:
+        type: string
+      transaction_id:
+        type: string
+    type: object
+  models.SaleCancellationResponse:
+    properties:
+      cancellation_type:
+        type: string
+      cancelled_amount:
+        type: number
+      cancelled_at:
+        type: string
+      cancelled_by:
+        type: string
+      created_at:
+        type: string
+      discount_reversed:
+        type: number
+      id:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/models.SaleCancellationItemResponse'
+        type: array
+      original_amount:
+        type: number
+      reason:
+        type: string
+      reason_details:
+        type: string
+      sale_id:
+        type: string
+      tax_reversed:
+        type: number
+      updated_at:
+        type: string
+    type: object
   models.SaleItemResponse:
     properties:
       batch_id:
         type: string
       cgst_amount:
-        description: Tax amounts
+        description: GST Tax amounts
         type: number
       cost_price:
         description: BRD Requirements - Cost and Margin
         type: number
       created_at:
         type: string
-      custom_tax_amount:
-        type: number
       id:
         type: string
+      igst_amount:
+        description: For inter-state sales
+        type: number
       line_total:
         type: number
       margin:
@@ -1629,11 +2229,18 @@ definitions:
         type: string
       created_at:
         type: string
-      customer_id:
-        description: BRD Requirements
+      customer_name:
+        type: string
+      customer_phone:
+        description: BRD Requirements - Customer tracking
         type: string
       id:
         type: string
+      invoice_number:
+        description: 'Format: MMYYNNNN (e.g., 12250001)'
+        type: string
+      is_org_member:
+        type: boolean
       items:
         items:
           $ref: '#/definitions/models.SaleItemResponse'
@@ -1653,252 +2260,141 @@ definitions:
       warehouse_id:
         type: string
     type: object
-  models.TaxApplicationResponse:
+  models.SalesContextMetadata:
     properties:
-      base_amount:
-        type: number
-      cgst_amount:
-        type: number
-      created_at:
+      consistency_token:
         type: string
-      customs_amount:
-        type: number
-      excise_amount:
-        type: number
-      grand_total:
-        type: number
-      id:
+      expires_at:
         type: string
-      igst_amount:
-        type: number
-      other_tax_amount:
-        type: number
-      sale_id:
+      read_timestamp:
         type: string
-      sgst_amount:
-        type: number
-      stt_amount:
-        type: number
-      sub_total:
-        type: number
-      tax_amount:
-        type: number
-      tax_id:
-        type: string
-      tax_rate:
-        type: number
-      taxable_amount:
-        type: number
-      tcs_amount:
-        type: number
-      tds_amount:
-        type: number
-      total_tax_amount:
-        type: number
-      updated_at:
-        type: string
-      vat_amount:
-        type: number
-    type: object
-  models.TaxBreakdown:
-    properties:
-      amount:
-        type: number
-      hsn_code:
-        type: string
-      rate:
-        type: number
-      sac_code:
-        type: string
-      tax_code:
-        type: string
-      tax_name:
-        type: string
-      tax_type:
-        $ref: '#/definitions/models.TaxType'
-    type: object
-  models.TaxCalculationItem:
-    properties:
-      category_id:
-        type: string
-      line_total:
-        minimum: 0
-        type: number
-      product_id:
-        type: string
-      quantity:
-        minimum: 1
+      total_batches:
         type: integer
-      unit_price:
-        minimum: 0
+      total_products:
+        type: integer
+      total_stock_value:
         type: number
-    required:
-    - line_total
-    - product_id
-    - quantity
-    - unit_price
-    type: object
-  models.TaxCalculationRequest:
-    properties:
-      customer_gstin:
-        type: string
-      customer_id:
-        description: Optional - not required when no customer management
-        type: string
-      customer_pan:
-        type: string
-      customer_state:
-        description: Optional - not required when no customer management
-        type: string
-      is_inter_state:
-        type: boolean
-      items:
-        items:
-          $ref: '#/definitions/models.TaxCalculationItem'
-        minItems: 1
-        type: array
-      warehouse_id:
-        type: string
-      warehouse_state:
-        type: string
-    required:
-    - items
-    - warehouse_id
-    - warehouse_state
-    type: object
-  models.TaxCalculationResponse:
-    properties:
-      applied_taxes:
-        items:
-          $ref: '#/definitions/models.AppliedTax'
-        type: array
-      grand_total:
-        type: number
-      sub_total:
-        type: number
-      tax_breakdown:
-        items:
-          $ref: '#/definitions/models.TaxBreakdown'
-        type: array
-      total_tax_amount:
+      total_variants:
+        type: integer
+      warehouse_capacity_used_percent:
         type: number
     type: object
-  models.TaxCalculationType:
-    enum:
-    - percentage
-    - fixed
-    - tiered
-    type: string
-    x-enum-comments:
-      TaxCalculationFixed: Fixed amount per unit
-      TaxCalculationPercentage: Percentage of base amount
-      TaxCalculationTiered: Tiered calculation
-    x-enum-descriptions:
-    - Percentage of base amount
-    - Fixed amount per unit
-    - Tiered calculation
-    x-enum-varnames:
-    - TaxCalculationPercentage
-    - TaxCalculationFixed
-    - TaxCalculationTiered
-  models.TaxResponse:
+  models.SalesContextResponse:
     properties:
-      applicable_categories:
+      available_inventory:
         items:
-          type: string
+          $ref: '#/definitions/models.InventoryWithPricing'
         type: array
-      applicable_customer_groups:
+      discount_policies:
         items:
-          type: string
+          $ref: '#/definitions/models.DiscountPolicy'
         type: array
-      applicable_products:
+      global_tax_configuration:
+        $ref: '#/definitions/models.GlobalTaxConfig'
+      metadata:
+        $ref: '#/definitions/models.SalesContextMetadata'
+      payment_methods:
         items:
-          type: string
+          $ref: '#/definitions/models.PaymentMethodInfo'
         type: array
-      applicable_states:
+      refund_policies:
         items:
-          type: string
+          $ref: '#/definitions/models.RefundPolicyInfo'
         type: array
-      applicable_warehouses:
-        items:
-          type: string
-        type: array
-      calculation_type:
-        $ref: '#/definitions/models.TaxCalculationType'
-      code:
+      warehouse:
+        $ref: '#/definitions/models.WarehouseResponse'
+    type: object
+  models.SeedCategoriesResponse:
+    properties:
+      categories_created:
+        type: integer
+      message:
         type: string
-      created_at:
+      subcategories_created:
+        type: integer
+    type: object
+  models.SellingPriceInfo:
+    properties:
+      currency:
         type: string
-      created_by:
+      effective_from:
         type: string
-      description:
-        type: string
-      excluded_categories:
-        items:
-          type: string
-        type: array
-      excluded_customer_groups:
-        items:
-          type: string
-        type: array
-      excluded_products:
-        items:
-          type: string
-        type: array
-      excluded_states:
-        items:
-          type: string
-        type: array
-      excluded_warehouses:
-        items:
-          type: string
-        type: array
-      hsn_code:
-        type: string
-      id:
+      effective_to:
         type: string
       is_active:
         type: boolean
-      is_inter_state:
-        type: boolean
-      is_stackable:
-        type: boolean
-      max_amount:
+      price:
         type: number
-      max_order_value:
-        type: number
-      min_amount:
-        type: number
-      min_order_value:
-        type: number
-      name:
+      price_id:
         type: string
-      priority:
+      price_type:
+        type: string
+    type: object
+  models.SettingResponse:
+    properties:
+      created_at:
+        type: string
+      display_label:
+        type: string
+      display_order:
         type: integer
-      rate:
-        type: number
-      requires_gstin:
+      is_header_field:
         type: boolean
-      requires_pan:
-        type: boolean
-      sac_code:
+      key:
         type: string
-      stacking_order:
-        type: integer
-      status:
-        type: string
-      tax_category:
-        type: string
-      tax_type:
-        $ref: '#/definitions/models.TaxType'
       updated_at:
         type: string
-      updated_by:
+      value:
         type: string
-      valid_from:
+    type: object
+  models.StockSummary:
+    properties:
+      available_quantity:
+        type: integer
+      earliest_expiry:
         type: string
-      valid_until:
+      in_stock:
+        type: boolean
+      max_cost_price:
+        type: number
+      min_cost_price:
+        type: number
+      reserved_quantity:
+        type: integer
+      total_quantity:
+        type: integer
+      warehouse_count:
+        type: integer
+    type: object
+  models.SubcategoryResponse:
+    properties:
+      category_id:
         type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  models.TaxConfiguration:
+    properties:
+      cgst_rate:
+        description: CGST (50% of GSTRate) for intra-state
+        type: number
+      gst_rate:
+        description: Total GST rate from variant
+        type: number
+      hsn_code:
+        description: HSN code from variant
+        type: string
+      sgst_rate:
+        description: SGST (50% of GSTRate) for intra-state
+        type: number
     type: object
   models.TaxSummaryBreakdown:
     properties:
@@ -1906,104 +2402,14 @@ definitions:
         type: number
       igst_amount:
         type: number
-      other_tax_amount:
-        type: number
+      is_inter_state:
+        description: true if IGST applies, false if CGST+SGST
+        type: boolean
       sgst_amount:
         type: number
       total_tax_amount:
         type: number
-      vat_amount:
-        type: number
     type: object
-  models.TaxSummaryResponse:
-    properties:
-      created_at:
-        type: string
-      id:
-        type: string
-      summary_date:
-        type: string
-      total_cgst:
-        type: number
-      total_customs:
-        type: number
-      total_excise:
-        type: number
-      total_igst:
-        type: number
-      total_other_tax:
-        type: number
-      total_sgst:
-        type: number
-      total_stt:
-        type: number
-      total_tax:
-        type: number
-      total_tcs:
-        type: number
-      total_tds:
-        type: number
-      total_vat:
-        type: number
-      updated_at:
-        type: string
-      warehouse_id:
-        type: string
-    type: object
-  models.TaxType:
-    enum:
-    - cgst
-    - sgst
-    - igst
-    - vat
-    - stt
-    - tds
-    - tcs
-    - excise
-    - customs
-    - item_specific
-    - category
-    - flat
-    type: string
-    x-enum-comments:
-      TaxTypeCGST: Central Goods and Services Tax
-      TaxTypeCategory: Category-based tax
-      TaxTypeCustoms: Customs Duty
-      TaxTypeExcise: Excise Duty
-      TaxTypeFlat: Flat tax amount
-      TaxTypeIGST: Integrated Goods and Services Tax
-      TaxTypeItemSpecific: Item-specific tax
-      TaxTypeSGST: State Goods and Services Tax
-      TaxTypeSTT: Securities Transaction Tax
-      TaxTypeTCS: Tax Collected at Source
-      TaxTypeTDS: Tax Deducted at Source
-      TaxTypeVAT: Value Added Tax
-    x-enum-descriptions:
-    - Central Goods and Services Tax
-    - State Goods and Services Tax
-    - Integrated Goods and Services Tax
-    - Value Added Tax
-    - Securities Transaction Tax
-    - Tax Deducted at Source
-    - Tax Collected at Source
-    - Excise Duty
-    - Customs Duty
-    - Item-specific tax
-    - Category-based tax
-    - Flat tax amount
-    x-enum-varnames:
-    - TaxTypeCGST
-    - TaxTypeSGST
-    - TaxTypeIGST
-    - TaxTypeVAT
-    - TaxTypeSTT
-    - TaxTypeTDS
-    - TaxTypeTCS
-    - TaxTypeExcise
-    - TaxTypeCustoms
-    - TaxTypeItemSpecific
-    - TaxTypeCategory
-    - TaxTypeFlat
   models.TaxVoidedInfo:
     properties:
       amount_voided:
@@ -2054,23 +2460,11 @@ definitions:
     required:
     - id
     type: object
-  models.UpdateCollaboratorProductRequest:
+  models.UpdateCategoryRequest:
     properties:
-      brand_name:
+      description:
         type: string
-      dosage_instructions:
-        type: string
-      gst_rate:
-        type: number
-      hsn_code:
-        type: string
-      images:
-        items:
-          type: string
-        type: array
-      is_active:
-        type: boolean
-      usage_details:
+      name:
         type: string
     type: object
   models.UpdateCollaboratorRequest:
@@ -2152,6 +2546,17 @@ definitions:
       remarks:
         type: string
     type: object
+  models.UpdateItemReturnStatusRequest:
+    properties:
+      return_remarks:
+        description: Optional notes
+        type: string
+      return_status:
+        description: pending, sent, received_by_vendor, closed
+        type: string
+    required:
+    - return_status
+    type: object
   models.UpdatePOPaymentRequest:
     properties:
       paid_amount:
@@ -2180,7 +2585,7 @@ definitions:
           $ref: '#/definitions/models.DeliveryItemRequest'
         type: array
       status:
-        description: placed, confirmed, out_for_delivery, delivered, paid
+        description: placed, confirmed, out_for_delivery, delivered, verified, paid
         type: string
     required:
     - status
@@ -2202,9 +2607,13 @@ definitions:
     type: object
   models.UpdateProductRequest:
     properties:
+      category_id:
+        type: string
       description:
         type: string
       name:
+        type: string
+      subcategory_id:
         type: string
     type: object
   models.UpdateProductVariantRequest:
@@ -2213,6 +2622,11 @@ definitions:
         type: string
       brand_name:
         type: string
+      collaborator_ids:
+        description: 'Optional: update collaborator associations'
+        items:
+          type: string
+        type: array
       description:
         type: string
       dosage_instructions:
@@ -2229,6 +2643,11 @@ definitions:
         type: boolean
       pack_size:
         type: string
+      prices:
+        description: 'Optional: update prices'
+        items:
+          $ref: '#/definitions/models.VariantPrice'
+        type: array
       quantity:
         type: string
       sku:
@@ -2271,87 +2690,11 @@ definitions:
     required:
     - status
     type: object
-  models.UpdateTaxRequest:
+  models.UpdateSubcategoryRequest:
     properties:
-      applicable_categories:
-        items:
-          type: string
-        type: array
-      applicable_customer_groups:
-        items:
-          type: string
-        type: array
-      applicable_products:
-        items:
-          type: string
-        type: array
-      applicable_states:
-        items:
-          type: string
-        type: array
-      applicable_warehouses:
-        items:
-          type: string
-        type: array
-      calculation_type:
-        $ref: '#/definitions/models.TaxCalculationType'
       description:
         type: string
-      excluded_categories:
-        items:
-          type: string
-        type: array
-      excluded_customer_groups:
-        items:
-          type: string
-        type: array
-      excluded_products:
-        items:
-          type: string
-        type: array
-      excluded_states:
-        items:
-          type: string
-        type: array
-      excluded_warehouses:
-        items:
-          type: string
-        type: array
-      hsn_code:
-        type: string
-      is_active:
-        type: boolean
-      is_inter_state:
-        type: boolean
-      is_stackable:
-        type: boolean
-      max_amount:
-        type: number
-      max_order_value:
-        type: number
-      min_amount:
-        type: number
-      min_order_value:
-        type: number
       name:
-        type: string
-      priority:
-        type: integer
-      rate:
-        type: number
-      requires_gstin:
-        type: boolean
-      requires_pan:
-        type: boolean
-      sac_code:
-        type: string
-      stacking_order:
-        type: integer
-      tax_category:
-        type: string
-      valid_from:
-        type: string
-      valid_until:
         type: string
     type: object
   models.UpdateWarehouseRequest:
@@ -2384,6 +2727,179 @@ definitions:
     - order_value
     - warehouse_id
     type: object
+  models.VariantDetailResponse:
+    properties:
+      metadata:
+        $ref: '#/definitions/models.ResponseMetadata'
+      variant:
+        $ref: '#/definitions/models.VariantDetailWithProduct'
+    type: object
+  models.VariantDetailWithProduct:
+    properties:
+      barcode:
+        type: string
+      brand_name:
+        type: string
+      collaborator:
+        $ref: '#/definitions/models.CollaboratorResponse'
+      collaborator_ids:
+        description: Multiple collaborators
+        items:
+          type: string
+        type: array
+      created_at:
+        type: string
+      description:
+        type: string
+      dosage_instructions:
+        type: string
+      gst_rate:
+        description: Required GST rate
+        type: number
+      hsn_code:
+        description: Required GST HSN code
+        type: string
+      id:
+        type: string
+      image_urls:
+        description: Presigned URLs (valid for 1 hour)
+        items:
+          type: string
+        type: array
+      images:
+        description: S3 paths (for reference)
+        items:
+          type: string
+        type: array
+      is_active:
+        type: boolean
+      pack_size:
+        type: string
+      prices:
+        description: Fetched from product_prices table
+        items:
+          $ref: '#/definitions/models.ProductPriceResponse'
+        type: array
+      prices_summary:
+        allOf:
+        - $ref: '#/definitions/models.VariantPrices'
+        description: Aggregated price summary
+      product:
+        $ref: '#/definitions/models.ProductResponse'
+      product_id:
+        type: string
+      quantity:
+        type: string
+      sku:
+        type: string
+      stock_summary:
+        $ref: '#/definitions/models.StockSummary'
+      tax_configuration:
+        $ref: '#/definitions/models.TaxConfiguration'
+      updated_at:
+        type: string
+      usage_details:
+        type: string
+      variant_name:
+        type: string
+      warehouse_stock:
+        items:
+          $ref: '#/definitions/models.WarehouseStock'
+        type: array
+    type: object
+  models.VariantPrice:
+    properties:
+      currency:
+        description: '"INR", "USD", etc.'
+        type: string
+      price:
+        type: number
+      price_type:
+        description: '"MRP" or "MSP"'
+        type: string
+    type: object
+  models.VariantPrices:
+    properties:
+      bulk_price:
+        $ref: '#/definitions/models.PriceInfo'
+      currency:
+        type: string
+      has_active_price:
+        type: boolean
+      retail_price:
+        $ref: '#/definitions/models.PriceInfo'
+      wholesale_price:
+        $ref: '#/definitions/models.PriceInfo'
+    type: object
+  models.VariantWithAggData:
+    properties:
+      barcode:
+        type: string
+      brand_name:
+        type: string
+      collaborator_ids:
+        description: Multiple collaborators
+        items:
+          type: string
+        type: array
+      created_at:
+        type: string
+      description:
+        type: string
+      dosage_instructions:
+        type: string
+      gst_rate:
+        description: Required GST rate
+        type: number
+      hsn_code:
+        description: Required GST HSN code
+        type: string
+      id:
+        type: string
+      image_urls:
+        description: Presigned URLs (valid for 1 hour)
+        items:
+          type: string
+        type: array
+      images:
+        description: S3 paths (for reference)
+        items:
+          type: string
+        type: array
+      is_active:
+        type: boolean
+      pack_size:
+        type: string
+      prices:
+        description: Fetched from product_prices table
+        items:
+          $ref: '#/definitions/models.ProductPriceResponse'
+        type: array
+      prices_summary:
+        allOf:
+        - $ref: '#/definitions/models.VariantPrices'
+        description: Aggregated price summary
+      product_id:
+        type: string
+      quantity:
+        type: string
+      sku:
+        type: string
+      stock_summary:
+        $ref: '#/definitions/models.StockSummary'
+      tax_configuration:
+        $ref: '#/definitions/models.TaxConfiguration'
+      updated_at:
+        type: string
+      usage_details:
+        type: string
+      variant_name:
+        type: string
+      warehouse_stock:
+        items:
+          $ref: '#/definitions/models.WarehouseStock'
+        type: array
+    type: object
   models.WarehouseResponse:
     properties:
       address:
@@ -2397,6 +2913,21 @@ definitions:
       name:
         type: string
       updated_at:
+        type: string
+    type: object
+  models.WarehouseStock:
+    properties:
+      batch_count:
+        type: integer
+      cost_price:
+        type: number
+      expiry_date:
+        type: string
+      quantity:
+        type: integer
+      warehouse_id:
+        type: string
+      warehouse_name:
         type: string
     type: object
   models.WebhookAddress:
@@ -2489,56 +3020,29 @@ definitions:
     - external_variant_id
     - received_quantity
     type: object
-  models.WebhookEvent:
+  models.WebhookEventResponse:
     properties:
       created_at:
         type: string
-      created_by:
-        type: string
-      deleted_at:
-        type: string
-      deleted_by:
-        type: string
       error_message:
-        description: Error details if failed
         type: string
       event_id:
-        description: Event identification
         type: string
       event_type:
-        description: order.created, order.confirmed, etc.
         type: string
       external_order_id:
-        description: Reference tracking
         type: string
       id:
-        type: string
-      payload_hash:
-        description: Payload tracking
         type: string
       processed_at:
         type: string
       purchase_order_id:
-        description: Created/Updated PO ID
-        type: string
-      request_body:
-        description: Full JSON payload for debugging
         type: string
       signature_valid:
-        description: HMAC signature verification result
         type: boolean
-      source_ip:
-        description: Webhook metadata
-        type: string
       status:
-        description: Processing status
         type: string
       updated_at:
-        type: string
-      updated_by:
-        type: string
-      user_agent:
-        description: Request user agent
         type: string
     type: object
   models.WebhookFPO:
@@ -2650,6 +3154,32 @@ definitions:
       timestamp:
         example: "2024-01-15T10:30:00Z"
         type: string
+    type: object
+  utils.PaginatedResponseModel:
+    properties:
+      data: {}
+      pagination:
+        $ref: '#/definitions/utils.PaginationMeta'
+      request_id:
+        example: 34bc4e39-a3d7-4c18-99d9-3645139e3bd8
+        type: string
+      success:
+        example: true
+        type: boolean
+      timestamp:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+    type: object
+  utils.PaginationMeta:
+    properties:
+      limit:
+        type: integer
+      offset:
+        type: integer
+      pages:
+        type: integer
+      total:
+        type: integer
     type: object
   utils.Response:
     properties:
@@ -3147,8 +3677,8 @@ paths:
     get:
       description: Retrieve all bank payments with pagination
       parameters:
-      - description: 'Number of records to return (default: 10)'
-        example: 10
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
         in: query
         name: limit
         type: integer
@@ -3164,7 +3694,7 @@ paths:
           description: Bank payments retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -3523,7 +4053,7 @@ paths:
       - Inventory
   /api/v1/batches/{id}/transactions:
     get:
-      description: Retrieve all inventory transactions for a specific batch
+      description: Retrieve all inventory transactions for a specific batch with pagination
       parameters:
       - description: Batch ID
         example: BTCH_12345678
@@ -3531,6 +4061,16 @@ paths:
         name: id
         required: true
         type: string
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -3538,7 +4078,7 @@ paths:
           description: Transactions retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -3635,11 +4175,22 @@ paths:
   /api/v1/batches/expiring:
     get:
       description: Retrieve inventory batches that are expiring within specified days
+        with pagination
       parameters:
       - description: 'Number of days to check (default: 30)'
         example: 30
         in: query
         name: days
+        type: integer
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
         type: integer
       produces:
       - application/json
@@ -3648,7 +4199,7 @@ paths:
           description: Expiring batches retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -3686,12 +4237,22 @@ paths:
       - Inventory
   /api/v1/batches/low-stock:
     get:
-      description: Retrieve inventory batches with stock below threshold
+      description: Retrieve inventory batches with stock below threshold with pagination
       parameters:
       - description: 'Stock threshold (default: 10)'
         example: 10
         in: query
         name: threshold
+        type: integer
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
         type: integer
       produces:
       - application/json
@@ -3700,7 +4261,7 @@ paths:
           description: Low stock batches retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -3736,13 +4297,95 @@ paths:
       summary: Get Low Stock Batches
       tags:
       - Inventory
-  /api/v1/collaborator-products/{id}:
-    delete:
-      description: Delete collaborator-product association by ID (soft delete, requires
-        authentication)
+  /api/v1/categories:
+    get:
+      description: Retrieve all categories with pagination
       parameters:
-      - description: 'Collaborator Product ID (format: CPRD_xxxxxxxx)'
-        example: CPRD_12345678
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Categories retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.CategoryResponse'
+                  type: array
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: Get All Categories
+      tags:
+      - Categories
+    post:
+      consumes:
+      - application/json
+      description: Create a new category
+      parameters:
+      - description: Category data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Category created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.CategoryResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "409":
+          description: Conflict - category already exists
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Create Category
+      tags:
+      - Categories
+  /api/v1/categories/{id}:
+    delete:
+      description: Delete a category by ID
+      parameters:
+      - description: 'Category ID (format: CATG_xxxxxxxx)'
+        example: CATG_12345678
         in: path
         name: id
         required: true
@@ -3751,31 +4394,15 @@ paths:
       - application/json
       responses:
         "200":
-          description: Association deleted successfully
+          description: Category deleted successfully
           schema:
             $ref: '#/definitions/utils.Response'
         "400":
           description: Bad request
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
         "404":
-          description: Association not found
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
+          description: Category not found
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "500":
@@ -3784,14 +4411,14 @@ paths:
             $ref: '#/definitions/utils.ErrorResponseModel'
       security:
       - BearerAuth: []
-      summary: Delete Collaborator Product
+      summary: Delete Category
       tags:
-      - Collaborator Products
+      - Categories
     get:
-      description: Retrieve a specific collaborator-product association
+      description: Retrieve a specific category by ID
       parameters:
-      - description: 'Collaborator Product ID (format: CPRD_xxxxxxxx)'
-        example: CPRD_12345678
+      - description: 'Category ID (format: CATG_xxxxxxxx)'
+        example: CATG_12345678
         in: path
         name: id
         required: true
@@ -3800,80 +4427,68 @@ paths:
       - application/json
       responses:
         "200":
-          description: Association retrieved successfully
+          description: Category details
           schema:
             allOf:
             - $ref: '#/definitions/utils.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/models.CollaboratorProductResponse'
+                  $ref: '#/definitions/models.CategoryResponse'
               type: object
         "400":
           description: Bad request
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "404":
-          description: Association not found
+          description: Category not found
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
-      summary: Get Collaborator Product
+      summary: Get Category
       tags:
-      - Collaborator Products
-    put:
+      - Categories
+    patch:
       consumes:
       - application/json
-      description: Update collaborator-product metadata (requires authentication)
+      description: Update an existing category by ID
       parameters:
-      - description: 'Collaborator Product ID (format: CPRD_xxxxxxxx)'
-        example: CPRD_12345678
+      - description: 'Category ID (format: CATG_xxxxxxxx)'
+        example: CATG_12345678
         in: path
         name: id
         required: true
         type: string
-      - description: Updated metadata
+      - description: Updated category data
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.UpdateCollaboratorProductRequest'
+          $ref: '#/definitions/models.UpdateCategoryRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: Association updated successfully
+          description: Category updated successfully
           schema:
             allOf:
             - $ref: '#/definitions/utils.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/models.CollaboratorProductResponse'
+                  $ref: '#/definitions/models.CategoryResponse'
               type: object
         "400":
           description: Bad request
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
         "404":
-          description: Association not found
+          description: Category not found
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
+          description: Conflict - name already exists
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "500":
@@ -3882,12 +4497,137 @@ paths:
             $ref: '#/definitions/utils.ErrorResponseModel'
       security:
       - BearerAuth: []
-      summary: Update Collaborator Product
+      summary: Update Category
       tags:
-      - Collaborator Products
+      - Categories
+  /api/v1/categories/name/{name}:
+    get:
+      description: Retrieve a specific category by name
+      parameters:
+      - description: Category name
+        example: Fertilizers
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Category details
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.CategoryResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Category not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: Get Category by Name
+      tags:
+      - Categories
+  /api/v1/categories/search:
+    get:
+      description: Search categories by name with pagination
+      parameters:
+      - description: Search query
+        example: FERTILIZERS
+        in: query
+        name: q
+        required: true
+        type: string
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Categories found successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.CategoryResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request - search query required
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: Search Categories
+      tags:
+      - Categories
+  /api/v1/categories/seed:
+    post:
+      description: Seed all predefined categories and subcategories (idempotent, admin-only)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Categories seeded successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.SeedCategoriesResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Seed Categories
+      tags:
+      - Categories
   /api/v1/collaborators:
     get:
-      description: Retrieve all collaborators (requires authentication)
+      description: Retrieve all collaborators with pagination (requires authentication)
+      parameters:
+      - default: 50
+        description: 'Number of results per page (default: 50, max: 200)'
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: 'Number of results to skip (default: 0)'
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -3895,7 +4635,7 @@ paths:
           description: Collaborators retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -4127,163 +4867,9 @@ paths:
       summary: Update Collaborator
       tags:
       - Collaborators
-  /api/v1/collaborators/{id}/products:
-    get:
-      description: Retrieve all products for a specific collaborator
-      parameters:
-      - description: 'Collaborator ID (format: CLAB_xxxxxxxx)'
-        example: CLAB_12345678
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Products retrieved successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.Response'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/models.CollaboratorProductResponse'
-                  type: array
-              type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "404":
-          description: Collaborator not found
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      summary: Get Products by Collaborator
-      tags:
-      - Collaborator Products
-    post:
-      consumes:
-      - application/json
-      description: Associate a product with a collaborator (requires authentication)
-      parameters:
-      - description: 'Collaborator ID (format: CLAB_xxxxxxxx)'
-        example: CLAB_12345678
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Product association data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/models.CreateCollaboratorProductRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Product added successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/models.CollaboratorProductResponse'
-              type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Add Product to Collaborator
-      tags:
-      - Collaborator Products
-  /api/v1/collaborators/{id}/products/{product_id}:
-    delete:
-      description: Remove product association from collaborator (soft delete, requires
-        authentication)
-      parameters:
-      - description: 'Collaborator ID (format: CLAB_xxxxxxxx)'
-        example: CLAB_12345678
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: 'Product ID (format: PROD_xxxxxxxx)'
-        example: PROD_12345678
-        in: path
-        name: product_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Product removed successfully
-          schema:
-            $ref: '#/definitions/utils.Response'
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "404":
-          description: Association not found
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Remove Product from Collaborator
-      tags:
-      - Collaborator Products
   /api/v1/collaborators/{id}/purchase-orders:
     get:
-      description: Retrieve all purchase orders for a specific collaborator
+      description: Retrieve all purchase orders for a specific collaborator with pagination
       parameters:
       - description: 'Collaborator ID (format: CLAB_xxxxxxxx)'
         example: CLAB_12345678
@@ -4291,6 +4877,16 @@ paths:
         name: id
         required: true
         type: string
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -4298,7 +4894,7 @@ paths:
           description: Purchase orders retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -4322,7 +4918,18 @@ paths:
       - Purchase Orders
   /api/v1/collaborators/active:
     get:
-      description: Retrieve all active collaborators (requires authentication)
+      description: Retrieve all active collaborators with pagination (requires authentication)
+      parameters:
+      - default: 50
+        description: 'Number of results per page (default: 50, max: 200)'
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: 'Number of results to skip (default: 0)'
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -4330,7 +4937,7 @@ paths:
           description: Active collaborators retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -4364,13 +4971,24 @@ paths:
       - Collaborators
   /api/v1/collaborators/search:
     get:
-      description: Search collaborators by company name (requires authentication)
+      description: Search collaborators by company name with pagination (requires
+        authentication)
       parameters:
       - description: Search query
         in: query
         name: q
         required: true
         type: string
+      - default: 50
+        description: 'Number of results per page (default: 50, max: 200)'
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: 'Number of results to skip (default: 0)'
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -4378,7 +4996,7 @@ paths:
           description: Search results
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -4418,8 +5036,8 @@ paths:
     get:
       description: Retrieve all discounts with pagination
       parameters:
-      - description: 'Number of records to return (default: 10)'
-        example: 10
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
         in: query
         name: limit
         type: integer
@@ -4435,7 +5053,7 @@ paths:
           description: Discounts retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -4691,7 +5309,18 @@ paths:
       - Discounts
   /api/v1/discounts/active:
     get:
-      description: Retrieve all currently active discounts
+      description: Retrieve all currently active discounts with pagination
+      parameters:
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -4699,7 +5328,7 @@ paths:
           description: Active discounts retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -5129,7 +5758,18 @@ paths:
       - Discounts
   /api/v1/grns:
     get:
-      description: Retrieve all GRNs (requires authentication)
+      description: Retrieve all GRNs with pagination (requires authentication)
+      parameters:
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -5137,13 +5777,17 @@ paths:
           description: GRNs retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
                     $ref: '#/definitions/models.GRNResponse'
                   type: array
               type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
         "401":
           description: Unauthorized
           schema:
@@ -5322,6 +5966,213 @@ paths:
       summary: Update Goods Receipt Note
       tags:
       - GRNs
+  /api/v1/grns/{id}/rejected-items:
+    get:
+      description: Retrieve all rejected items for a GRN with return tracking details
+        (requires authentication)
+      parameters:
+      - description: 'GRN ID (format: GRNX_xxxxxxxx)'
+        example: GRNX_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Rejected items retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.RejectedItemsResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: No rejected items found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Rejected Items for GRN
+      tags:
+      - GRNs
+  /api/v1/grns/items/{item_id}/return-status:
+    patch:
+      consumes:
+      - application/json
+      description: Update the return status of a rejected GRN item (requires authentication)
+      parameters:
+      - description: 'GRN Item ID (format: GRIT_xxxxxxxx)'
+        example: GRIT_12345678
+        in: path
+        name: item_id
+        required: true
+        type: string
+      - description: Return status update data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateItemReturnStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Return status updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.GRNItemResponse'
+              type: object
+        "400":
+          description: Bad request - invalid status transition
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: GRN item not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "422":
+          description: Unprocessable Entity - validation failed
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Update Return Status for Rejected Item
+      tags:
+      - GRNs
+  /api/v1/inventory/batches/list:
+    get:
+      description: Retrieves a paginated list of inventory batches with full context
+        including variant, product, warehouse, prices, and tax information. Reduces
+        N+1 API calls by 95%.
+      parameters:
+      - description: Filter by warehouse ID
+        example: WH_001
+        in: query
+        name: warehouse_id
+        type: string
+      - description: Filter by variant ID
+        example: PVAR_12345678
+        in: query
+        name: variant_id
+        type: string
+      - description: Filter by product ID
+        example: PROD_12345678
+        in: query
+        name: product_id
+        type: string
+      - description: Filter by category
+        example: Fertilizers
+        in: query
+        name: category
+        type: string
+      - description: 'Show only batches with available stock. Default: true'
+        example: true
+        in: query
+        name: in_stock_only
+        type: boolean
+      - description: Show only batches expiring within 30 days
+        example: false
+        in: query
+        name: expiring_soon
+        type: boolean
+      - description: Mark batches as low stock if below this quantity
+        example: 10
+        in: query
+        name: low_stock_threshold
+        type: integer
+      - description: 'Comma-separated list of data to include: variant,product,warehouse,prices,taxes.
+          Default: all'
+        example: variant,product,warehouse
+        in: query
+        name: include
+        type: string
+      - description: 'Sort field: expiry_date, quantity, cost_price. Default: expiry_date'
+        example: expiry_date
+        in: query
+        name: sort_by
+        type: string
+      - description: 'Sort order: asc, desc. Default: asc'
+        example: asc
+        in: query
+        name: sort_order
+        type: string
+      - description: 'Maximum number of results (max 200). Default: 50'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Offset for pagination. Default: 0'
+        example: 0
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Inventory list retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.InventoryListResponse'
+              type: object
+        "400":
+          description: Bad request - invalid parameters
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Aggregated Inventory List
+      tags:
+      - Inventory
   /api/v1/prices:
     post:
       consumes:
@@ -5543,7 +6394,18 @@ paths:
       - Product Prices
   /api/v1/prices/expired:
     get:
-      description: Retrieve all expired product prices
+      description: Retrieve all expired product prices with pagination
+      parameters:
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -5551,7 +6413,7 @@ paths:
           description: Expired prices retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -5585,7 +6447,18 @@ paths:
       - Product Prices
   /api/v1/products:
     get:
-      description: Retrieve all products (requires authentication)
+      description: Retrieve all products with pagination (requires authentication)
+      parameters:
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -5593,13 +6466,17 @@ paths:
           description: Products retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
                     $ref: '#/definitions/models.ProductResponse'
                   type: array
               type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
         "401":
           description: Unauthorized
           schema:
@@ -5843,32 +6720,66 @@ paths:
       summary: Update Product
       tags:
       - Products
-  /api/v1/products/{id}/collaborators:
+  /api/v1/products/{id}/detail:
     get:
-      description: Retrieve all collaborators for a specific product
+      description: Retrieves complete product information including variants, prices,
+        inventory availability, and collaborator details in a single call. Reduces
+        API calls by 75%.
       parameters:
-      - description: 'Product ID (format: PROD_xxxxxxxx)'
+      - description: Product ID
         example: PROD_12345678
         in: path
         name: id
         required: true
         type: string
+      - description: 'Comma-separated list of data to include: variants,prices,inventory,collaborators,taxes.
+          Default: all'
+        example: variants,prices,inventory
+        in: query
+        name: include
+        type: string
+      - description: Filter inventory by specific warehouse
+        example: WH_001
+        in: query
+        name: warehouse_id
+        type: string
+      - description: 'Filter prices: retail, wholesale, bulk, or all. Default: all'
+        example: retail
+        in: query
+        name: price_type
+        type: string
+      - description: 'Show only active variants. Default: true'
+        example: true
+        in: query
+        name: active_only
+        type: boolean
+      - description: 'Show only variants with available stock. Default: false'
+        example: false
+        in: query
+        name: in_stock_only
+        type: boolean
       produces:
       - application/json
       responses:
         "200":
-          description: Collaborators retrieved successfully
+          description: Product details retrieved successfully
           schema:
             allOf:
             - $ref: '#/definitions/utils.Response'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/models.CollaboratorProductResponse'
-                  type: array
+                  $ref: '#/definitions/models.ProductDetailResponse'
               type: object
         "400":
-          description: Bad request
+          description: Bad request - invalid parameters
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "404":
@@ -5879,9 +6790,11 @@ paths:
           description: Internal server error
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
-      summary: Get Collaborators by Product
+      security:
+      - BearerAuth: []
+      summary: Get Aggregated Product Detail
       tags:
-      - Collaborator Products
+      - Products
   /api/v1/products/{id}/prices/current:
     get:
       description: Retrieve the current active price for a specific product
@@ -5944,7 +6857,7 @@ paths:
       - Product Prices
   /api/v1/products/{id}/variants:
     get:
-      description: Retrieve all variants for a specific product
+      description: Retrieve all variants for a specific product with pagination
       parameters:
       - description: 'Product ID (format: PROD_xxxxxxxx)'
         example: PROD_12345678
@@ -5952,6 +6865,16 @@ paths:
         name: id
         required: true
         type: string
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -5959,7 +6882,7 @@ paths:
           description: Variants retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -6097,6 +7020,18 @@ paths:
   /api/v1/products/availability:
     get:
       description: Retrieve availability information for all products across warehouses
+        with pagination
+      parameters:
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -6104,7 +7039,7 @@ paths:
           description: Products availability retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -6136,6 +7071,55 @@ paths:
       summary: Get Products Availability
       tags:
       - Inventory
+  /api/v1/products/category/{categoryId}:
+    get:
+      description: Retrieve all products in a specific category (requires authentication)
+      parameters:
+      - description: Category ID
+        example: CATG00000001
+        in: path
+        name: categoryId
+        required: true
+        type: string
+      - description: Subcategory ID (optional filter)
+        in: query
+        name: subcategory_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Products retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.ProductResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Products by Category
+      tags:
+      - Products
   /api/v1/products/search:
     get:
       description: Search products by query string (requires authentication)
@@ -6188,9 +7172,79 @@ paths:
       summary: Search Products
       tags:
       - Products
+  /api/v1/products/variants/{id}/detail:
+    get:
+      description: Retrieves complete information for a specific product variant including
+        prices, inventory, and parent product/collaborator info.
+      parameters:
+      - description: Variant ID
+        example: PVAR_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 'Comma-separated list: prices,inventory,product,collaborator,taxes.
+          Default: all'
+        example: prices,inventory
+        in: query
+        name: include
+        type: string
+      - description: Filter inventory by specific warehouse
+        example: WH_001
+        in: query
+        name: warehouse_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Variant details retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.VariantDetailResponse'
+              type: object
+        "400":
+          description: Bad request - invalid parameters
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Variant not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Aggregated Variant Detail
+      tags:
+      - Products
   /api/v1/purchase-orders:
     get:
-      description: Retrieve all purchase orders (requires authentication)
+      description: Retrieve all purchase orders with pagination (requires authentication)
+      parameters:
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -6198,7 +7252,7 @@ paths:
           description: Purchase orders retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -6317,6 +7371,61 @@ paths:
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
       summary: Get Purchase Order
+      tags:
+      - Purchase Orders
+  /api/v1/purchase-orders/{id}/detail:
+    get:
+      description: Retrieves complete purchase order information including collaborator,
+        warehouse, items with variants, GRNs, inventory created, and timeline in a
+        single call. Reduces API calls by 80%.
+      parameters:
+      - description: Purchase Order ID
+        example: PORD_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 'Comma-separated list of data to include: collaborator,warehouse,items,grns,inventory,payments,timeline.
+          Default: all'
+        example: collaborator,warehouse,items,grns
+        in: query
+        name: include
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Purchase order details retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.PODetailResponse'
+              type: object
+        "400":
+          description: Bad request - invalid parameters
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Purchase order not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Aggregated Purchase Order Detail
       tags:
       - Purchase Orders
   /api/v1/purchase-orders/{id}/grn:
@@ -6484,7 +7593,18 @@ paths:
       - Purchase Orders
   /api/v1/purchase-orders/pending-deliveries:
     get:
-      description: Retrieve all purchase orders with pending deliveries
+      description: Retrieve all purchase orders with pending deliveries with pagination
+      parameters:
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -6492,7 +7612,7 @@ paths:
           description: Pending deliveries retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -6508,7 +7628,7 @@ paths:
       - Purchase Orders
   /api/v1/purchase-orders/status/{status}:
     get:
-      description: Retrieve all purchase orders with a specific status
+      description: Retrieve all purchase orders with a specific status with pagination
       parameters:
       - description: Status
         enum:
@@ -6521,6 +7641,16 @@ paths:
         name: status
         required: true
         type: string
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -6528,7 +7658,7 @@ paths:
           description: Purchase orders retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -6549,6 +7679,17 @@ paths:
   /api/v1/refund-policies:
     get:
       description: Retrieve all refund policies with pagination
+      parameters:
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -6556,7 +7697,7 @@ paths:
           description: Refund policies retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -7360,8 +8501,8 @@ paths:
     get:
       description: Retrieve all returns with pagination
       parameters:
-      - description: 'Number of records to return (default: 10)'
-        example: 10
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
         in: query
         name: limit
         type: integer
@@ -7377,7 +8518,7 @@ paths:
           description: Returns retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -8104,8 +9245,8 @@ paths:
     get:
       description: Retrieve all sales with pagination (requires authentication)
       parameters:
-      - description: 'Number of records to return (default: 10)'
-        example: 10
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
         in: query
         name: limit
         type: integer
@@ -8121,7 +9262,7 @@ paths:
           description: Sales retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -8434,6 +9575,148 @@ paths:
       summary: Cancel Sale
       tags:
       - Sales
+  /api/v1/sales/{id}/cancel-items:
+    post:
+      consumes:
+      - application/json
+      description: Cancel specific items in a sale (partial cancellation)
+      parameters:
+      - description: Sale ID
+        example: SALE_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Items to cancel
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CancelItemsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Items cancelled successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.CancelItemsResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Sale not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "409":
+          description: Conflict - items cannot be cancelled
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Cancel Specific Items
+      tags:
+      - Sales
+  /api/v1/sales/{id}/cancellations:
+    get:
+      consumes:
+      - application/json
+      description: Get cancellation history for a sale
+      parameters:
+      - description: Sale ID
+        example: SALE_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Cancellations retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.GetCancellationsResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Sale not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Sale Cancellations
+      tags:
+      - Sales
+  /api/v1/sales/{id}/invoice:
+    get:
+      description: Generate and download a PDF invoice for a specific sale
+      parameters:
+      - description: Sale ID
+        example: SALE00000001
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/pdf
+      responses:
+        "200":
+          description: PDF invoice file
+          schema:
+            type: file
+        "400":
+          description: Bad request - missing required settings
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Sale not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Download Invoice PDF
+      tags:
+      - Sales
   /api/v1/sales/{id}/returns:
     get:
       description: Retrieve all returns associated with a specific sale
@@ -8554,9 +9837,72 @@ paths:
       summary: Update Sale Status
       tags:
       - Sales
+  /api/v1/sales/context:
+    get:
+      description: Retrieves all data needed for sale/checkout operations in a single
+        call including available inventory, prices, taxes, discounts, and payment
+        methods. Reduces API calls by 80-83%.
+      parameters:
+      - description: Filter inventory to specific warehouse
+        example: WH_001
+        in: query
+        name: warehouse_id
+        type: string
+      - description: 'Include products with zero stock. Default: false'
+        example: false
+        in: query
+        name: include_zero_stock
+        type: boolean
+      - description: 'Price type to use: retail, wholesale, bulk. Default: retail'
+        example: retail
+        in: query
+        name: price_type
+        type: string
+      - description: 'ISO date for price effective date. Default: now'
+        example: "2024-11-21"
+        in: query
+        name: effective_date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sales context retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.SalesContextResponse'
+              type: object
+        "400":
+          description: Bad request - invalid parameters
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "404":
+          description: Warehouse not found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Sales Context
+      tags:
+      - Sales
   /api/v1/sales/date-range:
     get:
-      description: Retrieve sales within a specific date range
+      description: Retrieve sales within a specific date range with pagination
       parameters:
       - description: Start date (YYYY-MM-DD)
         example: "2024-01-01"
@@ -8570,6 +9916,16 @@ paths:
         name: end_date
         required: true
         type: string
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -8577,7 +9933,7 @@ paths:
           description: Sales retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -8613,9 +9969,32 @@ paths:
       summary: Get Sales by Date Range
       tags:
       - Sales
+  /api/v1/sales/invoice-requirements:
+    get:
+      description: Check if all required settings for invoice generation exist
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Invoice requirements check complete
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Check Invoice Requirements
+      tags:
+      - Sales
   /api/v1/sales/status/{status}:
     get:
-      description: Retrieve all sales with a specific status
+      description: Retrieve all sales with a specific status with pagination
       parameters:
       - description: Sale status
         example: completed
@@ -8623,6 +10002,16 @@ paths:
         name: status
         required: true
         type: string
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -8630,7 +10019,7 @@ paths:
           description: Sales retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -8829,52 +10218,25 @@ paths:
       summary: Get Total Sales Amount
       tags:
       - Sales
-  /api/v1/taxes:
+  /api/v1/settings:
     get:
-      description: Retrieve all tax configurations with pagination
-      parameters:
-      - description: 'Number of records to return (default: 10)'
-        example: 10
-        in: query
-        name: limit
-        type: integer
-      - description: 'Number of records to skip (default: 0)'
-        example: 0
-        in: query
-        name: offset
-        type: integer
+      description: Retrieve all FPO settings
       produces:
       - application/json
       responses:
         "200":
-          description: Taxes retrieved successfully
+          description: Settings retrieved successfully
           schema:
             allOf:
             - $ref: '#/definitions/utils.Response'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/models.TaxResponse'
+                    $ref: '#/definitions/models.SettingResponse'
                   type: array
               type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
         "401":
           description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "500":
@@ -8883,76 +10245,24 @@ paths:
             $ref: '#/definitions/utils.ErrorResponseModel'
       security:
       - BearerAuth: []
-      summary: Get All Taxes
+      summary: Get All Settings
       tags:
-      - Taxes
-    post:
-      consumes:
-      - application/json
-      description: Create a new tax configuration (requires authentication)
-      parameters:
-      - description: Tax data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/models.CreateTaxRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Tax created successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/models.TaxResponse'
-              type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Create Tax
-      tags:
-      - Taxes
-  /api/v1/taxes/{id}:
+      - Settings
+  /api/v1/settings/{key}:
     delete:
-      description: Delete a tax configuration by ID
+      description: Delete a setting by key
       parameters:
-      - description: Tax ID
-        example: TAX_12345678
+      - description: Setting key
+        example: fpo_name
         in: path
-        name: id
+        name: key
         required: true
         type: string
       produces:
       - application/json
       responses:
         "200":
-          description: Tax deleted successfully
+          description: Setting deleted successfully
           schema:
             $ref: '#/definitions/utils.Response'
         "400":
@@ -8968,15 +10278,7 @@ paths:
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "404":
-          description: Tax not found
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
+          description: Setting not found
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "500":
@@ -8985,52 +10287,36 @@ paths:
             $ref: '#/definitions/utils.ErrorResponseModel'
       security:
       - BearerAuth: []
-      summary: Delete Tax
+      summary: Delete Setting
       tags:
-      - Taxes
+      - Settings
     get:
-      description: Retrieve a specific tax configuration by ID
+      description: Retrieve a specific setting by key
       parameters:
-      - description: Tax ID
-        example: TAX_12345678
+      - description: Setting key
+        example: fpo_name
         in: path
-        name: id
+        name: key
         required: true
         type: string
       produces:
       - application/json
       responses:
         "200":
-          description: Tax retrieved successfully
+          description: Setting retrieved successfully
           schema:
             allOf:
             - $ref: '#/definitions/utils.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/models.TaxResponse'
+                  $ref: '#/definitions/models.SettingResponse'
               type: object
         "400":
           description: Bad request
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
         "404":
-          description: Tax not found
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
+          description: Setting not found
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "500":
@@ -9039,60 +10325,224 @@ paths:
             $ref: '#/definitions/utils.ErrorResponseModel'
       security:
       - BearerAuth: []
-      summary: Get Tax
+      summary: Get Setting
       tags:
-      - Taxes
+      - Settings
     put:
       consumes:
       - application/json
-      description: Update an existing tax configuration by ID
+      description: Create a new setting or update an existing one by key
       parameters:
-      - description: Tax ID
-        example: TAX_12345678
+      - description: Setting key
+        example: fpo_name
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: Setting data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateSettingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Setting saved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.SettingResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Create or Update Setting
+      tags:
+      - Settings
+  /api/v1/settings/header-fields:
+    get:
+      description: Retrieve settings configured as invoice header fields, ordered
+        by display_order
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Header fields retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.HeaderFieldResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Header Fields
+      tags:
+      - Settings
+  /api/v1/settings/invoice-requirements:
+    get:
+      description: Check if all required settings for invoice generation exist
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Invoice requirements check complete
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.InvoiceRequirementsResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Check Invoice Requirements
+      tags:
+      - Settings
+  /api/v1/subcategories:
+    get:
+      description: Retrieve all subcategories with pagination
+      parameters:
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Subcategories retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.SubcategoryResponse'
+                  type: array
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      summary: Get All Subcategories
+      tags:
+      - Subcategories
+    post:
+      consumes:
+      - application/json
+      description: Create a new subcategory
+      parameters:
+      - description: Subcategory data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateSubcategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Subcategory created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.SubcategoryResponse'
+              type: object
+        "400":
+          description: Bad request - category does not exist
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "409":
+          description: Conflict - subcategory already exists
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Create Subcategory
+      tags:
+      - Subcategories
+  /api/v1/subcategories/{id}:
+    delete:
+      description: Delete a subcategory by ID
+      parameters:
+      - description: 'Subcategory ID (format: SCAT_xxxxxxxx)'
+        example: SCAT_12345678
         in: path
         name: id
         required: true
         type: string
-      - description: Updated tax data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/models.UpdateTaxRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: Tax updated successfully
+          description: Subcategory deleted successfully
           schema:
-            allOf:
-            - $ref: '#/definitions/utils.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/models.TaxResponse'
-              type: object
+            $ref: '#/definitions/utils.Response'
         "400":
           description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "404":
-          description: Tax not found
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
+          description: Subcategory not found
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "500":
@@ -9101,199 +10551,84 @@ paths:
             $ref: '#/definitions/utils.ErrorResponseModel'
       security:
       - BearerAuth: []
-      summary: Update Tax
+      summary: Delete Subcategory
       tags:
-      - Taxes
-  /api/v1/taxes/active:
+      - Subcategories
     get:
-      description: Retrieve all currently active tax configurations
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Active taxes retrieved successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.Response'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/models.TaxResponse'
-                  type: array
-              type: object
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Get Active Taxes
-      tags:
-      - Taxes
-  /api/v1/taxes/applications/return/{returnID}:
-    get:
-      description: Retrieve all tax applications for a specific return
+      description: Retrieve a specific subcategory by ID
       parameters:
-      - description: Return ID
-        example: RET_12345678
+      - description: 'Subcategory ID (format: SCAT_xxxxxxxx)'
+        example: SCAT_12345678
         in: path
-        name: returnID
+        name: id
         required: true
         type: string
       produces:
       - application/json
       responses:
         "200":
-          description: Tax applications retrieved successfully
+          description: Subcategory details
           schema:
             allOf:
             - $ref: '#/definitions/utils.Response'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/models.TaxApplicationResponse'
-                  type: array
+                  $ref: '#/definitions/models.SubcategoryResponse'
               type: object
         "400":
           description: Bad request
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
+        "404":
+          description: Subcategory not found
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Get Tax Applications by Return
+      summary: Get Subcategory
       tags:
-      - Taxes
-  /api/v1/taxes/applications/sale/{saleID}:
-    get:
-      description: Retrieve all tax applications for a specific sale
-      parameters:
-      - description: Sale ID
-        example: SALE_12345678
-        in: path
-        name: saleID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Tax applications retrieved successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.Response'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/models.TaxApplicationResponse'
-                  type: array
-              type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Get Tax Applications by Sale
-      tags:
-      - Taxes
-  /api/v1/taxes/calculate:
-    post:
+      - Subcategories
+    patch:
       consumes:
       - application/json
-      description: Calculate taxes for a transaction with given items
+      description: Update an existing subcategory by ID
       parameters:
-      - description: Tax calculation data
+      - description: 'Subcategory ID (format: SCAT_xxxxxxxx)'
+        example: SCAT_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated subcategory data
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.TaxCalculationRequest'
+          $ref: '#/definitions/models.UpdateSubcategoryRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: Tax calculation completed successfully
+          description: Subcategory updated successfully
           schema:
             allOf:
             - $ref: '#/definitions/utils.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/models.TaxCalculationResponse'
+                  $ref: '#/definitions/models.SubcategoryResponse'
               type: object
         "400":
           description: Bad request
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
+        "404":
+          description: Subcategory not found
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
+          description: Conflict - name already exists
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "500":
@@ -9302,241 +10637,136 @@ paths:
             $ref: '#/definitions/utils.ErrorResponseModel'
       security:
       - BearerAuth: []
-      summary: Calculate Tax
+      summary: Update Subcategory
       tags:
-      - Taxes
-  /api/v1/taxes/status/{status}:
+      - Subcategories
+  /api/v1/subcategories/category/{categoryId}:
     get:
-      description: Retrieve all taxes with a specific status
+      description: Retrieve all subcategories for a specific category by ID with pagination
       parameters:
-      - description: Tax status
-        enum:
-        - active
-        - inactive
-        - expired
-        - scheduled
+      - description: 'Category ID (format: CATG_xxxxxxxx)'
+        example: CATG_12345678
         in: path
-        name: status
+        name: categoryId
         required: true
         type: string
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
         "200":
-          description: Taxes retrieved successfully
+          description: Subcategories retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/models.TaxResponse'
+                    $ref: '#/definitions/models.SubcategoryResponse'
                   type: array
               type: object
         "400":
           description: Bad request
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
         "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Get Taxes by Status
+      summary: Get Subcategories by Category
       tags:
-      - Taxes
-  /api/v1/taxes/summary/return/{returnID}:
+      - Subcategories
+  /api/v1/subcategories/name/{name}:
     get:
-      description: Retrieve tax summary for a specific return
+      description: Retrieve a specific subcategory by name
       parameters:
-      - description: Return ID
-        example: RET_12345678
+      - description: Subcategory name
+        example: Water Soluble
         in: path
-        name: returnID
+        name: name
         required: true
         type: string
       produces:
       - application/json
       responses:
         "200":
-          description: Tax summary retrieved successfully
+          description: Subcategory details
           schema:
             allOf:
             - $ref: '#/definitions/utils.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/models.TaxSummaryResponse'
+                  $ref: '#/definitions/models.SubcategoryResponse'
               type: object
         "400":
           description: Bad request
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
         "404":
-          description: Tax summary not found
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
+          description: Subcategory not found
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Get Tax Summary by Return
+      summary: Get Subcategory by Name
       tags:
-      - Taxes
-  /api/v1/taxes/summary/sale/{saleID}:
+      - Subcategories
+  /api/v1/subcategories/search:
     get:
-      description: Retrieve tax summary for a specific sale
+      description: Search subcategories by name with pagination
       parameters:
-      - description: Sale ID
-        example: SALE_12345678
-        in: path
-        name: saleID
+      - description: Search query
+        example: BULK
+        in: query
+        name: q
         required: true
         type: string
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
         "200":
-          description: Tax summary retrieved successfully
+          description: Subcategories found successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/models.TaxSummaryResponse'
-              type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "404":
-          description: Tax summary not found
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Get Tax Summary by Sale
-      tags:
-      - Taxes
-  /api/v1/taxes/type/{type}:
-    get:
-      description: Retrieve all taxes of a specific type
-      parameters:
-      - description: Tax type
-        enum:
-        - cgst
-        - sgst
-        - igst
-        - vat
-        - stt
-        - tds
-        - tcs
-        - excise
-        - customs
-        - item_specific
-        - category
-        - flat
-        in: path
-        name: type
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Taxes retrieved successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/models.TaxResponse'
+                    $ref: '#/definitions/models.SubcategoryResponse'
                   type: array
               type: object
         "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "403":
-          description: Forbidden - insufficient permissions
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "409":
-          description: Conflict - resource already exists
-          schema:
-            $ref: '#/definitions/utils.ErrorResponseModel'
-        "422":
-          description: Unprocessable Entity - validation failed
+          description: Bad request - search query required
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
         "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/utils.ErrorResponseModel'
-      security:
-      - BearerAuth: []
-      summary: Get Taxes by Type
+      summary: Search Subcategories
       tags:
-      - Taxes
+      - Subcategories
   /api/v1/variants/{id}:
     delete:
       description: Delete a product variant (soft delete, requires authentication)
@@ -9687,7 +10917,8 @@ paths:
       - Product Variants
   /api/v1/variants/{id}/batches:
     get:
-      description: Retrieve all inventory batches for a specific product variant
+      description: Retrieve all inventory batches for a specific product variant with
+        pagination
       parameters:
       - description: Variant ID
         example: PVAR_12345678
@@ -9695,6 +10926,16 @@ paths:
         name: id
         required: true
         type: string
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -9702,7 +10943,7 @@ paths:
           description: Batches retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -9740,7 +10981,7 @@ paths:
       - Inventory
   /api/v1/variants/{id}/prices:
     get:
-      description: Retrieve all prices for a specific product variant
+      description: Retrieve all prices for a specific product variant with pagination
       parameters:
       - description: Variant ID
         example: PVAR_12345678
@@ -9748,6 +10989,16 @@ paths:
         name: id
         required: true
         type: string
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -9755,7 +11006,7 @@ paths:
           description: Variant prices retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -9923,7 +11174,18 @@ paths:
       - Product Variants
   /api/v1/warehouses:
     get:
-      description: Retrieve all warehouses (requires authentication)
+      description: Retrieve all warehouses with pagination (requires authentication)
+      parameters:
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -9931,7 +11193,7 @@ paths:
           description: Warehouses retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -10165,7 +11427,7 @@ paths:
       - Warehouses
   /api/v1/warehouses/{id}/batches:
     get:
-      description: Retrieve all inventory batches for a specific warehouse
+      description: Retrieve all inventory batches for a specific warehouse with pagination
       parameters:
       - description: Warehouse ID
         example: WHSE_12345678
@@ -10173,6 +11435,16 @@ paths:
         name: id
         required: true
         type: string
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -10180,7 +11452,7 @@ paths:
           description: Batches retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -10218,7 +11490,7 @@ paths:
       - Inventory
   /api/v1/warehouses/{id}/grns:
     get:
-      description: Retrieve all GRNs for a specific warehouse
+      description: Retrieve all GRNs for a specific warehouse with pagination
       parameters:
       - description: 'Warehouse ID (format: WHSE_xxxxxxxx)'
         example: WHSE_12345678
@@ -10226,6 +11498,16 @@ paths:
         name: id
         required: true
         type: string
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -10233,7 +11515,7 @@ paths:
           description: GRNs retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/utils.Response'
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
@@ -10610,7 +11892,7 @@ paths:
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/models.WebhookEvent'
+                    $ref: '#/definitions/models.WebhookEventResponse'
                   type: array
               type: object
         "401":

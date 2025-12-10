@@ -1,27 +1,66 @@
 package models
 
 import (
-	"time"
-
+	"fmt"
 	"kisanlink-erp/internal/constants"
+	"time"
 
 	"github.com/Kisanlink/kisanlink-db/pkg/base"
 	"github.com/Kisanlink/kisanlink-db/pkg/core/hash"
 )
 
+// Sale status constants
+const (
+	SaleStatusPending   = "pending"
+	SaleStatusCompleted = "completed"
+	SaleStatusCancelled = "cancelled"
+)
+
+// IsReservationStatus returns true if the status means inventory is reserved (not yet deducted)
+// Pending sales have inventory reserved; completed/cancelled sales have inventory deducted or released
+func IsReservationStatus(status string) bool {
+	return status == SaleStatusPending
+}
+
+// ValidStatusTransitions defines allowed status transitions for sales
+var ValidStatusTransitions = map[string][]string{
+	SaleStatusPending:   {SaleStatusCompleted, SaleStatusCancelled},
+	SaleStatusCompleted: {SaleStatusCancelled},
+	SaleStatusCancelled: {}, // Terminal state - no transitions allowed
+}
+
+// ValidateStatusTransition checks if a status transition is allowed
+func ValidateStatusTransition(fromStatus, toStatus string) error {
+	allowedTargets, exists := ValidStatusTransitions[fromStatus]
+	if !exists {
+		return fmt.Errorf("unknown current status: %s", fromStatus)
+	}
+
+	for _, allowed := range allowedTargets {
+		if toStatus == allowed {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("invalid status transition from '%s' to '%s'", fromStatus, toStatus)
+}
+
 // Sale represents a sale transaction
 type Sale struct {
 	base.BaseModel
-	WarehouseID string    `gorm:"type:varchar(100);not null" json:"warehouse_id"`
-	SaleDate    time.Time `gorm:"type:timestamptz;not null;default:now()" json:"sale_date"`
-	TotalAmount float64   `gorm:"type:numeric(14,4);not null" json:"total_amount"`
-	Status      string    `gorm:"type:varchar(20);not null" json:"status"`
+	WarehouseID   string    `gorm:"type:varchar(100);not null" json:"warehouse_id"`
+	InvoiceNumber string    `gorm:"type:varchar(10);uniqueIndex" json:"invoice_number"` // Format: MMYYNNNN (e.g., 12250001)
+	SaleDate      time.Time `gorm:"type:timestamptz;not null;default:now()" json:"sale_date"`
+	TotalAmount   float64   `gorm:"type:numeric(14,4);not null" json:"total_amount"`
+	Status        string    `gorm:"type:varchar(20);not null" json:"status"`
 
-	// BRD Requirements
-	CustomerID  *string `gorm:"type:varchar(100)" json:"customer_id"`                   // Optional customer/farmer identifier
-	PaymentMode string  `gorm:"type:varchar(20);not null" json:"payment_mode"`          // cash, upi, online
-	SaleType    string  `gorm:"type:varchar(20);not null" json:"sale_type"`             // in_store, delivery
-	ApplyTaxes  bool    `gorm:"type:boolean;not null;default:false" json:"apply_taxes"` // Controls tax calculation for this sale
+	// BRD Requirements - Customer tracking
+	CustomerPhone *string `gorm:"type:varchar(20)" json:"customer_phone"`                   // Customer phone number
+	CustomerName  *string `gorm:"type:varchar(255)" json:"customer_name"`                   // Customer name
+	IsOrgMember   bool    `gorm:"type:boolean;not null;default:false" json:"is_org_member"` // Whether customer belongs to the FPO/organization
+	PaymentMode   string  `gorm:"type:varchar(20);not null" json:"payment_mode"`            // cash, upi, online
+	SaleType      string  `gorm:"type:varchar(20);not null" json:"sale_type"`               // in_store, delivery
+	ApplyTaxes    bool    `gorm:"type:boolean;not null;default:false" json:"apply_taxes"`   // Controls tax calculation for this sale
 
 	// Cancellation fields
 	CancelledAt        *time.Time `gorm:"type:timestamptz" json:"cancelled_at,omitempty"`
@@ -49,11 +88,11 @@ type SaleItem struct {
 	CostPrice float64 `gorm:"type:numeric(12,4);not null" json:"cost_price"` // Purchase price from batch
 	Margin    float64 `gorm:"type:numeric(12,4);not null" json:"margin"`     // SellingPrice - CostPrice
 
-	// Tax amounts (calculated from batch tax configuration)
-	CGSTAmount      float64 `gorm:"type:numeric(12,4);default:0" json:"cgst_amount"`
-	SGSTAmount      float64 `gorm:"type:numeric(12,4);default:0" json:"sgst_amount"`
-	CustomTaxAmount float64 `gorm:"type:numeric(12,4);default:0" json:"custom_tax_amount"`
-	TotalTaxAmount  float64 `gorm:"type:numeric(12,4);default:0" json:"total_tax_amount"`
+	// Tax amounts (calculated from variant GST rate)
+	CGSTAmount     float64 `gorm:"type:numeric(12,4);default:0" json:"cgst_amount"`
+	SGSTAmount     float64 `gorm:"type:numeric(12,4);default:0" json:"sgst_amount"`
+	IGSTAmount     float64 `gorm:"type:numeric(12,4);default:0" json:"igst_amount"` // For inter-state sales
+	TotalTaxAmount float64 `gorm:"type:numeric(12,4);default:0" json:"total_tax_amount"`
 
 	// Associations
 	Sale  Sale           `gorm:"foreignKey:SaleID" json:"sale,omitempty"`
@@ -81,18 +120,21 @@ func (SaleSummary) TableName() string {
 }
 
 // NewSale creates a new Sale with initialized fields
-func NewSale(warehouseID string, saleDate time.Time, totalAmount float64, status string, customerID *string, paymentMode, saleType string, applyTaxes bool) *Sale {
+func NewSale(warehouseID, invoiceNumber string, saleDate time.Time, totalAmount float64, status string, customerPhone, customerName *string, isOrgMember bool, paymentMode, saleType string, applyTaxes bool) *Sale {
 	baseModel := base.NewBaseModel(constants.TableSale, hash.Medium)
 	return &Sale{
-		BaseModel:   *baseModel,
-		WarehouseID: warehouseID,
-		SaleDate:    saleDate,
-		TotalAmount: totalAmount,
-		Status:      status,
-		CustomerID:  customerID,
-		PaymentMode: paymentMode,
-		SaleType:    saleType,
-		ApplyTaxes:  applyTaxes,
+		BaseModel:     *baseModel,
+		WarehouseID:   warehouseID,
+		InvoiceNumber: invoiceNumber,
+		SaleDate:      saleDate,
+		TotalAmount:   totalAmount,
+		Status:        status,
+		CustomerPhone: customerPhone,
+		CustomerName:  customerName,
+		IsOrgMember:   isOrgMember,
+		PaymentMode:   paymentMode,
+		SaleType:      saleType,
+		ApplyTaxes:    applyTaxes,
 	}
 }
 
@@ -101,39 +143,41 @@ func NewSaleItem(saleID, batchID string, quantity int64, sellingPrice, costPrice
 	baseModel := base.NewBaseModel(constants.TableSaleItem, hash.Medium)
 	margin := sellingPrice - costPrice
 	return &SaleItem{
-		BaseModel:       *baseModel,
-		SaleID:          saleID,
-		BatchID:         batchID,
-		Quantity:        quantity,
-		SellingPrice:    sellingPrice,
-		CostPrice:       costPrice,
-		Margin:          margin,
-		LineTotal:       lineTotal,
-		CGSTAmount:      0,
-		SGSTAmount:      0,
-		CustomTaxAmount: 0,
-		TotalTaxAmount:  0,
+		BaseModel:      *baseModel,
+		SaleID:         saleID,
+		BatchID:        batchID,
+		Quantity:       quantity,
+		SellingPrice:   sellingPrice,
+		CostPrice:      costPrice,
+		Margin:         margin,
+		LineTotal:      lineTotal,
+		CGSTAmount:     0,
+		SGSTAmount:     0,
+		IGSTAmount:     0,
+		TotalTaxAmount: 0,
 	}
 }
 
-// NewSaleItemWithTax creates a new SaleItem with tax amounts
-func NewSaleItemWithTax(saleID, batchID string, quantity int64, sellingPrice, costPrice, lineTotal, cgstAmount, sgstAmount, customTaxAmount float64) *SaleItem {
+// NewSaleItemWithTax creates a new SaleItem with GST tax amounts
+// For intra-state: cgstAmount and sgstAmount are set, igstAmount is 0
+// For inter-state: igstAmount is set, cgstAmount and sgstAmount are 0
+func NewSaleItemWithTax(saleID, batchID string, quantity int64, sellingPrice, costPrice, lineTotal, cgstAmount, sgstAmount, igstAmount float64) *SaleItem {
 	baseModel := base.NewBaseModel(constants.TableSaleItem, hash.Medium)
 	margin := sellingPrice - costPrice
-	totalTaxAmount := cgstAmount + sgstAmount + customTaxAmount
+	totalTaxAmount := cgstAmount + sgstAmount + igstAmount
 	return &SaleItem{
-		BaseModel:       *baseModel,
-		SaleID:          saleID,
-		BatchID:         batchID,
-		Quantity:        quantity,
-		SellingPrice:    sellingPrice,
-		CostPrice:       costPrice,
-		Margin:          margin,
-		LineTotal:       lineTotal,
-		CGSTAmount:      cgstAmount,
-		SGSTAmount:      sgstAmount,
-		CustomTaxAmount: customTaxAmount,
-		TotalTaxAmount:  totalTaxAmount,
+		BaseModel:      *baseModel,
+		SaleID:         saleID,
+		BatchID:        batchID,
+		Quantity:       quantity,
+		SellingPrice:   sellingPrice,
+		CostPrice:      costPrice,
+		Margin:         margin,
+		LineTotal:      lineTotal,
+		CGSTAmount:     cgstAmount,
+		SGSTAmount:     sgstAmount,
+		IGSTAmount:     igstAmount,
+		TotalTaxAmount: totalTaxAmount,
 	}
 }
 
@@ -151,17 +195,20 @@ func NewSaleSummary(summaryDate time.Time, warehouseID string, totalSales float6
 
 // SaleResponse represents the API response for sale
 type SaleResponse struct {
-	ID          string  `json:"id"`
-	WarehouseID string  `json:"warehouse_id"`
-	SaleDate    string  `json:"sale_date"`
-	TotalAmount float64 `json:"total_amount"`
-	Status      string  `json:"status"`
+	ID            string  `json:"id"`
+	InvoiceNumber string  `json:"invoice_number"` // Format: MMYYNNNN (e.g., 12250001)
+	WarehouseID   string  `json:"warehouse_id"`
+	SaleDate      string  `json:"sale_date"`
+	TotalAmount   float64 `json:"total_amount"`
+	Status        string  `json:"status"`
 
-	// BRD Requirements
-	CustomerID  *string `json:"customer_id,omitempty"`
-	PaymentMode string  `json:"payment_mode"`
-	SaleType    string  `json:"sale_type"`
-	ApplyTaxes  bool    `json:"apply_taxes"`
+	// BRD Requirements - Customer tracking
+	CustomerPhone *string `json:"customer_phone,omitempty"`
+	CustomerName  *string `json:"customer_name,omitempty"`
+	IsOrgMember   bool    `json:"is_org_member"`
+	PaymentMode   string  `json:"payment_mode"`
+	SaleType      string  `json:"sale_type"`
+	ApplyTaxes    bool    `json:"apply_taxes"`
 
 	// Cancellation fields
 	CancelledAt        *string `json:"cancelled_at,omitempty"`
@@ -194,14 +241,15 @@ type DiscountApplication struct {
 	AppliedBy    string  `json:"applied_by"` // "manual", "coupon", "auto"
 }
 
-// TaxSummaryBreakdown represents tax breakdown details
+// TaxSummaryBreakdown represents GST tax breakdown details
+// For intra-state: CGSTAmount and SGSTAmount are set, IGSTAmount is 0
+// For inter-state: IGSTAmount is set, CGSTAmount and SGSTAmount are 0
 type TaxSummaryBreakdown struct {
 	CGSTAmount     float64 `json:"cgst_amount"`
 	SGSTAmount     float64 `json:"sgst_amount"`
 	IGSTAmount     float64 `json:"igst_amount"`
-	VATAmount      float64 `json:"vat_amount"`
-	OtherTaxAmount float64 `json:"other_tax_amount"`
 	TotalTaxAmount float64 `json:"total_tax_amount"`
+	IsInterState   bool    `json:"is_inter_state"` // true if IGST applies, false if CGST+SGST
 }
 
 // SaleItemResponse represents the API response for sale item
@@ -217,11 +265,11 @@ type SaleItemResponse struct {
 	CostPrice float64 `json:"cost_price"` // Purchase price
 	Margin    float64 `json:"margin"`     // Profit margin
 
-	// Tax amounts
-	CGSTAmount      float64 `json:"cgst_amount"`
-	SGSTAmount      float64 `json:"sgst_amount"`
-	CustomTaxAmount float64 `json:"custom_tax_amount"`
-	TotalTaxAmount  float64 `json:"total_tax_amount"`
+	// GST Tax amounts
+	CGSTAmount     float64 `json:"cgst_amount"`
+	SGSTAmount     float64 `json:"sgst_amount"`
+	IGSTAmount     float64 `json:"igst_amount"` // For inter-state sales
+	TotalTaxAmount float64 `json:"total_tax_amount"`
 
 	CreatedAt string `json:"created_at"`
 }
@@ -231,11 +279,16 @@ type CreateSaleRequest struct {
 	WarehouseID string  `json:"warehouse_id" binding:"required"`
 	SaleDate    *string `json:"sale_date"`
 
-	// BRD Requirements
-	CustomerID  *string `json:"customer_id"`                     // Optional customer/farmer identifier
-	PaymentMode string  `json:"payment_mode" binding:"required"` // cash, upi, online
-	SaleType    string  `json:"sale_type" binding:"required"`    // in_store, delivery
-	ApplyTaxes  *bool   `json:"apply_taxes"`                     // Controls tax calculation (default: false)
+	// BRD Requirements - Customer tracking
+	CustomerPhone *string `json:"customer_phone"`                  // Customer phone number
+	CustomerName  *string `json:"customer_name"`                   // Customer name
+	IsOrgMember   bool    `json:"is_org_member"`                   // Whether customer belongs to the FPO/organization
+	PaymentMode   string  `json:"payment_mode" binding:"required"` // cash, upi, online
+	SaleType      string  `json:"sale_type" binding:"required"`    // in_store, delivery
+	ApplyTaxes    *bool   `json:"apply_taxes"`                     // Controls tax calculation (default: false)
+
+	// GST Inter-state detection
+	DeliveryState *string `json:"delivery_state"` // Optional: state code for delivery (for inter-state IGST calculation)
 
 	DiscountID         *string                 `json:"discount_id"`          // Manual discount by ID (highest priority)
 	CouponCode         *string                 `json:"coupon_code"`          // Manual discount by code (second priority)
@@ -253,7 +306,8 @@ type CreateSaleItemRequest struct {
 
 // UpdateSaleRequest represents the request to update a sale
 type UpdateSaleRequest struct {
-	Status *string `json:"status,omitempty"`
+	Status      *string `json:"status,omitempty"`
+	PerformedBy string  `json:"-"` // Set by handler from JWT context, not from request body
 }
 
 // UpdateSaleStatusRequest represents the request to update sale status

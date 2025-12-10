@@ -56,10 +56,13 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 		CREATE TABLE sales (
 			id TEXT PRIMARY KEY,
 			warehouse_id TEXT NOT NULL,
+			invoice_number TEXT UNIQUE,
 			sale_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			total_amount REAL NOT NULL,
 			status TEXT NOT NULL,
-			customer_id TEXT,
+			customer_phone TEXT,
+			customer_name TEXT,
+			is_org_member INTEGER NOT NULL DEFAULT 0,
 			payment_mode TEXT NOT NULL,
 			sale_type TEXT NOT NULL,
 			is_returned INTEGER DEFAULT 0,
@@ -73,6 +76,13 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 			updated_by TEXT,
 			deleted_by TEXT
 		)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Create index for invoice_number
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_sales_invoice_number ON sales(invoice_number)
 	`).Error; err != nil {
 		return err
 	}
@@ -95,7 +105,7 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 			margin REAL NOT NULL,
 			cgst_amount REAL DEFAULT 0,
 			sgst_amount REAL DEFAULT 0,
-			custom_tax_amount REAL DEFAULT 0,
+			igst_amount REAL DEFAULT 0,
 			total_tax_amount REAL DEFAULT 0,
 			created_at DATETIME,
 			updated_at DATETIME,
@@ -218,6 +228,7 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 			total_amount REAL NOT NULL,
 			payment_status TEXT NOT NULL,
 			paid_amount REAL DEFAULT 0,
+			is_inter_state INTEGER,
 			created_at DATETIME,
 			updated_at DATETIME,
 			deleted_at DATETIME,
@@ -271,6 +282,15 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 			product_name TEXT,
 			product_sku TEXT,
 			received_quantity INTEGER,
+			base_price REAL DEFAULT 0,
+			gst_rate REAL DEFAULT 0,
+			gst_amount REAL DEFAULT 0,
+			cgst_rate REAL DEFAULT 0,
+			cgst_amount REAL DEFAULT 0,
+			sgst_rate REAL DEFAULT 0,
+			sgst_amount REAL DEFAULT 0,
+			igst_rate REAL DEFAULT 0,
+			igst_amount REAL DEFAULT 0,
 			created_at DATETIME,
 			updated_at DATETIME,
 			deleted_at DATETIME,
@@ -329,6 +349,70 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 		return err
 	}
 
+	// Category table - must be created before Products (foreign key constraint)
+	if err := db.Exec(`DROP TABLE IF EXISTS categories`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE TABLE categories (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL UNIQUE,
+			description TEXT,
+			created_at DATETIME,
+			updated_at DATETIME,
+			deleted_at DATETIME,
+			created_by TEXT,
+			updated_by TEXT,
+			deleted_by TEXT
+		)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Create index for category name
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_category_name ON categories(name)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Subcategory table - must be created before Products (foreign key constraint)
+	if err := db.Exec(`DROP TABLE IF EXISTS subcategories`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE TABLE subcategories (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			description TEXT,
+			category_id TEXT NOT NULL,
+			created_at DATETIME,
+			updated_at DATETIME,
+			deleted_at DATETIME,
+			created_by TEXT,
+			updated_by TEXT,
+			deleted_by TEXT
+		)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Create composite unique index for subcategory (name unique per category)
+	if err := db.Exec(`
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_subcategory_name_category ON subcategories(name, category_id)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Create index for category_id lookup
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_subcategory_category_id ON subcategories(category_id)
+	`).Error; err != nil {
+		return err
+	}
+
 	// Product table
 	// Drop table first to ensure schema is correct
 	if err := db.Exec(`DROP TABLE IF EXISTS products`).Error; err != nil {
@@ -341,6 +425,8 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 			external_id TEXT UNIQUE,
 			name TEXT NOT NULL,
 			description TEXT,
+			category_id TEXT,
+			subcategory_id TEXT,
 			created_at DATETIME,
 			updated_at DATETIME,
 			deleted_at DATETIME,
@@ -355,6 +441,19 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 	// Create index for external_id
 	if err := db.Exec(`
 		CREATE INDEX IF NOT EXISTS idx_product_external_id ON products(external_id)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Create indexes for category_id and subcategory_id
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_product_category ON products(category_id)
+	`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_product_subcategory ON products(subcategory_id)
 	`).Error; err != nil {
 		return err
 	}
@@ -377,10 +476,12 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 			sku TEXT UNIQUE,
 			barcode TEXT,
 			collaborator_id TEXT,
+			collaborator_ids TEXT DEFAULT '[]',
 			brand_name TEXT,
 			hsn_code TEXT,
 			gst_rate REAL,
-			images TEXT,
+			images TEXT DEFAULT '[]',
+			prices TEXT DEFAULT '[]',
 			dosage_instructions TEXT,
 			usage_details TEXT,
 			is_active INTEGER DEFAULT 1,
@@ -428,7 +529,8 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 			variant_id TEXT NOT NULL,
 			cost_price REAL NOT NULL,
 			expiry_date DATETIME NOT NULL,
-			total_quantity INTEGER NOT NULL,
+			total_quantity INTEGER NOT NULL CHECK (total_quantity >= 0),
+			reserved_quantity INTEGER NOT NULL DEFAULT 0 CHECK (reserved_quantity >= 0),
 			cgst_rate REAL DEFAULT 0,
 			sgst_rate REAL DEFAULT 0,
 			custom_tax_ids TEXT DEFAULT '[]',
@@ -438,7 +540,8 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 			deleted_at DATETIME,
 			created_by TEXT,
 			updated_by TEXT,
-			deleted_by TEXT
+			deleted_by TEXT,
+			CHECK (reserved_quantity <= total_quantity)
 		)
 	`).Error; err != nil {
 		return err
@@ -585,6 +688,11 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 			received_quantity INTEGER NOT NULL,
 			accepted_quantity INTEGER NOT NULL,
 			rejected_quantity INTEGER DEFAULT 0,
+			return_status TEXT,
+			return_sent_date DATETIME,
+			return_received_date DATETIME,
+			return_closed_date DATETIME,
+			return_remarks TEXT,
 			expiry_date DATE NOT NULL,
 			batch_number TEXT,
 			inventory_batch_id TEXT,
@@ -1100,6 +1208,83 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 		return err
 	}
 
+	// SaleCancellation table
+	// Drop table first to ensure schema is correct
+	if err := db.Exec(`DROP TABLE IF EXISTS sale_cancellations`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE TABLE sale_cancellations (
+			id TEXT PRIMARY KEY,
+			sale_id TEXT NOT NULL,
+			cancellation_type TEXT NOT NULL,
+			cancelled_by TEXT,
+			reason TEXT NOT NULL,
+			reason_details TEXT,
+			cancelled_at DATETIME NOT NULL,
+			original_amount REAL NOT NULL,
+			cancelled_amount REAL NOT NULL,
+			discount_reversed REAL DEFAULT 0,
+			tax_reversed REAL DEFAULT 0,
+			created_at DATETIME,
+			updated_at DATETIME,
+			deleted_at DATETIME,
+			created_by TEXT,
+			updated_by TEXT,
+			deleted_by TEXT
+		)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Create index for sale_cancellations
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_sale_cancellation_sale_id ON sale_cancellations(sale_id)
+	`).Error; err != nil {
+		return err
+	}
+
+	// SaleCancellationItem table
+	// Drop table first to ensure schema is correct
+	if err := db.Exec(`DROP TABLE IF EXISTS sale_cancellation_items`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE TABLE sale_cancellation_items (
+			id TEXT PRIMARY KEY,
+			cancellation_id TEXT NOT NULL,
+			sale_item_id TEXT NOT NULL,
+			batch_id TEXT NOT NULL,
+			quantity_cancelled INTEGER NOT NULL,
+			refund_amount REAL NOT NULL,
+			inventory_restored INTEGER NOT NULL DEFAULT 0,
+			transaction_id TEXT,
+			created_at DATETIME,
+			updated_at DATETIME,
+			deleted_at DATETIME,
+			created_by TEXT,
+			updated_by TEXT,
+			deleted_by TEXT
+		)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Create indexes for sale_cancellation_items
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_sale_cancellation_item_cancellation ON sale_cancellation_items(cancellation_id)
+	`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_sale_cancellation_item_sale_item ON sale_cancellation_items(sale_item_id)
+	`).Error; err != nil {
+		return err
+	}
+
 	// WebhookDeliveryAttempt table
 	// Drop table first to ensure schema is correct
 	if err := db.Exec(`DROP TABLE IF EXISTS webhook_delivery_attempts`).Error; err != nil {
@@ -1134,6 +1319,33 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 
 	if err := db.Exec(`
 		CREATE INDEX IF NOT EXISTS idx_webhook_attempt_number ON webhook_delivery_attempts(webhook_event_id, attempt_number)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Settings table (FPO configuration)
+	// Drop table first to ensure schema is correct
+	if err := db.Exec(`DROP TABLE IF EXISTS settings`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		CREATE TABLE settings (
+			key TEXT PRIMARY KEY,
+			value TEXT NOT NULL,
+			display_label TEXT,
+			display_order INTEGER DEFAULT 0,
+			is_header_field INTEGER DEFAULT 0,
+			created_at DATETIME,
+			updated_at DATETIME
+		)
+	`).Error; err != nil {
+		return err
+	}
+
+	// Create index for header fields query
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_settings_header ON settings(is_header_field, display_order)
 	`).Error; err != nil {
 		return err
 	}

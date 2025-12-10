@@ -14,4 +14,6 @@ type GRNServiceInterface interface {
 	GetGRNsByWarehouse(ctx context.Context, warehouseID string, limit, offset int) ([]models.GRNResponse, int64, error)
 	GetGRNByPurchaseOrder(ctx context.Context, poID string) (*models.GRNResponse, error)
 	UpdateGRN(ctx context.Context, id string, request *models.UpdateGRNRequest) (*models.GRNResponse, error)
+	GetRejectedItems(ctx context.Context, grnID string) (*models.RejectedItemsResponse, error)
+	UpdateItemReturnStatus(ctx context.Context, itemID string, request *models.UpdateItemReturnStatusRequest) (*models.GRNItemResponse, error)
 }

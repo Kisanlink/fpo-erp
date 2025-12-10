@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
 	"kisanlink-erp/internal/errors"
@@ -23,7 +24,21 @@ type PurchaseOrderService struct {
 	variantRepo      *repositories.ProductVariantRepository
 	grnRepo          *repositories.GRNRepository
 	inventoryRepo    *repositories.InventoryRepository
+	addressClient    *aaa.AddressGRPCClient // For fetching state info from AAA
 	logger           interfaces.Logger
+}
+
+// GSTBreakdown represents the calculated GST breakdown for a PO item
+type GSTBreakdown struct {
+	BasePrice  float64
+	GSTRate    float64
+	GSTAmount  float64
+	CGSTRate   float64
+	CGSTAmount float64
+	SGSTRate   float64
+	SGSTAmount float64
+	IGSTRate   float64
+	IGSTAmount float64
 }
 
 // NewPurchaseOrderService creates a new purchase order service
@@ -35,6 +50,7 @@ func NewPurchaseOrderService(
 	variantRepo *repositories.ProductVariantRepository,
 	grnRepo *repositories.GRNRepository,
 	inventoryRepo *repositories.InventoryRepository,
+	addressClient *aaa.AddressGRPCClient,
 	logger interfaces.Logger,
 ) *PurchaseOrderService {
 	return &PurchaseOrderService{
@@ -45,12 +61,13 @@ func NewPurchaseOrderService(
 		variantRepo:      variantRepo,
 		grnRepo:          grnRepo,
 		inventoryRepo:    inventoryRepo,
+		addressClient:    addressClient,
 		logger:           logger,
 	}
 }
 
 // CreatePurchaseOrder creates a new purchase order with items
-func (s *PurchaseOrderService) CreatePurchaseOrder(ctx context.Context, request *models.CreatePurchaseOrderRequest) (*models.PurchaseOrderResponse, error) {
+func (s *PurchaseOrderService) CreatePurchaseOrder(ctx context.Context, request *models.CreatePurchaseOrderRequest, jwtToken string) (*models.PurchaseOrderResponse, error) {
 	s.logger.Info("Creating purchase order",
 		zap.String("collaborator_id", request.CollaboratorID),
 		zap.String("warehouse_id", request.WarehouseID),
@@ -71,10 +88,13 @@ func (s *PurchaseOrderService) CreatePurchaseOrder(ctx context.Context, request 
 	}
 
 	// Validate warehouse exists
-	_, err = s.warehouseRepo.GetByID(request.WarehouseID)
+	warehouse, err := s.warehouseRepo.GetByID(request.WarehouseID)
 	if err != nil {
 		return nil, err
 	}
+
+	// Determine inter-state status by comparing collaborator and warehouse states
+	isInterState := s.determineInterState(ctx, collaborator.AddressID, warehouse.AddressID, jwtToken)
 
 	// Parse dates
 	var orderDate time.Time
@@ -141,6 +161,7 @@ func (s *PurchaseOrderService) CreatePurchaseOrder(ctx context.Context, request 
 			expectedDelivery,
 		)
 		po.TotalAmount = totalAmount
+		po.IsInterState = isInterState // Set inter-state flag
 
 		if err := s.poRepo.CreateWithTx(tx, po); err != nil {
 			return err
@@ -158,6 +179,21 @@ func (s *PurchaseOrderService) CreatePurchaseOrder(ctx context.Context, request 
 			// Snapshot variant details
 			item.ProductName = &variant.VariantName
 			item.ProductSKU = variant.SKU
+
+			// Calculate GST breakdown using variant's GST rate
+			gstRate := variant.GSTRate // Get GST rate from variant (e.g., 18.0 for 18%)
+			gstBreakdown := calculateGSTBreakdown(itemReq.UnitPrice, gstRate, isInterState)
+
+			// Set GST fields on item
+			item.BasePrice = gstBreakdown.BasePrice
+			item.GSTRate = gstBreakdown.GSTRate
+			item.GSTAmount = gstBreakdown.GSTAmount
+			item.CGSTRate = gstBreakdown.CGSTRate
+			item.CGSTAmount = gstBreakdown.CGSTAmount
+			item.SGSTRate = gstBreakdown.SGSTRate
+			item.SGSTAmount = gstBreakdown.SGSTAmount
+			item.IGSTRate = gstBreakdown.IGSTRate
+			item.IGSTAmount = gstBreakdown.IGSTAmount
 
 			if err := s.poRepo.CreateItemWithTx(tx, item); err != nil {
 				return err
@@ -316,7 +352,7 @@ func (s *PurchaseOrderService) GetPendingDeliveries(ctx context.Context, limit, 
 }
 
 // UpdatePurchaseOrderStatus updates the status of a purchase order
-// Supports auto-GRN creation when status = "delivered" with delivery details
+// Supports auto-GRN creation when status = "verified" with delivery details
 func (s *PurchaseOrderService) UpdatePurchaseOrderStatus(ctx context.Context, id string, request *models.UpdatePOStatusRequest, userID string) (*models.PurchaseOrderResponse, error) {
 	s.logger.Info("Updating purchase order status",
 		zap.String("po_id", id),
@@ -346,18 +382,26 @@ func (s *PurchaseOrderService) UpdatePurchaseOrderStatus(ctx context.Context, id
 		return nil, errors.NewBadRequestError(fmt.Sprintf("invalid status transition from %s to %s", po.Status, request.Status))
 	}
 
-	// Set actual delivery date if status is delivered
+	// Set actual delivery date if status is delivered (required for accurate inventory aging)
 	var actualDelivery time.Time
 	if request.Status == "delivered" {
-		if request.ActualDelivery != nil {
-			actualDelivery = *request.ActualDelivery
-		} else {
-			actualDelivery = time.Now().UTC()
+		if request.ActualDelivery == nil {
+			return nil, errors.NewBadRequestError("actual_delivery_date is required when marking order as delivered")
 		}
+		actualDelivery = *request.ActualDelivery
 	}
 
-	// Pattern Detection: Auto-create GRN if status = "delivered" and delivery details provided
-	if request.Status == "delivered" && (request.AcceptAll != nil || len(request.Items) > 0) {
+	// Pattern Detection: Auto-create GRN if status = "verified" and delivery details provided
+	if request.Status == "verified" && (request.AcceptAll != nil || len(request.Items) > 0) {
+		// For auto-GRN on verified status, we need a valid delivery date
+		// Use provided date, or fall back to PO's existing delivery date
+		if request.ActualDelivery != nil {
+			actualDelivery = *request.ActualDelivery
+		} else if po.ActualDelivery != nil {
+			actualDelivery = *po.ActualDelivery
+		} else {
+			return nil, errors.NewBadRequestError("actual_delivery_date is required for GRN creation")
+		}
 		s.logger.Info("Auto-GRN trigger detected",
 			zap.String("po_id", po.ID),
 			zap.Bool("accept_all", request.AcceptAll != nil && *request.AcceptAll))
@@ -606,16 +650,13 @@ func (s *PurchaseOrderService) processDeliveryItems(ctx context.Context, po *mod
 					zap.Int64("accepted_qty", acceptedQty),
 					zap.Float64("cost_price", poItem.UnitPrice))
 
+				// GST-only tax system - tax rates are on ProductVariant, not on batches
 				batch := models.NewInventoryBatch(
 					po.WarehouseID,
 					poItem.VariantID,
 					poItem.UnitPrice, // ALL-IN cost price from PO
 					expiryDate,
 					acceptedQty,
-					0,          // CGST rate 0 (price is ALL-IN)
-					0,          // SGST rate 0 (price is ALL-IN)
-					[]string{}, // No custom taxes
-					false,      // Not tax exempt
 				)
 
 				if err := s.inventoryRepo.CreateBatchWithTx(tx, batch); err != nil {
@@ -676,7 +717,8 @@ func (s *PurchaseOrderService) processDeliveryItems(ctx context.Context, po *mod
 		}
 
 		// Update PO status and delivery date
-		po.Status = "delivered"
+		// Auto-GRN triggers on "verified" status, so keep status as "verified"
+		po.Status = "verified"
 		po.ActualDelivery = &actualDelivery
 		if err := s.poRepo.UpdateWithTx(tx, po); err != nil {
 			return err
@@ -784,19 +826,41 @@ func (s *PurchaseOrderService) calculateQualityStatus(items []models.DeliveryIte
 func (s *PurchaseOrderService) generateGRNNumber() (string, error) {
 	year := time.Now().UTC().Year()
 
-	// Try to find the next available number
-	for i := 1; i <= 9999; i++ {
-		grnNumber := fmt.Sprintf("GRN-%d-%04d", year, i)
-		exists, err := s.grnRepo.GRNNumberExists(grnNumber)
-		if err != nil {
-			return "", err
-		}
-		if !exists {
-			return grnNumber, nil
-		}
+	// Get the last used number for this year (O(1) instead of O(n))
+	lastNumber, err := s.grnRepo.GetLastGRNNumberForYear(year)
+	if err != nil {
+		// Fall back to checking if number exists
+		lastNumber = 0
 	}
 
-	return "", errors.NewInternalServerError("failed to generate unique GRN number")
+	nextNumber := lastNumber + 1
+	if nextNumber > 9999 {
+		return "", errors.NewInternalServerError("GRN number limit reached for year")
+	}
+
+	grnNumber := fmt.Sprintf("GRN-%d-%04d", year, nextNumber)
+
+	// Verify uniqueness (handles edge cases like manual insertions)
+	exists, err := s.grnRepo.GRNNumberExists(grnNumber)
+	if err != nil {
+		return "", err
+	}
+	if exists {
+		// Rare edge case: manually inserted GRN, fall back to sequential search
+		for i := nextNumber + 1; i <= 9999; i++ {
+			grnNumber = fmt.Sprintf("GRN-%d-%04d", year, i)
+			exists, err = s.grnRepo.GRNNumberExists(grnNumber)
+			if err != nil {
+				return "", err
+			}
+			if !exists {
+				return grnNumber, nil
+			}
+		}
+		return "", errors.NewInternalServerError("failed to generate unique GRN number")
+	}
+
+	return grnNumber, nil
 }
 
 // generatePONumber generates a unique PO number in format: PO-YYYY-NNNN
@@ -820,21 +884,37 @@ func (s *PurchaseOrderService) generatePONumber() (string, error) {
 
 // buildPurchaseOrderResponse builds a response with related entity details
 func (s *PurchaseOrderService) buildPurchaseOrderResponse(po *models.PurchaseOrder) (*models.PurchaseOrderResponse, error) {
+	// Calculate total rejected amount from GRN (if GRN exists)
+	totalRejectedAmount, err := s.grnRepo.GetTotalRejectedAmountByPO(po.ID)
+	if err != nil {
+		// Log error but don't fail - treat as 0 if no GRN exists yet
+		s.logger.Warn("Failed to calculate rejected amount for PO",
+			zap.String("po_id", po.ID),
+			zap.Error(err))
+		totalRejectedAmount = 0
+	}
+
+	// Calculate amount owed (Option A: keep TotalAmount unchanged, subtract rejections)
+	amountOwed := po.TotalAmount - totalRejectedAmount
+
 	response := &models.PurchaseOrderResponse{
-		ID:               po.ID,
-		PONumber:         po.PONumber,
-		CollaboratorID:   po.CollaboratorID,
-		CollaboratorName: po.Collaborator.CompanyName,
-		WarehouseID:      po.WarehouseID,
-		WarehouseName:    po.Warehouse.Name,
-		OrderDate:        po.OrderDate.Format("2006-01-02"),
-		ExpectedDelivery: po.ExpectedDelivery.Format("2006-01-02"),
-		Status:           po.Status,
-		TotalAmount:      po.TotalAmount,
-		PaymentStatus:    po.PaymentStatus,
-		PaidAmount:       po.PaidAmount,
-		CreatedAt:        po.CreatedAt.UTC().Format(time.RFC3339),
-		UpdatedAt:        po.UpdatedAt.UTC().Format(time.RFC3339),
+		ID:                  po.ID,
+		PONumber:            po.PONumber,
+		CollaboratorID:      po.CollaboratorID,
+		CollaboratorName:    po.Collaborator.CompanyName,
+		WarehouseID:         po.WarehouseID,
+		WarehouseName:       po.Warehouse.Name,
+		OrderDate:           po.OrderDate.Format("2006-01-02"),
+		ExpectedDelivery:    po.ExpectedDelivery.Format("2006-01-02"),
+		Status:              po.Status,
+		TotalAmount:         po.TotalAmount,
+		TotalRejectedAmount: totalRejectedAmount,
+		AmountOwed:          amountOwed,
+		PaymentStatus:       po.PaymentStatus,
+		PaidAmount:          po.PaidAmount,
+		IsInterState:        po.IsInterState,
+		CreatedAt:           po.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:           po.UpdatedAt.UTC().Format(time.RFC3339),
 	}
 
 	if po.ActualDelivery != nil {
@@ -855,7 +935,17 @@ func (s *PurchaseOrderService) buildPurchaseOrderResponse(po *models.PurchaseOrd
 			UnitPrice:        item.UnitPrice,
 			LineTotal:        item.LineTotal,
 			ReceivedQuantity: item.ReceivedQuantity,
-			CreatedAt:        item.CreatedAt.UTC().Format(time.RFC3339),
+			// GST Breakdown
+			BasePrice:  item.BasePrice,
+			GSTRate:    item.GSTRate,
+			GSTAmount:  item.GSTAmount,
+			CGSTRate:   item.CGSTRate,
+			CGSTAmount: item.CGSTAmount,
+			SGSTRate:   item.SGSTRate,
+			SGSTAmount: item.SGSTAmount,
+			IGSTRate:   item.IGSTRate,
+			IGSTAmount: item.IGSTAmount,
+			CreatedAt:  item.CreatedAt.UTC().Format(time.RFC3339),
 		})
 	}
 	response.Items = items
@@ -863,9 +953,108 @@ func (s *PurchaseOrderService) buildPurchaseOrderResponse(po *models.PurchaseOrd
 	return response, nil
 }
 
+// determineInterState determines if a PO is inter-state by comparing collaborator and warehouse states
+// Returns: true = inter-state (IGST), false = intra-state (CGST+SGST), nil = unknown (fallback to total GST only)
+func (s *PurchaseOrderService) determineInterState(ctx context.Context, collaboratorAddressID, warehouseAddressID *string, jwtToken string) *bool {
+	// If address client is not available, return nil (unknown)
+	if s.addressClient == nil {
+		s.logger.Debug("Address client not available, inter-state status unknown")
+		return nil
+	}
+
+	// If either address ID is missing, return nil (unknown)
+	if collaboratorAddressID == nil || *collaboratorAddressID == "" {
+		s.logger.Debug("Collaborator address ID missing, inter-state status unknown")
+		return nil
+	}
+	if warehouseAddressID == nil || *warehouseAddressID == "" {
+		s.logger.Debug("Warehouse address ID missing, inter-state status unknown")
+		return nil
+	}
+
+	// Get collaborator address from AAA
+	collaboratorAddr, err := s.addressClient.GetAddress(ctx, *collaboratorAddressID, jwtToken)
+	if err != nil {
+		s.logger.Warn("Failed to get collaborator address from AAA",
+			zap.Error(err),
+			zap.String("address_id", *collaboratorAddressID))
+		return nil
+	}
+
+	// Get warehouse address from AAA
+	warehouseAddr, err := s.addressClient.GetAddress(ctx, *warehouseAddressID, jwtToken)
+	if err != nil {
+		s.logger.Warn("Failed to get warehouse address from AAA",
+			zap.Error(err),
+			zap.String("address_id", *warehouseAddressID))
+		return nil
+	}
+
+	// Check if states are available
+	if collaboratorAddr.State == nil || *collaboratorAddr.State == "" {
+		s.logger.Debug("Collaborator state not available, inter-state status unknown")
+		return nil
+	}
+	if warehouseAddr.State == nil || *warehouseAddr.State == "" {
+		s.logger.Debug("Warehouse state not available, inter-state status unknown")
+		return nil
+	}
+
+	// Compare states (case-insensitive)
+	collaboratorState := *collaboratorAddr.State
+	warehouseState := *warehouseAddr.State
+
+	isInterState := collaboratorState != warehouseState
+	s.logger.Debug("Inter-state determination complete",
+		zap.String("collaborator_state", collaboratorState),
+		zap.String("warehouse_state", warehouseState),
+		zap.Bool("is_inter_state", isInterState))
+
+	return &isInterState
+}
+
+// calculateGSTBreakdown reverse-calculates GST breakdown from an ALL-IN unit price
+// unitPrice: The total price including GST (ALL-IN price)
+// gstRate: The GST rate as a percentage (e.g., 18 for 18%)
+// isInterState: true = inter-state (IGST), false = intra-state (CGST+SGST), nil = unknown (total GST only)
+func calculateGSTBreakdown(unitPrice float64, gstRate float64, isInterState *bool) GSTBreakdown {
+	// Reverse calculate base price from ALL-IN price
+	// ALL-IN Price = Base Price × (1 + GST Rate / 100)
+	// Base Price = ALL-IN Price / (1 + GST Rate / 100)
+	basePrice := unitPrice / (1 + gstRate/100)
+	gstAmount := unitPrice - basePrice
+
+	breakdown := GSTBreakdown{
+		BasePrice: basePrice,
+		GSTRate:   gstRate,
+		GSTAmount: gstAmount,
+	}
+
+	// If inter-state status is unknown, just store total GST (no split)
+	if isInterState == nil {
+		return breakdown
+	}
+
+	if *isInterState {
+		// Inter-state: IGST (full rate)
+		breakdown.IGSTRate = gstRate
+		breakdown.IGSTAmount = gstAmount
+	} else {
+		// Intra-state: CGST + SGST (50/50 split)
+		halfRate := gstRate / 2
+		halfAmount := gstAmount / 2
+		breakdown.CGSTRate = halfRate
+		breakdown.CGSTAmount = halfAmount
+		breakdown.SGSTRate = halfRate
+		breakdown.SGSTAmount = halfAmount
+	}
+
+	return breakdown
+}
+
 // isValidPOStatus validates purchase order status
 func isValidPOStatus(status string) bool {
-	validStatuses := []string{"placed", "confirmed", "out_for_delivery", "delivered", "paid"}
+	validStatuses := []string{"placed", "confirmed", "out_for_delivery", "delivered", "verified", "paid"}
 	for _, s := range validStatuses {
 		if s == status {
 			return true
@@ -881,7 +1070,8 @@ func isValidPOStatusTransition(from, to string) bool {
 		"placed":           {"confirmed"},
 		"confirmed":        {"out_for_delivery"},
 		"out_for_delivery": {"delivered"},
-		"delivered":        {"paid"},
+		"delivered":        {"verified"},
+		"verified":         {"paid"},
 	}
 
 	validNextStatuses, ok := transitions[from]

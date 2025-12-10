@@ -83,7 +83,12 @@ func (s *EcommerceWebhookService) ProcessOrderCreated(ctx context.Context, webho
 		}
 
 		// Find or create variant with smart matching
-		variant, err := s.findOrCreateVariant(ctx, product.ID, &item.Variant, collaborator.ID)
+		// HSNCode comes from WebhookProduct, not WebhookVariant
+		hsnCode := ""
+		if item.Product.HSNCode != nil {
+			hsnCode = *item.Product.HSNCode
+		}
+		variant, err := s.findOrCreateVariant(ctx, product.ID, &item.Variant, collaborator.ID, hsnCode)
 		if err != nil {
 			return "", err
 		}
@@ -251,11 +256,13 @@ func (s *EcommerceWebhookService) findOrCreateProduct(ctx context.Context, webho
 
 // findOrCreateVariant finds existing variant with smart matching or creates new one
 // Smart matching: external_id → SKU → create new
+// hsnCode is passed from WebhookProduct since it's not on WebhookVariant
 func (s *EcommerceWebhookService) findOrCreateVariant(
 	ctx context.Context,
 	productID string,
 	webhookVariant *models.WebhookVariant,
 	collaboratorID string,
+	hsnCode string,
 ) (*models.ProductVariant, error) {
 	// Tier 1: Try to find by external_id
 	existing, err := s.productVariantRepo.FindByExternalID(webhookVariant.ExternalID)
@@ -288,13 +295,18 @@ func (s *EcommerceWebhookService) findOrCreateVariant(
 	// Tier 3: Create new variant
 	utils.Info("Creating new variant from webhook:", webhookVariant.ExternalID)
 
-	variant := models.NewProductVariant(productID, webhookVariant.Name, webhookVariant.QuantityText, webhookVariant.PackSize)
+	// Handle optional GSTRate - default to 0 if not provided
+	gstRate := float64(0)
+	if webhookVariant.GSTRate != nil {
+		gstRate = *webhookVariant.GSTRate
+	}
+
+	variant := models.NewProductVariant(productID, webhookVariant.Name, webhookVariant.QuantityText, webhookVariant.PackSize, hsnCode, gstRate)
 	externalID := webhookVariant.ExternalID
 	variant.ExternalID = &externalID
 	variant.SKU = &webhookVariant.SKU
-	variant.CollaboratorID = &collaboratorID
+	variant.CollaboratorIDs = []string{collaboratorID} // Use array instead of pointer
 	variant.BrandName = webhookVariant.BrandName
-	variant.GSTRate = webhookVariant.GSTRate
 	variant.DosageInstructions = webhookVariant.DosageInstructions
 	variant.UsageDetails = webhookVariant.UsageDetails
 

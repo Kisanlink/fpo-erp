@@ -346,6 +346,123 @@ func (h *GRNHandler) UpdateGRN(c *gin.Context) {
 	utils.OKResponse(c, "GRN updated successfully", response)
 }
 
+// GetRejectedItems handles GET /api/v1/grns/:id/rejected-items
+// @Summary Get Rejected Items for GRN
+// @Description Retrieve all rejected items for a GRN with return tracking details (requires authentication)
+// @Tags GRNs
+// @Produce json
+// @Param id path string true "GRN ID (format: GRNX_xxxxxxxx)" example(GRNX_12345678)
+// @Success 200 {object} utils.Response{data=models.RejectedItemsResponse} "Rejected items retrieved successfully"
+// @Failure 400 {object} utils.ErrorResponseModel "Bad request"
+// @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 404 {object} utils.ErrorResponseModel "No rejected items found"
+// @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
+// @Security BearerAuth
+// @Router /api/v1/grns/{id}/rejected-items [get]
+func (h *GRNHandler) GetRejectedItems(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get rejected items request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
+	// Get GRN ID from URL
+	grnID := c.Param("id")
+	if grnID == "" {
+		utils.BadRequestResponse(c, "GRN ID is required", nil)
+		return
+	}
+
+	// 3. Service Call Log
+	h.logger.Debug("Calling service to get rejected items",
+		zap.String("grn_id", grnID))
+
+	// Get rejected items
+	response, err := h.grnService.GetRejectedItems(c.Request.Context(), grnID)
+	if err != nil {
+		// 4. Service Error Log
+		h.logger.Error("Service error getting rejected items",
+			zap.Error(err),
+			zap.String("grn_id", grnID))
+		utils.HandleServiceError(c, "Failed to retrieve rejected items", err)
+		return
+	}
+
+	// 5. Success Log
+	h.logger.Info("Rejected items retrieved successfully",
+		zap.String("grn_id", grnID),
+		zap.Int("rejected_items_count", len(response.RejectedItems)),
+		zap.Float64("total_rejected_value", response.TotalRejectedValue))
+
+	utils.OKResponse(c, "Rejected items retrieved successfully", response)
+}
+
+// UpdateItemReturnStatus handles PATCH /api/v1/grns/items/:item_id/return-status
+// @Summary Update Return Status for Rejected Item
+// @Description Update the return status of a rejected GRN item (requires authentication)
+// @Tags GRNs
+// @Accept json
+// @Produce json
+// @Param item_id path string true "GRN Item ID (format: GRIT_xxxxxxxx)" example(GRIT_12345678)
+// @Param request body models.UpdateItemReturnStatusRequest true "Return status update data"
+// @Success 200 {object} utils.Response{data=models.GRNItemResponse} "Return status updated successfully"
+// @Failure 400 {object} utils.ErrorResponseModel "Bad request - invalid status transition"
+// @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 404 {object} utils.ErrorResponseModel "GRN item not found"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
+// @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
+// @Security BearerAuth
+// @Router /api/v1/grns/items/{item_id}/return-status [patch]
+func (h *GRNHandler) UpdateItemReturnStatus(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling update item return status request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
+	// Get item ID from URL
+	itemID := c.Param("item_id")
+	if itemID == "" {
+		utils.BadRequestResponse(c, "GRN item ID is required", nil)
+		return
+	}
+
+	// Validate request
+	var request models.UpdateItemReturnStatusRequest
+	if err := utils.ValidateRequest(c, &request); err != nil {
+		// 2. Validation Error Log
+		h.logger.Error("Invalid request body for update item return status",
+			zap.Error(err),
+			zap.String("grn_item_id", itemID))
+		utils.BadRequestResponse(c, "Invalid request data", err)
+		return
+	}
+
+	// 3. Service Call Log
+	h.logger.Debug("Calling service to update item return status",
+		zap.String("grn_item_id", itemID),
+		zap.String("new_status", request.ReturnStatus))
+
+	// Update return status
+	response, err := h.grnService.UpdateItemReturnStatus(c.Request.Context(), itemID, &request)
+	if err != nil {
+		// 4. Service Error Log
+		h.logger.Error("Service error updating item return status",
+			zap.Error(err),
+			zap.String("grn_item_id", itemID),
+			zap.String("requested_status", request.ReturnStatus))
+		utils.HandleServiceError(c, "Failed to update item return status", err)
+		return
+	}
+
+	// 5. Success Log
+	h.logger.Info("Item return status updated successfully",
+		zap.String("grn_item_id", itemID),
+		zap.String("new_status", request.ReturnStatus))
+
+	utils.OKResponse(c, "Return status updated successfully", response)
+}
+
 // RegisterRoutes registers all GRN routes
 func (h *GRNHandler) RegisterRoutes(router *gin.RouterGroup) {
 	// GRN routes
@@ -356,6 +473,8 @@ func (h *GRNHandler) RegisterRoutes(router *gin.RouterGroup) {
 		grns.GET("", h.aaaMiddleware.RequireOrgPermission("grn", "read"), h.GetAllGRNs)
 		grns.GET("/:id", h.aaaMiddleware.RequireOrgPermission("grn", "read"), h.GetGRN)
 		grns.PUT("/:id", h.aaaMiddleware.RequireOrgPermission("grn", "update"), h.UpdateGRN)
+		grns.GET("/:id/rejected-items", h.aaaMiddleware.RequireOrgPermission("grn", "read"), h.GetRejectedItems)
+		grns.PATCH("/items/:item_id/return-status", h.aaaMiddleware.RequireOrgPermission("grn", "update"), h.UpdateItemReturnStatus)
 	}
 
 	// Nested routes under warehouses

@@ -27,6 +27,14 @@ func NewProductVariantHandler(variantService interfaces.ProductVariantServiceInt
 	}
 }
 
+// safeStringDeref safely dereferences a string pointer, returning a default value if nil
+func safeStringDeref(ptr *string, defaultVal string) string {
+	if ptr != nil {
+		return *ptr
+	}
+	return defaultVal
+}
+
 // CreateProductVariant handles POST /api/v1/products/:id/variants
 // @Summary Create Product Variant
 // @Description Create a new variant for a product (requires authentication)
@@ -70,7 +78,7 @@ func (h *ProductVariantHandler) CreateProductVariant(c *gin.Context) {
 
 	h.logger.Debug("Calling variant service to create product variant",
 		zap.String("product_id", productID),
-		zap.String("sku", *request.SKU),
+		zap.String("sku", safeStringDeref(request.SKU, "<none>")),
 		zap.String("variant_name", request.VariantName))
 
 	// Create variant
@@ -79,7 +87,7 @@ func (h *ProductVariantHandler) CreateProductVariant(c *gin.Context) {
 		h.logger.Error("Failed to create product variant via service",
 			zap.Error(err),
 			zap.String("product_id", productID),
-			zap.String("sku", *request.SKU))
+			zap.String("sku", safeStringDeref(request.SKU, "<none>")))
 		utils.HandleServiceError(c, "Failed to create variant", err)
 		return
 	}
@@ -87,7 +95,7 @@ func (h *ProductVariantHandler) CreateProductVariant(c *gin.Context) {
 	h.logger.Info("Product variant created successfully via handler",
 		zap.String("variant_id", response.ID),
 		zap.String("product_id", productID),
-		zap.String("sku", *response.SKU))
+		zap.String("sku", safeStringDeref(response.SKU, "<none>")))
 
 	utils.CreatedResponse(c, "Variant created successfully", response)
 }
@@ -131,18 +139,20 @@ func (h *ProductVariantHandler) GetProductVariant(c *gin.Context) {
 
 	h.logger.Info("Product variant retrieved successfully via handler",
 		zap.String("variant_id", response.ID),
-		zap.String("sku", *response.SKU))
+		zap.String("sku", safeStringDeref(response.SKU, "<none>")))
 
 	utils.OKResponse(c, "Variant retrieved successfully", response)
 }
 
 // GetVariantsByProduct handles GET /api/v1/products/:id/variants
 // @Summary Get Variants by Product
-// @Description Retrieve all variants for a specific product
+// @Description Retrieve all variants for a specific product with pagination
 // @Tags Product Variants
 // @Produce json
 // @Param id path string true "Product ID (format: PROD_xxxxxxxx)" example(PROD_12345678)
-// @Success 200 {object} utils.Response{data=[]models.ProductVariantResponse} "Variants retrieved successfully"
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.ProductVariantResponse} "Variants retrieved successfully"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 404 {object} utils.ErrorResponseModel "Product not found"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
@@ -160,11 +170,16 @@ func (h *ProductVariantHandler) GetVariantsByProduct(c *gin.Context) {
 		return
 	}
 
-	h.logger.Debug("Calling variant service to get variants by product",
-		zap.String("product_id", productID))
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
 
-	// Get variants
-	response, err := h.variantService.GetVariantsByProduct(c.Request.Context(), productID)
+	h.logger.Debug("Calling variant service to get variants by product",
+		zap.String("product_id", productID),
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
+
+	// Get variants with pagination
+	response, total, err := h.variantService.GetVariantsByProductPaginated(c.Request.Context(), productID, params.Limit, params.Offset)
 	if err != nil {
 		h.logger.Error("Failed to retrieve variants for product via service",
 			zap.Error(err),
@@ -175,9 +190,10 @@ func (h *ProductVariantHandler) GetVariantsByProduct(c *gin.Context) {
 
 	h.logger.Info("Product variants retrieved successfully via handler",
 		zap.String("product_id", productID),
-		zap.Int("count", len(response)))
+		zap.Int("count", len(response)),
+		zap.Int64("total", total))
 
-	utils.OKResponse(c, "Variants retrieved successfully", response)
+	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
 }
 
 // GetVariantBySKU handles GET /api/v1/variants/sku/:sku
@@ -325,7 +341,7 @@ func (h *ProductVariantHandler) UpdateProductVariant(c *gin.Context) {
 
 	h.logger.Info("Product variant updated successfully via handler",
 		zap.String("variant_id", response.ID),
-		zap.String("sku", *response.SKU))
+		zap.String("sku", safeStringDeref(response.SKU, "<none>")))
 
 	utils.OKResponse(c, "Variant updated successfully", response)
 }

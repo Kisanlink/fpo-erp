@@ -30,7 +30,6 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	// Initialize repositories
 	warehouseRepo := repositories.NewWarehouseRepository(db)
 	productRepo := repositories.NewProductRepository(db)
-	priceRepo := repositories.NewProductPriceRepository(db)
 	inventoryRepo := repositories.NewInventoryRepository(db)
 	salesRepo := repositories.NewSalesRepository(db)
 	returnsRepo := repositories.NewReturnsRepository(db)
@@ -39,10 +38,10 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	taxRepo := repositories.NewTaxRepository(db)
 	refundPoliciesRepo := repositories.NewRefundPoliciesRepository(db)
 	bankPaymentsRepo := repositories.NewBankPaymentsRepository(db)
+	priceRepo := repositories.NewProductPriceRepository(db)
 
 	// Procurement repositories
 	collaboratorRepo := repositories.NewCollaboratorRepository(db)
-	collaboratorProductRepo := repositories.NewCollaboratorProductRepository(db)
 	productVariantRepo := repositories.NewProductVariantRepository(db)
 	purchaseOrderRepo := repositories.NewPurchaseOrderRepository(db)
 	grnRepo := repositories.NewGRNRepository(db)
@@ -52,6 +51,13 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 
 	// Sales cancellation repository
 	saleCancellationRepo := repositories.NewSaleCancellationRepository(db)
+
+	// Category repositories
+	categoryRepo := repositories.NewCategoryRepository(db)
+	subcategoryRepo := repositories.NewSubcategoryRepository(db)
+
+	// Settings repository
+	settingsRepo := repositories.NewSettingsRepository(db)
 
 	// Initialize S3 service
 	s3Service, err := services.NewS3Service(cfg)
@@ -75,20 +81,25 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	}
 	// Note: Connection will be closed when the application shuts down
 
-	// Initialize E-commerce collaborator gRPC client
-	ecommerceClient, err := newEcommerceCollaboratorClient(&cfg.Ecommerce)
-	if err != nil {
-		panic("Failed to initialize E-commerce collaborator gRPC client: " + err.Error())
+	// Initialize E-commerce collaborator gRPC client (only if enabled)
+	var ecommerceClient pb.CollaboratorServiceClient
+	if cfg.Ecommerce.Enabled {
+		ecommerceClient, err = newEcommerceCollaboratorClient(&cfg.Ecommerce)
+		if err != nil {
+			panic("Failed to initialize E-commerce collaborator gRPC client: " + err.Error())
+		}
+	} else {
+		utils.Info("⚠️  E-commerce sync is DISABLED - collaborators will use legacy mode")
 	}
 
 	// Initialize services
 	warehouseService := services.NewWarehouseService(warehouseRepo, addressClient, logger)
-	productService := services.NewProductService(productRepo, priceRepo, productVariantRepo, s3Service, logger)
+	productService := services.NewProductService(productRepo, priceRepo, productVariantRepo, categoryRepo, s3Service, logger)
 	priceService := services.NewProductPriceService(priceRepo, productRepo, productVariantRepo, logger)
 	inventoryService := services.NewInventoryService(inventoryRepo, warehouseRepo, productRepo, productVariantRepo, addressClient, logger)
 	discountsService := services.NewDiscountsService(discountRepo, productRepo, warehouseRepo, logger)
 	taxService := services.NewTaxService(taxRepo, logger)
-	salesService := services.NewSalesService(salesRepo, productRepo, inventoryRepo, priceRepo, discountRepo, taxRepo, warehouseRepo, saleCancellationRepo, logger)
+	salesService := services.NewSalesService(salesRepo, productRepo, inventoryRepo, productVariantRepo, priceRepo, discountRepo, taxRepo, warehouseRepo, saleCancellationRepo, logger)
 	returnsService := services.NewReturnsService(returnsRepo, salesRepo, inventoryRepo, logger)
 	attachmentService := services.NewAttachmentService(attachmentRepo, productVariantRepo, s3Service, logger)
 	refundPoliciesService := services.NewRefundPoliciesService(refundPoliciesRepo, logger)
@@ -108,10 +119,19 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 		cfg.Ecommerce.AuthToken,
 		logger,
 	)
-	collaboratorProductService := services.NewCollaboratorProductService(collaboratorProductRepo, collaboratorRepo, productRepo, productVariantRepo, logger)
-	productVariantService := services.NewProductVariantService(productVariantRepo, productRepo, s3Service, logger)
-	purchaseOrderService := services.NewPurchaseOrderService(purchaseOrderRepo, collaboratorRepo, warehouseRepo, productRepo, productVariantRepo, grnRepo, inventoryRepo, logger)
+	productVariantService := services.NewProductVariantService(productVariantRepo, productRepo, priceRepo, s3Service, logger)
+	purchaseOrderService := services.NewPurchaseOrderService(purchaseOrderRepo, collaboratorRepo, warehouseRepo, productRepo, productVariantRepo, grnRepo, inventoryRepo, addressClient, logger)
 	grnService := services.NewGRNService(grnRepo, purchaseOrderRepo, warehouseRepo, productRepo, inventoryRepo, logger)
+
+	// Category services
+	categoryService := services.NewCategoryService(categoryRepo, subcategoryRepo, logger)
+	subcategoryService := services.NewSubcategoryService(subcategoryRepo, categoryRepo, logger)
+
+	// Settings service
+	settingsService := services.NewSettingsService(settingsRepo, logger)
+
+	// Invoice service
+	invoiceService := services.NewInvoiceService(salesRepo, settingsRepo, inventoryRepo, productVariantRepo, productRepo, warehouseRepo, attachmentRepo, s3Service, logger)
 
 	// Webhook services
 	webhookSecurityService := services.NewWebhookSecurityService(cfg.Webhook.Secret)
@@ -147,15 +167,32 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 		logger,
 	)
 
+	// Aggregation service (for frontend API optimization)
+	aggregationService := services.NewAggregationService(
+		productRepo,
+		productVariantRepo,
+		priceRepo,
+		inventoryRepo,
+		warehouseRepo,
+		collaboratorRepo,
+		discountRepo,
+		taxRepo,
+		refundPoliciesRepo,
+		purchaseOrderRepo,
+		grnRepo,
+		logger,
+	)
+
 	// AAA middleware is now passed as parameter
 
 	// Initialize handlers
 	warehouseHandler := handlers.NewWarehouseHandler(warehouseService, aaaMiddleware, logger)
 	productHandler := handlers.NewProductHandler(productService, aaaMiddleware, logger)
-	priceHandler := handlers.NewProductPriceHandler(priceService, aaaMiddleware, logger)
 	inventoryHandler := handlers.NewInventoryHandler(inventoryService, aaaMiddleware, logger)
 	discountsHandler := handlers.NewDiscountsHandler(discountsService, aaaMiddleware, logger)
-	taxHandler := handlers.NewTaxHandler(taxService, aaaMiddleware, logger)
+	// GST-only tax system: Tax endpoints removed. GST calculation is internal.
+	// taxHandler := handlers.NewTaxHandler(taxService, aaaMiddleware, logger)
+	_ = taxService // Unused but kept for internal GST calculations
 	salesHandler := handlers.NewSalesHandler(salesService, aaaMiddleware, logger)
 	returnsHandler := handlers.NewReturnsHandler(returnsService, aaaMiddleware, logger)
 	attachmentHandler := handlers.NewAttachmentHandler(attachmentService, aaaMiddleware, logger)
@@ -164,10 +201,20 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 
 	// Procurement handlers
 	collaboratorHandler := handlers.NewCollaboratorHandler(collaboratorService, aaaMiddleware, logger)
-	collaboratorProductHandler := handlers.NewCollaboratorProductHandler(collaboratorProductService, aaaMiddleware, logger)
 	productVariantHandler := handlers.NewProductVariantHandler(productVariantService, aaaMiddleware, logger)
+	priceHandler := handlers.NewProductPriceHandler(priceService, aaaMiddleware, logger)
 	purchaseOrderHandler := handlers.NewPurchaseOrderHandler(purchaseOrderService, aaaMiddleware, logger)
 	grnHandler := handlers.NewGRNHandler(grnService, aaaMiddleware, logger)
+
+	// Category handlers
+	categoryHandler := handlers.NewCategoryHandler(categoryService, logger)
+	subcategoryHandler := handlers.NewSubcategoryHandler(subcategoryService, logger)
+
+	// Settings handler
+	settingsHandler := handlers.NewSettingsHandler(settingsService, logger)
+
+	// Invoice handler
+	invoiceHandler := handlers.NewInvoiceHandler(invoiceService, logger)
 
 	// Webhook handler (no AAA middleware - uses HMAC signature verification)
 	ecommerceWebhookHandler := handlers.NewEcommerceWebhookHandler(
@@ -182,16 +229,19 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	// Report handler
 	reportHandler := handlers.NewReportHandler(reportService, exportService, aaaMiddleware, logger)
 
+	// Aggregation handler (for frontend API optimization - reduces API calls by 75-85%)
+	aggregationHandler := handlers.NewAggregationHandler(aggregationService, aaaMiddleware, logger)
+
 	// API v1 routes
 	v1 := router.Group("/api/v1")
 	{
 		// Register all handlers
 		warehouseHandler.RegisterRoutes(v1)
-		priceHandler.RegisterRoutes(v1) // Register price routes before product routes to avoid conflicts
 		productHandler.RegisterRoutes(v1)
 		inventoryHandler.RegisterRoutes(v1)
 		discountsHandler.RegisterRoutes(v1)
-		taxHandler.RegisterRoutes(v1)
+		// GST-only tax system: Tax endpoints removed (13 endpoints)
+		// taxHandler.RegisterRoutes(v1)
 		salesHandler.RegisterRoutes(v1)
 		returnsHandler.RegisterRoutes(v1)
 		attachmentHandler.RegisterRoutes(v1)
@@ -200,16 +250,29 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 
 		// Procurement handlers
 		collaboratorHandler.RegisterRoutes(v1)
-		collaboratorProductHandler.RegisterRoutes(v1)
 		productVariantHandler.RegisterRoutes(v1)
+		priceHandler.RegisterRoutes(v1)
 		purchaseOrderHandler.RegisterRoutes(v1)
 		grnHandler.RegisterRoutes(v1)
+
+		// Category handlers
+		categoryHandler.RegisterRoutes(v1)
+		subcategoryHandler.RegisterRoutes(v1)
+
+		// Settings handler
+		settingsHandler.RegisterRoutes(v1)
+
+		// Invoice handler (adds routes to /sales)
+		invoiceHandler.RegisterRoutes(v1)
 
 		// Webhook handler
 		ecommerceWebhookHandler.RegisterRoutes(v1)
 
 		// Report handler
 		reportHandler.RegisterRoutes(v1)
+
+		// Aggregation handler (frontend API optimization)
+		aggregationHandler.RegisterRoutes(v1)
 	}
 }
 

@@ -138,3 +138,40 @@ func (r *ProductPriceRepository) GetPricesByType(priceType string) ([]models.Pro
 	}
 	return prices, nil
 }
+
+// GetByVariantIDPaginated retrieves prices for a variant with pagination
+func (r *ProductPriceRepository) GetByVariantIDPaginated(variantID string, limit, offset int) ([]models.ProductPrice, int64, error) {
+	var prices []models.ProductPrice
+	var total int64
+
+	query := r.db.Model(&models.ProductPrice{}).Where("variant_id = ?", variantID)
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count variant prices")
+	}
+
+	if err := query.Limit(limit).Offset(offset).Order("effective_from DESC").Find(&prices).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve variant prices")
+	}
+
+	return prices, total, nil
+}
+
+// GetExpiredPricesPaginated retrieves expired prices with pagination
+func (r *ProductPriceRepository) GetExpiredPricesPaginated(limit, offset int) ([]models.ProductPrice, int64, error) {
+	var prices []models.ProductPrice
+	var total int64
+	now := time.Now()
+
+	query := r.db.Model(&models.ProductPrice{}).Where("effective_to IS NOT NULL AND effective_to <= ?", now)
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count expired product prices")
+	}
+
+	if err := query.Limit(limit).Offset(offset).Order("effective_to DESC").Find(&prices).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve expired product prices")
+	}
+
+	return prices, total, nil
+}

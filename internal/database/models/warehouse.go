@@ -12,20 +12,6 @@ type Warehouse struct {
 	base.BaseModel
 	Name      string  `gorm:"type:varchar(100);not null" json:"name"`
 	AddressID *string `gorm:"type:varchar(50)" json:"address_id"` // Reference to AAA address
-
-	// Direct address fields (for when AAA address service is not available) - Indian hierarchical format
-	AddressType      *string `gorm:"type:varchar(50)" json:"address_type,omitempty"`
-	House            *string `gorm:"type:varchar(255)" json:"house,omitempty"`
-	Street           *string `gorm:"type:varchar(255)" json:"street,omitempty"`
-	Landmark         *string `gorm:"type:varchar(255)" json:"landmark,omitempty"`
-	PostOffice       *string `gorm:"type:varchar(100)" json:"post_office,omitempty"`
-	Subdistrict      *string `gorm:"type:varchar(100)" json:"subdistrict,omitempty"`
-	District         *string `gorm:"type:varchar(100)" json:"district,omitempty"`
-	VTC              *string `gorm:"type:varchar(100)" json:"vtc,omitempty"` // Village/Town/City
-	State            *string `gorm:"type:varchar(100)" json:"state,omitempty"`
-	Country          *string `gorm:"type:varchar(100)" json:"country,omitempty"`
-	Pincode          *string `gorm:"type:varchar(20)" json:"pincode,omitempty"`
-	IsPrimaryAddress *bool   `gorm:"default:false" json:"is_primary_address,omitempty"`
 }
 
 // NewWarehouse creates a new Warehouse with initialized fields
@@ -36,33 +22,6 @@ func NewWarehouse(name string, addressID *string) *Warehouse {
 		Name:      name,
 		AddressID: addressID,
 	}
-}
-
-// NewWarehouseWithAddress creates a new Warehouse with direct address fields
-func NewWarehouseWithAddress(name string, address *CreateAddressRequest) *Warehouse {
-	baseModel := base.NewBaseModel(constants.TableWarehouse, hash.Medium)
-	warehouse := &Warehouse{
-		BaseModel: *baseModel,
-		Name:      name,
-		AddressID: nil, // No external address ID
-	}
-
-	if address != nil {
-		warehouse.AddressType = &address.Type
-		warehouse.House = address.House
-		warehouse.Street = address.Street
-		warehouse.Landmark = address.Landmark
-		warehouse.PostOffice = address.PostOffice
-		warehouse.Subdistrict = address.Subdistrict
-		warehouse.District = address.District
-		warehouse.VTC = address.VTC
-		warehouse.State = address.State
-		warehouse.Country = address.Country
-		warehouse.Pincode = address.Pincode
-		warehouse.IsPrimaryAddress = &address.IsPrimary
-	}
-
-	return warehouse
 }
 
 func (Warehouse) TableName() string {

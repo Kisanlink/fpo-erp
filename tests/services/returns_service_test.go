@@ -70,7 +70,7 @@ func setupReturnTestSale(t *testing.T, db *gorm.DB) (*models.Warehouse, *models.
 	}
 
 	// Create sale
-	sale := models.NewSale(warehouse.ID, time.Now(), 500.0, "completed", nil, "cash", "in_store", false)
+	sale := models.NewSale(warehouse.ID, time.Now(), 500.0, "completed", nil, nil, false, "cash", "in_store", false)
 	if err := db.Create(sale).Error; err != nil {
 		t.Fatalf("Failed to create sale: %v", err)
 	}
@@ -708,7 +708,7 @@ func TestReturnsService_GetMostReturnedProducts_RespectsLimit(t *testing.T) {
 		}
 
 		// Create sale
-		sale := models.NewSale(warehouse.ID, time.Now(), 500.0, "completed", nil, "cash", "in_store", false)
+		sale := models.NewSale(warehouse.ID, time.Now(), 500.0, "completed", nil, nil, false, "cash", "in_store", false)
 		if err := db.Create(sale).Error; err != nil {
 			t.Fatalf("Failed to create sale: %v", err)
 		}

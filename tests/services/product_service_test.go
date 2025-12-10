@@ -27,7 +27,7 @@ func TestProductService_CreateProduct_Success(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, nil, mockLogger)
 
 	// Create request
 	desc := "Fresh organic tomatoes"
@@ -58,7 +58,7 @@ func TestProductService_CreateProduct_WithoutDescription(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, nil, mockLogger)
 
 	// Create request without description
 	request := &models.CreateProductRequest{
@@ -94,7 +94,7 @@ func TestProductService_GetProduct_Success(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, nil, mockLogger)
 
 	// Execute
 	response, err := service.GetProduct(context.Background(), product.ID)
@@ -118,7 +118,7 @@ func TestProductService_GetProduct_NotFound(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, nil, mockLogger)
 
 	// Execute with non-existent ID
 	_, err := service.GetProduct(context.Background(), "non-existent-id")
@@ -151,7 +151,7 @@ func TestProductService_GetAllProducts_Success(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, nil, mockLogger)
 
 	// Execute
 	responses, total, err := service.GetAllProducts(context.Background(), 50, 0)
@@ -174,7 +174,7 @@ func TestProductService_GetAllProducts_Empty(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, nil, mockLogger)
 
 	// Execute
 	responses, total, err := service.GetAllProducts(context.Background(), 50, 0)
@@ -205,7 +205,7 @@ func TestProductService_UpdateProduct_Success(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, nil, mockLogger)
 
 	// Update request
 	newName := "Updated Name"
@@ -242,7 +242,7 @@ func TestProductService_UpdateProduct_PartialUpdate(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, nil, mockLogger)
 
 	// Update only name (description should remain)
 	newName := "Updated Name"
@@ -271,7 +271,7 @@ func TestProductService_UpdateProduct_NotFound(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, nil, mockLogger)
 
 	// Update request for non-existent product
 	newName := "Updated Name"
@@ -306,7 +306,7 @@ func TestProductService_DeleteProduct_Success(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, nil, mockLogger)
 
 	// Execute
 	err := service.DeleteProduct(product.ID)
@@ -331,7 +331,7 @@ func TestProductService_DeleteProduct_NotFound(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, nil, mockLogger)
 
 	// Execute
 	err := service.DeleteProduct("non-existent-id")
@@ -364,7 +364,7 @@ func TestProductService_SearchProducts_Success(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, nil, mockLogger)
 
 	// Execute search for "Tomato"
 	responses, err := service.SearchProducts("Tomato")
@@ -401,7 +401,7 @@ func TestProductService_SearchProducts_NoResults(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, nil, mockLogger)
 
 	// Execute search for non-existent product
 	responses, err := service.SearchProducts("Banana")
@@ -440,7 +440,7 @@ func TestProductService_GetProductWithPrices_NoVariants(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, nil, mockLogger)
 
 	// Execute
 	response, err := service.GetProductWithPrices(product.ID)
@@ -465,16 +465,9 @@ func TestProductService_GetProductWithPrices_WithVariantsAndPrices(t *testing.T)
 	variant := testutils.FixtureProductVariant(product.ID, "1kg")
 	db.Create(variant)
 
-	// Create price for variant
-	isActive := true
-	price := &models.ProductPrice{
-		VariantID: variant.ID,
-		PriceType: "retail",
-		Price:     100.0,
-		Currency:  "INR",
-		IsActive:  &isActive,
-	}
-	result := db.Create(price)
+	// Create price in product_prices table (new unified architecture)
+	price := testutils.FixtureProductPrice(variant.ID, models.PriceTypeMRP, 100.0)
+	db.Create(price)
 
 	// Create repositories
 	productRepo := repositories.NewProductRepository(db)
@@ -483,24 +476,18 @@ func TestProductService_GetProductWithPrices_WithVariantsAndPrices(t *testing.T)
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, mockLogger)
+	service := services.NewProductService(productRepo, priceRepo, variantRepo, nil, nil, mockLogger)
 
-	// Execute
+	// Execute - GetProductWithPrices now returns prices from product_prices table
 	response, err := service.GetProductWithPrices(product.ID)
 
-	// Assert
+	// Assert product is returned successfully
 	testutils.AssertNoError(t, err, "GetProductWithPrices should succeed")
 	testutils.AssertNotNil(t, response, "Response should not be nil")
+	testutils.AssertEqual(t, response.ID, product.ID, "Product ID should match")
 
-	// If ProductPrice migration failed (SQLite incompatibility), skip price assertions
-	if result.Error != nil {
-		t.Logf("NOTE: ProductPrice creation failed (likely SQLite incompatibility): %v", result.Error)
-		t.Log("Skipping price-related assertions")
-		return
-	}
-
-	testutils.AssertEqual(t, len(response.Prices), 1, "Should have 1 price")
-	if len(response.Prices) > 0 {
-		testutils.AssertEqual(t, response.Prices[0].VariantID, variant.ID, "Variant ID mismatch")
-	}
+	// Verify prices are returned from product_prices table
+	testutils.AssertEqual(t, len(response.Prices), 1, "Should have 1 price from product_prices table")
+	testutils.AssertEqual(t, response.Prices[0].PriceType, models.PriceTypeMRP, "Price type should be MRP")
+	testutils.AssertEqual(t, response.Prices[0].Price, 100.0, "Price should be 100.0")
 }
