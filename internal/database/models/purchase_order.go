@@ -146,6 +146,12 @@ type PurchaseOrderResponse struct {
 	PaymentStatus       string                      `json:"payment_status"`
 	PaidAmount          float64                     `json:"paid_amount"`
 	IsInterState        *bool                       `json:"is_inter_state"` // nil = unknown, true = inter-state, false = intra-state
+	// PO-level GST Totals (sum of all items)
+	TotalBaseAmount     float64                     `json:"total_base_amount"`  // Sum of all item base prices (excluding GST)
+	TotalGSTAmount      float64                     `json:"total_gst_amount"`   // Sum of all item GST amounts
+	TotalCGSTAmount     float64                     `json:"total_cgst_amount"`  // Sum of all item CGST amounts
+	TotalSGSTAmount     float64                     `json:"total_sgst_amount"`  // Sum of all item SGST amounts
+	TotalIGSTAmount     float64                     `json:"total_igst_amount"`  // Sum of all item IGST amounts
 	Items               []PurchaseOrderItemResponse `json:"items,omitempty"`
 	CreatedAt           string                      `json:"created_at"`
 	UpdatedAt           string                      `json:"updated_at"`
@@ -184,8 +190,9 @@ type PurchaseOrderItemResponse struct {
 type CreatePurchaseOrderRequest struct {
 	CollaboratorID   string                           `json:"collaborator_id" binding:"required"`
 	WarehouseID      string                           `json:"warehouse_id" binding:"required"`
-	OrderDate        *string                          `json:"order_date"` // Optional, defaults to now
+	OrderDate        *string                          `json:"order_date"`                        // Optional, defaults to now
 	ExpectedDelivery string                           `json:"expected_delivery_date" binding:"required"`
+	IsInterState     *bool                            `json:"is_inter_state"`                    // Optional: true=inter-state (IGST), false=intra-state (CGST+SGST), nil=auto-detect
 	Items            []CreatePurchaseOrderItemRequest `json:"items" binding:"required,min=1"`
 }
 
