@@ -467,8 +467,6 @@ definitions:
       pan_number:
         type: string
     required:
-    - bank_account_no
-    - bank_ifsc
     - company_name
     - contact_number
     - contact_person
@@ -1244,8 +1242,13 @@ definitions:
         type: string
       expiry_date:
         type: string
+      expiry_status:
+        description: '"fresh", "expiring_soon", "expired"'
+        type: string
       id:
         type: string
+      is_expired:
+        type: boolean
       reserved_quantity:
         type: integer
       total_quantity:
@@ -1678,40 +1681,33 @@ definitions:
       price:
         type: number
     type: object
-  models.ProductAvailabilityResponse:
+  models.ProductAvailabilityGroupedResponse:
     properties:
-      address:
-        allOf:
-        - $ref: '#/definitions/models.AddressInfo'
-        description: Embedded address info from AAA
-      available_quantity:
+      earliest_expiry:
+        description: Earliest expiry date across all warehouses
+        type: string
+      expired_quantity:
+        description: Total expired quantity across all warehouses
         type: integer
-      cost_price:
-        type: number
-      created_at:
-        type: string
-      expiry_date:
-        type: string
-      id:
+      expiry_status:
+        description: 'Overall status: "fresh", "expiring_soon", "expired"'
         type: string
       product_description:
         type: string
       product_name:
         type: string
-      product_sku:
+      sku:
         type: string
-      reserved_quantity:
-        type: integer
       total_quantity:
+        description: Total available (non-expired) quantity across all warehouses
         type: integer
-      updated_at:
-        type: string
       variant_id:
         type: string
-      warehouse_id:
-        type: string
-      warehouse_name:
-        type: string
+      warehouse_details:
+        description: Per-warehouse breakdown
+        items:
+          $ref: '#/definitions/models.WarehouseAvailabilityDetail'
+        type: array
     type: object
   models.ProductDetailResponse:
     properties:
@@ -1861,21 +1857,33 @@ definitions:
   models.PurchaseOrderItemResponse:
     properties:
       base_price:
-        description: GST Breakdown
+        description: GST Breakdown (per unit)
         type: number
       cgst_amount:
+        description: Per unit
+        type: number
+      cgst_amount_total:
+        description: Total for line item
         type: number
       cgst_rate:
         type: number
       created_at:
         type: string
       gst_amount:
+        description: Per unit
+        type: number
+      gst_amount_total:
+        description: Total GST Breakdown (per-unit amounts × quantity)
         type: number
       gst_rate:
         type: number
       id:
         type: string
       igst_amount:
+        description: Per unit
+        type: number
+      igst_amount_total:
+        description: Total for line item
         type: number
       igst_rate:
         type: number
@@ -1892,6 +1900,10 @@ definitions:
       received_quantity:
         type: integer
       sgst_amount:
+        description: Per unit
+        type: number
+      sgst_amount_total:
+        description: Total for line item
         type: number
       sgst_rate:
         type: number
@@ -1953,8 +1965,6 @@ definitions:
       in_stock:
         type: boolean
       reserved_quantity:
-        type: integer
-      sold_quantity:
         type: integer
       total_quantity:
         type: integer
@@ -2899,6 +2909,27 @@ definitions:
         items:
           $ref: '#/definitions/models.WarehouseStock'
         type: array
+    type: object
+  models.WarehouseAvailabilityDetail:
+    properties:
+      address:
+        $ref: '#/definitions/models.AddressInfo'
+      earliest_expiry:
+        description: Earliest expiry date for this warehouse
+        type: string
+      expired_quantity:
+        description: Expired quantity (not available)
+        type: integer
+      expiry_status:
+        description: '"fresh", "expiring_soon", "expired"'
+        type: string
+      quantity:
+        description: Available (non-expired) quantity
+        type: integer
+      warehouse_id:
+        type: string
+      warehouse_name:
+        type: string
     type: object
   models.WarehouseResponse:
     properties:
@@ -7019,8 +7050,10 @@ paths:
       - Products
   /api/v1/products/availability:
     get:
-      description: Retrieve availability information for all products across warehouses
-        with pagination
+      description: Retrieve availability information for all products grouped by SKU
+        across warehouses. Returns aggregated quantities with per-warehouse breakdown.
+        Only includes non-expired stock in available quantities, but shows expired
+        stock separately for visibility.
       parameters:
       - description: 'Number of records to return (default: 50, max: 200)'
         example: 50
@@ -7036,14 +7069,14 @@ paths:
       - application/json
       responses:
         "200":
-          description: Products availability retrieved successfully
+          description: Products availability retrieved and grouped successfully
           schema:
             allOf:
             - $ref: '#/definitions/utils.PaginatedResponseModel'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/models.ProductAvailabilityResponse'
+                    $ref: '#/definitions/models.ProductAvailabilityGroupedResponse'
                   type: array
               type: object
         "401":
@@ -7068,9 +7101,71 @@ paths:
             $ref: '#/definitions/utils.ErrorResponseModel'
       security:
       - BearerAuth: []
-      summary: Get Products Availability
+      summary: Get Products Availability Grouped by SKU
       tags:
       - Inventory
+  /api/v1/products/by-quantity:
+    get:
+      description: Filter products based on their total inventory quantity across
+        all warehouses (requires authentication)
+      parameters:
+      - description: Minimum quantity
+        example: 10
+        in: query
+        name: min
+        required: true
+        type: integer
+      - description: Maximum quantity
+        example: 100
+        in: query
+        name: max
+        required: true
+        type: integer
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Products filtered by quantity
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.PaginatedResponseModel'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.ProductResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request - invalid parameters
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Products by Quantity Range
+      tags:
+      - Products
   /api/v1/products/category/{categoryId}:
     get:
       description: Retrieve all products in a specific category (requires authentication)

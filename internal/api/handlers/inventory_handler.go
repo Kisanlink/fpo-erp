@@ -503,13 +503,13 @@ func (h *InventoryHandler) GetLowStockBatches(c *gin.Context) {
 }
 
 // GetAllProductsAvailability handles GET /api/v1/products/availability
-// @Summary Get Products Availability
-// @Description Retrieve availability information for all products across warehouses with pagination
+// @Summary Get Products Availability Grouped by SKU
+// @Description Retrieve availability information for all products grouped by SKU across warehouses. Returns aggregated quantities with per-warehouse breakdown. Only includes non-expired stock in available quantities, but shows expired stock separately for visibility.
 // @Tags Inventory
 // @Produce json
 // @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
 // @Param offset query integer false "Number of records to skip (default: 0)" example(0)
-// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.ProductAvailabilityResponse} "Products availability retrieved successfully"
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.ProductAvailabilityGroupedResponse} "Products availability retrieved and grouped successfully"
 // @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
 // @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
 // @Failure 409 {object} utils.ErrorResponseModel "Conflict - resource already exists"
@@ -518,7 +518,7 @@ func (h *InventoryHandler) GetLowStockBatches(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/products/availability [get]
 func (h *InventoryHandler) GetAllProductsAvailability(c *gin.Context) {
-	h.logger.Info("Handling get all products availability request",
+	h.logger.Info("Handling get all products availability request (grouped by SKU)",
 		zap.String("method", c.Request.Method),
 		zap.String("path", c.Request.URL.Path))
 
@@ -533,11 +533,11 @@ func (h *InventoryHandler) GetAllProductsAvailability(c *gin.Context) {
 	// Get pagination parameters
 	params := utils.GetPaginationParams(c)
 
-	h.logger.Debug("Calling inventory service to get all products availability",
+	h.logger.Debug("Calling inventory service to get all products availability (grouped)",
 		zap.Int("limit", params.Limit),
 		zap.Int("offset", params.Offset))
 
-	// Get all products availability across warehouses
+	// Get all products availability across warehouses (grouped by SKU)
 	response, total, err := h.inventoryService.GetAllProductsAvailability(c.Request.Context(), jwtToken, params.Limit, params.Offset)
 	if err != nil {
 		h.logger.Error("Failed to retrieve products availability via service",
@@ -546,9 +546,9 @@ func (h *InventoryHandler) GetAllProductsAvailability(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Products availability retrieved successfully via handler",
-		zap.Int("count", len(response)),
-		zap.Int64("total", total))
+	h.logger.Info("Products availability retrieved and grouped successfully via handler",
+		zap.Int("unique_products", len(response)),
+		zap.Int64("total_batches", total))
 
 	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
 }

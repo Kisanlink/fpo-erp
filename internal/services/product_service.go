@@ -445,3 +445,57 @@ func (s *ProductService) buildVariantResponse(ctx context.Context, variant *mode
 		UpdatedAt:          variant.UpdatedAt.UTC().Format(time.RFC3339),
 	}
 }
+
+// GetProductsByQuantityRange retrieves products within a quantity range across all warehouses
+func (s *ProductService) GetProductsByQuantityRange(ctx context.Context, minQty, maxQty int64, limit, offset int) ([]models.ProductResponse, int64, error) {
+	s.logger.Info("Retrieving products by quantity range",
+		zap.Int64("min_quantity", minQty),
+		zap.Int64("max_quantity", maxQty),
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
+
+	// Validate quantity range
+	if minQty < 0 {
+		s.logger.Error("Invalid min quantity - must be non-negative",
+			zap.Int64("min_quantity", minQty))
+		return nil, 0, errors.NewBadRequestError("Minimum quantity must be non-negative")
+	}
+
+	if maxQty < 0 {
+		s.logger.Error("Invalid max quantity - must be non-negative",
+			zap.Int64("max_quantity", maxQty))
+		return nil, 0, errors.NewBadRequestError("Maximum quantity must be non-negative")
+	}
+
+	if minQty > maxQty {
+		s.logger.Error("Invalid quantity range - min cannot be greater than max",
+			zap.Int64("min_quantity", minQty),
+			zap.Int64("max_quantity", maxQty))
+		return nil, 0, errors.NewBadRequestError("Minimum quantity cannot be greater than maximum quantity")
+	}
+
+	// Fetch products from repository
+	products, total, err := s.productRepo.GetProductsByQuantityRange(minQty, maxQty, limit, offset)
+	if err != nil {
+		s.logger.Error("Failed to retrieve products by quantity range",
+			zap.Error(err),
+			zap.Int64("min_quantity", minQty),
+			zap.Int64("max_quantity", maxQty))
+		return nil, 0, err
+	}
+
+	// Build responses with variant details
+	var responses []models.ProductResponse
+	for _, product := range products {
+		response := s.buildProductResponse(ctx, &product)
+		responses = append(responses, *response)
+	}
+
+	s.logger.Info("Products by quantity range retrieved successfully",
+		zap.Int64("min_quantity", minQty),
+		zap.Int64("max_quantity", maxQty),
+		zap.Int("count", len(responses)),
+		zap.Int64("total", total))
+
+	return responses, total, nil
+}

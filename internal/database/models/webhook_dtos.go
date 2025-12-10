@@ -27,8 +27,8 @@ type WebhookCollaborator struct {
 	Email         *string `json:"email"`
 	GSTNumber     string  `json:"gst_number"`
 	PANNumber     *string `json:"pan_number"`
-	BankAccountNo string  `json:"bank_account_no"`
-	BankIFSC      string  `json:"bank_ifsc"`
+	BankAccountNo *string `json:"bank_account_no"`
+	BankIFSC      *string `json:"bank_ifsc"`
 	BankName      *string `json:"bank_name"`
 	Experience    *string `json:"experience"`
 	AddressID     *string `json:"address_id"` // Reference to AAA address (AAA is source of truth)

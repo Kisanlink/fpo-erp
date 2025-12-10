@@ -10,6 +10,7 @@ import (
 	"kisanlink-erp/internal/database/repositories"
 	"kisanlink-erp/internal/errors"
 	"kisanlink-erp/internal/interfaces"
+	"kisanlink-erp/internal/utils"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -184,7 +185,7 @@ func (s *PurchaseOrderService) CreatePurchaseOrder(ctx context.Context, request 
 			gstRate := variant.GSTRate // Get GST rate from variant (e.g., 18.0 for 18%)
 			gstBreakdown := calculateGSTBreakdown(itemReq.UnitPrice, gstRate, isInterState)
 
-			// Set GST fields on item
+			// Set per-unit GST fields on item
 			item.BasePrice = gstBreakdown.BasePrice
 			item.GSTRate = gstBreakdown.GSTRate
 			item.GSTAmount = gstBreakdown.GSTAmount
@@ -194,6 +195,13 @@ func (s *PurchaseOrderService) CreatePurchaseOrder(ctx context.Context, request 
 			item.SGSTAmount = gstBreakdown.SGSTAmount
 			item.IGSTRate = gstBreakdown.IGSTRate
 			item.IGSTAmount = gstBreakdown.IGSTAmount
+
+			// Calculate total GST amounts (per-unit × quantity)
+			quantityFloat := float64(itemReq.Quantity)
+			item.GSTAmountTotal = gstBreakdown.GSTAmount * quantityFloat
+			item.CGSTAmountTotal = gstBreakdown.CGSTAmount * quantityFloat
+			item.SGSTAmountTotal = gstBreakdown.SGSTAmount * quantityFloat
+			item.IGSTAmountTotal = gstBreakdown.IGSTAmount * quantityFloat
 
 			if err := s.poRepo.CreateItemWithTx(tx, item); err != nil {
 				return err
@@ -932,20 +940,25 @@ func (s *PurchaseOrderService) buildPurchaseOrderResponse(po *models.PurchaseOrd
 			ProductName:      item.ProductName,
 			ProductSKU:       item.ProductSKU,
 			Quantity:         item.Quantity,
-			UnitPrice:        item.UnitPrice,
-			LineTotal:        item.LineTotal,
+			UnitPrice:        utils.RoundPrice(item.UnitPrice),
+			LineTotal:        utils.RoundPrice(item.LineTotal),
 			ReceivedQuantity: item.ReceivedQuantity,
-			// GST Breakdown
-			BasePrice:  item.BasePrice,
-			GSTRate:    item.GSTRate,
-			GSTAmount:  item.GSTAmount,
-			CGSTRate:   item.CGSTRate,
-			CGSTAmount: item.CGSTAmount,
-			SGSTRate:   item.SGSTRate,
-			SGSTAmount: item.SGSTAmount,
-			IGSTRate:   item.IGSTRate,
-			IGSTAmount: item.IGSTAmount,
-			CreatedAt:  item.CreatedAt.UTC().Format(time.RFC3339),
+			// Per-unit GST Breakdown
+			BasePrice:  utils.RoundPrice(item.BasePrice),
+			GSTRate:    utils.RoundPrice(item.GSTRate),
+			GSTAmount:  utils.RoundPrice(item.GSTAmount),
+			CGSTRate:   utils.RoundPrice(item.CGSTRate),
+			CGSTAmount: utils.RoundPrice(item.CGSTAmount),
+			SGSTRate:   utils.RoundPrice(item.SGSTRate),
+			SGSTAmount: utils.RoundPrice(item.SGSTAmount),
+			IGSTRate:   utils.RoundPrice(item.IGSTRate),
+			IGSTAmount: utils.RoundPrice(item.IGSTAmount),
+			// Total GST Breakdown
+			GSTAmountTotal:  utils.RoundPrice(item.GSTAmountTotal),
+			CGSTAmountTotal: utils.RoundPrice(item.CGSTAmountTotal),
+			SGSTAmountTotal: utils.RoundPrice(item.SGSTAmountTotal),
+			IGSTAmountTotal: utils.RoundPrice(item.IGSTAmountTotal),
+			CreatedAt:       item.CreatedAt.UTC().Format(time.RFC3339),
 		})
 	}
 	response.Items = items

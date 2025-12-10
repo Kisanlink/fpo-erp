@@ -18,5 +18,7 @@ type InventoryServiceInterface interface {
 	GetTransactionsByBatch(batchID string, limit, offset int) ([]models.InventoryTransactionResponse, int64, error)
 	GetExpiringBatches(days int, limit, offset int) ([]models.InventoryBatchResponse, int64, error)
 	GetLowStockBatches(threshold int64, limit, offset int) ([]models.InventoryBatchResponse, int64, error)
-	GetAllProductsAvailability(ctx context.Context, jwtToken string, limit, offset int) ([]models.ProductAvailabilityResponse, int64, error)
+	// GetAllProductsAvailability returns grouped availability by SKU with per-warehouse breakdown
+	// Only includes non-expired stock in availability counts, but shows expired stock separately
+	GetAllProductsAvailability(ctx context.Context, jwtToken string, limit, offset int) ([]models.ProductAvailabilityGroupedResponse, int64, error)
 }
