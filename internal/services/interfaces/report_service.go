@@ -24,4 +24,7 @@ type ReportServiceInterface interface {
 
 	// GenerateReturnsReport generates returns report
 	GenerateReturnsReport(filter *models.ReturnsReportFilter) (*models.ReportResponse, error)
+
+	// GenerateGRNReport generates goods receipt note report
+	GenerateGRNReport(filter *models.GRNReportFilter) (*models.ReportResponse, error)
 }

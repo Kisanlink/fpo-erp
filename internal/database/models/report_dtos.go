@@ -84,6 +84,18 @@ type ReturnsReportFilter struct {
 	MaxRefund   *float64 `form:"max_refund"`
 }
 
+// GRNReportFilter for GRN report
+type GRNReportFilter struct {
+	BaseReportFilter
+	POID          string   `form:"po_id"`
+	PONumber      string   `form:"po_number"`
+	VendorID      string   `form:"vendor_id"`
+	WarehouseID   string   `form:"warehouse_id"`
+	QualityStatus []string `form:"quality_status"`
+	MinValue      *float64 `form:"min_value"`
+	MaxValue      *float64 `form:"max_value"`
+}
+
 // ReportResponse is the standard report response wrapper
 type ReportResponse struct {
 	ReportType     string                 `json:"report_type"`
@@ -162,6 +174,17 @@ type ReturnsReportSummary struct {
 	ByStatus           map[string]int64 `json:"by_status"`
 }
 
+// GRNReportSummary aggregates for GRN report
+type GRNReportSummary struct {
+	TotalGRNs             int64            `json:"total_grns"`
+	TotalItemCount        int64            `json:"total_item_count"`
+	TotalReceivedValue    float64          `json:"total_received_value"`
+	TotalRejectedValue    float64          `json:"total_rejected_value"`
+	TotalAcceptedValue    float64          `json:"total_accepted_value"`
+	AverageAcceptanceRate float64          `json:"average_acceptance_rate"`
+	ByQualityStatus       map[string]int64 `json:"by_quality_status"`
+}
+
 // ProductReportRecord for product report rows
 type ProductReportRecord struct {
 	ID           string  `json:"id"`
@@ -206,45 +229,61 @@ type CustomerReportRecord struct {
 
 // InventoryReportRecord for inventory report rows
 type InventoryReportRecord struct {
-	BatchID       string  `json:"batch_id"`
-	WarehouseID   string  `json:"warehouse_id"`
-	WarehouseName string  `json:"warehouse_name"`
-	VariantID     string  `json:"variant_id"`
-	ProductName   string  `json:"product_name"`
-	VariantSKU    string  `json:"variant_sku"`
-	TotalQuantity int64   `json:"total_quantity"`
-	CostPrice     float64 `json:"cost_price"`
-	TotalValue    float64 `json:"total_value"`
-	ExpiryDate    string  `json:"expiry_date"`
-	DaysToExpiry  int     `json:"days_to_expiry"`
-	DaysOnShelf   int     `json:"days_on_shelf"`
-	CGSTRate      float64 `json:"cgst_rate"`
-	SGSTRate      float64 `json:"sgst_rate"`
-	IsTaxExempt   bool    `json:"is_tax_exempt"`
-	CreatedAt     string  `json:"created_at"`
-	UpdatedAt     string  `json:"updated_at"`
+	BatchID           string  `json:"batch_id"`
+	WarehouseID       string  `json:"warehouse_id"`
+	WarehouseName     string  `json:"warehouse_name"`
+	VariantID         string  `json:"variant_id"`
+	ProductName       string  `json:"product_name"`
+	VariantSKU        string  `json:"variant_sku"`
+	TotalQuantity     int64   `json:"total_quantity"`
+	ReservedQuantity  int64   `json:"reserved_quantity"`
+	AvailableQuantity int64   `json:"available_quantity"`
+	CostPrice         float64 `json:"cost_price"`
+	TotalValue        float64 `json:"total_value"`
+	ExpiryDate        string  `json:"expiry_date"`
+	DaysToExpiry      int     `json:"days_to_expiry"`
+	DaysOnShelf       int     `json:"days_on_shelf"`
+	BatchNumber       *string `json:"batch_number"`
+	ReceivedDate      *string `json:"received_date"`
+	QualityStatus     *string `json:"quality_status"`
+	SourceGRNID       *string `json:"source_grn_id"`
+	IsExpiringSoon    bool    `json:"is_expiring_soon"`
+	IsExpired         bool    `json:"is_expired"`
+	ExpiryCategory    string  `json:"expiry_category"`
+	CGSTRate          float64 `json:"cgst_rate"`
+	SGSTRate          float64 `json:"sgst_rate"`
+	IsTaxExempt       bool    `json:"is_tax_exempt"`
+	CreatedAt         string  `json:"created_at"`
+	UpdatedAt         string  `json:"updated_at"`
 }
 
 // PurchaseReportRecord for purchase report rows
 type PurchaseReportRecord struct {
-	ID                   string  `json:"id"`
-	PONumber             string  `json:"po_number"`
-	ExternalOrderID      *string `json:"external_order_id,omitempty"`
-	CollaboratorID       string  `json:"collaborator_id"`
-	CollaboratorName     string  `json:"collaborator_name"`
-	WarehouseID          string  `json:"warehouse_id"`
-	WarehouseName        string  `json:"warehouse_name"`
-	OrderDate            string  `json:"order_date"`
-	ExpectedDeliveryDate string  `json:"expected_delivery_date"`
-	ActualDeliveryDate   *string `json:"actual_delivery_date,omitempty"`
-	Status               string  `json:"status"`
-	PaymentStatus        string  `json:"payment_status"`
-	TotalAmount          float64 `json:"total_amount"`
-	PaidAmount           float64 `json:"paid_amount"`
-	OutstandingAmount    float64 `json:"outstanding_amount"`
-	ItemCount            int     `json:"item_count"`
-	CreatedAt            string  `json:"created_at"`
-	UpdatedAt            string  `json:"updated_at"`
+	ID                    string  `json:"id"`
+	PONumber              string  `json:"po_number"`
+	ExternalOrderID       *string `json:"external_order_id,omitempty"`
+	CollaboratorID        string  `json:"collaborator_id"`
+	CollaboratorName      string  `json:"collaborator_name"`
+	WarehouseID           string  `json:"warehouse_id"`
+	WarehouseName         string  `json:"warehouse_name"`
+	OrderDate             string  `json:"order_date"`
+	ExpectedDeliveryDate  string  `json:"expected_delivery_date"`
+	ActualDeliveryDate    *string `json:"actual_delivery_date,omitempty"`
+	Status                string  `json:"status"`
+	PaymentStatus         string  `json:"payment_status"`
+	TotalAmount           float64 `json:"total_amount"`
+	PaidAmount            float64 `json:"paid_amount"`
+	OutstandingAmount     float64 `json:"outstanding_amount"`
+	ItemCount             int     `json:"item_count"`
+	GRNID                 *string `json:"grn_id,omitempty"`
+	ReceivedQuantity      int64   `json:"received_quantity"`
+	AcceptedQuantity      int64   `json:"accepted_quantity"`
+	RejectedQuantity      int64   `json:"rejected_quantity"`
+	RejectionRate         float64 `json:"rejection_rate"`
+	TotalRejectedValue    float64 `json:"total_rejected_value"`
+	AcceptanceRatePercent float64 `json:"acceptance_rate_percent"`
+	CreatedAt             string  `json:"created_at"`
+	UpdatedAt             string  `json:"updated_at"`
 }
 
 // SalesReportRecord for sales report rows
@@ -262,7 +301,14 @@ type SalesReportRecord struct {
 	PurchaseValue      float64 `json:"purchase_value"`
 	ApplyTaxes         bool    `json:"apply_taxes"`
 	TotalTax           float64 `json:"total_tax"`
+	CGSTAmount         float64 `json:"cgst_amount"`
+	SGSTAmount         float64 `json:"sgst_amount"`
+	IGSTAmount         float64 `json:"igst_amount"`
+	TaxExemptAmount    float64 `json:"tax_exempt_amount"`
+	EffectiveTaxRate   float64 `json:"effective_tax_rate"`
 	TotalMargin        float64 `json:"total_margin"`
+	GrossMarginPercent float64 `json:"gross_margin_percent"`
+	PerUnitMargin      float64 `json:"per_unit_margin"`
 	ItemCount          int     `json:"item_count"`
 	CancelledAt        *string `json:"cancelled_at,omitempty"`
 	CancellationReason *string `json:"cancellation_reason,omitempty"`
@@ -282,4 +328,27 @@ type ReturnsReportRecord struct {
 	ItemCount     int     `json:"item_count"`
 	CreatedAt     string  `json:"created_at"`
 	UpdatedAt     string  `json:"updated_at"`
+}
+
+// GRNReportRecord for GRN report rows
+type GRNReportRecord struct {
+	ID             string  `json:"id"`
+	GRNNumber      string  `json:"grn_number"`
+	PONumber       string  `json:"po_number"`
+	POID           string  `json:"po_id"`
+	VendorID       string  `json:"vendor_id"`
+	VendorName     string  `json:"vendor_name"`
+	WarehouseID    string  `json:"warehouse_id"`
+	WarehouseName  string  `json:"warehouse_name"`
+	ReceivedDate   string  `json:"received_date"`
+	QualityStatus  string  `json:"quality_status"`
+	ItemCount      int     `json:"item_count"`
+	TotalReceived  int64   `json:"total_received"`
+	TotalAccepted  int64   `json:"total_accepted"`
+	TotalRejected  int64   `json:"total_rejected"`
+	ReceivedValue  float64 `json:"received_value"`
+	RejectedValue  float64 `json:"rejected_value"`
+	AcceptanceRate float64 `json:"acceptance_rate"`
+	CreatedAt      string  `json:"created_at"`
+	UpdatedAt      string  `json:"updated_at"`
 }
