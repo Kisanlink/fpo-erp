@@ -141,18 +141,39 @@ func (s *ProductVariantService) CreateProductVariant(ctx context.Context, produc
 					return errors.NewValidationError(err.Error())
 				}
 
+				// Set defaults
 				currency := price.Currency
 				if currency == "" {
 					currency = "INR"
 				}
+
 				isActive := true
+				if price.IsActive != nil {
+					isActive = *price.IsActive
+				}
+
+				// Parse effective dates
+				effectiveFrom := time.Now()
+				if price.EffectiveFrom != nil {
+					if parsed, err := time.Parse("2006-01-02", *price.EffectiveFrom); err == nil {
+						effectiveFrom = parsed
+					}
+				}
+
+				var effectiveTo *time.Time
+				if price.EffectiveTo != nil {
+					if parsed, err := time.Parse("2006-01-02", *price.EffectiveTo); err == nil {
+						effectiveTo = &parsed
+					}
+				}
+
 				productPrice := models.NewProductPrice(
 					variant.ID,
 					price.PriceType,
 					price.Price,
 					currency,
-					time.Now(),
-					nil,
+					effectiveFrom,
+					effectiveTo,
 					&isActive,
 				)
 				if err := s.priceRepo.CreateWithTx(tx, productPrice); err != nil {
@@ -418,9 +439,30 @@ func (s *ProductVariantService) UpdateProductVariant(ctx context.Context, id str
 
 			// Update prices in product_prices table
 			for _, price := range *request.Prices {
+				// Set defaults
 				currency := price.Currency
 				if currency == "" {
 					currency = "INR"
+				}
+
+				isActive := true
+				if price.IsActive != nil {
+					isActive = *price.IsActive
+				}
+
+				// Parse effective dates
+				effectiveFrom := time.Now()
+				if price.EffectiveFrom != nil {
+					if parsed, err := time.Parse("2006-01-02", *price.EffectiveFrom); err == nil {
+						effectiveFrom = parsed
+					}
+				}
+
+				var effectiveTo *time.Time
+				if price.EffectiveTo != nil {
+					if parsed, err := time.Parse("2006-01-02", *price.EffectiveTo); err == nil {
+						effectiveTo = &parsed
+					}
 				}
 
 				// Try to get existing price for this type
@@ -429,6 +471,9 @@ func (s *ProductVariantService) UpdateProductVariant(ctx context.Context, id str
 					// Update existing price using tx.Save() directly
 					existingPrice.Price = price.Price
 					existingPrice.Currency = currency
+					existingPrice.EffectiveFrom = effectiveFrom
+					existingPrice.EffectiveTo = effectiveTo
+					existingPrice.IsActive = &isActive
 					if err := tx.Save(existingPrice).Error; err != nil {
 						s.logger.Error("Failed to update price record in transaction",
 							zap.Error(err),
@@ -438,14 +483,13 @@ func (s *ProductVariantService) UpdateProductVariant(ctx context.Context, id str
 					}
 				} else {
 					// Create new price record using CreateWithTx
-					isActive := true
 					productPrice := models.NewProductPrice(
 						variant.ID,
 						price.PriceType,
 						price.Price,
 						currency,
-						time.Now(),
-						nil,
+						effectiveFrom,
+						effectiveTo,
 						&isActive,
 					)
 					if err := s.priceRepo.CreateWithTx(tx, productPrice); err != nil {
@@ -563,9 +607,27 @@ func (s *ProductVariantService) validatePrices(prices []models.VariantPrice) err
 			return errors.NewValidationError("Price must be greater than 0 for " + price.PriceType)
 		}
 
-		// Validate currency is not empty
-		if price.Currency == "" {
-			return errors.NewValidationError("Currency is required for " + price.PriceType)
+		// Validate effective_from date format if provided
+		if price.EffectiveFrom != nil {
+			if _, err := time.Parse("2006-01-02", *price.EffectiveFrom); err != nil {
+				return errors.NewValidationError("Invalid effective_from date format at index " + strconv.Itoa(i) + ": must be YYYY-MM-DD")
+			}
+		}
+
+		// Validate effective_to date format if provided
+		if price.EffectiveTo != nil {
+			if _, err := time.Parse("2006-01-02", *price.EffectiveTo); err != nil {
+				return errors.NewValidationError("Invalid effective_to date format at index " + strconv.Itoa(i) + ": must be YYYY-MM-DD")
+			}
+		}
+
+		// Validate effective_to > effective_from if both provided
+		if price.EffectiveFrom != nil && price.EffectiveTo != nil {
+			effectiveFrom, _ := time.Parse("2006-01-02", *price.EffectiveFrom)
+			effectiveTo, _ := time.Parse("2006-01-02", *price.EffectiveTo)
+			if !effectiveTo.After(effectiveFrom) {
+				return errors.NewValidationError("effective_to must be after effective_from at index " + strconv.Itoa(i))
+			}
 		}
 	}
 
