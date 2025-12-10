@@ -125,6 +125,7 @@ type ProductAvailabilityGroupedResponse struct {
 	EarliestExpiry     string                        `json:"earliest_expiry"`     // Earliest expiry date across all warehouses
 	ExpiryStatus       string                        `json:"expiry_status"`       // Overall status: "fresh", "expiring_soon", "expired"
 	WarehouseDetails   []WarehouseAvailabilityDetail `json:"warehouse_details"`   // Per-warehouse breakdown
+	Prices             []ProductPriceResponse        `json:"prices,omitempty"`    // Active prices for this variant
 }
 
 // InventoryTransactionResponse represents the API response for inventory transaction

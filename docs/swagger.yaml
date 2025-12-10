@@ -1696,6 +1696,11 @@ definitions:
       expiry_status:
         description: 'Overall status: "fresh", "expiring_soon", "expired"'
         type: string
+      prices:
+        description: Active prices for this variant
+        items:
+          $ref: '#/definitions/kisanlink-erp_internal_database_models.ProductPriceResponse'
+        type: array
       product_description:
         type: string
       product_name:

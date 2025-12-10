@@ -30,10 +30,11 @@ func setupInventoryService(t *testing.T) (*services.InventoryService, *gorm.DB, 
 	warehouseRepo := repositories.NewWarehouseRepository(db)
 	productRepo := repositories.NewProductRepository(db)
 	variantRepo := repositories.NewProductVariantRepository(db)
+	priceRepo := repositories.NewProductPriceRepository(db)
 
 	// Create service (nil AAA client for most tests that don't need address service)
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewInventoryService(inventoryRepo, warehouseRepo, productRepo, variantRepo, nil, mockLogger)
+	service := services.NewInventoryService(inventoryRepo, warehouseRepo, productRepo, variantRepo, priceRepo, nil, mockLogger)
 
 	// Cleanup function
 	cleanup := func() {

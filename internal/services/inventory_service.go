@@ -20,17 +20,19 @@ type InventoryService struct {
 	warehouseRepo *repositories.WarehouseRepository
 	productRepo   *repositories.ProductRepository
 	variantRepo   *repositories.ProductVariantRepository
+	priceRepo     *repositories.ProductPriceRepository
 	addressClient *aaa.AddressGRPCClient
 	logger        interfaces.Logger
 }
 
 // NewInventoryService creates a new inventory service
-func NewInventoryService(inventoryRepo *repositories.InventoryRepository, warehouseRepo *repositories.WarehouseRepository, productRepo *repositories.ProductRepository, variantRepo *repositories.ProductVariantRepository, addressClient *aaa.AddressGRPCClient, logger interfaces.Logger) *InventoryService {
+func NewInventoryService(inventoryRepo *repositories.InventoryRepository, warehouseRepo *repositories.WarehouseRepository, productRepo *repositories.ProductRepository, variantRepo *repositories.ProductVariantRepository, priceRepo *repositories.ProductPriceRepository, addressClient *aaa.AddressGRPCClient, logger interfaces.Logger) *InventoryService {
 	return &InventoryService{
 		inventoryRepo: inventoryRepo,
 		warehouseRepo: warehouseRepo,
 		productRepo:   productRepo,
 		variantRepo:   variantRepo,
+		priceRepo:     priceRepo,
 		addressClient: addressClient,
 		logger:        logger,
 	}
@@ -562,6 +564,40 @@ func (s *InventoryService) GetAllProductsAvailability(ctx context.Context, jwtTo
 
 		// Sort warehouse details by earliest expiry (FEFO - First Expired First Out)
 		s.sortWarehouseDetailsByExpiry(response.WarehouseDetails)
+
+		// Fetch active prices for this variant
+		if s.priceRepo != nil {
+			prices, err := s.priceRepo.GetActiveByVariantID(variantData.VariantID)
+			if err != nil {
+				s.logger.Error("Failed to fetch prices for variant",
+					zap.Error(err),
+					zap.String("variant_id", variantData.VariantID),
+					zap.String("sku", sku))
+				// Don't fail the entire request, just log and continue without prices
+			} else {
+				var priceResponses []models.ProductPriceResponse
+				for _, price := range prices {
+					isActive := price.IsActive != nil && *price.IsActive
+					priceResponse := models.ProductPriceResponse{
+						ID:            price.ID,
+						VariantID:     price.VariantID,
+						PriceType:     price.PriceType,
+						Price:         utils.RoundPrice(price.Price),
+						Currency:      price.Currency,
+						EffectiveFrom: price.EffectiveFrom.Format("2006-01-02T15:04:05Z"),
+						IsActive:      isActive,
+						CreatedAt:     price.CreatedAt.Format("2006-01-02T15:04:05Z"),
+						UpdatedAt:     price.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+					}
+					if price.EffectiveTo != nil {
+						effectiveTo := price.EffectiveTo.Format("2006-01-02T15:04:05Z")
+						priceResponse.EffectiveTo = &effectiveTo
+					}
+					priceResponses = append(priceResponses, priceResponse)
+				}
+				response.Prices = priceResponses
+			}
+		}
 
 		responses = append(responses, response)
 	}
