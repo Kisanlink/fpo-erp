@@ -544,10 +544,12 @@ func (s *InvoiceService) renderReceiverSection(pdf *gofpdf.Fpdf, sale *models.Sa
 	}
 	pdf.CellFormat(190, 6, customerName, "LR", 1, "L", false, 0, "")
 
-	// Customer Phone
+	// Customer Phone (always render for consistent layout)
+	phoneText := "N/A"
 	if sale.CustomerPhone != nil && *sale.CustomerPhone != "" {
-		pdf.CellFormat(190, 6, fmt.Sprintf("Phone: %s", *sale.CustomerPhone), "LR", 1, "L", false, 0, "")
+		phoneText = *sale.CustomerPhone
 	}
+	pdf.CellFormat(190, 6, fmt.Sprintf("Phone: %s", phoneText), "LR", 1, "L", false, 0, "")
 
 	// Member status
 	memberStatus := "Non-Member"
