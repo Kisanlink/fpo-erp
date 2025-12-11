@@ -405,6 +405,7 @@ func (s *ReportService) GeneratePurchaseReport(filter *models.PurchaseReportFilt
 	}
 
 	// Build query
+	// Note: GORM converts ExpectedDelivery -> expected_delivery, ActualDelivery -> actual_delivery
 	query := s.db.Model(&models.PurchaseOrder{}).Select(`
 		purchase_orders.id,
 		purchase_orders.po_number,
@@ -414,8 +415,8 @@ func (s *ReportService) GeneratePurchaseReport(filter *models.PurchaseReportFilt
 		purchase_orders.warehouse_id,
 		warehouses.name as warehouse_name,
 		purchase_orders.order_date,
-		purchase_orders.expected_delivery_date,
-		purchase_orders.actual_delivery_date,
+		purchase_orders.expected_delivery as expected_delivery_date,
+		purchase_orders.actual_delivery as actual_delivery_date,
 		purchase_orders.status,
 		purchase_orders.payment_status,
 		purchase_orders.total_amount,
