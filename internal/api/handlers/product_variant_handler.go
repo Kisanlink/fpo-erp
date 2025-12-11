@@ -78,16 +78,14 @@ func (h *ProductVariantHandler) CreateProductVariant(c *gin.Context) {
 
 	h.logger.Debug("Calling variant service to create product variant",
 		zap.String("product_id", productID),
-		zap.String("sku", safeStringDeref(request.SKU, "<none>")),
 		zap.String("variant_name", request.VariantName))
 
-	// Create variant
+	// Create variant (SKU is auto-generated)
 	response, err := h.variantService.CreateProductVariant(c.Request.Context(), productID, &request)
 	if err != nil {
 		h.logger.Error("Failed to create product variant via service",
 			zap.Error(err),
-			zap.String("product_id", productID),
-			zap.String("sku", safeStringDeref(request.SKU, "<none>")))
+			zap.String("product_id", productID))
 		utils.HandleServiceError(c, "Failed to create variant", err)
 		return
 	}

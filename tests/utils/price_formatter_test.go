@@ -169,16 +169,16 @@ func TestRoundPrice_TableDriven(t *testing.T) {
 		{"Basic: 1.41421", 1.41421, 1.41},
 
 		// Rounding at .x5 (affected by float precision)
-		{"Half: 1.005", 1.005, 1.00},  // Float precision: 100.499... rounds down
-		{"Half: 1.015", 1.015, 1.01},  // Float precision: not exactly 101.5
-		{"Half: 1.025", 1.025, 1.02},  // Float precision varies
-		{"Half: 1.035", 1.035, 1.03},  // Float precision varies
-		{"Half: 1.045", 1.045, 1.05},  // Float precision varies
-		{"Half: 1.055", 1.055, 1.06},  // Rounds up
-		{"Half: 1.065", 1.065, 1.07},  // Float precision varies
-		{"Half: 1.075", 1.075, 1.08},  // Rounds up
-		{"Half: 1.085", 1.085, 1.09},  // Float precision varies
-		{"Half: 1.095", 1.095, 1.10},  // Rounds up
+		{"Half: 1.005", 1.005, 1.00}, // Float precision: 100.499... rounds down
+		{"Half: 1.015", 1.015, 1.01}, // Float precision: not exactly 101.5
+		{"Half: 1.025", 1.025, 1.02}, // Float precision varies
+		{"Half: 1.035", 1.035, 1.03}, // Float precision varies
+		{"Half: 1.045", 1.045, 1.05}, // Float precision varies
+		{"Half: 1.055", 1.055, 1.06}, // Rounds up
+		{"Half: 1.065", 1.065, 1.07}, // Float precision varies
+		{"Half: 1.075", 1.075, 1.08}, // Rounds up
+		{"Half: 1.085", 1.085, 1.09}, // Float precision varies
+		{"Half: 1.095", 1.095, 1.10}, // Rounds up
 
 		// Round up cases (above .5)
 		{"RoundUp: 1.006", 1.006, 1.01},
@@ -197,7 +197,7 @@ func TestRoundPrice_TableDriven(t *testing.T) {
 		{"Negative zero", -0.0, 0.0},
 
 		// Negative numbers
-		{"Negative: -1.005", -1.005, -1.00},  // Float precision: -100.499... rounds up toward zero
+		{"Negative: -1.005", -1.005, -1.00}, // Float precision: -100.499... rounds up toward zero
 		{"Negative: -1.015", -1.015, -1.01},
 		{"Negative: -3.144", -3.144, -3.14},
 		{"Negative: -3.146", -3.146, -3.15},
@@ -238,7 +238,7 @@ func TestRoundPrice_TableDriven(t *testing.T) {
 		{"Sale item: 125.454", 125.454, 125.45},
 		{"Wholesale: 3500.125", 3500.125, 3500.13},
 		{"Retail: 49.995", 49.995, 50.00},
-		{"Bulk: 10000.005", 10000.005, 10000.00},  // Float precision: rounds down
+		{"Bulk: 10000.005", 10000.005, 10000.00}, // Float precision: rounds down
 	}
 
 	for _, tc := range tests {

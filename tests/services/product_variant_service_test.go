@@ -30,7 +30,7 @@ func TestProductVariantService_CreateVariant_Success(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, mockLogger)
+	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, nil, mockLogger)
 
 	// Create request
 	request := &models.CreateProductVariantRequest{
@@ -64,7 +64,7 @@ func TestProductVariantService_CreateVariant_WithSKU(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, mockLogger)
+	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, nil, mockLogger)
 
 	// Create request with SKU
 	sku := "TOM-1KG-001"
@@ -106,7 +106,7 @@ func TestProductVariantService_CreateVariant_DuplicateSKU(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, mockLogger)
+	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, nil, mockLogger)
 
 	// Create request with duplicate SKU
 	request := &models.CreateProductVariantRequest{
@@ -134,7 +134,7 @@ func TestProductVariantService_CreateVariant_ProductNotFound(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, mockLogger)
+	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, nil, mockLogger)
 
 	// Create request
 	request := &models.CreateProductVariantRequest{
@@ -171,7 +171,7 @@ func TestProductVariantService_GetVariant_Success(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, mockLogger)
+	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, nil, mockLogger)
 
 	// Execute
 	response, err := service.GetProductVariant(context.Background(), variant.ID)
@@ -194,7 +194,7 @@ func TestProductVariantService_GetVariant_NotFound(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, mockLogger)
+	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, nil, mockLogger)
 
 	// Execute
 	_, err := service.GetProductVariant(context.Background(), "non-existent-id")
@@ -227,7 +227,7 @@ func TestProductVariantService_GetVariantsByProduct_Success(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, mockLogger)
+	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, nil, mockLogger)
 
 	// Execute
 	responses, err := service.GetVariantsByProduct(context.Background(), product.ID)
@@ -248,7 +248,7 @@ func TestProductVariantService_GetVariantsByProduct_ProductNotFound(t *testing.T
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, mockLogger)
+	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, nil, mockLogger)
 
 	// Execute
 	_, err := service.GetVariantsByProduct(context.Background(), "non-existent-id")
@@ -281,7 +281,7 @@ func TestProductVariantService_GetVariantBySKU_Success(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, mockLogger)
+	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, nil, mockLogger)
 
 	// Execute
 	response, err := service.GetVariantBySKU(context.Background(), sku)
@@ -304,7 +304,7 @@ func TestProductVariantService_GetVariantBySKU_NotFound(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, mockLogger)
+	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, nil, mockLogger)
 
 	// Execute
 	_, err := service.GetVariantBySKU(context.Background(), "non-existent-sku")
@@ -334,7 +334,7 @@ func TestProductVariantService_UpdateVariant_Success(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, mockLogger)
+	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, nil, mockLogger)
 
 	// Update request
 	newVariantName := "Updated 1kg"
@@ -362,7 +362,7 @@ func TestProductVariantService_UpdateVariant_NotFound(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, mockLogger)
+	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, nil, mockLogger)
 
 	// Update request
 	newVariantName := "Updated"
@@ -398,7 +398,7 @@ func TestProductVariantService_DeleteVariant_Success(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, mockLogger)
+	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, nil, mockLogger)
 
 	// Execute
 	err := service.DeleteProductVariant(context.Background(), variant.ID)
@@ -422,7 +422,7 @@ func TestProductVariantService_DeleteVariant_NotFound(t *testing.T) {
 
 	// Create service
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
-	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, mockLogger)
+	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, nil, mockLogger)
 
 	// Execute
 	err := service.DeleteProductVariant(context.Background(), "non-existent-id")

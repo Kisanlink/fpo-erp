@@ -100,17 +100,17 @@ type BankDetailsJSON struct {
 
 // InvoiceLineItem represents a line item for invoice rendering
 type InvoiceLineItem struct {
-	SNo          int
-	ItemName     string
-	HSNCode      string
-	Units        string
-	Quantity     int64
-	Rate         float64
-	NetValue     float64
-	GSTRate      float64
-	CGSTAmount   float64
-	SGSTAmount   float64
-	TotalValue   float64
+	SNo        int
+	ItemName   string
+	HSNCode    string
+	Units      string
+	Quantity   int64
+	Rate       float64
+	NetValue   float64
+	GSTRate    float64
+	CGSTAmount float64
+	SGSTAmount float64
+	TotalValue float64
 }
 
 // GenerateInvoicePDF generates a PDF invoice for a sale
@@ -564,10 +564,10 @@ func (s *InvoiceService) renderReceiverSection(pdf *gofpdf.Fpdf, sale *models.Sa
 
 // InvoiceTotals holds calculated totals for the invoice
 type InvoiceTotals struct {
-	TotalNetValue  float64
-	TotalCGST      float64
-	TotalSGST      float64
-	TotalAmount    float64
+	TotalNetValue float64
+	TotalCGST     float64
+	TotalSGST     float64
+	TotalAmount   float64
 }
 
 // renderLineItemsTable renders the items table

@@ -130,31 +130,31 @@ func (PurchaseOrderItem) TableName() string {
 
 // PurchaseOrderResponse represents the API response for purchase order
 type PurchaseOrderResponse struct {
-	ID                  string                      `json:"id"`
-	PONumber            string                      `json:"po_number"`
-	CollaboratorID      string                      `json:"collaborator_id"`
-	CollaboratorName    string                      `json:"collaborator_name"`
-	WarehouseID         string                      `json:"warehouse_id"`
-	WarehouseName       string                      `json:"warehouse_name"`
-	OrderDate           string                      `json:"order_date"`
-	ExpectedDelivery    string                      `json:"expected_delivery_date"`
-	ActualDelivery      *string                     `json:"actual_delivery_date"`
-	Status              string                      `json:"status"`
-	TotalAmount         float64                     `json:"total_amount"`
-	TotalRejectedAmount float64                     `json:"total_rejected_amount"` // Total value of rejected items from GRN
-	AmountOwed          float64                     `json:"amount_owed"`           // TotalAmount - TotalRejectedAmount
-	PaymentStatus       string                      `json:"payment_status"`
-	PaidAmount          float64                     `json:"paid_amount"`
-	IsInterState        *bool                       `json:"is_inter_state"` // nil = unknown, true = inter-state, false = intra-state
+	ID                  string  `json:"id"`
+	PONumber            string  `json:"po_number"`
+	CollaboratorID      string  `json:"collaborator_id"`
+	CollaboratorName    string  `json:"collaborator_name"`
+	WarehouseID         string  `json:"warehouse_id"`
+	WarehouseName       string  `json:"warehouse_name"`
+	OrderDate           string  `json:"order_date"`
+	ExpectedDelivery    string  `json:"expected_delivery_date"`
+	ActualDelivery      *string `json:"actual_delivery_date"`
+	Status              string  `json:"status"`
+	TotalAmount         float64 `json:"total_amount"`
+	TotalRejectedAmount float64 `json:"total_rejected_amount"` // Total value of rejected items from GRN
+	AmountOwed          float64 `json:"amount_owed"`           // TotalAmount - TotalRejectedAmount
+	PaymentStatus       string  `json:"payment_status"`
+	PaidAmount          float64 `json:"paid_amount"`
+	IsInterState        *bool   `json:"is_inter_state"` // nil = unknown, true = inter-state, false = intra-state
 	// PO-level GST Totals (sum of all items)
-	TotalBaseAmount     float64                     `json:"total_base_amount"`  // Sum of all item base prices (excluding GST)
-	TotalGSTAmount      float64                     `json:"total_gst_amount"`   // Sum of all item GST amounts
-	TotalCGSTAmount     float64                     `json:"total_cgst_amount"`  // Sum of all item CGST amounts
-	TotalSGSTAmount     float64                     `json:"total_sgst_amount"`  // Sum of all item SGST amounts
-	TotalIGSTAmount     float64                     `json:"total_igst_amount"`  // Sum of all item IGST amounts
-	Items               []PurchaseOrderItemResponse `json:"items,omitempty"`
-	CreatedAt           string                      `json:"created_at"`
-	UpdatedAt           string                      `json:"updated_at"`
+	TotalBaseAmount float64                     `json:"total_base_amount"` // Sum of all item base prices (excluding GST)
+	TotalGSTAmount  float64                     `json:"total_gst_amount"`  // Sum of all item GST amounts
+	TotalCGSTAmount float64                     `json:"total_cgst_amount"` // Sum of all item CGST amounts
+	TotalSGSTAmount float64                     `json:"total_sgst_amount"` // Sum of all item SGST amounts
+	TotalIGSTAmount float64                     `json:"total_igst_amount"` // Sum of all item IGST amounts
+	Items           []PurchaseOrderItemResponse `json:"items,omitempty"`
+	CreatedAt       string                      `json:"created_at"`
+	UpdatedAt       string                      `json:"updated_at"`
 }
 
 // PurchaseOrderItemResponse represents the API response for purchase order item
@@ -171,7 +171,7 @@ type PurchaseOrderItemResponse struct {
 	// GST Breakdown (per unit)
 	BasePrice  float64 `json:"base_price"`
 	GSTRate    float64 `json:"gst_rate"`
-	GSTAmount  float64 `json:"gst_amount"`  // Per unit
+	GSTAmount  float64 `json:"gst_amount"` // Per unit
 	CGSTRate   float64 `json:"cgst_rate,omitempty"`
 	CGSTAmount float64 `json:"cgst_amount,omitempty"` // Per unit
 	SGSTRate   float64 `json:"sgst_rate,omitempty"`
@@ -190,9 +190,9 @@ type PurchaseOrderItemResponse struct {
 type CreatePurchaseOrderRequest struct {
 	CollaboratorID   string                           `json:"collaborator_id" binding:"required"`
 	WarehouseID      string                           `json:"warehouse_id" binding:"required"`
-	OrderDate        *string                          `json:"order_date"`                        // Optional, defaults to now
+	OrderDate        *string                          `json:"order_date"` // Optional, defaults to now
 	ExpectedDelivery string                           `json:"expected_delivery_date" binding:"required"`
-	IsInterState     *bool                            `json:"is_inter_state"`                    // Optional: true=inter-state (IGST), false=intra-state (CGST+SGST), nil=auto-detect
+	IsInterState     *bool                            `json:"is_inter_state"` // Optional: true=inter-state (IGST), false=intra-state (CGST+SGST), nil=auto-detect
 	Items            []CreatePurchaseOrderItemRequest `json:"items" binding:"required,min=1"`
 }
 

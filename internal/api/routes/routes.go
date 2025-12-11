@@ -119,7 +119,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 		cfg.Ecommerce.AuthToken,
 		logger,
 	)
-	productVariantService := services.NewProductVariantService(productVariantRepo, productRepo, priceRepo, s3Service, logger)
+	productVariantService := services.NewProductVariantService(productVariantRepo, productRepo, priceRepo, categoryRepo, s3Service, logger)
 	purchaseOrderService := services.NewPurchaseOrderService(purchaseOrderRepo, collaboratorRepo, warehouseRepo, productRepo, productVariantRepo, grnRepo, inventoryRepo, addressClient, logger)
 	grnService := services.NewGRNService(grnRepo, purchaseOrderRepo, warehouseRepo, productRepo, inventoryRepo, logger)
 

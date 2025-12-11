@@ -20,11 +20,12 @@ import (
 
 // ProductVariantService handles product variant business logic
 type ProductVariantService struct {
-	variantRepo *repositories.ProductVariantRepository
-	productRepo *repositories.ProductRepository
-	priceRepo   *repositories.ProductPriceRepository
-	s3Service   *S3Service
-	logger      interfaces.Logger
+	variantRepo  *repositories.ProductVariantRepository
+	productRepo  *repositories.ProductRepository
+	priceRepo    *repositories.ProductPriceRepository
+	categoryRepo *repositories.CategoryRepository
+	s3Service    *S3Service
+	logger       interfaces.Logger
 }
 
 // NewProductVariantService creates a new product variant service
@@ -32,15 +33,17 @@ func NewProductVariantService(
 	variantRepo *repositories.ProductVariantRepository,
 	productRepo *repositories.ProductRepository,
 	priceRepo *repositories.ProductPriceRepository,
+	categoryRepo *repositories.CategoryRepository,
 	s3Service *S3Service,
 	logger interfaces.Logger,
 ) *ProductVariantService {
 	return &ProductVariantService{
-		variantRepo: variantRepo,
-		productRepo: productRepo,
-		priceRepo:   priceRepo,
-		s3Service:   s3Service,
-		logger:      logger,
+		variantRepo:  variantRepo,
+		productRepo:  productRepo,
+		priceRepo:    priceRepo,
+		categoryRepo: categoryRepo,
+		s3Service:    s3Service,
+		logger:       logger,
 	}
 }
 
@@ -60,22 +63,7 @@ func (s *ProductVariantService) CreateProductVariant(ctx context.Context, produc
 	}
 	s.logger.Debug("Product found")
 
-	// Validate SKU uniqueness if provided
-	if request.SKU != nil && *request.SKU != "" {
-		s.logger.Debug("Validating SKU uniqueness",
-			zap.String("sku", *request.SKU))
-		exists, err := s.variantRepo.SKUExists(*request.SKU)
-		if err != nil {
-			s.logger.Error("Failed to check SKU existence",
-				zap.Error(err))
-			return nil, err
-		}
-		if exists {
-			s.logger.Error("SKU already exists",
-				zap.String("sku", *request.SKU))
-			return nil, errors.NewConflictError("variant with SKU " + *request.SKU + " already exists")
-		}
-	}
+	// Note: SKU is auto-generated after variant creation, not provided in request
 
 	// Validate barcode uniqueness if provided
 	if request.Barcode != nil && *request.Barcode != "" {
@@ -96,9 +84,9 @@ func (s *ProductVariantService) CreateProductVariant(ctx context.Context, produc
 	}
 
 	// Create variant with required HSNCode and GSTRate (GST-only tax system)
+	// Note: SKU is auto-generated after variant creation inside transaction
 	variant := models.NewProductVariant(productID, request.VariantName, request.Quantity, request.PackSize, request.HSNCode, request.GSTRate)
 	variant.Description = request.Description
-	variant.SKU = request.SKU
 	variant.Barcode = request.Barcode
 	// Note: Prices are stored in product_prices table, not embedded in variant
 
@@ -127,6 +115,25 @@ func (s *ProductVariantService) CreateProductVariant(ctx context.Context, produc
 				zap.Error(err))
 			return err
 		}
+
+		// Auto-generate SKU (always generated, not user-provided)
+		categoryName := "Others" // Default category name
+		if product.CategoryID != nil && s.categoryRepo != nil {
+			category, err := s.categoryRepo.GetByID(*product.CategoryID)
+			if err == nil && category != nil {
+				categoryName = category.Name
+			}
+		}
+		generatedSKU := variant.GenerateSKU(categoryName)
+		variant.SKU = &generatedSKU
+		if err := tx.Model(variant).Update("sku", generatedSKU).Error; err != nil {
+			s.logger.Error("Failed to update variant SKU",
+				zap.Error(err))
+			return err
+		}
+		s.logger.Info("Auto-generated SKU for variant",
+			zap.String("variant_id", variant.ID),
+			zap.String("sku", generatedSKU))
 
 		// Create ProductPrice records for each price in request
 		if len(request.Prices) > 0 && s.priceRepo != nil {

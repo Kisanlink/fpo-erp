@@ -73,7 +73,7 @@ type WebhookConfig struct {
 }
 
 type EcommerceConfig struct {
-	Enabled        bool   `mapstructure:"enabled"`         // Enable/disable e-commerce sync (default: true)
+	Enabled        bool   `mapstructure:"enabled"` // Enable/disable e-commerce sync (default: true)
 	GRPCAddress    string `mapstructure:"grpc_address"`
 	TimeoutSeconds int    `mapstructure:"timeout_seconds"`
 	AuthToken      string `mapstructure:"auth_token"`
