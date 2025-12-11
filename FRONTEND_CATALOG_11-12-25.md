@@ -165,3 +165,38 @@
 
 ---
 
+## Issue 5: Phone Number Storage (Investigation)
+
+**Type**: Bug Investigation
+
+**Status**: VERIFIED - Working Correctly
+
+**Investigation Results**:
+- `POST /api/v1/sales` - `customer_phone` field is properly stored
+- Phone number flows correctly: Request → Handler → Service → Model → Database
+- No code changes required
+
+**How to Use**:
+```json
+// POST /api/v1/sales
+{
+  "warehouse_id": "WHSE00000001",
+  "customer_phone": "9876543210",    // Optional - stored correctly
+  "customer_name": "John Doe",       // Optional
+  "payment_mode": "cash",
+  "sale_type": "in_store",
+  "items": [...]
+}
+```
+
+**Response**:
+```json
+{
+  "id": "SALE00000001",
+  "customer_phone": "9876543210",    // Returned correctly
+  "customer_name": "John Doe"
+}
+```
+
+---
+
