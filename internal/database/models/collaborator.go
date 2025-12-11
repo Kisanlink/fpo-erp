@@ -26,8 +26,8 @@ type Collaborator struct {
 	PANNumber *string `gorm:"type:varchar(10)" json:"pan_number"`
 
 	// Banking
-	BankAccountNo string  `gorm:"type:varchar(50);not null" json:"bank_account_no"`
-	BankIFSC      string  `gorm:"type:varchar(11);not null" json:"bank_ifsc"`
+	BankAccountNo *string `gorm:"type:varchar(50)" json:"bank_account_no"`
+	BankIFSC      *string `gorm:"type:varchar(11)" json:"bank_ifsc"`
 	BankName      *string `gorm:"type:varchar(100)" json:"bank_name"`
 
 	// Address (AAA integration - similar to Warehouse)
@@ -42,7 +42,7 @@ type Collaborator struct {
 }
 
 // NewCollaborator creates a new Collaborator with initialized fields
-func NewCollaborator(companyName, contactPerson, contactNumber, bankAccountNo, bankIFSC string, addressID *string) *Collaborator {
+func NewCollaborator(companyName, contactPerson, contactNumber string, bankAccountNo, bankIFSC *string, addressID *string) *Collaborator {
 	baseModel := base.NewBaseModel(constants.TableCollaborator, hash.Medium)
 	isActive := true
 	return &Collaborator{
@@ -73,8 +73,8 @@ type CollaboratorResponse struct {
 	Email         *string      `json:"email"`
 	GSTNumber     string       `json:"gst_number"`
 	PANNumber     *string      `json:"pan_number"`
-	BankAccountNo string       `json:"bank_account_no"`
-	BankIFSC      string       `json:"bank_ifsc"`
+	BankAccountNo *string      `json:"bank_account_no"`
+	BankIFSC      *string      `json:"bank_ifsc"`
 	BankName      *string      `json:"bank_name"`
 	Experience    *string      `json:"experience"`
 	IsActive      bool         `json:"is_active"`
@@ -89,11 +89,11 @@ type CreateCollaboratorRequest struct {
 	Logo          *string               `json:"logo"`
 	ContactPerson string                `json:"contact_person" binding:"required"`
 	ContactNumber string                `json:"contact_number" binding:"required"`
-	Email         *string               `json:"email"`
+	Email         *string               `json:"email" binding:"omitempty,email"`
 	GSTNumber     string                `json:"gst_number"`
 	PANNumber     *string               `json:"pan_number"`
-	BankAccountNo string                `json:"bank_account_no" binding:"required"`
-	BankIFSC      string                `json:"bank_ifsc" binding:"required,len=11"`
+	BankAccountNo *string               `json:"bank_account_no"`
+	BankIFSC      *string               `json:"bank_ifsc" binding:"omitempty,len=11"`
 	BankName      *string               `json:"bank_name"`
 	Experience    *string               `json:"experience"`
 	Address       *CreateAddressRequest `json:"address"` // Inline address creation via AAA
@@ -105,11 +105,11 @@ type UpdateCollaboratorRequest struct {
 	Logo          *string               `json:"logo,omitempty"`
 	ContactPerson *string               `json:"contact_person,omitempty"`
 	ContactNumber *string               `json:"contact_number,omitempty"`
-	Email         *string               `json:"email,omitempty"`
+	Email         *string               `json:"email,omitempty" binding:"omitempty,email"`
 	GSTNumber     *string               `json:"gst_number,omitempty"`
 	PANNumber     *string               `json:"pan_number,omitempty"`
 	BankAccountNo *string               `json:"bank_account_no,omitempty"`
-	BankIFSC      *string               `json:"bank_ifsc,omitempty"`
+	BankIFSC      *string               `json:"bank_ifsc,omitempty" binding:"omitempty,len=11"`
 	BankName      *string               `json:"bank_name,omitempty"`
 	Experience    *string               `json:"experience,omitempty"`
 	IsActive      *bool                 `json:"is_active,omitempty"`

@@ -9,6 +9,7 @@ import (
 	"kisanlink-erp/internal/database/repositories"
 	"kisanlink-erp/internal/errors"
 	"kisanlink-erp/internal/interfaces"
+	"kisanlink-erp/internal/utils"
 
 	"go.uber.org/zap"
 )
@@ -19,17 +20,19 @@ type InventoryService struct {
 	warehouseRepo *repositories.WarehouseRepository
 	productRepo   *repositories.ProductRepository
 	variantRepo   *repositories.ProductVariantRepository
+	priceRepo     *repositories.ProductPriceRepository
 	addressClient *aaa.AddressGRPCClient
 	logger        interfaces.Logger
 }
 
 // NewInventoryService creates a new inventory service
-func NewInventoryService(inventoryRepo *repositories.InventoryRepository, warehouseRepo *repositories.WarehouseRepository, productRepo *repositories.ProductRepository, variantRepo *repositories.ProductVariantRepository, addressClient *aaa.AddressGRPCClient, logger interfaces.Logger) *InventoryService {
+func NewInventoryService(inventoryRepo *repositories.InventoryRepository, warehouseRepo *repositories.WarehouseRepository, productRepo *repositories.ProductRepository, variantRepo *repositories.ProductVariantRepository, priceRepo *repositories.ProductPriceRepository, addressClient *aaa.AddressGRPCClient, logger interfaces.Logger) *InventoryService {
 	return &InventoryService{
 		inventoryRepo: inventoryRepo,
 		warehouseRepo: warehouseRepo,
 		productRepo:   productRepo,
 		variantRepo:   variantRepo,
+		priceRepo:     priceRepo,
 		addressClient: addressClient,
 		logger:        logger,
 	}
@@ -103,7 +106,7 @@ func (s *InventoryService) CreateBatch(warehouseID, variantID string, costPrice 
 		ID:            batch.ID,
 		WarehouseID:   batch.WarehouseID,
 		VariantID:     batch.VariantID,
-		CostPrice:     batch.CostPrice,
+		CostPrice:     utils.RoundPrice(batch.CostPrice),
 		ExpiryDate:    batch.ExpiryDate.Format("2006-01-02"),
 		TotalQuantity: batch.TotalQuantity,
 		CreatedAt:     batch.CreatedAt.Format("2006-01-02T15:04:05Z"),
@@ -137,7 +140,7 @@ func (s *InventoryService) GetBatch(id string) (*models.InventoryBatchResponse, 
 		ID:            batch.ID,
 		WarehouseID:   batch.WarehouseID,
 		VariantID:     batch.VariantID,
-		CostPrice:     batch.CostPrice,
+		CostPrice:     utils.RoundPrice(batch.CostPrice),
 		ExpiryDate:    batch.ExpiryDate.Format("2006-01-02"),
 		TotalQuantity: batch.TotalQuantity,
 		CreatedAt:     batch.CreatedAt.Format("2006-01-02T15:04:05Z"),
@@ -406,96 +409,287 @@ func (s *InventoryService) GetLowStockBatches(threshold int64, limit, offset int
 	return responses, total, nil
 }
 
-// GetAllProductsAvailability retrieves all products available across all warehouses (paginated)
-func (s *InventoryService) GetAllProductsAvailability(ctx context.Context, jwtToken string, limit, offset int) ([]models.ProductAvailabilityResponse, int64, error) {
-	s.logger.Info("Retrieving all products availability across warehouses",
+// GetAllProductsAvailability retrieves all products available across all warehouses grouped by SKU
+// Returns aggregated availability data with per-warehouse breakdown
+// Only includes non-expired batches in availability counts, but shows expired batches separately
+func (s *InventoryService) GetAllProductsAvailability(ctx context.Context, jwtToken string, limit, offset int) ([]models.ProductAvailabilityGroupedResponse, int64, error) {
+	s.logger.Info("Retrieving all products availability across warehouses (grouped by SKU)",
 		zap.Int("limit", limit),
 		zap.Int("offset", offset))
 
-	batches, total, err := s.inventoryRepo.GetAllBatchesPaginated(limit, offset)
+	// Get all batches including expired ones for full visibility
+	batches, total, err := s.inventoryRepo.GetAllBatchesPaginatedWithExpired(limit, offset)
 	if err != nil {
 		s.logger.Error("Failed to retrieve all batches",
 			zap.Error(err))
 		return nil, 0, err
 	}
 
-	s.logger.Debug("Processing batches for availability response",
+	s.logger.Debug("Processing batches for grouped availability response",
 		zap.Int("batch_count", len(batches)))
 
-	var responses []models.ProductAvailabilityResponse
+	// Group batches by variant (SKU)
+	variantMap := make(map[string]*variantAvailability)
+
 	for _, batch := range batches {
-		response := models.ProductAvailabilityResponse{
-			ID:            batch.ID,
-			WarehouseID:   batch.WarehouseID,
-			WarehouseName: batch.Warehouse.Name,
-			VariantID:     batch.VariantID,
-			ProductSKU: func() string {
-				if batch.Variant.SKU != nil {
-					return *batch.Variant.SKU
-				}
-				return ""
-			}(),
-			ProductName:        batch.Variant.VariantName,
-			ProductDescription: batch.Variant.Description,
-			CostPrice:          batch.CostPrice,
-			ExpiryDate:         batch.ExpiryDate.Format("2006-01-02"),
-			TotalQuantity:      batch.TotalQuantity,
-			// GST-only tax system - tax rates are on ProductVariant, not on batches
-			CreatedAt: batch.CreatedAt.Format("2006-01-02T15:04:05Z"),
-			UpdatedAt: batch.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		sku := ""
+		if batch.Variant.SKU != nil {
+			sku = *batch.Variant.SKU
 		}
 
-		// Fetch address details if warehouse has an address ID
-		if batch.Warehouse.AddressID != nil {
-			s.logger.Debug("Fetching warehouse address",
-				zap.String("warehouse_id", batch.WarehouseID),
-				zap.String("address_id", *batch.Warehouse.AddressID))
-			address, err := s.addressClient.GetAddress(ctx, *batch.Warehouse.AddressID, jwtToken)
-			if err == nil {
-				response.Address = &models.AddressInfo{
-					ID:          address.ID,
-					Type:        address.Type,
-					House:       address.House,
-					Street:      address.Street,
-					Landmark:    address.Landmark,
-					PostOffice:  address.PostOffice,
-					Subdistrict: address.Subdistrict,
-					District:    address.District,
-					VTC:         address.VTC,
-					State:       address.State,
-					Country:     address.Country,
-					Pincode:     address.Pincode,
-					FullAddress: address.BuildFullAddress(),
+		// Skip batches without SKU
+		if sku == "" {
+			s.logger.Warn("Batch has no SKU, skipping",
+				zap.String("batch_id", batch.ID),
+				zap.String("variant_id", batch.VariantID))
+			continue
+		}
+
+		// Initialize variant entry if not exists
+		if _, exists := variantMap[sku]; !exists {
+			variantMap[sku] = &variantAvailability{
+				VariantID:          batch.VariantID,
+				ProductName:        batch.Variant.VariantName,
+				ProductDescription: batch.Variant.Description,
+				WarehouseDetails:   make(map[string]*warehouseDetail),
+			}
+		}
+
+		variantEntry := variantMap[sku]
+
+		// Calculate expiry status and determine if batch is expired
+		isExpired := batch.ExpiryDate.Before(time.Now())
+		expiryStatus := s.calculateExpiryStatus(batch.ExpiryDate)
+
+		// Initialize warehouse entry if not exists
+		warehouseKey := batch.WarehouseID
+		if _, exists := variantEntry.WarehouseDetails[warehouseKey]; !exists {
+			variantEntry.WarehouseDetails[warehouseKey] = &warehouseDetail{
+				WarehouseID:   batch.WarehouseID,
+				WarehouseName: batch.Warehouse.Name,
+				AddressID:     batch.Warehouse.AddressID,
+			}
+		}
+
+		warehouseEntry := variantEntry.WarehouseDetails[warehouseKey]
+
+		// Add quantities based on expiry status
+		if isExpired {
+			warehouseEntry.ExpiredQuantity += batch.TotalQuantity
+		} else {
+			warehouseEntry.Quantity += batch.TotalQuantity
+		}
+
+		// Track earliest expiry for this warehouse (only non-expired)
+		if !isExpired && (warehouseEntry.EarliestExpiry.IsZero() || batch.ExpiryDate.Before(warehouseEntry.EarliestExpiry)) {
+			warehouseEntry.EarliestExpiry = batch.ExpiryDate
+			warehouseEntry.ExpiryStatus = expiryStatus
+		}
+	}
+
+	// Convert map to response array
+	var responses []models.ProductAvailabilityGroupedResponse
+	for sku, variantData := range variantMap {
+		response := models.ProductAvailabilityGroupedResponse{
+			SKU:                sku,
+			VariantID:          variantData.VariantID,
+			ProductName:        variantData.ProductName,
+			ProductDescription: variantData.ProductDescription,
+			WarehouseDetails:   []models.WarehouseAvailabilityDetail{},
+		}
+
+		// Process warehouse details
+		var earliestExpiry time.Time
+		for _, warehouseData := range variantData.WarehouseDetails {
+			detail := models.WarehouseAvailabilityDetail{
+				WarehouseID:     warehouseData.WarehouseID,
+				WarehouseName:   warehouseData.WarehouseName,
+				Quantity:        warehouseData.Quantity,
+				ExpiredQuantity: warehouseData.ExpiredQuantity,
+				ExpiryStatus:    warehouseData.ExpiryStatus,
+			}
+
+			if !warehouseData.EarliestExpiry.IsZero() {
+				detail.EarliestExpiry = warehouseData.EarliestExpiry.Format("2006-01-02")
+
+				// Track overall earliest expiry
+				if earliestExpiry.IsZero() || warehouseData.EarliestExpiry.Before(earliestExpiry) {
+					earliestExpiry = warehouseData.EarliestExpiry
 				}
-			} else {
-				s.logger.Error("Failed to fetch warehouse address",
+			}
+
+			// Fetch address details if warehouse has an address ID
+			if warehouseData.AddressID != nil {
+				s.logger.Debug("Fetching warehouse address",
+					zap.String("warehouse_id", warehouseData.WarehouseID),
+					zap.String("address_id", *warehouseData.AddressID))
+				address, err := s.addressClient.GetAddress(ctx, *warehouseData.AddressID, jwtToken)
+				if err == nil {
+					detail.Address = &models.AddressInfo{
+						ID:          address.ID,
+						Type:        address.Type,
+						House:       address.House,
+						Street:      address.Street,
+						Landmark:    address.Landmark,
+						PostOffice:  address.PostOffice,
+						Subdistrict: address.Subdistrict,
+						District:    address.District,
+						VTC:         address.VTC,
+						State:       address.State,
+						Country:     address.Country,
+						Pincode:     address.Pincode,
+						FullAddress: address.BuildFullAddress(),
+					}
+				} else {
+					s.logger.Error("Failed to fetch warehouse address",
+						zap.Error(err),
+						zap.String("warehouse_id", warehouseData.WarehouseID),
+						zap.String("address_id", *warehouseData.AddressID))
+				}
+			}
+
+			response.TotalQuantity += warehouseData.Quantity
+			response.ExpiredQuantity += warehouseData.ExpiredQuantity
+			response.WarehouseDetails = append(response.WarehouseDetails, detail)
+		}
+
+		// Set overall earliest expiry and status
+		if !earliestExpiry.IsZero() {
+			response.EarliestExpiry = earliestExpiry.Format("2006-01-02")
+			response.ExpiryStatus = s.calculateExpiryStatus(earliestExpiry)
+		} else if response.ExpiredQuantity > 0 {
+			// All batches are expired
+			response.ExpiryStatus = "expired"
+		}
+
+		// Sort warehouse details by earliest expiry (FEFO - First Expired First Out)
+		s.sortWarehouseDetailsByExpiry(response.WarehouseDetails)
+
+		// Fetch active prices for this variant
+		if s.priceRepo != nil {
+			prices, err := s.priceRepo.GetActiveByVariantID(variantData.VariantID)
+			if err != nil {
+				s.logger.Error("Failed to fetch prices for variant",
 					zap.Error(err),
-					zap.String("warehouse_id", batch.WarehouseID),
-					zap.String("address_id", *batch.Warehouse.AddressID))
+					zap.String("variant_id", variantData.VariantID),
+					zap.String("sku", sku))
+				// Don't fail the entire request, just log and continue without prices
+			} else {
+				var priceResponses []models.ProductPriceResponse
+				for _, price := range prices {
+					isActive := price.IsActive != nil && *price.IsActive
+					priceResponse := models.ProductPriceResponse{
+						ID:            price.ID,
+						VariantID:     price.VariantID,
+						PriceType:     price.PriceType,
+						Price:         utils.RoundPrice(price.Price),
+						Currency:      price.Currency,
+						EffectiveFrom: price.EffectiveFrom.Format("2006-01-02T15:04:05Z"),
+						IsActive:      isActive,
+						CreatedAt:     price.CreatedAt.Format("2006-01-02T15:04:05Z"),
+						UpdatedAt:     price.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+					}
+					if price.EffectiveTo != nil {
+						effectiveTo := price.EffectiveTo.Format("2006-01-02T15:04:05Z")
+						priceResponse.EffectiveTo = &effectiveTo
+					}
+					priceResponses = append(priceResponses, priceResponse)
+				}
+				response.Prices = priceResponses
 			}
 		}
 
 		responses = append(responses, response)
 	}
 
-	s.logger.Info("All products availability retrieved successfully",
-		zap.Int("count", len(responses)),
-		zap.Int64("total", total))
+	s.logger.Info("All products availability retrieved and grouped successfully",
+		zap.Int("unique_products", len(responses)),
+		zap.Int64("total_batches", total))
 
 	return responses, total, nil
+}
+
+// Helper types for grouping logic
+type variantAvailability struct {
+	VariantID          string
+	ProductName        string
+	ProductDescription *string
+	WarehouseDetails   map[string]*warehouseDetail
+}
+
+type warehouseDetail struct {
+	WarehouseID     string
+	WarehouseName   string
+	AddressID       *string
+	Quantity        int64
+	ExpiredQuantity int64
+	EarliestExpiry  time.Time
+	ExpiryStatus    string
+}
+
+// calculateExpiryStatus determines expiry status based on expiry date
+// Returns: "fresh", "expiring_soon" (within 30 days), or "expired"
+func (s *InventoryService) calculateExpiryStatus(expiryDate time.Time) string {
+	now := time.Now()
+
+	if expiryDate.Before(now) {
+		return "expired"
+	}
+
+	daysUntilExpiry := int(expiryDate.Sub(now).Hours() / 24)
+
+	if daysUntilExpiry <= 30 {
+		return "expiring_soon"
+	}
+
+	return "fresh"
+}
+
+// sortWarehouseDetailsByExpiry sorts warehouse details by earliest expiry (FEFO logic)
+func (s *InventoryService) sortWarehouseDetailsByExpiry(details []models.WarehouseAvailabilityDetail) {
+	// Simple bubble sort for small arrays (warehouse count is typically small)
+	for i := 0; i < len(details)-1; i++ {
+		for j := 0; j < len(details)-i-1; j++ {
+			// Compare expiry dates (empty expiry goes to end)
+			if details[j].EarliestExpiry == "" {
+				continue
+			}
+			if details[j+1].EarliestExpiry == "" {
+				// Swap if next is empty
+				details[j], details[j+1] = details[j+1], details[j]
+				continue
+			}
+
+			// Parse and compare dates
+			expiry1, err1 := time.Parse("2006-01-02", details[j].EarliestExpiry)
+			expiry2, err2 := time.Parse("2006-01-02", details[j+1].EarliestExpiry)
+
+			if err1 == nil && err2 == nil && expiry1.After(expiry2) {
+				details[j], details[j+1] = details[j+1], details[j]
+			}
+		}
+	}
 }
 
 // batchToResponse converts a batch model to response model
 // GST-only tax system - tax rates are on ProductVariant, not on batches
 func (s *InventoryService) batchToResponse(batch models.InventoryBatch) models.InventoryBatchResponse {
+	// Calculate expiry status
+	isExpired := batch.ExpiryDate.Before(time.Now())
+	expiryStatus := s.calculateExpiryStatus(batch.ExpiryDate)
+
 	return models.InventoryBatchResponse{
-		ID:            batch.ID,
-		WarehouseID:   batch.WarehouseID,
-		VariantID:     batch.VariantID,
-		CostPrice:     batch.CostPrice,
-		ExpiryDate:    batch.ExpiryDate.Format("2006-01-02"),
-		TotalQuantity: batch.TotalQuantity,
-		CreatedAt:     batch.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt:     batch.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		ID:                batch.ID,
+		WarehouseID:       batch.WarehouseID,
+		VariantID:         batch.VariantID,
+		CostPrice:         utils.RoundPrice(batch.CostPrice),
+		ExpiryDate:        batch.ExpiryDate.Format("2006-01-02"),
+		TotalQuantity:     batch.TotalQuantity,
+		ReservedQuantity:  batch.ReservedQuantity,
+		AvailableQuantity: batch.AvailableQuantity(), // Total - Reserved
+		IsExpired:         isExpired,
+		ExpiryStatus:      expiryStatus,
+		CreatedAt:         batch.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt:         batch.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 	}
 }

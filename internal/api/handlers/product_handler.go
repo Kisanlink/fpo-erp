@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"strconv"
+
 	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/database/models"
 	logger "kisanlink-erp/internal/interfaces"
@@ -429,6 +431,90 @@ func (h *ProductHandler) GetProductsByCategory(c *gin.Context) {
 	utils.OKResponse(c, "Products retrieved successfully", response)
 }
 
+// GetProductsByQuantity handles GET /api/v1/products/by-quantity
+// @Summary Get Products by Quantity Range
+// @Description Filter products based on their total inventory quantity across all warehouses (requires authentication)
+// @Tags Products
+// @Produce json
+// @Param min query int true "Minimum quantity" example(10)
+// @Param max query int true "Maximum quantity" example(100)
+// @Param limit query int false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query int false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.ProductResponse} "Products filtered by quantity"
+// @Failure 400 {object} utils.ErrorResponseModel "Bad request - invalid parameters"
+// @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 403 {object} utils.ErrorResponseModel "Forbidden - insufficient permissions"
+// @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
+// @Security BearerAuth
+// @Router /api/v1/products/by-quantity [get]
+func (h *ProductHandler) GetProductsByQuantity(c *gin.Context) {
+	h.logger.Info("Handling get products by quantity request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
+	// Get and validate min parameter
+	minStr := c.Query("min")
+	if minStr == "" {
+		h.logger.Error("Missing required parameter: min")
+		utils.BadRequestResponse(c, "Query parameter 'min' is required", nil)
+		return
+	}
+
+	minQty, err := strconv.ParseInt(minStr, 10, 64)
+	if err != nil {
+		h.logger.Error("Invalid min parameter",
+			zap.Error(err),
+			zap.String("min", minStr))
+		utils.BadRequestResponse(c, "Invalid 'min' parameter - must be a valid integer", err)
+		return
+	}
+
+	// Get and validate max parameter
+	maxStr := c.Query("max")
+	if maxStr == "" {
+		h.logger.Error("Missing required parameter: max")
+		utils.BadRequestResponse(c, "Query parameter 'max' is required", nil)
+		return
+	}
+
+	maxQty, err := strconv.ParseInt(maxStr, 10, 64)
+	if err != nil {
+		h.logger.Error("Invalid max parameter",
+			zap.Error(err),
+			zap.String("max", maxStr))
+		utils.BadRequestResponse(c, "Invalid 'max' parameter - must be a valid integer", err)
+		return
+	}
+
+	// Get pagination parameters with defaults
+	params := utils.GetPaginationParams(c)
+
+	h.logger.Debug("Calling service to get products by quantity",
+		zap.Int64("min_quantity", minQty),
+		zap.Int64("max_quantity", maxQty),
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
+
+	// Call service
+	products, total, err := h.productService.GetProductsByQuantityRange(c.Request.Context(), minQty, maxQty, params.Limit, params.Offset)
+	if err != nil {
+		h.logger.Error("Service error retrieving products by quantity",
+			zap.Error(err),
+			zap.Int64("min_quantity", minQty),
+			zap.Int64("max_quantity", maxQty))
+		utils.HandleServiceError(c, "Failed to retrieve products by quantity range", err)
+		return
+	}
+
+	h.logger.Info("Products by quantity retrieved successfully",
+		zap.Int64("min_quantity", minQty),
+		zap.Int64("max_quantity", maxQty),
+		zap.Int("count", len(products)),
+		zap.Int64("total", total))
+
+	utils.PaginatedOKResponse(c, products, total, params.Limit, params.Offset)
+}
+
 // RegisterRoutes registers product routes
 func (h *ProductHandler) RegisterRoutes(router *gin.RouterGroup) {
 	products := router.Group("/products")
@@ -444,6 +530,7 @@ func (h *ProductHandler) RegisterRoutes(router *gin.RouterGroup) {
 		// Read routes - Director=R, CEO=CRUD, Auditor=R, Accountant=–, Tech_Support=R/W (temp), Store_Manager=CRUD, Store_Staff=R
 		products.GET("", h.aaaMiddleware.RequireOrgPermission("product", "read"), h.GetAllProducts)
 		products.GET("/search", h.aaaMiddleware.RequireOrgPermission("product", "read"), h.SearchProducts)
+		products.GET("/by-quantity", h.aaaMiddleware.RequireOrgPermission("product", "read"), h.GetProductsByQuantity)
 		products.GET("/category/:categoryId", h.aaaMiddleware.RequireOrgPermission("product", "read"), h.GetProductsByCategory)
 		products.GET("/:id", h.aaaMiddleware.RequireOrgPermission("product", "read"), h.GetProduct)
 		products.GET("/:id/with-prices", h.aaaMiddleware.RequireOrgPermission("product", "read"), h.GetProductWithPrices)

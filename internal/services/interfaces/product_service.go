@@ -16,4 +16,5 @@ type ProductServiceInterface interface {
 	SearchProducts(query string) ([]models.ProductResponse, error)
 	GetProductWithPrices(id string) (*models.ProductWithPricesResponse, error)
 	GetProductsByCategory(ctx context.Context, categoryID string, subcategoryID *string) ([]models.ProductResponse, error)
+	GetProductsByQuantityRange(ctx context.Context, minQty, maxQty int64, limit, offset int) ([]models.ProductResponse, int64, error)
 }

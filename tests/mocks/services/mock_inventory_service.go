@@ -78,10 +78,10 @@ func (m *MockInventoryService) GetLowStockBatches(threshold int64, limit, offset
 	return args.Get(0).([]models.InventoryBatchResponse), args.Get(1).(int64), args.Error(2)
 }
 
-func (m *MockInventoryService) GetAllProductsAvailability(ctx context.Context, jwtToken string, limit, offset int) ([]models.ProductAvailabilityResponse, int64, error) {
+func (m *MockInventoryService) GetAllProductsAvailability(ctx context.Context, jwtToken string, limit, offset int) ([]models.ProductAvailabilityGroupedResponse, int64, error) {
 	args := m.Called(ctx, jwtToken, limit, offset)
 	if args.Get(0) == nil {
 		return nil, 0, args.Error(2)
 	}
-	return args.Get(0).([]models.ProductAvailabilityResponse), args.Get(1).(int64), args.Error(2)
+	return args.Get(0).([]models.ProductAvailabilityGroupedResponse), args.Get(1).(int64), args.Error(2)
 }

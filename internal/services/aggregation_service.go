@@ -1370,7 +1370,6 @@ func (s *AggregationService) buildBatchContext(batch *models.InventoryBatch, inc
 			TotalQuantity:     batch.TotalQuantity,
 			AvailableQuantity: batch.AvailableQuantity(),
 			ReservedQuantity:  batch.ReservedQuantity,
-			SoldQuantity:      0, // Would need transaction history
 			InStock:           batch.AvailableQuantity() > 0,
 		},
 		BatchInfo: models.BatchDetails{

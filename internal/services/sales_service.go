@@ -8,6 +8,7 @@ import (
 	"kisanlink-erp/internal/database/repositories"
 	"kisanlink-erp/internal/errors"
 	"kisanlink-erp/internal/interfaces"
+	"kisanlink-erp/internal/utils"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -930,15 +931,15 @@ func (s *SalesService) mapSaleToResponse(sale *models.Sale) *models.SaleResponse
 			SaleID:       item.SaleID,
 			BatchID:      item.BatchID,
 			Quantity:     item.Quantity,
-			SellingPrice: item.SellingPrice,
-			LineTotal:    item.LineTotal,
+			SellingPrice: utils.RoundPrice(item.SellingPrice),
+			LineTotal:    utils.RoundPrice(item.LineTotal),
 			// BRD Requirements - Cost and Margin
-			CostPrice:      item.CostPrice,
-			Margin:         item.Margin,
-			CGSTAmount:     item.CGSTAmount,
-			SGSTAmount:     item.SGSTAmount,
-			IGSTAmount:     item.IGSTAmount,
-			TotalTaxAmount: item.TotalTaxAmount,
+			CostPrice:      utils.RoundPrice(item.CostPrice),
+			Margin:         utils.RoundPrice(item.Margin),
+			CGSTAmount:     utils.RoundPrice(item.CGSTAmount),
+			SGSTAmount:     utils.RoundPrice(item.SGSTAmount),
+			IGSTAmount:     utils.RoundPrice(item.IGSTAmount),
+			TotalTaxAmount: utils.RoundPrice(item.TotalTaxAmount),
 			CreatedAt:      item.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		})
 	}
@@ -1860,7 +1861,15 @@ func (s *SalesService) CancelItems(saleID string, req *models.CancelItemsRequest
 					return errors.NewInternalServerError("Failed to update sale item")
 				}
 			} else {
-				// Full item cancelled - soft delete
+				// Full item cancelled - manually clean up all FK references before deleting
+				// Delete all SaleCancellationItem records that reference this SaleItem
+				// (they were just created in this same transaction for audit purposes)
+				if err := tx.Where("sale_item_id = ?", saleItem.ID).Delete(&models.SaleCancellationItem{}).Error; err != nil {
+					s.logger.Error("Failed to delete sale cancellation item references", zap.Error(err))
+					return errors.NewInternalServerError("Failed to clean up cancellation records")
+				}
+
+				// Now safe to delete the SaleItem (no foreign key references remain)
 				if err := tx.Delete(&models.SaleItem{}, "id = ?", saleItem.ID).Error; err != nil {
 					s.logger.Error("Failed to delete sale item", zap.Error(err))
 					return errors.NewInternalServerError("Failed to remove cancelled item")

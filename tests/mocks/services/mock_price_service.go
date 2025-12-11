@@ -63,3 +63,19 @@ func (m *MockProductPriceService) GetExpiredPrices() ([]models.ProductPriceRespo
 	}
 	return args.Get(0).([]models.ProductPriceResponse), args.Error(1)
 }
+
+func (m *MockProductPriceService) GetVariantPricesPaginated(variantID string, limit, offset int) ([]models.ProductPriceResponse, int64, error) {
+	args := m.Called(variantID, limit, offset)
+	if args.Get(0) == nil {
+		return nil, 0, args.Error(2)
+	}
+	return args.Get(0).([]models.ProductPriceResponse), args.Get(1).(int64), args.Error(2)
+}
+
+func (m *MockProductPriceService) GetExpiredPricesPaginated(limit, offset int) ([]models.ProductPriceResponse, int64, error) {
+	args := m.Called(limit, offset)
+	if args.Get(0) == nil {
+		return nil, 0, args.Error(2)
+	}
+	return args.Get(0).([]models.ProductPriceResponse), args.Get(1).(int64), args.Error(2)
+}

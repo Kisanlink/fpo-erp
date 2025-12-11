@@ -15,9 +15,22 @@ func NewProductVariantRepository(db *gorm.DB) *ProductVariantRepository {
 	return &ProductVariantRepository{db: db}
 }
 
+// WithTransaction executes a function within a transaction
+func (r *ProductVariantRepository) WithTransaction(fn func(*gorm.DB) error) error {
+	return r.db.Transaction(fn)
+}
+
 // Create creates a new product variant
 func (r *ProductVariantRepository) Create(variant *models.ProductVariant) error {
 	if err := r.db.Create(variant).Error; err != nil {
+		return errors.NewInternalServerError("Failed to create product variant")
+	}
+	return nil
+}
+
+// CreateWithTx creates a new product variant within a transaction
+func (r *ProductVariantRepository) CreateWithTx(tx *gorm.DB, variant *models.ProductVariant) error {
+	if err := tx.Create(variant).Error; err != nil {
 		return errors.NewInternalServerError("Failed to create product variant")
 	}
 	return nil

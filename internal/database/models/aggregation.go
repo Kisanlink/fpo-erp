@@ -401,7 +401,6 @@ type QuantityDetails struct {
 	TotalQuantity     int64 `json:"total_quantity"`
 	AvailableQuantity int64 `json:"available_quantity"`
 	ReservedQuantity  int64 `json:"reserved_quantity"`
-	SoldQuantity      int64 `json:"sold_quantity"`
 	InStock           bool  `json:"in_stock"`
 }
 

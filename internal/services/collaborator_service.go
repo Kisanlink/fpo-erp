@@ -238,6 +238,14 @@ func (s *CollaboratorService) createCollaboratorViaEcommerce(ctx context.Context
 		return nil, errors.NewValidationError("collaborator request cannot be nil")
 	}
 
+	// Validate bank details pairing
+	if err := validateBankDetails(request.BankAccountNo, request.BankIFSC); err != nil {
+		s.logger.Error("Bank details validation failed",
+			zap.Error(err),
+			zap.String("company_name", request.CompanyName))
+		return nil, err
+	}
+
 	email := stringValue(request.Email)
 	if email == "" {
 		s.logger.Error("Email is required for e-commerce collaborator creation")
@@ -362,6 +370,14 @@ func (s *CollaboratorService) createCollaboratorLegacy(ctx context.Context, requ
 		zap.String("user_id", userID),
 		zap.Bool("has_inline_address", request.Address != nil))
 
+	// Validate bank details pairing
+	if err := validateBankDetails(request.BankAccountNo, request.BankIFSC); err != nil {
+		s.logger.Error("Bank details validation failed",
+			zap.Error(err),
+			zap.String("company_name", request.CompanyName))
+		return nil, err
+	}
+
 	var addressID *string
 
 	if request.Address != nil {
@@ -468,6 +484,14 @@ func (s *CollaboratorService) updateCollaboratorViaEcommerce(ctx context.Context
 		return nil, errors.NewValidationError("update request cannot be nil")
 	}
 
+	// Validate bank details pairing
+	if err := validateBankDetails(request.BankAccountNo, request.BankIFSC); err != nil {
+		s.logger.Error("Bank details validation failed during update",
+			zap.Error(err),
+			zap.String("collaborator_id", id))
+		return nil, err
+	}
+
 	collaborator, err := s.collaboratorRepo.GetByID(id)
 	if err != nil {
 		s.logger.Error("Failed to retrieve collaborator for update",
@@ -565,6 +589,14 @@ func (s *CollaboratorService) updateCollaboratorViaEcommerce(ctx context.Context
 func (s *CollaboratorService) updateCollaboratorLegacy(ctx context.Context, id string, request *models.UpdateCollaboratorRequest, jwtToken string) (*models.CollaboratorResponse, error) {
 	s.logger.Debug("Updating collaborator via legacy method",
 		zap.String("collaborator_id", id))
+
+	// Validate bank details pairing
+	if err := validateBankDetails(request.BankAccountNo, request.BankIFSC); err != nil {
+		s.logger.Error("Bank details validation failed during update",
+			zap.Error(err),
+			zap.String("collaborator_id", id))
+		return nil, err
+	}
 
 	collaborator, err := s.collaboratorRepo.GetByID(id)
 	if err != nil {
@@ -812,10 +844,10 @@ func (s *CollaboratorService) applyUpdateRequestToModel(collaborator *models.Col
 		collaborator.PANNumber = request.PANNumber
 	}
 	if request.BankAccountNo != nil {
-		collaborator.BankAccountNo = *request.BankAccountNo
+		collaborator.BankAccountNo = request.BankAccountNo
 	}
 	if request.BankIFSC != nil {
-		collaborator.BankIFSC = *request.BankIFSC
+		collaborator.BankIFSC = request.BankIFSC
 	}
 	if request.BankName != nil {
 		collaborator.BankName = request.BankName
@@ -939,11 +971,11 @@ func buildCreateCollaboratorRequest(req *models.CreateCollaboratorRequest, organ
 	if req.PANNumber != nil && *req.PANNumber != "" {
 		businessInfo.PanNumber = req.PANNumber
 	}
-	if req.BankAccountNo != "" {
-		businessInfo.BankAccountNumber = ptrString(req.BankAccountNo)
+	if req.BankAccountNo != nil && *req.BankAccountNo != "" {
+		businessInfo.BankAccountNumber = req.BankAccountNo
 	}
-	if req.BankIFSC != "" {
-		businessInfo.BankIfscCode = ptrString(req.BankIFSC)
+	if req.BankIFSC != nil && *req.BankIFSC != "" {
+		businessInfo.BankIfscCode = req.BankIFSC
 	}
 	if req.BankName != nil && *req.BankName != "" {
 		businessInfo.BankName = req.BankName
@@ -1191,4 +1223,18 @@ func ptrString(value string) *string {
 func ptrBool(value bool) *bool {
 	v := value
 	return &v
+}
+
+// validateBankDetails ensures that if one bank field is provided, both must be provided
+func validateBankDetails(accountNo, ifsc *string) error {
+	hasAccount := accountNo != nil && strings.TrimSpace(*accountNo) != ""
+	hasIFSC := ifsc != nil && strings.TrimSpace(*ifsc) != ""
+
+	if hasAccount && !hasIFSC {
+		return errors.NewValidationError("bank_ifsc is required when bank_account_no is provided")
+	}
+	if hasIFSC && !hasAccount {
+		return errors.NewValidationError("bank_account_no is required when bank_ifsc is provided")
+	}
+	return nil
 }

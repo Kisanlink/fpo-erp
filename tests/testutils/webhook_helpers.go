@@ -67,8 +67,8 @@ func FixtureOrderCreatedWebhook(externalOrderID string) *models.OrderCreatedWebh
 			ContactPerson: "John Doe",
 			ContactNumber: "9876543210",
 			GSTNumber:     "27AABCU9603R1ZX",
-			BankAccountNo: "1234567890",
-			BankIFSC:      "HDFC0001234",
+			BankAccountNo: ptrString("1234567890"),
+			BankIFSC:      ptrString("HDFC0001234"),
 		},
 		Items: []models.WebhookOrderItem{
 			{
@@ -297,4 +297,13 @@ func PastUnixTimestamp(minutesAgo int) string {
 // FutureUnixTimestamp returns future time as Unix timestamp string (minutes from now)
 func FutureUnixTimestamp(minutesFromNow int) string {
 	return fmt.Sprintf("%d", time.Now().Add(time.Duration(minutesFromNow)*time.Minute).Unix())
+}
+
+// ========================================
+// Helper Functions
+// ========================================
+
+// ptrString returns a pointer to a string
+func ptrString(s string) *string {
+	return &s
 }

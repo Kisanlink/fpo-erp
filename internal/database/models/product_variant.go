@@ -16,10 +16,14 @@ const (
 )
 
 // VariantPrice represents a price point for a variant
+// Matches CreateProductPriceRequest structure (minus variant_id which is in context)
 type VariantPrice struct {
-	PriceType string  `json:"price_type"` // "MRP" or "MSP"
-	Price     float64 `json:"price"`
-	Currency  string  `json:"currency"` // "INR", "USD", etc.
+	PriceType     string  `json:"price_type" binding:"required"`
+	Price         float64 `json:"price" binding:"required,gt=0"`
+	Currency      string  `json:"currency"`
+	EffectiveFrom *string `json:"effective_from"` // Optional: date in YYYY-MM-DD format
+	EffectiveTo   *string `json:"effective_to"`   // Optional: date in YYYY-MM-DD format
+	IsActive      *bool   `json:"is_active"`      // Optional: defaults to true
 }
 
 // ProductVariant represents different packaging/size variants of a product

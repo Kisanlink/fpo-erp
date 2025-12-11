@@ -895,24 +895,30 @@ func TestInventoryHandler_GetAllProductsAvailability_Success(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
-	expectedResponse := []models.ProductAvailabilityResponse{
+	expectedResponse := []models.ProductAvailabilityGroupedResponse{
 		{
-			ID:            "BATC00000001",
-			WarehouseID:   "WHSE00000001",
-			WarehouseName: "Main Warehouse",
-			VariantID:     "PVAR00000001",
-			ProductSKU:    "PROD-SKU-001",
-			ProductName:   "Rice 1kg",
-			TotalQuantity: 500,
+			SKU:            "PROD-SKU-001",
+			VariantID:      "PVAR00000001",
+			ProductName:    "Rice 1kg",
+			TotalQuantity:  500,
+			ExpiredQuantity: 0,
+			EarliestExpiry: "2025-12-31",
+			ExpiryStatus:   "fresh",
+			WarehouseDetails: []models.WarehouseAvailabilityDetail{
+				{WarehouseID: "WHSE00000001", WarehouseName: "Main Warehouse", Quantity: 500},
+			},
 		},
 		{
-			ID:            "BATC00000002",
-			WarehouseID:   "WHSE00000002",
-			WarehouseName: "Branch Warehouse",
-			VariantID:     "PVAR00000002",
-			ProductSKU:    "PROD-SKU-002",
-			ProductName:   "Wheat 1kg",
-			TotalQuantity: 300,
+			SKU:            "PROD-SKU-002",
+			VariantID:      "PVAR00000002",
+			ProductName:    "Wheat 1kg",
+			TotalQuantity:  300,
+			ExpiredQuantity: 0,
+			EarliestExpiry: "2025-12-31",
+			ExpiryStatus:   "fresh",
+			WarehouseDetails: []models.WarehouseAvailabilityDetail{
+				{WarehouseID: "WHSE00000002", WarehouseName: "Branch Warehouse", Quantity: 300},
+			},
 		},
 	}
 	mockService.On("GetAllProductsAvailability", mock.Anything, mock.AnythingOfType("string"), 50, 0).
@@ -945,7 +951,7 @@ func TestInventoryHandler_GetAllProductsAvailability_EmptyList(t *testing.T) {
 
 	// Mock expectations
 	mockService.On("GetAllProductsAvailability", mock.Anything, mock.AnythingOfType("string"), 50, 0).
-		Return([]models.ProductAvailabilityResponse{}, int64(0), nil)
+		Return([]models.ProductAvailabilityGroupedResponse{}, int64(0), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/products/availability", nil)
