@@ -470,8 +470,16 @@ func (s *PurchaseOrderService) UpdatePurchaseOrderStatus(ctx context.Context, id
 
 	// Traditional flow: Just update status without auto-GRN
 	po.Status = request.Status
+
 	if request.Status == "delivered" {
 		po.ActualDelivery = &actualDelivery
+	}
+
+	// When Status transitions to "paid", ensure PaymentStatus is also "paid"
+	// This maintains logical consistency between workflow and payment status
+	if request.Status == "paid" {
+		po.PaymentStatus = "paid"
+		po.PaidAmount = po.TotalAmount
 	}
 
 	// Save to database

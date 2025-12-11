@@ -104,8 +104,8 @@ func (s *ReportService) GenerateProductReport(filter *models.ProductReportFilter
 	builder.ApplySorting(filter.SortBy, filter.SortOrder, "created_at DESC")
 	builder.ApplyPagination(filter.Limit, filter.Offset)
 
-	// Execute query
-	var records []models.ProductReportRecord
+	// Execute query - initialize as empty slice to return [] instead of null in JSON
+	records := make([]models.ProductReportRecord, 0)
 	if err := builder.Build().Scan(&records).Error; err != nil {
 		s.logger.Error("Failed to fetch product records", zap.Error(err))
 		return nil, err
@@ -155,7 +155,9 @@ func (s *ReportService) GenerateVendorReport(filter *models.VendorReportFilter) 
 		filter.Limit = 50
 	}
 
-	// Build query
+	// Build query - use subqueries to avoid JOIN multiplication issues
+	// When both collaborator_products and purchase_orders are JOINed, each PO row
+	// gets duplicated for each product, inflating the total_po_value sum
 	query := s.db.Model(&models.Collaborator{}).Select(`
 		collaborators.id,
 		collaborators.company_name,
@@ -168,14 +170,11 @@ func (s *ReportService) GenerateVendorReport(filter *models.VendorReportFilter) 
 		collaborators.bank_ifsc,
 		collaborators.bank_name,
 		collaborators.is_active,
-		COUNT(DISTINCT collaborator_products.id) as product_count,
-		COALESCE(SUM(purchase_orders.total_amount), 0) as total_po_value,
+		(SELECT COUNT(*) FROM collaborator_products cp WHERE cp.collaborator_id = collaborators.id) as product_count,
+		COALESCE((SELECT SUM(po.total_amount) FROM purchase_orders po WHERE po.collaborator_id = collaborators.id), 0) as total_po_value,
 		collaborators.created_at,
 		collaborators.updated_at
-	`).
-		Joins("LEFT JOIN collaborator_products ON collaborator_products.collaborator_id = collaborators.id").
-		Joins("LEFT JOIN purchase_orders ON purchase_orders.collaborator_id = collaborators.id").
-		Group("collaborators.id")
+	`)
 
 	// Apply filters
 	builder := utils.NewReportQueryBuilder(query)
@@ -198,8 +197,8 @@ func (s *ReportService) GenerateVendorReport(filter *models.VendorReportFilter) 
 	builder.ApplySorting(filter.SortBy, filter.SortOrder, "company_name ASC")
 	builder.ApplyPagination(filter.Limit, filter.Offset)
 
-	// Execute query
-	var records []models.VendorReportRecord
+	// Execute query - initialize as empty slice to return [] instead of null in JSON
+	records := make([]models.VendorReportRecord, 0)
 	if err := builder.Build().Scan(&records).Error; err != nil {
 		s.logger.Error("Failed to fetch vendor records", zap.Error(err))
 		return nil, err
@@ -235,9 +234,10 @@ func (s *ReportService) GenerateCustomerReport(filter *models.CustomerReportFilt
 		filter.Limit = 50
 	}
 
-	// Build query
+	// Build query - uses customer_phone as the customer identifier
 	query := s.db.Model(&models.Sale{}).Select(`
-		sales.customer_id,
+		sales.customer_phone,
+		sales.customer_name,
 		COUNT(*) as total_purchases,
 		SUM(sales.total_amount) as total_amount,
 		MAX(sales.sale_date) as last_purchase_date,
@@ -245,15 +245,15 @@ func (s *ReportService) GenerateCustomerReport(filter *models.CustomerReportFilt
 		warehouses.name as warehouse_name,
 		COUNT(*) as purchase_count
 	`).
-		Joins("JOIN warehouses ON warehouses.id = sales.warehouse_id").
-		Where("sales.customer_id IS NOT NULL AND sales.customer_id != ''").
+		Joins("LEFT JOIN warehouses ON warehouses.id = sales.warehouse_id").
+		Where("sales.customer_phone IS NOT NULL AND sales.customer_phone != ''").
 		Where("sales.status != 'cancelled'").
-		Group("sales.customer_id, sales.warehouse_id, warehouses.name")
+		Group("sales.customer_phone, sales.customer_name, sales.warehouse_id, warehouses.name")
 
 	// Apply filters
 	builder := utils.NewReportQueryBuilder(query)
 	if filter.Search != "" {
-		builder.Build().Where("sales.customer_id ILIKE ?", "%"+filter.Search+"%")
+		builder.Build().Where("(sales.customer_phone ILIKE ? OR sales.customer_name ILIKE ?)", "%"+filter.Search+"%", "%"+filter.Search+"%")
 	}
 	builder.ApplyStringFilter("sales.warehouse_id", filter.WarehouseID)
 	builder.ApplyRangeFilter("SUM(sales.total_amount)", filter.MinPurchaseValue, filter.MaxPurchaseValue)
@@ -262,17 +262,17 @@ func (s *ReportService) GenerateCustomerReport(filter *models.CustomerReportFilt
 	// Get total count
 	var total int64
 	countQuery := s.db.Model(&models.Sale{}).
-		Where("customer_id IS NOT NULL AND customer_id != ''").
+		Where("customer_phone IS NOT NULL AND customer_phone != ''").
 		Where("status != 'cancelled'").
-		Distinct("customer_id")
+		Distinct("customer_phone")
 	countQuery.Count(&total)
 
 	// Apply pagination
 	builder.ApplySorting(filter.SortBy, filter.SortOrder, "total_amount DESC")
 	builder.ApplyPagination(filter.Limit, filter.Offset)
 
-	// Execute query
-	var records []models.CustomerReportRecord
+	// Execute query - initialize as empty slice to return [] instead of null in JSON
+	records := make([]models.CustomerReportRecord, 0)
 	if err := builder.Build().Scan(&records).Error; err != nil {
 		s.logger.Error("Failed to fetch customer records", zap.Error(err))
 		return nil, err
@@ -281,12 +281,12 @@ func (s *ReportService) GenerateCustomerReport(filter *models.CustomerReportFilt
 	// Calculate summary
 	var summary models.CustomerReportSummary
 	s.db.Model(&models.Sale{}).
-		Where("customer_id IS NOT NULL AND customer_id != ''").
+		Where("customer_phone IS NOT NULL AND customer_phone != ''").
 		Where("status != 'cancelled'").
-		Distinct("customer_id").
+		Distinct("customer_phone").
 		Count(&summary.TotalCustomers)
 	s.db.Model(&models.Sale{}).
-		Where("customer_id IS NOT NULL").
+		Where("customer_phone IS NOT NULL AND customer_phone != ''").
 		Where("status != 'cancelled'").
 		Select("COALESCE(SUM(total_amount), 0)").
 		Scan(&summary.TotalRevenue)
@@ -367,8 +367,8 @@ func (s *ReportService) GenerateInventoryReport(filter *models.InventoryReportFi
 	builder.ApplySorting(filter.SortBy, filter.SortOrder, "expiry_date ASC")
 	builder.ApplyPagination(filter.Limit, filter.Offset)
 
-	// Execute query
-	var records []models.InventoryReportRecord
+	// Execute query - initialize as empty slice to return [] instead of null in JSON
+	records := make([]models.InventoryReportRecord, 0)
 	if err := builder.Build().Scan(&records).Error; err != nil {
 		s.logger.Error("Failed to fetch inventory records", zap.Error(err))
 		return nil, err
@@ -450,8 +450,8 @@ func (s *ReportService) GeneratePurchaseReport(filter *models.PurchaseReportFilt
 	builder.ApplySorting(filter.SortBy, filter.SortOrder, "order_date DESC")
 	builder.ApplyPagination(filter.Limit, filter.Offset)
 
-	// Execute query
-	var records []models.PurchaseReportRecord
+	// Execute query - initialize as empty slice to return [] instead of null in JSON
+	records := make([]models.PurchaseReportRecord, 0)
 	if err := builder.Build().Scan(&records).Error; err != nil {
 		s.logger.Error("Failed to fetch purchase records", zap.Error(err))
 		return nil, err
@@ -544,8 +544,8 @@ func (s *ReportService) GenerateSalesReport(filter *models.SalesReportFilter) (*
 	builder.ApplySorting(filter.SortBy, filter.SortOrder, "sale_date DESC")
 	builder.ApplyPagination(filter.Limit, filter.Offset)
 
-	// Execute query
-	var records []models.SalesReportRecord
+	// Execute query - initialize as empty slice to return [] instead of null in JSON
+	records := make([]models.SalesReportRecord, 0)
 	if err := builder.Build().Scan(&records).Error; err != nil {
 		s.logger.Error("Failed to fetch sales records", zap.Error(err))
 		return nil, err
@@ -644,8 +644,8 @@ func (s *ReportService) GenerateReturnsReport(filter *models.ReturnsReportFilter
 	builder.ApplySorting(filter.SortBy, filter.SortOrder, "return_date DESC")
 	builder.ApplyPagination(filter.Limit, filter.Offset)
 
-	// Execute query
-	var records []models.ReturnsReportRecord
+	// Execute query - initialize as empty slice to return [] instead of null in JSON
+	records := make([]models.ReturnsReportRecord, 0)
 	if err := builder.Build().Scan(&records).Error; err != nil {
 		s.logger.Error("Failed to fetch returns records", zap.Error(err))
 		return nil, err
