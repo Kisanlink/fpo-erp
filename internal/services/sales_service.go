@@ -202,8 +202,8 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 			saleDate = time.Now()
 		}
 
-		// Handle ApplyTaxes - default to false if not provided
-		applyTaxes := false
+		// Handle ApplyTaxes - default to true if not provided (Issue 6: Breaking Change)
+		applyTaxes := true
 		if req.ApplyTaxes != nil {
 			applyTaxes = *req.ApplyTaxes
 		}

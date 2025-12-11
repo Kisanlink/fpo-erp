@@ -200,3 +200,50 @@
 
 ---
 
+## Issue 6: apply_taxes Default True (BREAKING CHANGE)
+
+**Type**: Breaking Change
+
+**Changes**:
+- `POST /api/v1/sales` - `apply_taxes` default changed from `false` to `true`
+- If `apply_taxes` is not provided, taxes will be calculated by default
+
+**Behavior Change**:
+```json
+// BEFORE - Omitting apply_taxes
+{
+  "warehouse_id": "WHSE00000001",
+  "payment_mode": "cash",
+  "sale_type": "in_store",
+  "items": [...]
+  // apply_taxes NOT provided → defaulted to FALSE (no tax calculation)
+}
+
+// AFTER - Omitting apply_taxes
+{
+  "warehouse_id": "WHSE00000001",
+  "payment_mode": "cash",
+  "sale_type": "in_store",
+  "items": [...]
+  // apply_taxes NOT provided → defaults to TRUE (taxes ARE calculated)
+}
+```
+
+**Migration**:
+- Review all sale creation calls
+- If taxes should NOT be applied, explicitly set `"apply_taxes": false`
+- Existing sales are not affected (only new sales)
+
+**Example - Opting out of taxes**:
+```json
+{
+  "warehouse_id": "WHSE00000001",
+  "payment_mode": "cash",
+  "sale_type": "in_store",
+  "apply_taxes": false,  // Explicitly disable taxes
+  "items": [...]
+}
+```
+
+---
+
