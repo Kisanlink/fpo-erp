@@ -114,6 +114,24 @@ func (r *SalesRepository) GetSalesByStatus(status string, limit, offset int) ([]
 	return sales, total, err
 }
 
+// GetSalesByCustomerPhone retrieves sales filtered by customer phone number (Issue 7)
+func (r *SalesRepository) GetSalesByCustomerPhone(phone string, limit, offset int) ([]models.Sale, int64, error) {
+	var sales []models.Sale
+	var total int64
+
+	query := r.db.Model(&models.Sale{}).Where("customer_phone = ?", phone)
+
+	// Get total count
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Get paginated records (no Items preload for list performance)
+	err := r.db.Where("customer_phone = ?", phone).
+		Order("created_at DESC").Limit(limit).Offset(offset).Find(&sales).Error
+	return sales, total, err
+}
+
 // SaleItem operations
 func (r *SalesRepository) CreateSaleItem(item *models.SaleItem) error {
 	if err := r.db.Create(item).Error; err != nil {

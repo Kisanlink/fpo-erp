@@ -511,6 +511,34 @@ func (s *SalesService) GetAllSales(limit, offset int) ([]models.SaleListResponse
 	return responses, total, nil
 }
 
+// GetSalesByCustomerPhone retrieves sales filtered by customer phone number (Issue 7)
+func (s *SalesService) GetSalesByCustomerPhone(phone string, limit, offset int) ([]models.SaleListResponse, int64, error) {
+	s.logger.Info("Retrieving sales by customer phone",
+		zap.String("phone", phone),
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
+
+	sales, total, err := s.salesRepo.GetSalesByCustomerPhone(phone, limit, offset)
+	if err != nil {
+		s.logger.Error("Failed to retrieve sales by customer phone",
+			zap.Error(err),
+			zap.String("phone", phone))
+		return nil, 0, err
+	}
+
+	var responses []models.SaleListResponse
+	for _, sale := range sales {
+		responses = append(responses, *s.mapSaleToListResponse(&sale))
+	}
+
+	s.logger.Info("Successfully retrieved sales by customer phone",
+		zap.String("phone", phone),
+		zap.Int64("total", total),
+		zap.Int("count", len(responses)))
+
+	return responses, total, nil
+}
+
 // UpdateSale updates a sale with proper inventory handling for status transitions
 func (s *SalesService) UpdateSale(id string, req *models.UpdateSaleRequest) (*models.SaleResponse, error) {
 	s.logger.Info("Starting sale update",

@@ -15,6 +15,7 @@ type SalesServiceInterface interface {
 	DeleteSale(id string) error
 	GetSalesByDateRange(startDate, endDate time.Time, limit, offset int) ([]models.SaleResponse, int64, error)
 	GetSalesByStatus(status string, limit, offset int) ([]models.SaleResponse, int64, error)
+	GetSalesByCustomerPhone(phone string, limit, offset int) ([]models.SaleListResponse, int64, error) // Issue 7
 	GetTotalSalesAmount(startDate, endDate time.Time) (float64, error)
 	GetTopSellingProducts(limit int) ([]models.TopSellingProductResponse, error)
 	CancelSale(saleID string, req *models.CancelSaleRequest) (*models.CancelSaleResponse, error)

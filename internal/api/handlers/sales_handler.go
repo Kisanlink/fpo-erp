@@ -164,11 +164,26 @@ func (h *SalesHandler) GetAllSales(c *gin.Context) {
 	// Get pagination parameters
 	params := utils.GetPaginationParams(c)
 
-	h.logger.Debug("Calling sales service to get all sales",
-		zap.Int("limit", params.Limit),
-		zap.Int("offset", params.Offset))
+	// Check for customer_phone filter (Issue 7)
+	customerPhone := c.Query("customer_phone")
 
-	sales, total, err := h.salesService.GetAllSales(params.Limit, params.Offset)
+	var sales []models.SaleListResponse
+	var total int64
+	var err error
+
+	if customerPhone != "" {
+		h.logger.Debug("Filtering sales by customer phone",
+			zap.String("customer_phone", customerPhone),
+			zap.Int("limit", params.Limit),
+			zap.Int("offset", params.Offset))
+		sales, total, err = h.salesService.GetSalesByCustomerPhone(customerPhone, params.Limit, params.Offset)
+	} else {
+		h.logger.Debug("Calling sales service to get all sales",
+			zap.Int("limit", params.Limit),
+			zap.Int("offset", params.Offset))
+		sales, total, err = h.salesService.GetAllSales(params.Limit, params.Offset)
+	}
+
 	if err != nil {
 		h.logger.Error("Failed to retrieve sales via service",
 			zap.Error(err))

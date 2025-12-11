@@ -247,3 +247,43 @@
 
 ---
 
+## Issue 7: Phone Filter Query Parameter
+
+**Type**: New Feature
+
+**Changes**:
+- `GET /api/v1/sales` - Added `customer_phone` query parameter
+- Filter sales by customer phone number
+
+**Usage**:
+```
+GET /api/v1/sales?customer_phone=9876543210
+GET /api/v1/sales?customer_phone=9876543210&limit=10&offset=0
+```
+
+**Response**:
+```json
+{
+  "data": [
+    {
+      "id": "SALE00000001",
+      "invoice_number": "12250001",
+      "customer_phone": "9876543210",
+      "customer_name": "John Doe",
+      "total_amount": 500.00,
+      "status": "completed"
+    }
+  ],
+  "total": 5,
+  "limit": 20,
+  "offset": 0
+}
+```
+
+**Notes**:
+- Exact match on phone number (not partial search)
+- Works with pagination parameters (limit, offset)
+- Returns empty array if no sales found for phone
+
+---
+
