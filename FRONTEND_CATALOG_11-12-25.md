@@ -123,3 +123,45 @@
 
 ---
 
+## Issue 4: SKU in Sale Items
+
+**Type**: Enhancement
+
+**Changes**:
+- `GET /api/v1/sales/{id}` - Added `sku` field to each item in `items` array
+- SKU is fetched from the product variant through the batch
+
+**Response Change**:
+```json
+// BEFORE - GET /api/v1/sales/{id}
+{
+  "items": [
+    {
+      "id": "SITM00000001",
+      "batch_id": "BATC00000001",
+      "quantity": 5,
+      "selling_price": 100.00
+    }
+  ]
+}
+
+// AFTER - GET /api/v1/sales/{id}
+{
+  "items": [
+    {
+      "id": "SITM00000001",
+      "batch_id": "BATC00000001",
+      "sku": "SKU-VEG-00000001",  // NEW - Product variant SKU
+      "quantity": 5,
+      "selling_price": 100.00
+    }
+  ]
+}
+```
+
+**Usage**:
+- Use `sku` to display product identification in sale details
+- SKU links to the specific product variant sold
+
+---
+

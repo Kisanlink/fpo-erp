@@ -927,10 +927,16 @@ func (s *SalesService) mapSaleToResponse(sale *models.Sale) *models.SaleResponse
 
 	// Map items
 	for _, item := range sale.Items {
+		// Get SKU from batch's variant (Issue 4)
+		sku := ""
+		if item.Batch.Variant.SKU != nil {
+			sku = *item.Batch.Variant.SKU
+		}
 		response.Items = append(response.Items, models.SaleItemResponse{
 			ID:           item.ID,
 			SaleID:       item.SaleID,
 			BatchID:      item.BatchID,
+			SKU:          sku,
 			Quantity:     item.Quantity,
 			SellingPrice: utils.RoundPrice(item.SellingPrice),
 			LineTotal:    utils.RoundPrice(item.LineTotal),
