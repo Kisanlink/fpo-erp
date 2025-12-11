@@ -155,9 +155,8 @@ func (s *ReportService) GenerateVendorReport(filter *models.VendorReportFilter) 
 		filter.Limit = 50
 	}
 
-	// Build query - use subqueries to avoid JOIN multiplication issues
-	// When both collaborator_products and purchase_orders are JOINed, each PO row
-	// gets duplicated for each product, inflating the total_po_value sum
+	// Build query - product_count uses product_variants.collaborator_ids JSON array
+	// Use subquery for total_po_value to avoid JOIN multiplication issues
 	query := s.db.Model(&models.Collaborator{}).Select(`
 		collaborators.id,
 		collaborators.company_name,
@@ -170,7 +169,7 @@ func (s *ReportService) GenerateVendorReport(filter *models.VendorReportFilter) 
 		collaborators.bank_ifsc,
 		collaborators.bank_name,
 		collaborators.is_active,
-		(SELECT COUNT(*) FROM collaborator_products cp WHERE cp.collaborator_id = collaborators.id) as product_count,
+		(SELECT COUNT(DISTINCT pv.id) FROM product_variants pv WHERE pv.collaborator_ids::jsonb @> to_jsonb(collaborators.id::text)) as product_count,
 		COALESCE((SELECT SUM(po.total_amount) FROM purchase_orders po WHERE po.collaborator_id = collaborators.id), 0) as total_po_value,
 		collaborators.created_at,
 		collaborators.updated_at
@@ -256,7 +255,6 @@ func (s *ReportService) GenerateCustomerReport(filter *models.CustomerReportFilt
 		builder.Build().Where("(sales.customer_phone ILIKE ? OR sales.customer_name ILIKE ?)", "%"+filter.Search+"%", "%"+filter.Search+"%")
 	}
 	builder.ApplyStringFilter("sales.warehouse_id", filter.WarehouseID)
-	builder.ApplyRangeFilter("SUM(sales.total_amount)", filter.MinPurchaseValue, filter.MaxPurchaseValue)
 	builder.ApplyDateFilter("sales.sale_date", filter.StartDate, filter.EndDate)
 
 	// Get total count
@@ -317,7 +315,7 @@ func (s *ReportService) GenerateInventoryReport(filter *models.InventoryReportFi
 		filter.Limit = 50
 	}
 
-	// Build query
+	// Build query - tax rates are on product_variants, not inventory_batches
 	query := s.db.Model(&models.InventoryBatch{}).Select(`
 		inventory_batches.id as batch_id,
 		inventory_batches.warehouse_id,
@@ -326,20 +324,33 @@ func (s *ReportService) GenerateInventoryReport(filter *models.InventoryReportFi
 		products.name as product_name,
 		product_variants.sku as variant_sku,
 		inventory_batches.total_quantity,
+		inventory_batches.reserved_quantity,
+		(inventory_batches.total_quantity - COALESCE(inventory_batches.reserved_quantity, 0)) as available_quantity,
 		inventory_batches.cost_price,
 		(inventory_batches.total_quantity * inventory_batches.cost_price) as total_value,
 		inventory_batches.expiry_date,
-		EXTRACT(DAY FROM (inventory_batches.expiry_date - CURRENT_DATE)) as days_to_expiry,
-		EXTRACT(DAY FROM (CURRENT_DATE - DATE(inventory_batches.created_at))) as days_on_shelf,
-		inventory_batches.cgst_rate,
-		inventory_batches.sgst_rate,
-		inventory_batches.is_tax_exempt,
+		(inventory_batches.expiry_date - CURRENT_DATE) as days_to_expiry,
+		(CURRENT_DATE - inventory_batches.created_at::date) as days_on_shelf,
+		grn_items.batch_number,
+		goods_receipt_notes.received_date,
+		goods_receipt_notes.quality_status,
+		goods_receipt_notes.id as source_grn_id,
+		CASE WHEN inventory_batches.expiry_date <= CURRENT_DATE + INTERVAL '30 days' THEN true ELSE false END as is_expiring_soon,
+		CASE WHEN inventory_batches.expiry_date < CURRENT_DATE THEN true ELSE false END as is_expired,
+		CASE
+			WHEN inventory_batches.expiry_date < CURRENT_DATE THEN 'expired'
+			WHEN (inventory_batches.expiry_date - CURRENT_DATE) < 7 THEN 'critical'
+			WHEN (inventory_batches.expiry_date - CURRENT_DATE) <= 30 THEN 'warning'
+			ELSE 'safe'
+		END as expiry_category,
 		inventory_batches.created_at,
 		inventory_batches.updated_at
 	`).
 		Joins("JOIN warehouses ON warehouses.id = inventory_batches.warehouse_id").
 		Joins("JOIN product_variants ON product_variants.id = inventory_batches.variant_id").
 		Joins("JOIN products ON products.id = product_variants.product_id").
+		Joins("LEFT JOIN grn_items ON grn_items.inventory_batch_id = inventory_batches.id").
+		Joins("LEFT JOIN goods_receipt_notes ON goods_receipt_notes.id = grn_items.grn_id").
 		Where("inventory_batches.total_quantity > 0")
 
 	// Apply filters
@@ -415,19 +426,38 @@ func (s *ReportService) GeneratePurchaseReport(filter *models.PurchaseReportFilt
 		purchase_orders.warehouse_id,
 		warehouses.name as warehouse_name,
 		purchase_orders.order_date,
-		purchase_orders.expected_delivery as expected_delivery_date,
-		purchase_orders.actual_delivery as actual_delivery_date,
+		purchase_orders.expected_delivery,
+		purchase_orders.actual_delivery,
 		purchase_orders.status,
 		purchase_orders.payment_status,
 		purchase_orders.total_amount,
 		purchase_orders.paid_amount,
 		(purchase_orders.total_amount - purchase_orders.paid_amount) as outstanding_amount,
-		0 as item_count,
+		COUNT(DISTINCT purchase_order_items.id) as item_count,
+		goods_receipt_notes.id as grn_id,
+		COALESCE(SUM(grn_items.received_quantity), 0) as received_quantity,
+		COALESCE(SUM(grn_items.accepted_quantity), 0) as accepted_quantity,
+		COALESCE(SUM(grn_items.rejected_quantity), 0) as rejected_quantity,
+		CASE
+			WHEN SUM(grn_items.received_quantity) > 0 THEN
+				(SUM(grn_items.rejected_quantity)::float / SUM(grn_items.received_quantity)::float * 100)
+			ELSE 0
+		END as rejection_rate,
+		COALESCE(SUM(grn_items.rejected_quantity * purchase_order_items.unit_price), 0) as total_rejected_value,
+		CASE
+			WHEN SUM(grn_items.received_quantity) > 0 THEN
+				(SUM(grn_items.accepted_quantity)::float / SUM(grn_items.received_quantity)::float * 100)
+			ELSE 0
+		END as acceptance_rate_percent,
 		purchase_orders.created_at,
 		purchase_orders.updated_at
 	`).
 		Joins("JOIN collaborators ON collaborators.id = purchase_orders.collaborator_id").
-		Joins("JOIN warehouses ON warehouses.id = purchase_orders.warehouse_id")
+		Joins("JOIN warehouses ON warehouses.id = purchase_orders.warehouse_id").
+		Joins("LEFT JOIN purchase_order_items ON purchase_order_items.po_id = purchase_orders.id").
+		Joins("LEFT JOIN goods_receipt_notes ON goods_receipt_notes.po_id = purchase_orders.id").
+		Joins("LEFT JOIN grn_items ON grn_items.grn_id = goods_receipt_notes.id AND grn_items.po_item_id = purchase_order_items.id").
+		Group("purchase_orders.id, collaborators.company_name, warehouses.name, goods_receipt_notes.id")
 
 	// Apply filters
 	builder := utils.NewReportQueryBuilder(query)
@@ -499,7 +529,7 @@ func (s *ReportService) GenerateSalesReport(filter *models.SalesReportFilter) (*
 		filter.Limit = 50
 	}
 
-	// Build query
+	// Build query - sale_items has cgst_amount, sgst_amount, igst_amount (not rates)
 	query := s.db.Model(&models.Sale{}).Select(`
 		sales.id,
 		warehouses.name as warehouse_name,
@@ -514,7 +544,23 @@ func (s *ReportService) GenerateSalesReport(filter *models.SalesReportFilter) (*
 		COALESCE(SUM(sale_items.cost_price * sale_items.quantity), 0) as purchase_value,
 		sales.apply_taxes,
 		COALESCE(SUM(sale_items.total_tax_amount), 0) as total_tax,
+		COALESCE(SUM(sale_items.cgst_amount), 0) as cgst_amount,
+		COALESCE(SUM(sale_items.sgst_amount), 0) as sgst_amount,
+		COALESCE(SUM(sale_items.igst_amount), 0) as igst_amount,
+		COALESCE(SUM(CASE WHEN sale_items.total_tax_amount = 0 THEN sale_items.line_total ELSE 0 END), 0) as tax_exempt_amount,
+		CASE
+			WHEN sales.total_amount > 0 THEN (COALESCE(SUM(sale_items.total_tax_amount), 0) / sales.total_amount * 100)
+			ELSE 0
+		END as effective_tax_rate,
 		COALESCE(SUM(sale_items.margin * sale_items.quantity), 0) as total_margin,
+		CASE
+			WHEN sales.total_amount > 0 THEN (COALESCE(SUM(sale_items.margin * sale_items.quantity), 0) / sales.total_amount * 100)
+			ELSE 0
+		END as gross_margin_percent,
+		CASE
+			WHEN SUM(sale_items.quantity) > 0 THEN (COALESCE(SUM(sale_items.margin * sale_items.quantity), 0) / SUM(sale_items.quantity))
+			ELSE 0
+		END as per_unit_margin,
 		COUNT(sale_items.id) as item_count,
 		sales.cancelled_at,
 		sales.cancellation_reason,
@@ -673,6 +719,135 @@ func (s *ReportService) GenerateReturnsReport(filter *models.ReturnsReportFilter
 
 	return &models.ReportResponse{
 		ReportType:  "returns",
+		GeneratedAt: time.Now().Format(time.RFC3339),
+		Summary:     summary,
+		Records:     records,
+		Pagination: &models.PaginationInfo{
+			Total:   total,
+			Limit:   filter.Limit,
+			Offset:  filter.Offset,
+			HasMore: filter.Offset+filter.Limit < int(total),
+		},
+	}, nil
+}
+
+// GenerateGRNReport generates goods receipt note report
+func (s *ReportService) GenerateGRNReport(filter *models.GRNReportFilter) (*models.ReportResponse, error) {
+	s.logger.Info("Generating GRN report", zap.Any("filter", filter))
+
+	// Apply defaults
+	if filter.Limit == 0 {
+		filter.Limit = 50
+	}
+
+	// Build query
+	query := s.db.Model(&models.GRN{}).Select(`
+		goods_receipt_notes.id,
+		goods_receipt_notes.grn_number,
+		purchase_orders.po_number,
+		goods_receipt_notes.po_id,
+		purchase_orders.collaborator_id as vendor_id,
+		collaborators.company_name as vendor_name,
+		goods_receipt_notes.warehouse_id,
+		warehouses.name as warehouse_name,
+		goods_receipt_notes.received_date,
+		goods_receipt_notes.quality_status,
+		COUNT(DISTINCT grn_items.id) as item_count,
+		COALESCE(SUM(grn_items.received_quantity), 0) as total_received,
+		COALESCE(SUM(grn_items.accepted_quantity), 0) as total_accepted,
+		COALESCE(SUM(grn_items.rejected_quantity), 0) as total_rejected,
+		COALESCE(SUM(grn_items.received_quantity * purchase_order_items.unit_price), 0) as received_value,
+		COALESCE(SUM(grn_items.rejected_quantity * purchase_order_items.unit_price), 0) as rejected_value,
+		CASE
+			WHEN SUM(grn_items.received_quantity) > 0 THEN
+				(SUM(grn_items.accepted_quantity)::float / SUM(grn_items.received_quantity)::float * 100)
+			ELSE 0
+		END as acceptance_rate,
+		goods_receipt_notes.created_at,
+		goods_receipt_notes.updated_at
+	`).
+		Joins("JOIN purchase_orders ON purchase_orders.id = goods_receipt_notes.po_id").
+		Joins("JOIN collaborators ON collaborators.id = purchase_orders.collaborator_id").
+		Joins("JOIN warehouses ON warehouses.id = goods_receipt_notes.warehouse_id").
+		Joins("LEFT JOIN grn_items ON grn_items.grn_id = goods_receipt_notes.id").
+		Joins("LEFT JOIN purchase_order_items ON purchase_order_items.id = grn_items.po_item_id").
+		Group("goods_receipt_notes.id, purchase_orders.po_number, purchase_orders.collaborator_id, collaborators.company_name, warehouses.name")
+
+	// Apply filters
+	builder := utils.NewReportQueryBuilder(query)
+	builder.ApplyStringFilter("goods_receipt_notes.po_id", filter.POID)
+	builder.ApplyStringFilter("goods_receipt_notes.warehouse_id", filter.WarehouseID)
+	builder.ApplyStringFilter("purchase_orders.collaborator_id", filter.VendorID)
+	builder.ApplyStatusFilter("goods_receipt_notes.quality_status", filter.QualityStatus)
+	if filter.PONumber != "" {
+		builder.Build().Where("purchase_orders.po_number ILIKE ?", "%"+filter.PONumber+"%")
+	}
+	builder.ApplyDateFilter("goods_receipt_notes.received_date", filter.StartDate, filter.EndDate)
+
+	// Get total count
+	var total int64
+	if err := s.db.Model(&models.GRN{}).Count(&total).Error; err != nil {
+		s.logger.Error("Failed to count GRNs", zap.Error(err))
+		return nil, err
+	}
+
+	// Apply pagination
+	builder.ApplySorting(filter.SortBy, filter.SortOrder, "received_date DESC")
+	builder.ApplyPagination(filter.Limit, filter.Offset)
+
+	// Execute query
+	var records []models.GRNReportRecord
+	if err := builder.Build().Scan(&records).Error; err != nil {
+		s.logger.Error("Failed to fetch GRN records", zap.Error(err))
+		return nil, err
+	}
+
+	// Calculate summary
+	var summary models.GRNReportSummary
+	s.db.Model(&models.GRN{}).Count(&summary.TotalGRNs)
+
+	// Aggregate metrics
+	var aggregates struct {
+		TotalItems         int64
+		TotalReceivedValue float64
+		TotalRejectedValue float64
+		TotalAcceptedValue float64
+		TotalReceived      int64
+		TotalAccepted      int64
+	}
+	s.db.Model(&models.GRN{}).Select(`
+		COUNT(DISTINCT grn_items.id) as total_items,
+		COALESCE(SUM(grn_items.received_quantity * purchase_order_items.unit_price), 0) as total_received_value,
+		COALESCE(SUM(grn_items.rejected_quantity * purchase_order_items.unit_price), 0) as total_rejected_value,
+		COALESCE(SUM(grn_items.accepted_quantity * purchase_order_items.unit_price), 0) as total_accepted_value,
+		COALESCE(SUM(grn_items.received_quantity), 0) as total_received,
+		COALESCE(SUM(grn_items.accepted_quantity), 0) as total_accepted
+	`).
+		Joins("LEFT JOIN grn_items ON grn_items.grn_id = goods_receipt_notes.id").
+		Joins("LEFT JOIN purchase_order_items ON purchase_order_items.id = grn_items.po_item_id").
+		Scan(&aggregates)
+
+	summary.TotalItemCount = aggregates.TotalItems
+	summary.TotalReceivedValue = aggregates.TotalReceivedValue
+	summary.TotalRejectedValue = aggregates.TotalRejectedValue
+	summary.TotalAcceptedValue = aggregates.TotalAcceptedValue
+	if aggregates.TotalReceived > 0 {
+		summary.AverageAcceptanceRate = (float64(aggregates.TotalAccepted) / float64(aggregates.TotalReceived)) * 100
+	}
+
+	// Quality status breakdown
+	summary.ByQualityStatus = make(map[string]int64)
+	var statusCounts []struct {
+		QualityStatus string
+		Count         int64
+	}
+	s.db.Model(&models.GRN{}).Select("quality_status, COUNT(*) as count").Group("quality_status").Scan(&statusCounts)
+	for _, sc := range statusCounts {
+		summary.ByQualityStatus[sc.QualityStatus] = sc.Count
+	}
+
+	return &models.ReportResponse{
+		ReportType:  "grn",
 		GeneratedAt: time.Now().Format(time.RFC3339),
 		Summary:     summary,
 		Records:     records,

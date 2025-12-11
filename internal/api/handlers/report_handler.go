@@ -374,6 +374,56 @@ func (h *ReportHandler) GetReturnsReport(c *gin.Context) {
 	utils.OKResponse(c, "Report generated successfully", report)
 }
 
+// GetGRNReport handles GET /api/v1/reports/grn
+// @Summary Generate GRN Report
+// @Description Generate a goods receipt note report with filtering, pagination, and export options
+// @Tags Reports
+// @Produce json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/pdf
+// @Param format query string false "Output format: json, xlsx, pdf" Enums(json, xlsx, pdf) default(json)
+// @Param limit query integer false "Records per page (max: 500)" default(50)
+// @Param offset query integer false "Records to skip" default(0)
+// @Param po_id query string false "Filter by purchase order ID"
+// @Param po_number query string false "Search by PO number"
+// @Param vendor_id query string false "Filter by vendor/collaborator ID"
+// @Param warehouse_id query string false "Filter by warehouse ID"
+// @Param quality_status query []string false "Filter by quality status (comma-separated)"
+// @Param min_value query number false "Minimum received value"
+// @Param max_value query number false "Maximum received value"
+// @Param start_date query string false "Filter start date (YYYY-MM-DD)"
+// @Param end_date query string false "Filter end date (YYYY-MM-DD)"
+// @Success 200 {object} utils.Response{data=models.ReportResponse} "Report generated successfully"
+// @Failure 400 {object} utils.ErrorResponseModel "Invalid parameters"
+// @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
+// @Security BearerAuth
+// @Router /api/v1/reports/grn [get]
+func (h *ReportHandler) GetGRNReport(c *gin.Context) {
+	h.logger.Info("Handling GRN report request", zap.String("path", c.Request.URL.Path))
+
+	var filter models.GRNReportFilter
+	if err := c.ShouldBindQuery(&filter); err != nil {
+		h.logger.Error("Invalid filter parameters", zap.Error(err))
+		utils.BadRequestResponse(c, "Invalid filter parameters", err)
+		return
+	}
+
+	h.applyDefaults(&filter.BaseReportFilter)
+
+	report, err := h.reportService.GenerateGRNReport(&filter)
+	if err != nil {
+		h.logger.Error("Failed to generate GRN report", zap.Error(err))
+		utils.HandleServiceError(c, "Failed to generate report", err)
+		return
+	}
+
+	if filter.Format == "xlsx" || filter.Format == "pdf" {
+		h.handleExport(c, "grn", report, filter.Format)
+		return
+	}
+
+	utils.OKResponse(c, "Report generated successfully", report)
+}
+
 // applyDefaults applies default values to base report filter
 func (h *ReportHandler) applyDefaults(filter *models.BaseReportFilter) {
 	if filter.Limit == 0 {
@@ -447,5 +497,6 @@ func (h *ReportHandler) RegisterRoutes(router *gin.RouterGroup) {
 		reports.GET("/purchases", h.aaaMiddleware.RequireOrgPermission("report", "read"), h.GetPurchaseReport)
 		reports.GET("/sales", h.aaaMiddleware.RequireOrgPermission("report", "read"), h.GetSalesReport)
 		reports.GET("/returns", h.aaaMiddleware.RequireOrgPermission("report", "read"), h.GetReturnsReport)
+		reports.GET("/grn", h.aaaMiddleware.RequireOrgPermission("report", "read"), h.GetGRNReport)
 	}
 }
