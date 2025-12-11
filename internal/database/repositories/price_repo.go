@@ -28,6 +28,14 @@ func (r *ProductPriceRepository) Create(price *models.ProductPrice) error {
 	return nil
 }
 
+// CreateWithTx creates a new product price within a transaction
+func (r *ProductPriceRepository) CreateWithTx(tx *gorm.DB, price *models.ProductPrice) error {
+	if err := tx.Create(price).Error; err != nil {
+		return errors.NewInternalServerError(fmt.Sprintf("Failed to create product price: %v", err))
+	}
+	return nil
+}
+
 // GetByID retrieves a product price by ID
 func (r *ProductPriceRepository) GetByID(id string) (*models.ProductPrice, error) {
 	var price models.ProductPrice

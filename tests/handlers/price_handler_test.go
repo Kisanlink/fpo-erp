@@ -324,8 +324,8 @@ func TestPriceHandler_GetExpiredPrices_Success(t *testing.T) {
 			EffectiveTo:   &validTo,
 		},
 	}
-	mockService.On("GetExpiredPrices").
-		Return(expectedResponse, nil)
+	mockService.On("GetExpiredPricesPaginated", 50, 0).
+		Return(expectedResponse, int64(1), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/prices/expired", nil)
@@ -348,8 +348,8 @@ func TestPriceHandler_GetExpiredPrices_EmptyList(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
-	mockService.On("GetExpiredPrices").
-		Return([]models.ProductPriceResponse{}, nil)
+	mockService.On("GetExpiredPricesPaginated", 50, 0).
+		Return([]models.ProductPriceResponse{}, int64(0), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/prices/expired", nil)
@@ -389,8 +389,8 @@ func TestPriceHandler_GetVariantPrices_Success(t *testing.T) {
 			EffectiveFrom: validFrom,
 		},
 	}
-	mockService.On("GetVariantPrices", "PVAR00000001").
-		Return(expectedResponse, nil)
+	mockService.On("GetVariantPricesPaginated", "PVAR00000001", 50, 0).
+		Return(expectedResponse, int64(2), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/variants/PVAR00000001/prices", nil)
@@ -413,8 +413,8 @@ func TestPriceHandler_GetVariantPrices_EmptyList(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
-	mockService.On("GetVariantPrices", "PVAR00000001").
-		Return([]models.ProductPriceResponse{}, nil)
+	mockService.On("GetVariantPricesPaginated", "PVAR00000001", 50, 0).
+		Return([]models.ProductPriceResponse{}, int64(0), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/variants/PVAR00000001/prices", nil)

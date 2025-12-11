@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"kisanlink-erp/internal/constants"
+	"kisanlink-erp/internal/utils"
 
 	"github.com/Kisanlink/kisanlink-db/pkg/base"
 	"github.com/Kisanlink/kisanlink-db/pkg/core/hash"
@@ -242,16 +243,42 @@ func (d *Discount) statusAt(t time.Time) string {
 
 func (d *Discount) ToResponse() *DiscountResponse {
 	const tf = "2006-01-02T15:04:05Z07:00"
+
+	// Round float64 pointer fields
+	var maxDiscountAmount *float64
+	if d.MaxDiscountAmount != nil {
+		rounded := utils.RoundPrice(*d.MaxDiscountAmount)
+		maxDiscountAmount = &rounded
+	}
+
+	var minOrderValue *float64
+	if d.MinOrderValue != nil {
+		rounded := utils.RoundPrice(*d.MinOrderValue)
+		minOrderValue = &rounded
+	}
+
+	var maxOrderValue *float64
+	if d.MaxOrderValue != nil {
+		rounded := utils.RoundPrice(*d.MaxOrderValue)
+		maxOrderValue = &rounded
+	}
+
+	var getDiscountValue *float64
+	if d.GetDiscountValue != nil {
+		rounded := utils.RoundPrice(*d.GetDiscountValue)
+		getDiscountValue = &rounded
+	}
+
 	return &DiscountResponse{
 		ID:                   d.ID,
 		Code:                 d.Code,
 		Name:                 d.Name,
 		Description:          d.Description,
 		DiscountType:         d.DiscountType,
-		Value:                d.Value,
-		MaxDiscountAmount:    d.MaxDiscountAmount,
-		MinOrderValue:        d.MinOrderValue,
-		MaxOrderValue:        d.MaxOrderValue,
+		Value:                utils.RoundPrice(d.Value),
+		MaxDiscountAmount:    maxDiscountAmount,
+		MinOrderValue:        minOrderValue,
+		MaxOrderValue:        maxOrderValue,
 		ApplicableProducts:   d.ApplicableProducts,
 		ExcludedProducts:     d.ExcludedProducts,
 		ApplicableCategories: d.ApplicableCategories,
@@ -269,7 +296,7 @@ func (d *Discount) ToResponse() *DiscountResponse {
 		BuyQuantity:          d.BuyQuantity,
 		GetQuantity:          d.GetQuantity,
 		GetDiscountType:      d.GetDiscountType,
-		GetDiscountValue:     d.GetDiscountValue,
+		GetDiscountValue:     getDiscountValue,
 		CreatedAt:            d.CreatedAt.Format(tf),
 		UpdatedAt:            d.UpdatedAt.Format(tf),
 	}
@@ -282,7 +309,7 @@ func (du *DiscountUsage) ToResponse() *DiscountUsageResponse {
 		DiscountID: du.DiscountID,
 		SaleID:     du.SaleID,
 		UsedAt:     du.UsedAt.Format(tf),
-		Amount:     du.Amount,
+		Amount:     utils.RoundPrice(du.Amount),
 		CreatedAt:  du.CreatedAt.Format(tf),
 	}
 }

@@ -199,7 +199,9 @@ func FixtureInventoryTransactionWithID(id, batchID, transactionType string, quan
 
 func FixtureCollaborator(name string) *models.Collaborator {
 	contactNumber := "+91-9876543210"
-	collaborator := models.NewCollaborator(name, name, contactNumber, "ACC123456", "IFSC0001234", nil)
+	bankAccountNo := "ACC123456"
+	bankIFSC := "IFSC0001234"
+	collaborator := models.NewCollaborator(name, name, contactNumber, &bankAccountNo, &bankIFSC, nil)
 	collaborator.ID = "COLLAB-TEST-001"
 	return collaborator
 }

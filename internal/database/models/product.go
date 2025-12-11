@@ -46,14 +46,15 @@ func (Product) TableName() string {
 
 // ProductResponse represents the API response for product
 type ProductResponse struct {
-	ID            string                   `json:"id"`
-	Name          string                   `json:"name"`
-	Description   *string                  `json:"description"`
-	CategoryID    *string                  `json:"category_id,omitempty"`
-	SubcategoryID *string                  `json:"subcategory_id,omitempty"`
-	Variants      []ProductVariantResponse `json:"variants,omitempty"` // Preloaded variants with image URLs
-	CreatedAt     string                   `json:"created_at"`
-	UpdatedAt     string                   `json:"updated_at"`
+	ID                string                   `json:"id"`
+	Name              string                   `json:"name"`
+	Description       *string                  `json:"description"`
+	CategoryID        *string                  `json:"category_id,omitempty"`
+	SubcategoryID     *string                  `json:"subcategory_id,omitempty"`
+	Variants          []ProductVariantResponse `json:"variants,omitempty"`     // Preloaded variants with image URLs
+	AvailableQuantity *int64                   `json:"available_quantity,omitempty"` // Total inventory across all variants (only populated for quantity-based queries)
+	CreatedAt         string                   `json:"created_at"`
+	UpdatedAt         string                   `json:"updated_at"`
 }
 
 // CreateProductRequest represents the request to create a product

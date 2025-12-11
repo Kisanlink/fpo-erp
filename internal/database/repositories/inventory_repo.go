@@ -127,17 +127,42 @@ func (r *InventoryRepository) GetBatchesByVariantAndWarehouseOrderedByExpiry(var
 }
 
 // GetAllBatchesPaginated retrieves all inventory batches with warehouse and variant details (paginated)
+// By default, only returns non-expired batches (expiry_date > NOW())
+// Use GetAllBatchesPaginatedWithExpired to include expired batches
 func (r *InventoryRepository) GetAllBatchesPaginated(limit, offset int) ([]models.InventoryBatch, int64, error) {
 	var batches []models.InventoryBatch
 	var total int64
 
-	// Get total count
+	// Get total count - only non-expired batches
+	if err := r.db.Model(&models.InventoryBatch{}).Where("expiry_date > ?", time.Now()).Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count batches")
+	}
+
+	// Get paginated records - only non-expired batches
+	if err := r.db.Preload("Warehouse").Preload("Variant").
+		Where("expiry_date > ?", time.Now()).
+		Order("created_at DESC").
+		Limit(limit).Offset(offset).Find(&batches).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve all batches")
+	}
+	return batches, total, nil
+}
+
+// GetAllBatchesPaginatedWithExpired retrieves all inventory batches including expired ones (paginated)
+// This includes both expired and non-expired batches for full visibility
+func (r *InventoryRepository) GetAllBatchesPaginatedWithExpired(limit, offset int) ([]models.InventoryBatch, int64, error) {
+	var batches []models.InventoryBatch
+	var total int64
+
+	// Get total count - all batches including expired
 	if err := r.db.Model(&models.InventoryBatch{}).Count(&total).Error; err != nil {
 		return nil, 0, errors.NewInternalServerError("Failed to count batches")
 	}
 
-	// Get paginated records
-	if err := r.db.Preload("Warehouse").Preload("Variant").Order("created_at DESC").Limit(limit).Offset(offset).Find(&batches).Error; err != nil {
+	// Get paginated records - all batches including expired
+	if err := r.db.Preload("Warehouse").Preload("Variant").
+		Order("expiry_date ASC, created_at DESC"). // Sort expired first for visibility
+		Limit(limit).Offset(offset).Find(&batches).Error; err != nil {
 		return nil, 0, errors.NewInternalServerError("Failed to retrieve all batches")
 	}
 	return batches, total, nil

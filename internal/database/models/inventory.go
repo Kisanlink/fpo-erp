@@ -74,6 +74,8 @@ type InventoryBatchResponse struct {
 	TotalQuantity     int64   `json:"total_quantity"`
 	ReservedQuantity  int64   `json:"reserved_quantity"`
 	AvailableQuantity int64   `json:"available_quantity"`
+	IsExpired         bool    `json:"is_expired"`
+	ExpiryStatus      string  `json:"expiry_status"` // "fresh", "expiring_soon", "expired"
 
 	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"updated_at"`
@@ -98,6 +100,32 @@ type ProductAvailabilityResponse struct {
 
 	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"updated_at"`
+}
+
+// WarehouseAvailabilityDetail represents availability details for a specific warehouse
+type WarehouseAvailabilityDetail struct {
+	WarehouseID       string       `json:"warehouse_id"`
+	WarehouseName     string       `json:"warehouse_name"`
+	Address           *AddressInfo `json:"address,omitempty"`
+	Quantity          int64        `json:"quantity"`           // Available (non-expired) quantity
+	ExpiredQuantity   int64        `json:"expired_quantity"`   // Expired quantity (not available)
+	EarliestExpiry    string       `json:"earliest_expiry"`    // Earliest expiry date for this warehouse
+	ExpiryStatus      string       `json:"expiry_status"`      // "fresh", "expiring_soon", "expired"
+}
+
+// ProductAvailabilityGroupedResponse represents grouped availability by SKU across all warehouses
+// This is the correct response format for GET /api/v1/products/availability
+type ProductAvailabilityGroupedResponse struct {
+	SKU                string                        `json:"sku"`
+	VariantID          string                        `json:"variant_id"`
+	ProductName        string                        `json:"product_name"`
+	ProductDescription *string                       `json:"product_description,omitempty"`
+	TotalQuantity      int64                         `json:"total_quantity"`      // Total available (non-expired) quantity across all warehouses
+	ExpiredQuantity    int64                         `json:"expired_quantity"`    // Total expired quantity across all warehouses
+	EarliestExpiry     string                        `json:"earliest_expiry"`     // Earliest expiry date across all warehouses
+	ExpiryStatus       string                        `json:"expiry_status"`       // Overall status: "fresh", "expiring_soon", "expired"
+	WarehouseDetails   []WarehouseAvailabilityDetail `json:"warehouse_details"`   // Per-warehouse breakdown
+	Prices             []ProductPriceResponse        `json:"prices,omitempty"`    // Active prices for this variant
 }
 
 // InventoryTransactionResponse represents the API response for inventory transaction

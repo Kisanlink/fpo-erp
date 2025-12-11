@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"kisanlink-erp/internal/aaa"
+	_ "kisanlink-erp/internal/database/models" // Required for Swagger documentation
 	logger "kisanlink-erp/internal/interfaces"
 	"kisanlink-erp/internal/services/interfaces"
 	"kisanlink-erp/internal/utils"

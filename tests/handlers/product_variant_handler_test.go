@@ -445,8 +445,8 @@ func TestProductVariantHandler_GetVariantsByProduct_Success(t *testing.T) {
 			IsActive:    true,
 		},
 	}
-	mockService.On("GetVariantsByProduct", mock.Anything, "PROD00000001").
-		Return(expectedResponse, nil)
+	mockService.On("GetVariantsByProductPaginated", mock.Anything, "PROD00000001", 50, 0).
+		Return(expectedResponse, int64(2), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/products/PROD00000001/variants", nil)
@@ -474,8 +474,8 @@ func TestProductVariantHandler_GetVariantsByProduct_EmptyList(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
-	mockService.On("GetVariantsByProduct", mock.Anything, "PROD00000001").
-		Return([]models.ProductVariantResponse{}, nil)
+	mockService.On("GetVariantsByProductPaginated", mock.Anything, "PROD00000001", 50, 0).
+		Return([]models.ProductVariantResponse{}, int64(0), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/products/PROD00000001/variants", nil)

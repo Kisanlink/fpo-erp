@@ -10,6 +10,7 @@ import (
 	"kisanlink-erp/internal/database/repositories"
 	"kisanlink-erp/internal/errors"
 	"kisanlink-erp/internal/interfaces"
+	"kisanlink-erp/internal/utils"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -93,8 +94,18 @@ func (s *PurchaseOrderService) CreatePurchaseOrder(ctx context.Context, request 
 		return nil, err
 	}
 
-	// Determine inter-state status by comparing collaborator and warehouse states
-	isInterState := s.determineInterState(ctx, collaborator.AddressID, warehouse.AddressID, jwtToken)
+	// Determine inter-state status
+	// Priority: 1) User-provided value, 2) AAA auto-detection, 3) Default to intra-state
+	var isInterState *bool
+	if request.IsInterState != nil {
+		// User explicitly specified - use their value
+		isInterState = request.IsInterState
+		s.logger.Info("Using user-specified inter-state flag",
+			zap.Bool("is_inter_state", *request.IsInterState))
+	} else {
+		// Try auto-detection from AAA address service
+		isInterState = s.determineInterState(ctx, collaborator.AddressID, warehouse.AddressID, jwtToken)
+	}
 
 	// Parse dates
 	var orderDate time.Time
@@ -184,7 +195,7 @@ func (s *PurchaseOrderService) CreatePurchaseOrder(ctx context.Context, request 
 			gstRate := variant.GSTRate // Get GST rate from variant (e.g., 18.0 for 18%)
 			gstBreakdown := calculateGSTBreakdown(itemReq.UnitPrice, gstRate, isInterState)
 
-			// Set GST fields on item
+			// Set per-unit GST fields on item
 			item.BasePrice = gstBreakdown.BasePrice
 			item.GSTRate = gstBreakdown.GSTRate
 			item.GSTAmount = gstBreakdown.GSTAmount
@@ -194,6 +205,13 @@ func (s *PurchaseOrderService) CreatePurchaseOrder(ctx context.Context, request 
 			item.SGSTAmount = gstBreakdown.SGSTAmount
 			item.IGSTRate = gstBreakdown.IGSTRate
 			item.IGSTAmount = gstBreakdown.IGSTAmount
+
+			// Calculate total GST amounts (per-unit × quantity)
+			quantityFloat := float64(itemReq.Quantity)
+			item.GSTAmountTotal = gstBreakdown.GSTAmount * quantityFloat
+			item.CGSTAmountTotal = gstBreakdown.CGSTAmount * quantityFloat
+			item.SGSTAmountTotal = gstBreakdown.SGSTAmount * quantityFloat
+			item.IGSTAmountTotal = gstBreakdown.IGSTAmount * quantityFloat
 
 			if err := s.poRepo.CreateItemWithTx(tx, item); err != nil {
 				return err
@@ -452,8 +470,16 @@ func (s *PurchaseOrderService) UpdatePurchaseOrderStatus(ctx context.Context, id
 
 	// Traditional flow: Just update status without auto-GRN
 	po.Status = request.Status
+
 	if request.Status == "delivered" {
 		po.ActualDelivery = &actualDelivery
+	}
+
+	// When Status transitions to "paid", ensure PaymentStatus is also "paid"
+	// This maintains logical consistency between workflow and payment status
+	if request.Status == "paid" {
+		po.PaymentStatus = "paid"
+		po.PaidAmount = po.TotalAmount
 	}
 
 	// Save to database
@@ -922,9 +948,17 @@ func (s *PurchaseOrderService) buildPurchaseOrderResponse(po *models.PurchaseOrd
 		response.ActualDelivery = &actualDelivery
 	}
 
-	// Add items
+	// Add items and calculate PO-level GST totals
 	var items []models.PurchaseOrderItemResponse
+	var totalBaseAmount, totalGSTAmount, totalCGSTAmount, totalSGSTAmount, totalIGSTAmount float64
 	for _, item := range po.Items {
+		// Accumulate GST totals from each item
+		totalBaseAmount += item.BasePrice * float64(item.Quantity)
+		totalGSTAmount += item.GSTAmountTotal
+		totalCGSTAmount += item.CGSTAmountTotal
+		totalSGSTAmount += item.SGSTAmountTotal
+		totalIGSTAmount += item.IGSTAmountTotal
+
 		items = append(items, models.PurchaseOrderItemResponse{
 			ID:               item.ID,
 			POID:             item.POID,
@@ -932,72 +966,102 @@ func (s *PurchaseOrderService) buildPurchaseOrderResponse(po *models.PurchaseOrd
 			ProductName:      item.ProductName,
 			ProductSKU:       item.ProductSKU,
 			Quantity:         item.Quantity,
-			UnitPrice:        item.UnitPrice,
-			LineTotal:        item.LineTotal,
+			UnitPrice:        utils.RoundPrice(item.UnitPrice),
+			LineTotal:        utils.RoundPrice(item.LineTotal),
 			ReceivedQuantity: item.ReceivedQuantity,
-			// GST Breakdown
-			BasePrice:  item.BasePrice,
-			GSTRate:    item.GSTRate,
-			GSTAmount:  item.GSTAmount,
-			CGSTRate:   item.CGSTRate,
-			CGSTAmount: item.CGSTAmount,
-			SGSTRate:   item.SGSTRate,
-			SGSTAmount: item.SGSTAmount,
-			IGSTRate:   item.IGSTRate,
-			IGSTAmount: item.IGSTAmount,
-			CreatedAt:  item.CreatedAt.UTC().Format(time.RFC3339),
+			// Per-unit GST Breakdown
+			BasePrice:  utils.RoundPrice(item.BasePrice),
+			GSTRate:    utils.RoundPrice(item.GSTRate),
+			GSTAmount:  utils.RoundPrice(item.GSTAmount),
+			CGSTRate:   utils.RoundPrice(item.CGSTRate),
+			CGSTAmount: utils.RoundPrice(item.CGSTAmount),
+			SGSTRate:   utils.RoundPrice(item.SGSTRate),
+			SGSTAmount: utils.RoundPrice(item.SGSTAmount),
+			IGSTRate:   utils.RoundPrice(item.IGSTRate),
+			IGSTAmount: utils.RoundPrice(item.IGSTAmount),
+			// Total GST Breakdown
+			GSTAmountTotal:  utils.RoundPrice(item.GSTAmountTotal),
+			CGSTAmountTotal: utils.RoundPrice(item.CGSTAmountTotal),
+			SGSTAmountTotal: utils.RoundPrice(item.SGSTAmountTotal),
+			IGSTAmountTotal: utils.RoundPrice(item.IGSTAmountTotal),
+			CreatedAt:       item.CreatedAt.UTC().Format(time.RFC3339),
 		})
 	}
 	response.Items = items
+
+	// Set PO-level GST totals (rounded)
+	response.TotalBaseAmount = utils.RoundPrice(totalBaseAmount)
+	response.TotalGSTAmount = utils.RoundPrice(totalGSTAmount)
+	response.TotalCGSTAmount = utils.RoundPrice(totalCGSTAmount)
+	response.TotalSGSTAmount = utils.RoundPrice(totalSGSTAmount)
+	response.TotalIGSTAmount = utils.RoundPrice(totalIGSTAmount)
 
 	return response, nil
 }
 
 // determineInterState determines if a PO is inter-state by comparing collaborator and warehouse states
-// Returns: true = inter-state (IGST), false = intra-state (CGST+SGST), nil = unknown (fallback to total GST only)
+// Returns: true = inter-state (IGST), false = intra-state (CGST+SGST)
+// Defaults to intra-state (false) when state info cannot be determined to ensure GST is always split
 func (s *PurchaseOrderService) determineInterState(ctx context.Context, collaboratorAddressID, warehouseAddressID *string, jwtToken string) *bool {
-	// If address client is not available, return nil (unknown)
+	// Default to intra-state (same state) for GST split
+	// This ensures CGST/SGST are always calculated rather than showing 0
+	defaultIntraState := false
+
+	// If address client is not available, default to intra-state
 	if s.addressClient == nil {
-		s.logger.Debug("Address client not available, inter-state status unknown")
-		return nil
+		s.logger.Warn("Address client not available, defaulting to intra-state for GST calculation",
+			zap.String("reason", "address_client_nil"))
+		return &defaultIntraState
 	}
 
-	// If either address ID is missing, return nil (unknown)
+	// If collaborator address ID is missing, default to intra-state
 	if collaboratorAddressID == nil || *collaboratorAddressID == "" {
-		s.logger.Debug("Collaborator address ID missing, inter-state status unknown")
-		return nil
+		s.logger.Warn("Collaborator address ID missing, defaulting to intra-state for GST calculation",
+			zap.String("reason", "collaborator_address_id_missing"))
+		return &defaultIntraState
 	}
+
+	// If warehouse address ID is missing, default to intra-state
 	if warehouseAddressID == nil || *warehouseAddressID == "" {
-		s.logger.Debug("Warehouse address ID missing, inter-state status unknown")
-		return nil
+		s.logger.Warn("Warehouse address ID missing, defaulting to intra-state for GST calculation",
+			zap.String("reason", "warehouse_address_id_missing"))
+		return &defaultIntraState
 	}
 
 	// Get collaborator address from AAA
 	collaboratorAddr, err := s.addressClient.GetAddress(ctx, *collaboratorAddressID, jwtToken)
 	if err != nil {
-		s.logger.Warn("Failed to get collaborator address from AAA",
+		s.logger.Warn("Failed to get collaborator address from AAA, defaulting to intra-state for GST calculation",
 			zap.Error(err),
-			zap.String("address_id", *collaboratorAddressID))
-		return nil
+			zap.String("address_id", *collaboratorAddressID),
+			zap.String("reason", "aaa_collaborator_address_fetch_failed"))
+		return &defaultIntraState
 	}
 
 	// Get warehouse address from AAA
 	warehouseAddr, err := s.addressClient.GetAddress(ctx, *warehouseAddressID, jwtToken)
 	if err != nil {
-		s.logger.Warn("Failed to get warehouse address from AAA",
+		s.logger.Warn("Failed to get warehouse address from AAA, defaulting to intra-state for GST calculation",
 			zap.Error(err),
-			zap.String("address_id", *warehouseAddressID))
-		return nil
+			zap.String("address_id", *warehouseAddressID),
+			zap.String("reason", "aaa_warehouse_address_fetch_failed"))
+		return &defaultIntraState
 	}
 
-	// Check if states are available
+	// Check if collaborator state is available
 	if collaboratorAddr.State == nil || *collaboratorAddr.State == "" {
-		s.logger.Debug("Collaborator state not available, inter-state status unknown")
-		return nil
+		s.logger.Warn("Collaborator state not available in AAA address, defaulting to intra-state for GST calculation",
+			zap.String("collaborator_address_id", *collaboratorAddressID),
+			zap.String("reason", "collaborator_state_empty"))
+		return &defaultIntraState
 	}
+
+	// Check if warehouse state is available
 	if warehouseAddr.State == nil || *warehouseAddr.State == "" {
-		s.logger.Debug("Warehouse state not available, inter-state status unknown")
-		return nil
+		s.logger.Warn("Warehouse state not available in AAA address, defaulting to intra-state for GST calculation",
+			zap.String("warehouse_address_id", *warehouseAddressID),
+			zap.String("reason", "warehouse_state_empty"))
+		return &defaultIntraState
 	}
 
 	// Compare states (case-insensitive)
@@ -1005,7 +1069,7 @@ func (s *PurchaseOrderService) determineInterState(ctx context.Context, collabor
 	warehouseState := *warehouseAddr.State
 
 	isInterState := collaboratorState != warehouseState
-	s.logger.Debug("Inter-state determination complete",
+	s.logger.Info("Inter-state determination complete",
 		zap.String("collaborator_state", collaboratorState),
 		zap.String("warehouse_state", warehouseState),
 		zap.Bool("is_inter_state", isInterState))

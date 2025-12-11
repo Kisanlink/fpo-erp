@@ -235,24 +235,50 @@ func (s *InvoiceService) buildLineItems(sale *models.Sale) ([]InvoiceLineItem, e
 	return items, nil
 }
 
-// getLogoFromURL fetches logo bytes directly from a URL
-func (s *InvoiceService) getLogoFromURL(ctx context.Context, logoURL string) ([]byte, string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, logoURL, nil)
+// getLogoFromURL fetches logo bytes from attachment ID or direct URL
+func (s *InvoiceService) getLogoFromURL(ctx context.Context, logoValue string) ([]byte, string, error) {
+	// Check if logoValue is an attachment ID (starts with "ATCH_")
+	if strings.HasPrefix(logoValue, "ATCH_") {
+		// Look up attachment in database
+		attachment, err := s.attachmentRepo.GetByID(logoValue)
+		if err != nil {
+			s.logger.Warn("Failed to get attachment", "id", logoValue, "error", err)
+			return nil, "", nil // Silent fail, invoice still generates without logo
+		}
+
+		// Generate presigned URL from S3
+		presignedURL, err := s.s3Service.GeneratePresignedURL(ctx, attachment.FilePath, 1*time.Hour)
+		if err != nil {
+			s.logger.Warn("Failed to generate presigned URL", "path", attachment.FilePath, "error", err)
+			return nil, "", nil
+		}
+
+		// Fetch logo from presigned URL
+		return s.fetchLogoFromHTTP(ctx, presignedURL)
+	}
+
+	// Fallback: treat as direct URL (backward compatibility)
+	return s.fetchLogoFromHTTP(ctx, logoValue)
+}
+
+// fetchLogoFromHTTP fetches logo bytes from an HTTP URL
+func (s *InvoiceService) fetchLogoFromHTTP(ctx context.Context, url string) ([]byte, string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		s.logger.Warn("Failed to create logo request", "url", logoURL, "error", err)
+		s.logger.Warn("Failed to create logo request", "url", url, "error", err)
 		return nil, "", nil
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		s.logger.Warn("Failed to fetch logo from URL", "url", logoURL, "error", err)
+		s.logger.Warn("Failed to fetch logo from URL", "url", url, "error", err)
 		return nil, "", nil
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		s.logger.Warn("Logo URL returned non-200 status", "url", logoURL, "status", resp.StatusCode)
+		s.logger.Warn("Logo URL returned non-200 status", "url", url, "status", resp.StatusCode)
 		return nil, "", nil
 	}
 
@@ -518,10 +544,12 @@ func (s *InvoiceService) renderReceiverSection(pdf *gofpdf.Fpdf, sale *models.Sa
 	}
 	pdf.CellFormat(190, 6, customerName, "LR", 1, "L", false, 0, "")
 
-	// Customer Phone
+	// Customer Phone (always render for consistent layout)
+	phoneText := "N/A"
 	if sale.CustomerPhone != nil && *sale.CustomerPhone != "" {
-		pdf.CellFormat(190, 6, fmt.Sprintf("Phone: %s", *sale.CustomerPhone), "LR", 1, "L", false, 0, "")
+		phoneText = *sale.CustomerPhone
 	}
+	pdf.CellFormat(190, 6, fmt.Sprintf("Phone: %s", phoneText), "LR", 1, "L", false, 0, "")
 
 	// Member status
 	memberStatus := "Non-Member"

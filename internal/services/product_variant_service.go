@@ -4,14 +4,18 @@ import (
 	"kisanlink-erp/internal/interfaces"
 
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 
 	"context"
 	"encoding/json"
+	"fmt"
+	"strconv"
 	"time"
 
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/database/repositories"
 	"kisanlink-erp/internal/errors"
+	"kisanlink-erp/internal/utils"
 )
 
 // ProductVariantService handles product variant business logic
@@ -114,46 +118,88 @@ func (s *ProductVariantService) CreateProductVariant(ctx context.Context, produc
 		variant.Images = &imagesStr
 	}
 
-	// Save to database
-	s.logger.Debug("Saving variant to database")
-	if err := s.variantRepo.Create(variant); err != nil {
-		s.logger.Error("Failed to create variant",
-			zap.Error(err))
-		return nil, err
-	}
-	s.logger.Info("Product variant created successfully",
-		zap.String("variant_id", variant.ID))
+	// Save variant and prices atomically in a transaction
+	s.logger.Debug("Saving variant and prices to database")
+	err = s.variantRepo.WithTransaction(func(tx *gorm.DB) error {
+		// Create variant
+		if err := s.variantRepo.CreateWithTx(tx, variant); err != nil {
+			s.logger.Error("Failed to create variant in transaction",
+				zap.Error(err))
+			return err
+		}
 
-	// Create ProductPrice records for each price in request
-	if len(request.Prices) > 0 && s.priceRepo != nil {
-		for _, price := range request.Prices {
-			currency := price.Currency
-			if currency == "" {
-				currency = "INR"
-			}
-			isActive := true
-			productPrice := models.NewProductPrice(
-				variant.ID,
-				price.PriceType,
-				price.Price,
-				currency,
-				time.Now(),
-				nil,
-				&isActive,
-			)
-			if err := s.priceRepo.Create(productPrice); err != nil {
-				s.logger.Error("Failed to create price record",
-					zap.Error(err),
-					zap.String("variant_id", variant.ID),
-					zap.String("price_type", price.PriceType))
-				// Log and continue - don't fail variant creation for price errors
-			} else {
+		// Create ProductPrice records for each price in request
+		if len(request.Prices) > 0 && s.priceRepo != nil {
+			for _, price := range request.Prices {
+				// Validate price is positive
+				if price.Price <= 0 {
+					err := fmt.Errorf("price must be greater than 0 for type %s", price.PriceType)
+					s.logger.Error("Invalid price value",
+						zap.Error(err),
+						zap.String("price_type", price.PriceType),
+						zap.Float64("price", price.Price))
+					return errors.NewValidationError(err.Error())
+				}
+
+				// Set defaults
+				currency := price.Currency
+				if currency == "" {
+					currency = "INR"
+				}
+
+				isActive := true
+				if price.IsActive != nil {
+					isActive = *price.IsActive
+				}
+
+				// Parse effective dates
+				effectiveFrom := time.Now()
+				if price.EffectiveFrom != nil {
+					if parsed, err := time.Parse("2006-01-02", *price.EffectiveFrom); err == nil {
+						effectiveFrom = parsed
+					}
+				}
+
+				var effectiveTo *time.Time
+				if price.EffectiveTo != nil {
+					if parsed, err := time.Parse("2006-01-02", *price.EffectiveTo); err == nil {
+						effectiveTo = &parsed
+					}
+				}
+
+				productPrice := models.NewProductPrice(
+					variant.ID,
+					price.PriceType,
+					price.Price,
+					currency,
+					effectiveFrom,
+					effectiveTo,
+					&isActive,
+				)
+				if err := s.priceRepo.CreateWithTx(tx, productPrice); err != nil {
+					s.logger.Error("Failed to create price record in transaction",
+						zap.Error(err),
+						zap.String("variant_id", variant.ID),
+						zap.String("price_type", price.PriceType))
+					return fmt.Errorf("failed to create price for type %s: %w", price.PriceType, err)
+				}
 				s.logger.Debug("Price record created",
 					zap.String("price_id", productPrice.ID),
 					zap.String("price_type", price.PriceType))
 			}
 		}
+
+		return nil
+	})
+
+	if err != nil {
+		s.logger.Error("Transaction failed",
+			zap.Error(err))
+		return nil, err
 	}
+
+	s.logger.Info("Product variant created successfully",
+		zap.String("variant_id", variant.ID))
 
 	return s.buildProductVariantResponse(ctx, variant, product)
 }
@@ -341,52 +387,6 @@ func (s *ProductVariantService) UpdateProductVariant(ctx context.Context, id str
 	if request.Barcode != nil {
 		variant.Barcode = request.Barcode
 	}
-	if request.Prices != nil && s.priceRepo != nil {
-		// Validate prices before updating
-		if err := s.validatePrices(*request.Prices); err != nil {
-			s.logger.Error("Price validation failed during update",
-				zap.Error(err))
-			return nil, err
-		}
-		// Update prices in product_prices table
-		for _, price := range *request.Prices {
-			currency := price.Currency
-			if currency == "" {
-				currency = "INR"
-			}
-			// Try to get existing price for this type
-			existingPrice, err := s.priceRepo.GetCurrentPrice(variant.ID, price.PriceType)
-			if err == nil && existingPrice != nil {
-				// Update existing price
-				existingPrice.Price = price.Price
-				existingPrice.Currency = currency
-				if err := s.priceRepo.Update(existingPrice); err != nil {
-					s.logger.Error("Failed to update price record",
-						zap.Error(err),
-						zap.String("variant_id", variant.ID),
-						zap.String("price_type", price.PriceType))
-				}
-			} else {
-				// Create new price record
-				isActive := true
-				productPrice := models.NewProductPrice(
-					variant.ID,
-					price.PriceType,
-					price.Price,
-					currency,
-					time.Now(),
-					nil,
-					&isActive,
-				)
-				if err := s.priceRepo.Create(productPrice); err != nil {
-					s.logger.Error("Failed to create price record",
-						zap.Error(err),
-						zap.String("variant_id", variant.ID),
-						zap.String("price_type", price.PriceType))
-				}
-			}
-		}
-	}
 	if request.IsActive != nil {
 		variant.IsActive = *request.IsActive
 	}
@@ -418,13 +418,100 @@ func (s *ProductVariantService) UpdateProductVariant(ctx context.Context, id str
 		variant.CollaboratorIDs = *request.CollaboratorIDs
 	}
 
-	// Save to database
-	s.logger.Debug("Saving updated variant")
-	if err := s.variantRepo.Update(variant); err != nil {
-		s.logger.Error("Failed to update variant",
+	// Wrap variant update and price updates in a transaction
+	s.logger.Debug("Updating variant and prices in transaction")
+	err = s.variantRepo.WithTransaction(func(tx *gorm.DB) error {
+		// Update variant using tx.Save() directly
+		if err := tx.Save(variant).Error; err != nil {
+			s.logger.Error("Failed to update variant in transaction",
+				zap.Error(err))
+			return errors.NewInternalServerError("Failed to update product variant")
+		}
+
+		// Update prices if provided
+		if request.Prices != nil && s.priceRepo != nil {
+			// Validate prices before updating
+			if err := s.validatePrices(*request.Prices); err != nil {
+				s.logger.Error("Price validation failed during update",
+					zap.Error(err))
+				return err
+			}
+
+			// Update prices in product_prices table
+			for _, price := range *request.Prices {
+				// Set defaults
+				currency := price.Currency
+				if currency == "" {
+					currency = "INR"
+				}
+
+				isActive := true
+				if price.IsActive != nil {
+					isActive = *price.IsActive
+				}
+
+				// Parse effective dates
+				effectiveFrom := time.Now()
+				if price.EffectiveFrom != nil {
+					if parsed, err := time.Parse("2006-01-02", *price.EffectiveFrom); err == nil {
+						effectiveFrom = parsed
+					}
+				}
+
+				var effectiveTo *time.Time
+				if price.EffectiveTo != nil {
+					if parsed, err := time.Parse("2006-01-02", *price.EffectiveTo); err == nil {
+						effectiveTo = &parsed
+					}
+				}
+
+				// Try to get existing price for this type
+				existingPrice, err := s.priceRepo.GetCurrentPrice(variant.ID, price.PriceType)
+				if err == nil && existingPrice != nil {
+					// Update existing price using tx.Save() directly
+					existingPrice.Price = price.Price
+					existingPrice.Currency = currency
+					existingPrice.EffectiveFrom = effectiveFrom
+					existingPrice.EffectiveTo = effectiveTo
+					existingPrice.IsActive = &isActive
+					if err := tx.Save(existingPrice).Error; err != nil {
+						s.logger.Error("Failed to update price record in transaction",
+							zap.Error(err),
+							zap.String("variant_id", variant.ID),
+							zap.String("price_type", price.PriceType))
+						return fmt.Errorf("failed to update price for type %s: %w", price.PriceType, err)
+					}
+				} else {
+					// Create new price record using CreateWithTx
+					productPrice := models.NewProductPrice(
+						variant.ID,
+						price.PriceType,
+						price.Price,
+						currency,
+						effectiveFrom,
+						effectiveTo,
+						&isActive,
+					)
+					if err := s.priceRepo.CreateWithTx(tx, productPrice); err != nil {
+						s.logger.Error("Failed to create price record in transaction",
+							zap.Error(err),
+							zap.String("variant_id", variant.ID),
+							zap.String("price_type", price.PriceType))
+						return fmt.Errorf("failed to create price for type %s: %w", price.PriceType, err)
+					}
+				}
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		s.logger.Error("Transaction failed",
 			zap.Error(err))
 		return nil, err
 	}
+
 	s.logger.Info("Product variant updated successfully",
 		zap.String("variant_id", id))
 
@@ -495,8 +582,10 @@ func (s *ProductVariantService) validatePrices(prices []models.VariantPrice) err
 	}
 
 	validPriceTypes := map[string]bool{
-		models.PriceTypeMRP: true,
-		models.PriceTypeMSP: true,
+		models.PriceTypeMRP:    true,
+		models.PriceTypeMSP:    true,
+		models.PriceTypeMember: true,
+		models.PriceTypeRetail: true,
 	}
 
 	priceTypeSeen := make(map[string]bool)
@@ -504,7 +593,7 @@ func (s *ProductVariantService) validatePrices(prices []models.VariantPrice) err
 	for i, price := range prices {
 		// Validate price_type
 		if !validPriceTypes[price.PriceType] {
-			return errors.NewValidationError("Invalid price_type at index " + string(rune(i)) + ": must be 'MRP' or 'MSP'")
+			return errors.NewValidationError("Invalid price_type at index " + strconv.Itoa(i) + ": must be 'MRP', 'MSP', 'member', or 'retail'")
 		}
 
 		// Check for duplicate price types
@@ -518,9 +607,27 @@ func (s *ProductVariantService) validatePrices(prices []models.VariantPrice) err
 			return errors.NewValidationError("Price must be greater than 0 for " + price.PriceType)
 		}
 
-		// Validate currency is not empty
-		if price.Currency == "" {
-			return errors.NewValidationError("Currency is required for " + price.PriceType)
+		// Validate effective_from date format if provided
+		if price.EffectiveFrom != nil {
+			if _, err := time.Parse("2006-01-02", *price.EffectiveFrom); err != nil {
+				return errors.NewValidationError("Invalid effective_from date format at index " + strconv.Itoa(i) + ": must be YYYY-MM-DD")
+			}
+		}
+
+		// Validate effective_to date format if provided
+		if price.EffectiveTo != nil {
+			if _, err := time.Parse("2006-01-02", *price.EffectiveTo); err != nil {
+				return errors.NewValidationError("Invalid effective_to date format at index " + strconv.Itoa(i) + ": must be YYYY-MM-DD")
+			}
+		}
+
+		// Validate effective_to > effective_from if both provided
+		if price.EffectiveFrom != nil && price.EffectiveTo != nil {
+			effectiveFrom, _ := time.Parse("2006-01-02", *price.EffectiveFrom)
+			effectiveTo, _ := time.Parse("2006-01-02", *price.EffectiveTo)
+			if !effectiveTo.After(effectiveFrom) {
+				return errors.NewValidationError("effective_to must be after effective_from at index " + strconv.Itoa(i))
+			}
 		}
 	}
 
@@ -567,7 +674,7 @@ func (s *ProductVariantService) buildProductVariantResponse(ctx context.Context,
 					ID:            price.ID,
 					VariantID:     price.VariantID,
 					PriceType:     price.PriceType,
-					Price:         price.Price,
+					Price:         utils.RoundPrice(price.Price),
 					Currency:      price.Currency,
 					EffectiveFrom: price.EffectiveFrom.Format(time.RFC3339),
 					EffectiveTo:   &effectiveTo,

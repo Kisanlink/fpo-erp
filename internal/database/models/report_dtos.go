@@ -218,7 +218,8 @@ type VendorReportRecord struct {
 
 // CustomerReportRecord for customer report rows
 type CustomerReportRecord struct {
-	CustomerID       string  `json:"customer_id"`
+	CustomerPhone    string  `json:"customer_phone"`
+	CustomerName     *string `json:"customer_name,omitempty"`
 	TotalPurchases   int64   `json:"total_purchases"`
 	TotalAmount      float64 `json:"total_amount"`
 	LastPurchaseDate string  `json:"last_purchase_date"`
