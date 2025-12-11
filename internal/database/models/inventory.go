@@ -126,6 +126,12 @@ type ProductAvailabilityGroupedResponse struct {
 	ExpiryStatus       string                        `json:"expiry_status"`     // Overall status: "fresh", "expiring_soon", "expired"
 	WarehouseDetails   []WarehouseAvailabilityDetail `json:"warehouse_details"` // Per-warehouse breakdown
 	Prices             []ProductPriceResponse        `json:"prices,omitempty"`  // Active prices for this variant
+
+	// GST Details (Issue 3)
+	HSNCode  string  `json:"hsn_code"`   // HSN code for GST classification
+	GSTRate  float64 `json:"gst_rate"`   // GST rate (0, 5, 12, 18, 28)
+	CGSTRate float64 `json:"cgst_rate"`  // Central GST rate (GSTRate / 2)
+	SGSTRate float64 `json:"sgst_rate"`  // State GST rate (GSTRate / 2)
 }
 
 // InventoryTransactionResponse represents the API response for inventory transaction

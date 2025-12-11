@@ -447,11 +447,17 @@ func (s *InventoryService) GetAllProductsAvailability(ctx context.Context, jwtTo
 
 		// Initialize variant entry if not exists
 		if _, exists := variantMap[sku]; !exists {
+			gstRate := batch.Variant.GSTRate
 			variantMap[sku] = &variantAvailability{
 				VariantID:          batch.VariantID,
 				ProductName:        batch.Variant.VariantName,
 				ProductDescription: batch.Variant.Description,
 				WarehouseDetails:   make(map[string]*warehouseDetail),
+				// GST Details
+				HSNCode:  batch.Variant.HSNCode,
+				GSTRate:  gstRate,
+				CGSTRate: gstRate / 2,
+				SGSTRate: gstRate / 2,
 			}
 		}
 
@@ -496,6 +502,11 @@ func (s *InventoryService) GetAllProductsAvailability(ctx context.Context, jwtTo
 			ProductName:        variantData.ProductName,
 			ProductDescription: variantData.ProductDescription,
 			WarehouseDetails:   []models.WarehouseAvailabilityDetail{},
+			// GST Details
+			HSNCode:  variantData.HSNCode,
+			GSTRate:  variantData.GSTRate,
+			CGSTRate: variantData.CGSTRate,
+			SGSTRate: variantData.SGSTRate,
 		}
 
 		// Process warehouse details
@@ -615,6 +626,11 @@ type variantAvailability struct {
 	ProductName        string
 	ProductDescription *string
 	WarehouseDetails   map[string]*warehouseDetail
+	// GST Details
+	HSNCode  string
+	GSTRate  float64
+	CGSTRate float64
+	SGSTRate float64
 }
 
 type warehouseDetail struct {

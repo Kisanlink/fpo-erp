@@ -82,3 +82,44 @@
 
 ---
 
+## Issue 3: Availability GST Details
+
+**Type**: Enhancement
+
+**Changes**:
+- `GET /api/v1/products/availability` - Added GST details to response
+- New fields: `hsn_code`, `gst_rate`, `cgst_rate`, `sgst_rate`
+- CGST and SGST rates are automatically calculated as GSTRate / 2
+
+**Response Change**:
+```json
+// BEFORE
+{
+  "sku": "SKU-VEG-00000001",
+  "variant_id": "PVAR00000001",
+  "product_name": "Tomato 1kg",
+  "total_quantity": 100,
+  "warehouse_details": [...]
+}
+
+// AFTER
+{
+  "sku": "SKU-VEG-00000001",
+  "variant_id": "PVAR00000001",
+  "product_name": "Tomato 1kg",
+  "total_quantity": 100,
+  "warehouse_details": [...],
+  "hsn_code": "07020000",    // NEW - HSN code for GST classification
+  "gst_rate": 5.0,           // NEW - Total GST rate (0, 5, 12, 18, 28)
+  "cgst_rate": 2.5,          // NEW - Central GST rate (gst_rate / 2)
+  "sgst_rate": 2.5           // NEW - State GST rate (gst_rate / 2)
+}
+```
+
+**Usage**:
+- Use `hsn_code` for GST invoice generation
+- Use `cgst_rate` and `sgst_rate` for intra-state sales
+- For inter-state sales, use `gst_rate` as IGST
+
+---
+
