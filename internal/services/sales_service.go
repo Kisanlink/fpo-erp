@@ -637,6 +637,49 @@ func (s *SalesService) DeleteSale(id string) error {
 	return s.salesRepo.DeleteSale(id)
 }
 
+// PatchSale partially updates a sale (Issue 9)
+// Only updates provided fields: payment_mode, sale_type, customer_phone, customer_name
+func (s *SalesService) PatchSale(id string, req *models.PatchSaleRequest) (*models.SaleResponse, error) {
+	s.logger.Info("Patching sale",
+		zap.String("sale_id", id))
+
+	// Get existing sale
+	sale, err := s.salesRepo.GetSaleByID(id)
+	if err != nil {
+		s.logger.Error("Failed to get sale for patching",
+			zap.Error(err),
+			zap.String("sale_id", id))
+		return nil, errors.NewNotFoundError("Sale not found")
+	}
+
+	// Only update provided fields
+	if req.PaymentMode != nil {
+		sale.PaymentMode = *req.PaymentMode
+	}
+	if req.SaleType != nil {
+		sale.SaleType = *req.SaleType
+	}
+	if req.CustomerPhone != nil {
+		sale.CustomerPhone = req.CustomerPhone
+	}
+	if req.CustomerName != nil {
+		sale.CustomerName = req.CustomerName
+	}
+
+	// Save changes
+	if err := s.salesRepo.UpdateSale(sale); err != nil {
+		s.logger.Error("Failed to update sale",
+			zap.Error(err),
+			zap.String("sale_id", id))
+		return nil, err
+	}
+
+	s.logger.Info("Sale patched successfully",
+		zap.String("sale_id", id))
+
+	return s.mapSaleToResponse(sale), nil
+}
+
 // handleCompletionInventory converts reservations to actual deductions when sale status changes to completed
 func (s *SalesService) handleCompletionInventory(tx *gorm.DB, sale *models.Sale, performedBy string) error {
 	s.logger.Debug("Converting reservations to deductions for sale completion",

@@ -345,6 +345,14 @@ type UpdateSaleStatusRequest struct {
 	Status string `json:"status" binding:"required"`
 }
 
+// PatchSaleRequest represents the request to partially update a sale (Issue 9)
+type PatchSaleRequest struct {
+	PaymentMode   *string `json:"payment_mode" binding:"omitempty,oneof=cash upi online"`
+	SaleType      *string `json:"sale_type" binding:"omitempty,oneof=in_store delivery"`
+	CustomerPhone *string `json:"customer_phone"`
+	CustomerName  *string `json:"customer_name"`
+}
+
 // TopSellingProductResponse represents the response for top selling products
 type TopSellingProductResponse struct {
 	ProductID   string  `json:"product_id"`

@@ -12,6 +12,7 @@ type SalesServiceInterface interface {
 	GetSale(id string) (*models.SaleResponse, error)
 	GetAllSales(limit, offset int) ([]models.SaleListResponse, int64, error)
 	UpdateSale(id string, req *models.UpdateSaleRequest) (*models.SaleResponse, error)
+	PatchSale(id string, req *models.PatchSaleRequest) (*models.SaleResponse, error) // Issue 9
 	DeleteSale(id string) error
 	GetSalesByDateRange(startDate, endDate time.Time, limit, offset int) ([]models.SaleResponse, int64, error)
 	GetSalesByStatus(status string, limit, offset int) ([]models.SaleResponse, int64, error)

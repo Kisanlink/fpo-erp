@@ -327,3 +327,77 @@ GET /api/v1/sales?customer_phone=9876543210&limit=10&offset=0
 
 ---
 
+## Issue 9: PATCH Sale Endpoint
+
+**Type**: New Feature
+
+**Changes**:
+- `PATCH /api/v1/sales/{id}` - New endpoint to partially update a sale
+- Only pending sales can be updated
+- Updateable fields: `payment_mode`, `sale_type`, `customer_phone`, `customer_name`
+
+**Endpoint**:
+```
+PATCH /api/v1/sales/{id}
+```
+
+**Request Body** (all fields optional):
+```json
+{
+  "payment_mode": "upi",              // Optional - "cash", "upi", or "online"
+  "sale_type": "delivery",            // Optional - "in_store" or "delivery"
+  "customer_phone": "9876543210",     // Optional - customer phone number
+  "customer_name": "Jane Doe"         // Optional - customer name
+}
+```
+
+**Response** (full sale object):
+```json
+{
+  "id": "SALE00000001",
+  "invoice_number": "12250001",
+  "warehouse_id": "WHSE00000001",
+  "sale_date": "2025-12-11",
+  "total_amount": 500.00,
+  "status": "pending",
+  "customer_phone": "9876543210",
+  "customer_name": "Jane Doe",
+  "payment_mode": "upi",
+  "sale_type": "delivery",
+  "apply_taxes": true,
+  "items": [...],
+  "breakdown": {...},
+  "created_at": "2025-12-11T10:00:00Z",
+  "updated_at": "2025-12-11T10:30:00Z"
+}
+```
+
+**Error Responses**:
+- `400 Bad Request` - Invalid request data (invalid payment_mode or sale_type values)
+- `404 Not Found` - Sale with given ID not found
+
+**Usage Examples**:
+```bash
+# Update payment mode only
+curl -X PATCH /api/v1/sales/SALE00000001 \
+  -H "Content-Type: application/json" \
+  -d '{"payment_mode": "upi"}'
+
+# Update customer info only
+curl -X PATCH /api/v1/sales/SALE00000001 \
+  -H "Content-Type: application/json" \
+  -d '{"customer_phone": "9876543210", "customer_name": "Jane Doe"}'
+
+# Update multiple fields
+curl -X PATCH /api/v1/sales/SALE00000001 \
+  -H "Content-Type: application/json" \
+  -d '{"payment_mode": "online", "sale_type": "delivery"}'
+```
+
+**Notes**:
+- Only fields included in the request body will be updated
+- Missing fields are left unchanged
+- Validation enforces valid enum values for payment_mode and sale_type
+
+---
+

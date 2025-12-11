@@ -308,6 +308,60 @@ func (h *SalesHandler) DeleteSale(c *gin.Context) {
 	utils.OKResponse(c, "Sale deleted successfully", nil)
 }
 
+// PatchSale handles PATCH /api/v1/sales/:id (Issue 9)
+// @Summary Patch Sale
+// @Description Partially update a sale (payment_mode, sale_type, customer_phone, customer_name)
+// @Tags Sales
+// @Accept json
+// @Produce json
+// @Param id path string true "Sale ID" example(SALE00000001)
+// @Param request body models.PatchSaleRequest true "Fields to update"
+// @Success 200 {object} utils.Response{data=models.SaleResponse} "Sale updated successfully"
+// @Failure 400 {object} utils.ErrorResponseModel "Bad request"
+// @Failure 401 {object} utils.ErrorResponseModel "Unauthorized"
+// @Failure 404 {object} utils.ErrorResponseModel "Sale not found"
+// @Failure 422 {object} utils.ErrorResponseModel "Unprocessable Entity - validation failed"
+// @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
+// @Security BearerAuth
+// @Router /api/v1/sales/{id} [patch]
+func (h *SalesHandler) PatchSale(c *gin.Context) {
+	h.logger.Info("Handling patch sale request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
+	id := c.Param("id")
+	if id == "" {
+		h.logger.Error("Sale ID is required but not provided")
+		utils.BadRequestResponse(c, "Sale ID is required", nil)
+		return
+	}
+
+	var req models.PatchSaleRequest
+	if err := utils.ValidateRequest(c, &req); err != nil {
+		h.logger.Error("Invalid request body",
+			zap.Error(err))
+		utils.BadRequestResponse(c, "Invalid request data", err)
+		return
+	}
+
+	h.logger.Debug("Calling sales service to patch sale",
+		zap.String("sale_id", id))
+
+	sale, err := h.salesService.PatchSale(id, &req)
+	if err != nil {
+		h.logger.Error("Failed to patch sale via service",
+			zap.Error(err),
+			zap.String("sale_id", id))
+		utils.HandleServiceError(c, "Failed to update sale", err)
+		return
+	}
+
+	h.logger.Info("Sale patched successfully via handler",
+		zap.String("sale_id", id))
+
+	utils.OKResponse(c, "Sale updated successfully", sale)
+}
+
 // GetSalesByDateRange handles GET /api/v1/sales/date-range
 // @Summary Get Sales by Date Range
 // @Description Retrieve sales within a specific date range with pagination
@@ -864,6 +918,7 @@ func (h *SalesHandler) RegisterRoutes(router *gin.RouterGroup) {
 		sales.POST("", h.aaaMiddleware.RequireOrgPermission("sale", "create"), h.CreateSale)
 		sales.PUT("/:id", h.aaaMiddleware.RequireOrgPermission("sale", "update"), h.UpdateSale)
 		sales.PATCH("/:id/status", h.aaaMiddleware.RequireOrgPermission("sale", "update"), h.UpdateSaleStatus)
+		sales.PATCH("/:id", h.aaaMiddleware.RequireOrgPermission("sale", "update"), h.PatchSale) // Issue 9
 		sales.DELETE("/:id", h.aaaMiddleware.RequireOrgPermission("sale", "delete"), h.DeleteSale)
 
 		// Cancellation routes - requires sale:cancel permission
