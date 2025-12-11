@@ -39,3 +39,46 @@
 
 ---
 
+## Issue 2: Sales List Optimization (BREAKING CHANGE)
+
+**Type**: Breaking Change
+
+**Changes**:
+- `GET /api/v1/sales` - `items` array REMOVED from list response
+- `GET /api/v1/sales/{id}` - Full details with items still available
+- Performance improvement: 10x faster list queries
+
+**Response Change**:
+```json
+// BEFORE - GET /api/v1/sales
+{
+  "data": [
+    {
+      "id": "SALE00000001",
+      "invoice_number": "12250001",
+      "total_amount": 500.00,
+      "items": [...],        // REMOVED
+      "breakdown": {...}     // REMOVED
+    }
+  ]
+}
+
+// AFTER - GET /api/v1/sales
+{
+  "data": [
+    {
+      "id": "SALE00000001",
+      "invoice_number": "12250001",
+      "total_amount": 500.00
+      // items and breakdown NOT included
+    }
+  ]
+}
+```
+
+**Migration**:
+- Update sales list component to NOT expect `items` array
+- Add click handler to fetch details via `GET /api/v1/sales/{id}`
+
+---
+

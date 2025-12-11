@@ -220,6 +220,35 @@ type SaleResponse struct {
 	UpdatedAt string             `json:"updated_at"`
 }
 
+// SaleListResponse represents the API response for sale list (without items for performance)
+// Use GET /api/v1/sales/{id} to get full details with items
+type SaleListResponse struct {
+	ID            string  `json:"id"`
+	InvoiceNumber string  `json:"invoice_number"`
+	WarehouseID   string  `json:"warehouse_id"`
+	SaleDate      string  `json:"sale_date"`
+	TotalAmount   float64 `json:"total_amount"`
+	Status        string  `json:"status"`
+
+	// BRD Requirements - Customer tracking
+	CustomerPhone *string `json:"customer_phone,omitempty"`
+	CustomerName  *string `json:"customer_name,omitempty"`
+	IsOrgMember   bool    `json:"is_org_member"`
+	PaymentMode   string  `json:"payment_mode"`
+	SaleType      string  `json:"sale_type"`
+	ApplyTaxes    bool    `json:"apply_taxes"`
+
+	// Cancellation fields
+	CancelledAt        *string `json:"cancelled_at,omitempty"`
+	CancellationReason *string `json:"cancellation_reason,omitempty"`
+
+	// Note: Items and Breakdown are omitted for performance
+	// Use GET /api/v1/sales/{id} for full details
+
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
 // SaleBreakdown represents detailed breakdown of sale calculations
 type SaleBreakdown struct {
 	BaseAmount       float64               `json:"base_amount"`       // Total before discounts and taxes

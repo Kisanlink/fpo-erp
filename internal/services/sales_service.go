@@ -495,16 +495,17 @@ func (s *SalesService) GetSale(id string) (*models.SaleResponse, error) {
 	return s.mapSaleToResponse(sale), nil
 }
 
-// GetAllSales retrieves all sales with pagination
-func (s *SalesService) GetAllSales(limit, offset int) ([]models.SaleResponse, int64, error) {
+// GetAllSales retrieves all sales with pagination (returns list without items for performance)
+// Use GetSale(id) to get full details with items
+func (s *SalesService) GetAllSales(limit, offset int) ([]models.SaleListResponse, int64, error) {
 	sales, total, err := s.salesRepo.GetAllSales(limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	var responses []models.SaleResponse
+	var responses []models.SaleListResponse
 	for _, sale := range sales {
-		responses = append(responses, *s.mapSaleToResponse(&sale))
+		responses = append(responses, *s.mapSaleToListResponse(&sale))
 	}
 
 	return responses, total, nil
@@ -944,6 +945,39 @@ func (s *SalesService) mapSaleToResponse(sale *models.Sale) *models.SaleResponse
 		})
 	}
 
+	return response
+}
+
+// mapSaleToListResponse maps a Sale model to SaleListResponse (without items for performance)
+func (s *SalesService) mapSaleToListResponse(sale *models.Sale) *models.SaleListResponse {
+	response := &models.SaleListResponse{
+		ID:            sale.ID,
+		InvoiceNumber: sale.InvoiceNumber,
+		WarehouseID:   sale.WarehouseID,
+		SaleDate:      sale.SaleDate.Format("2006-01-02T15:04:05Z07:00"),
+		TotalAmount:   sale.TotalAmount,
+		Status:        sale.Status,
+		// BRD Requirements - Customer tracking
+		CustomerPhone: sale.CustomerPhone,
+		CustomerName:  sale.CustomerName,
+		IsOrgMember:   sale.IsOrgMember,
+		PaymentMode:   sale.PaymentMode,
+		SaleType:      sale.SaleType,
+		ApplyTaxes:    sale.ApplyTaxes,
+		CreatedAt:     sale.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:     sale.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}
+
+	// Add cancellation fields if present
+	if sale.CancelledAt != nil {
+		cancelledAtStr := sale.CancelledAt.Format("2006-01-02T15:04:05Z07:00")
+		response.CancelledAt = &cancelledAtStr
+	}
+	if sale.CancellationReason != nil {
+		response.CancellationReason = sale.CancellationReason
+	}
+
+	// Note: Items and Breakdown are omitted for performance
 	return response
 }
 

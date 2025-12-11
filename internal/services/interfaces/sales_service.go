@@ -10,7 +10,7 @@ import (
 type SalesServiceInterface interface {
 	CreateSale(req *models.CreateSaleRequest) (*models.SaleResponse, error)
 	GetSale(id string) (*models.SaleResponse, error)
-	GetAllSales(limit, offset int) ([]models.SaleResponse, int64, error)
+	GetAllSales(limit, offset int) ([]models.SaleListResponse, int64, error)
 	UpdateSale(id string, req *models.UpdateSaleRequest) (*models.SaleResponse, error)
 	DeleteSale(id string) error
 	GetSalesByDateRange(startDate, endDate time.Time, limit, offset int) ([]models.SaleResponse, int64, error)
