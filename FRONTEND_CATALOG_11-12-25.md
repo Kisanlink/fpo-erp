@@ -287,3 +287,43 @@ GET /api/v1/sales?customer_phone=9876543210&limit=10&offset=0
 
 ---
 
+## Issue 8: Availability Variant Images
+
+**Type**: Enhancement
+
+**Changes**:
+- `GET /api/v1/products/availability` - Added `images` field to response
+- Images are S3 paths from the product variant
+
+**Response Change**:
+```json
+// BEFORE
+{
+  "sku": "SKU-VEG-00000001",
+  "variant_id": "PVAR00000001",
+  "product_name": "Tomato 1kg",
+  "hsn_code": "07020000",
+  "gst_rate": 5.0
+}
+
+// AFTER
+{
+  "sku": "SKU-VEG-00000001",
+  "variant_id": "PVAR00000001",
+  "product_name": "Tomato 1kg",
+  "hsn_code": "07020000",
+  "gst_rate": 5.0,
+  "images": [                            // NEW - S3 paths for variant images
+    "variants/PVAR00000001/image1.jpg",
+    "variants/PVAR00000001/image2.jpg"
+  ]
+}
+```
+
+**Notes**:
+- `images` is an array of S3 paths (not presigned URLs)
+- Use `/api/v1/attachments/:id/url` to get presigned URLs for display
+- Empty array if no images exist
+
+---
+

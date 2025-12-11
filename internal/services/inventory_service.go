@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"kisanlink-erp/internal/aaa"
@@ -448,6 +449,15 @@ func (s *InventoryService) GetAllProductsAvailability(ctx context.Context, jwtTo
 		// Initialize variant entry if not exists
 		if _, exists := variantMap[sku]; !exists {
 			gstRate := batch.Variant.GSTRate
+			// Parse images from JSON string (Issue 8)
+			var images []string
+			if batch.Variant.Images != nil && *batch.Variant.Images != "" {
+				if err := json.Unmarshal([]byte(*batch.Variant.Images), &images); err != nil {
+					s.logger.Warn("Failed to parse variant images",
+						zap.Error(err),
+						zap.String("variant_id", batch.VariantID))
+				}
+			}
 			variantMap[sku] = &variantAvailability{
 				VariantID:          batch.VariantID,
 				ProductName:        batch.Variant.VariantName,
@@ -458,6 +468,8 @@ func (s *InventoryService) GetAllProductsAvailability(ctx context.Context, jwtTo
 				GSTRate:  gstRate,
 				CGSTRate: gstRate / 2,
 				SGSTRate: gstRate / 2,
+				// Images (Issue 8)
+				Images: images,
 			}
 		}
 
@@ -507,6 +519,8 @@ func (s *InventoryService) GetAllProductsAvailability(ctx context.Context, jwtTo
 			GSTRate:  variantData.GSTRate,
 			CGSTRate: variantData.CGSTRate,
 			SGSTRate: variantData.SGSTRate,
+			// Images (Issue 8)
+			Images: variantData.Images,
 		}
 
 		// Process warehouse details
@@ -631,6 +645,8 @@ type variantAvailability struct {
 	GSTRate  float64
 	CGSTRate float64
 	SGSTRate float64
+	// Images (Issue 8)
+	Images []string
 }
 
 type warehouseDetail struct {
