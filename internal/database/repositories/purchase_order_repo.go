@@ -261,3 +261,48 @@ func (r *PurchaseOrderRepository) FindByExternalOrderID(externalOrderID string) 
 	}
 	return &po, nil
 }
+
+// CountByCollaborator counts purchase orders for a collaborator
+func (r *PurchaseOrderRepository) CountByCollaborator(collaboratorID string) (int64, error) {
+	var count int64
+	if err := r.db.Model(&models.PurchaseOrder{}).Where("collaborator_id = ?", collaboratorID).Count(&count).Error; err != nil {
+		return 0, errors.NewInternalServerError("Failed to count purchase orders by collaborator")
+	}
+	return count, nil
+}
+
+// SumAmountByCollaborator calculates total amount for a collaborator
+func (r *PurchaseOrderRepository) SumAmountByCollaborator(collaboratorID string) (float64, error) {
+	var total float64
+	if err := r.db.Model(&models.PurchaseOrder{}).
+		Where("collaborator_id = ?", collaboratorID).
+		Select("COALESCE(SUM(total_amount), 0)").
+		Row().Scan(&total); err != nil {
+		return 0, errors.NewInternalServerError("Failed to sum amounts by collaborator")
+	}
+	return total, nil
+}
+
+// CountActiveByCollaborator counts active purchase orders for a collaborator (not paid or cancelled)
+func (r *PurchaseOrderRepository) CountActiveByCollaborator(collaboratorID string) (int64, error) {
+	var count int64
+	if err := r.db.Model(&models.PurchaseOrder{}).
+		Where("collaborator_id = ? AND status NOT IN ?", collaboratorID, []string{"paid", "cancelled"}).
+		Count(&count).Error; err != nil {
+		return 0, errors.NewInternalServerError("Failed to count active purchase orders by collaborator")
+	}
+	return count, nil
+}
+
+// GetLatestPODate retrieves the date of the most recent purchase order for a collaborator
+func (r *PurchaseOrderRepository) GetLatestPODate(collaboratorID string) (*string, error) {
+	var latestDate *string
+	if err := r.db.Model(&models.PurchaseOrder{}).
+		Where("collaborator_id = ?", collaboratorID).
+		Order("created_at DESC").
+		Limit(1).
+		Pluck("created_at", &latestDate).Error; err != nil {
+		return nil, errors.NewInternalServerError("Failed to get latest purchase order date")
+	}
+	return latestDate, nil
+}

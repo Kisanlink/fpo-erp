@@ -570,3 +570,107 @@ export const deleteAllAttachmentsForEntity = async (
 
 ---
 
+## Issue 6: New Endpoint - Collaborator Transaction Statistics
+
+**Type**: New Feature
+
+**Endpoint**: `GET /api/v1/collaborators/{id}/stats`
+
+**Description**: Retrieve transaction statistics for a collaborator including purchase orders, GRNs, total amount, active POs, and last PO date.
+
+**Request**:
+```
+GET /api/v1/collaborators/CLAB00000001/stats
+Authorization: Bearer <jwt_token>
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Collaborator statistics retrieved successfully",
+  "data": {
+    "collaborator_id": "CLAB00000001",
+    "company_name": "ABC Suppliers",
+    "po_count": 45,
+    "grn_count": 43,
+    "total_amount": 450000.00,
+    "active_po_count": 3,
+    "last_po_date": "2025-12-10T14:30:00Z"
+  }
+}
+```
+
+**Response Fields**:
+| Field | Type | Description |
+|-------|------|-------------|
+| `collaborator_id` | string | Collaborator ID (format: CLAB00000001) |
+| `company_name` | string | Company name of the collaborator |
+| `po_count` | integer | Total number of purchase orders |
+| `grn_count` | integer | Total number of GRNs (Goods Receipt Notes) |
+| `total_amount` | number | Sum of all purchase order amounts |
+| `active_po_count` | integer | Number of active POs (not paid or cancelled) |
+| `last_po_date` | string (nullable) | Timestamp of most recent purchase order (ISO 8601 format) |
+
+**Use Cases**:
+- Display vendor performance metrics on collaborator detail page
+- Show transaction summary in collaborator list view
+- Track vendor activity and engagement
+- Calculate payment history and pending payments
+- Identify inactive vendors (no recent POs)
+
+**Frontend Integration Example**:
+```typescript
+// Fetch collaborator stats
+const response = await fetch(
+  `/api/v1/collaborators/${collaboratorId}/stats`,
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  }
+);
+
+const { data: stats } = await response.json();
+
+// Display in UI
+<Card>
+  <CardHeader>
+    <CardTitle>{stats.company_name} - Transaction Stats</CardTitle>
+  </CardHeader>
+  <CardContent>
+    <div className="grid grid-cols-2 gap-4">
+      <Stat label="Total POs" value={stats.po_count} />
+      <Stat label="Total GRNs" value={stats.grn_count} />
+      <Stat
+        label="Total Amount"
+        value={formatCurrency(stats.total_amount)}
+      />
+      <Stat label="Active POs" value={stats.active_po_count} />
+      {stats.last_po_date && (
+        <Stat
+          label="Last Order"
+          value={formatDate(stats.last_po_date)}
+        />
+      )}
+    </div>
+  </CardContent>
+</Card>
+```
+
+**Error Responses**:
+- `400 Bad Request` - Invalid collaborator ID
+- `404 Not Found` - Collaborator not found
+- `401 Unauthorized` - Missing or invalid authentication token
+- `403 Forbidden` - Insufficient permissions (requires `collaborator:read`)
+- `500 Internal Server Error` - Database or server error
+
+**Notes**:
+- Requires authentication via JWT token
+- Requires `collaborator:read` permission
+- Stats are calculated in real-time from database
+- `last_po_date` will be `null` if no purchase orders exist
+- Active POs are those with status not in `["paid", "cancelled"]`
+
+---
+

@@ -14,4 +14,5 @@ type CollaboratorServiceInterface interface {
 	UpdateCollaborator(ctx context.Context, id string, request *models.UpdateCollaboratorRequest, organizationID string, userID string, jwtToken string) (*models.CollaboratorResponse, error)
 	DeleteCollaborator(ctx context.Context, id string, organizationID string, jwtToken string) error
 	SearchCollaborators(ctx context.Context, query string, jwtToken string, limit, offset int) ([]models.CollaboratorResponse, int64, error)
+	GetCollaboratorStats(ctx context.Context, collaboratorID string) (*models.CollaboratorStats, error)
 }

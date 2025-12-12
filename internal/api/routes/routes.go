@@ -112,6 +112,8 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	}
 	collaboratorService := services.NewCollaboratorService(
 		collaboratorRepo,
+		purchaseOrderRepo,
+		grnRepo,
 		addressClient,
 		s3Service,
 		attachmentService,
