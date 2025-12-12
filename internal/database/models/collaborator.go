@@ -1,7 +1,9 @@
 package models
 
 import (
+	"kisanlink-erp/internal/aaa"
 	"kisanlink-erp/internal/constants"
+	"strings"
 
 	"github.com/Kisanlink/kisanlink-db/pkg/base"
 	"github.com/Kisanlink/kisanlink-db/pkg/core/hash"
@@ -33,6 +35,19 @@ type Collaborator struct {
 	// Address (AAA integration - similar to Warehouse)
 	AddressID *string `gorm:"type:varchar(50)" json:"address_id"` // Reference to AAA address
 
+	// Local address cache (synced on write operations) - eliminates gRPC calls on GET
+	AddressType  *string `gorm:"type:varchar(20);column:address_type" json:"-"`
+	House        *string `gorm:"type:varchar(255);column:house" json:"-"`
+	Street       *string `gorm:"type:varchar(255);column:street" json:"-"`
+	Landmark     *string `gorm:"type:varchar(255);column:landmark" json:"-"`
+	PostOffice   *string `gorm:"type:varchar(255);column:post_office" json:"-"`
+	Subdistrict  *string `gorm:"type:varchar(255);column:subdistrict" json:"-"`
+	District     *string `gorm:"type:varchar(255);column:district" json:"-"`
+	VTC          *string `gorm:"type:varchar(255);column:vtc" json:"-"`
+	State        *string `gorm:"type:varchar(100);column:state" json:"-"`
+	Country      *string `gorm:"type:varchar(100);column:country" json:"-"`
+	Pincode      *string `gorm:"type:varchar(10);column:pincode" json:"-"`
+
 	// Metadata
 	Experience *string `gorm:"type:text" json:"experience"`   // Description
 	IsActive   *bool   `gorm:"type:boolean" json:"is_active"` // Pointer to allow explicit false values
@@ -59,6 +74,65 @@ func NewCollaborator(companyName, contactPerson, contactNumber string, bankAccou
 
 func (Collaborator) TableName() string {
 	return "collaborators"
+}
+
+// BuildAddressInfo constructs AddressInfo from local fields (no gRPC needed)
+func (c *Collaborator) BuildAddressInfo() *AddressInfo {
+	if c.AddressID == nil {
+		return nil
+	}
+	return &AddressInfo{
+		ID:          *c.AddressID,
+		Type:        ptrStringValue(c.AddressType),
+		House:       c.House,
+		Street:      c.Street,
+		Landmark:    c.Landmark,
+		PostOffice:  c.PostOffice,
+		Subdistrict: c.Subdistrict,
+		District:    c.District,
+		VTC:         c.VTC,
+		State:       c.State,
+		Country:     c.Country,
+		Pincode:     c.Pincode,
+		FullAddress: c.buildFullAddress(),
+	}
+}
+
+// buildFullAddress constructs a full address string from local fields
+func (c *Collaborator) buildFullAddress() string {
+	parts := []string{}
+	addPart := func(s *string) {
+		if s != nil && *s != "" {
+			parts = append(parts, *s)
+		}
+	}
+	addPart(c.House)
+	addPart(c.Street)
+	addPart(c.Landmark)
+	addPart(c.VTC)
+	addPart(c.District)
+	addPart(c.State)
+	addPart(c.Pincode)
+	addPart(c.Country)
+	return strings.Join(parts, ", ")
+}
+
+// SyncFromAAA populates local fields from AAA address response
+func (c *Collaborator) SyncFromAAA(addr *aaa.Address) {
+	if addr == nil {
+		return
+	}
+	c.AddressType = &addr.Type
+	c.House = addr.House
+	c.Street = addr.Street
+	c.Landmark = addr.Landmark
+	c.PostOffice = addr.PostOffice
+	c.Subdistrict = addr.Subdistrict
+	c.District = addr.District
+	c.VTC = addr.VTC
+	c.State = addr.State
+	c.Country = addr.Country
+	c.Pincode = addr.Pincode
 }
 
 // CollaboratorResponse represents the API response for collaborator
