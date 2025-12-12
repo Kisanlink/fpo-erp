@@ -1378,3 +1378,417 @@ func TestGetAvailability_FEFOSorting(t *testing.T) {
 	testutils.AssertEqual(t, detail.ExpiryStatus, "expiring_soon",
 		"Warehouse detail should have 'expiring_soon' status")
 }
+
+// =============================================================================
+// GST FIELDS TESTS (Issue 3)
+// =============================================================================
+
+// TestInventoryService_Availability_GSTFields_Present verifies that GST fields are present in availability response
+func TestInventoryService_Availability_GSTFields_Present(t *testing.T) {
+	service, db, cleanup := setupInventoryService(t)
+	defer cleanup()
+
+	// Create test data with GST
+	warehouse := testutils.FixtureWarehouse("Main Warehouse")
+	db.Create(warehouse)
+
+	product := testutils.FixtureProduct("Rice")
+	db.Create(product)
+
+	variant := testutils.FixtureProductVariantWithGST(product.ID, "1kg", "1006", 18.0)
+	db.Create(variant)
+
+	batch := testutils.FixtureInventoryBatch(warehouse.ID, variant.ID, 500)
+	db.Create(batch)
+
+	// Execute
+	ctx := testutils.CreateTestContext()
+	results, _, err := service.GetAllProductsAvailability(ctx, "mock-jwt", 10, 0)
+
+	// Assert
+	testutils.AssertNoError(t, err, "GetAllProductsAvailability should succeed")
+	testutils.AssertTrue(t, len(results) > 0, "Should return at least 1 result")
+
+	// Find our test variant
+	var result *models.ProductAvailabilityGroupedResponse
+	for i := range results {
+		if results[i].VariantID == variant.ID {
+			result = &results[i]
+			break
+		}
+	}
+	testutils.AssertNotNil(t, result, "Should find test variant in results")
+	testutils.AssertEqual(t, result.HSNCode, "1006", "HSNCode should be present")
+	testutils.AssertEqual(t, result.GSTRate, 18.0, "GSTRate should be 18")
+	testutils.AssertEqual(t, result.CGSTRate, 9.0, "CGSTRate should be GSTRate/2")
+	testutils.AssertEqual(t, result.SGSTRate, 9.0, "SGSTRate should be GSTRate/2")
+}
+
+// TestInventoryService_Availability_CGSTSGSTCalculation verifies CGST = SGST = GSTRate/2
+func TestInventoryService_Availability_CGSTSGSTCalculation(t *testing.T) {
+	service, db, cleanup := setupInventoryService(t)
+	defer cleanup()
+
+	// Create test data
+	warehouse := testutils.FixtureWarehouse("Main Warehouse")
+	db.Create(warehouse)
+
+	product := testutils.FixtureProduct("Rice")
+	db.Create(product)
+
+	variant := testutils.FixtureProductVariantWithGST(product.ID, "1kg", "1006", 18.0)
+	db.Create(variant)
+
+	batch := testutils.FixtureInventoryBatch(warehouse.ID, variant.ID, 500)
+	db.Create(batch)
+
+	// Execute
+	ctx := testutils.CreateTestContext()
+	results, _, err := service.GetAllProductsAvailability(ctx, "mock-jwt", 10, 0)
+
+	// Assert
+	testutils.AssertNoError(t, err, "GetAllProductsAvailability should succeed")
+
+	// Find our test variant
+	var result *models.ProductAvailabilityGroupedResponse
+	for i := range results {
+		if results[i].VariantID == variant.ID {
+			result = &results[i]
+			break
+		}
+	}
+	testutils.AssertNotNil(t, result, "Should find test variant in results")
+
+	// Verify calculation: CGST = SGST = GSTRate / 2
+	expectedHalfRate := result.GSTRate / 2
+	testutils.AssertEqual(t, result.CGSTRate, expectedHalfRate, "CGSTRate should be GSTRate/2")
+	testutils.AssertEqual(t, result.SGSTRate, expectedHalfRate, "SGSTRate should be GSTRate/2")
+	testutils.AssertEqual(t, result.CGSTRate, result.SGSTRate, "CGST and SGST should be equal")
+}
+
+// TestInventoryService_Availability_HSNCode verifies HSN code is populated
+func TestInventoryService_Availability_HSNCode(t *testing.T) {
+	service, db, cleanup := setupInventoryService(t)
+	defer cleanup()
+
+	// Create test data
+	warehouse := testutils.FixtureWarehouse("Main Warehouse")
+	db.Create(warehouse)
+
+	product := testutils.FixtureProduct("Rice")
+	db.Create(product)
+
+	variant := testutils.FixtureProductVariantWithGST(product.ID, "1kg", "10061010", 5.0)
+	db.Create(variant)
+
+	batch := testutils.FixtureInventoryBatch(warehouse.ID, variant.ID, 500)
+	db.Create(batch)
+
+	// Execute
+	ctx := testutils.CreateTestContext()
+	results, _, err := service.GetAllProductsAvailability(ctx, "mock-jwt", 10, 0)
+
+	// Assert
+	testutils.AssertNoError(t, err, "GetAllProductsAvailability should succeed")
+
+	// Find our test variant
+	var result *models.ProductAvailabilityGroupedResponse
+	for i := range results {
+		if results[i].VariantID == variant.ID {
+			result = &results[i]
+			break
+		}
+	}
+	testutils.AssertNotNil(t, result, "Should find test variant in results")
+	testutils.AssertEqual(t, result.HSNCode, "10061010", "HSNCode should match variant HSNCode")
+}
+
+// TestInventoryService_Availability_GSTRate18 verifies GST calculation with 18% rate
+func TestInventoryService_Availability_GSTRate18(t *testing.T) {
+	service, db, cleanup := setupInventoryService(t)
+	defer cleanup()
+
+	// Create test data
+	warehouse := testutils.FixtureWarehouse("Main Warehouse")
+	db.Create(warehouse)
+
+	product := testutils.FixtureProduct("Electronics")
+	db.Create(product)
+
+	variant := testutils.FixtureProductVariantWithGST(product.ID, "1kg", "85177900", 18.0)
+	db.Create(variant)
+
+	batch := testutils.FixtureInventoryBatch(warehouse.ID, variant.ID, 100)
+	db.Create(batch)
+
+	// Execute
+	ctx := testutils.CreateTestContext()
+	results, _, err := service.GetAllProductsAvailability(ctx, "mock-jwt", 10, 0)
+
+	// Assert
+	testutils.AssertNoError(t, err, "GetAllProductsAvailability should succeed")
+
+	// Find our test variant
+	var result *models.ProductAvailabilityGroupedResponse
+	for i := range results {
+		if results[i].VariantID == variant.ID {
+			result = &results[i]
+			break
+		}
+	}
+	testutils.AssertNotNil(t, result, "Should find test variant in results")
+	testutils.AssertEqual(t, result.GSTRate, 18.0, "GSTRate should be 18%")
+	testutils.AssertEqual(t, result.CGSTRate, 9.0, "CGSTRate should be 9%")
+	testutils.AssertEqual(t, result.SGSTRate, 9.0, "SGSTRate should be 9%")
+}
+
+// TestInventoryService_Availability_GSTRate5 verifies GST calculation with 5% rate
+func TestInventoryService_Availability_GSTRate5(t *testing.T) {
+	service, db, cleanup := setupInventoryService(t)
+	defer cleanup()
+
+	// Create test data
+	warehouse := testutils.FixtureWarehouse("Main Warehouse")
+	db.Create(warehouse)
+
+	product := testutils.FixtureProduct("Essential Goods")
+	db.Create(product)
+
+	variant := testutils.FixtureProductVariantWithGST(product.ID, "1kg", "10061020", 5.0)
+	db.Create(variant)
+
+	batch := testutils.FixtureInventoryBatch(warehouse.ID, variant.ID, 200)
+	db.Create(batch)
+
+	// Execute
+	ctx := testutils.CreateTestContext()
+	results, _, err := service.GetAllProductsAvailability(ctx, "mock-jwt", 10, 0)
+
+	// Assert
+	testutils.AssertNoError(t, err, "GetAllProductsAvailability should succeed")
+
+	// Find our test variant
+	var result *models.ProductAvailabilityGroupedResponse
+	for i := range results {
+		if results[i].VariantID == variant.ID {
+			result = &results[i]
+			break
+		}
+	}
+	testutils.AssertNotNil(t, result, "Should find test variant in results")
+	testutils.AssertEqual(t, result.GSTRate, 5.0, "GSTRate should be 5%")
+	testutils.AssertEqual(t, result.CGSTRate, 2.5, "CGSTRate should be 2.5%")
+	testutils.AssertEqual(t, result.SGSTRate, 2.5, "SGSTRate should be 2.5%")
+}
+
+// TestInventoryService_Availability_GSTRateZero verifies GST calculation with 0% rate
+func TestInventoryService_Availability_GSTRateZero(t *testing.T) {
+	service, db, cleanup := setupInventoryService(t)
+	defer cleanup()
+
+	// Create test data
+	warehouse := testutils.FixtureWarehouse("Main Warehouse")
+	db.Create(warehouse)
+
+	product := testutils.FixtureProduct("Exempt Goods")
+	db.Create(product)
+
+	variant := testutils.FixtureProductVariantWithGST(product.ID, "1kg", "10061030", 0.0)
+	db.Create(variant)
+
+	batch := testutils.FixtureInventoryBatch(warehouse.ID, variant.ID, 300)
+	db.Create(batch)
+
+	// Execute
+	ctx := testutils.CreateTestContext()
+	results, _, err := service.GetAllProductsAvailability(ctx, "mock-jwt", 10, 0)
+
+	// Assert
+	testutils.AssertNoError(t, err, "GetAllProductsAvailability should succeed")
+
+	// Find our test variant
+	var result *models.ProductAvailabilityGroupedResponse
+	for i := range results {
+		if results[i].VariantID == variant.ID {
+			result = &results[i]
+			break
+		}
+	}
+	testutils.AssertNotNil(t, result, "Should find test variant in results")
+	testutils.AssertEqual(t, result.GSTRate, 0.0, "GSTRate should be 0%")
+	testutils.AssertEqual(t, result.CGSTRate, 0.0, "CGSTRate should be 0%")
+	testutils.AssertEqual(t, result.SGSTRate, 0.0, "SGSTRate should be 0%")
+}
+
+// =============================================================================
+// IMAGES TESTS (Issue 8)
+// =============================================================================
+
+// TestInventoryService_Availability_Images_Present verifies images array is present in response
+func TestInventoryService_Availability_Images_Present(t *testing.T) {
+	service, db, cleanup := setupInventoryService(t)
+	defer cleanup()
+
+	// Create test data with images
+	warehouse := testutils.FixtureWarehouse("Main Warehouse")
+	db.Create(warehouse)
+
+	product := testutils.FixtureProduct("Rice")
+	db.Create(product)
+
+	variant := testutils.FixtureProductVariant(product.ID, "1kg")
+	// Set images as JSON string array
+	imagesJSON := `["images/product1.jpg", "images/product2.jpg"]`
+	variant.Images = &imagesJSON
+	db.Create(variant)
+
+	batch := testutils.FixtureInventoryBatch(warehouse.ID, variant.ID, 500)
+	db.Create(batch)
+
+	// Execute
+	ctx := testutils.CreateTestContext()
+	results, _, err := service.GetAllProductsAvailability(ctx, "mock-jwt", 10, 0)
+
+	// Assert
+	testutils.AssertNoError(t, err, "GetAllProductsAvailability should succeed")
+
+	// Find our test variant
+	var result *models.ProductAvailabilityGroupedResponse
+	for i := range results {
+		if results[i].VariantID == variant.ID {
+			result = &results[i]
+			break
+		}
+	}
+	testutils.AssertNotNil(t, result, "Should find test variant in results")
+	testutils.AssertNotNil(t, result.Images, "Images should not be nil")
+	testutils.AssertEqual(t, len(result.Images), 2, "Should have 2 images")
+	testutils.AssertEqual(t, result.Images[0], "images/product1.jpg", "First image path should match")
+	testutils.AssertEqual(t, result.Images[1], "images/product2.jpg", "Second image path should match")
+}
+
+// TestInventoryService_Availability_Images_Empty verifies empty images array handling
+func TestInventoryService_Availability_Images_Empty(t *testing.T) {
+	service, db, cleanup := setupInventoryService(t)
+	defer cleanup()
+
+	// Create test data with empty images array
+	warehouse := testutils.FixtureWarehouse("Main Warehouse")
+	db.Create(warehouse)
+
+	product := testutils.FixtureProduct("Rice")
+	db.Create(product)
+
+	variant := testutils.FixtureProductVariant(product.ID, "1kg")
+	// Set images as empty JSON array
+	imagesJSON := `[]`
+	variant.Images = &imagesJSON
+	db.Create(variant)
+
+	batch := testutils.FixtureInventoryBatch(warehouse.ID, variant.ID, 500)
+	db.Create(batch)
+
+	// Execute
+	ctx := testutils.CreateTestContext()
+	results, _, err := service.GetAllProductsAvailability(ctx, "mock-jwt", 10, 0)
+
+	// Assert
+	testutils.AssertNoError(t, err, "GetAllProductsAvailability should succeed")
+
+	// Find our test variant
+	var result *models.ProductAvailabilityGroupedResponse
+	for i := range results {
+		if results[i].VariantID == variant.ID {
+			result = &results[i]
+			break
+		}
+	}
+	testutils.AssertNotNil(t, result, "Should find test variant in results")
+	testutils.AssertNotNil(t, result.Images, "Images should not be nil")
+	testutils.AssertEqual(t, len(result.Images), 0, "Images array should be empty")
+}
+
+// TestInventoryService_Availability_Images_NullHandling verifies null images field handling
+func TestInventoryService_Availability_Images_NullHandling(t *testing.T) {
+	service, db, cleanup := setupInventoryService(t)
+	defer cleanup()
+
+	// Create test data without images (null)
+	warehouse := testutils.FixtureWarehouse("Main Warehouse")
+	db.Create(warehouse)
+
+	product := testutils.FixtureProduct("Rice")
+	db.Create(product)
+
+	variant := testutils.FixtureProductVariant(product.ID, "1kg")
+	// Don't set Images field (leave as nil)
+	db.Create(variant)
+
+	batch := testutils.FixtureInventoryBatch(warehouse.ID, variant.ID, 500)
+	db.Create(batch)
+
+	// Execute
+	ctx := testutils.CreateTestContext()
+	results, _, err := service.GetAllProductsAvailability(ctx, "mock-jwt", 10, 0)
+
+	// Assert
+	testutils.AssertNoError(t, err, "GetAllProductsAvailability should succeed")
+
+	// Find our test variant
+	var result *models.ProductAvailabilityGroupedResponse
+	for i := range results {
+		if results[i].VariantID == variant.ID {
+			result = &results[i]
+			break
+		}
+	}
+	testutils.AssertNotNil(t, result, "Should find test variant in results")
+	// Images should be nil or empty array when not set
+	testutils.AssertTrue(t, result.Images == nil || len(result.Images) == 0,
+		"Images should be nil or empty when not set on variant")
+}
+
+// TestInventoryService_Availability_Images_MultipleImages verifies multiple images in array
+func TestInventoryService_Availability_Images_MultipleImages(t *testing.T) {
+	service, db, cleanup := setupInventoryService(t)
+	defer cleanup()
+
+	// Create test data with multiple images
+	warehouse := testutils.FixtureWarehouse("Main Warehouse")
+	db.Create(warehouse)
+
+	product := testutils.FixtureProduct("Rice")
+	db.Create(product)
+
+	variant := testutils.FixtureProductVariant(product.ID, "1kg")
+	// Set images with 4 different paths
+	imagesJSON := `["images/front.jpg", "images/back.jpg", "images/side1.jpg", "images/side2.jpg"]`
+	variant.Images = &imagesJSON
+	db.Create(variant)
+
+	batch := testutils.FixtureInventoryBatch(warehouse.ID, variant.ID, 500)
+	db.Create(batch)
+
+	// Execute
+	ctx := testutils.CreateTestContext()
+	results, _, err := service.GetAllProductsAvailability(ctx, "mock-jwt", 10, 0)
+
+	// Assert
+	testutils.AssertNoError(t, err, "GetAllProductsAvailability should succeed")
+
+	// Find our test variant
+	var result *models.ProductAvailabilityGroupedResponse
+	for i := range results {
+		if results[i].VariantID == variant.ID {
+			result = &results[i]
+			break
+		}
+	}
+	testutils.AssertNotNil(t, result, "Should find test variant in results")
+	testutils.AssertNotNil(t, result.Images, "Images should not be nil")
+	testutils.AssertEqual(t, len(result.Images), 4, "Should have 4 images")
+	testutils.AssertEqual(t, result.Images[0], "images/front.jpg", "First image should match")
+	testutils.AssertEqual(t, result.Images[1], "images/back.jpg", "Second image should match")
+	testutils.AssertEqual(t, result.Images[2], "images/side1.jpg", "Third image should match")
+	testutils.AssertEqual(t, result.Images[3], "images/side2.jpg", "Fourth image should match")
+}
