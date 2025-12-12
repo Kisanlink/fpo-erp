@@ -99,7 +99,7 @@ func (s *PurchaseOrderService) CreatePurchaseOrder(ctx context.Context, request 
 	}
 
 	// Determine inter-state status
-	// Priority: 1) User-provided value, 2) AAA auto-detection, 3) Default to intra-state
+	// Priority: 1) User-provided value, 2) Auto-detection from local cache, 3) Default to intra-state
 	var isInterState *bool
 	if request.IsInterState != nil {
 		// User explicitly specified - use their value
@@ -107,8 +107,8 @@ func (s *PurchaseOrderService) CreatePurchaseOrder(ctx context.Context, request 
 		s.logger.Info("Using user-specified inter-state flag",
 			zap.Bool("is_inter_state", *request.IsInterState))
 	} else {
-		// Try auto-detection from AAA address service
-		isInterState = s.determineInterState(ctx, collaborator.AddressID, warehouse.AddressID, jwtToken)
+		// Try auto-detection from local address cache (no gRPC needed)
+		isInterState = s.determineInterState(collaborator, warehouse)
 	}
 
 	// Parse dates
@@ -1018,76 +1018,36 @@ func (s *PurchaseOrderService) buildPurchaseOrderResponse(ctx context.Context, p
 }
 
 // determineInterState determines if a PO is inter-state by comparing collaborator and warehouse states
-// Returns: true = inter-state (IGST), false = intra-state (CGST+SGST)
+// Uses local address cache (no gRPC calls needed)
+// Returns: true = inter-state (IGST), false = intra-state (CGST+SGST), nil = unknown
 // Defaults to intra-state (false) when state info cannot be determined to ensure GST is always split
-func (s *PurchaseOrderService) determineInterState(ctx context.Context, collaboratorAddressID, warehouseAddressID *string, jwtToken string) *bool {
+func (s *PurchaseOrderService) determineInterState(collaborator *models.Collaborator, warehouse *models.Warehouse) *bool {
 	// Default to intra-state (same state) for GST split
 	// This ensures CGST/SGST are always calculated rather than showing 0
 	defaultIntraState := false
 
-	// If address client is not available, default to intra-state
-	if s.addressClient == nil {
-		s.logger.Warn("Address client not available, defaulting to intra-state for GST calculation",
-			zap.String("reason", "address_client_nil"))
-		return &defaultIntraState
-	}
-
-	// If collaborator address ID is missing, default to intra-state
-	if collaboratorAddressID == nil || *collaboratorAddressID == "" {
-		s.logger.Warn("Collaborator address ID missing, defaulting to intra-state for GST calculation",
-			zap.String("reason", "collaborator_address_id_missing"))
-		return &defaultIntraState
-	}
-
-	// If warehouse address ID is missing, default to intra-state
-	if warehouseAddressID == nil || *warehouseAddressID == "" {
-		s.logger.Warn("Warehouse address ID missing, defaulting to intra-state for GST calculation",
-			zap.String("reason", "warehouse_address_id_missing"))
-		return &defaultIntraState
-	}
-
-	// Get collaborator address from AAA
-	collaboratorAddr, err := s.addressClient.GetAddress(ctx, *collaboratorAddressID, jwtToken)
-	if err != nil {
-		s.logger.Warn("Failed to get collaborator address from AAA, defaulting to intra-state for GST calculation",
-			zap.Error(err),
-			zap.String("address_id", *collaboratorAddressID),
-			zap.String("reason", "aaa_collaborator_address_fetch_failed"))
-		return &defaultIntraState
-	}
-
-	// Get warehouse address from AAA
-	warehouseAddr, err := s.addressClient.GetAddress(ctx, *warehouseAddressID, jwtToken)
-	if err != nil {
-		s.logger.Warn("Failed to get warehouse address from AAA, defaulting to intra-state for GST calculation",
-			zap.Error(err),
-			zap.String("address_id", *warehouseAddressID),
-			zap.String("reason", "aaa_warehouse_address_fetch_failed"))
-		return &defaultIntraState
-	}
-
-	// Check if collaborator state is available
-	if collaboratorAddr.State == nil || *collaboratorAddr.State == "" {
-		s.logger.Warn("Collaborator state not available in AAA address, defaulting to intra-state for GST calculation",
-			zap.String("collaborator_address_id", *collaboratorAddressID),
+	// Check if collaborator state is available in local cache
+	if collaborator.State == nil || *collaborator.State == "" {
+		s.logger.Warn("Collaborator state not available in local cache, defaulting to intra-state for GST calculation",
+			zap.String("collaborator_id", collaborator.ID),
 			zap.String("reason", "collaborator_state_empty"))
 		return &defaultIntraState
 	}
 
-	// Check if warehouse state is available
-	if warehouseAddr.State == nil || *warehouseAddr.State == "" {
-		s.logger.Warn("Warehouse state not available in AAA address, defaulting to intra-state for GST calculation",
-			zap.String("warehouse_address_id", *warehouseAddressID),
+	// Check if warehouse state is available in local cache
+	if warehouse.State == nil || *warehouse.State == "" {
+		s.logger.Warn("Warehouse state not available in local cache, defaulting to intra-state for GST calculation",
+			zap.String("warehouse_id", warehouse.ID),
 			zap.String("reason", "warehouse_state_empty"))
 		return &defaultIntraState
 	}
 
-	// Compare states (case-insensitive)
-	collaboratorState := *collaboratorAddr.State
-	warehouseState := *warehouseAddr.State
+	// Compare states from local cache (no gRPC calls)
+	collaboratorState := *collaborator.State
+	warehouseState := *warehouse.State
 
 	isInterState := collaboratorState != warehouseState
-	s.logger.Info("Inter-state determination complete",
+	s.logger.Info("Inter-state determination complete (from local cache)",
 		zap.String("collaborator_state", collaboratorState),
 		zap.String("warehouse_state", warehouseState),
 		zap.Bool("is_inter_state", isInterState))
