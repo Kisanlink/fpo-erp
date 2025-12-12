@@ -344,6 +344,58 @@ func (h *ProductVariantHandler) UpdateProductVariant(c *gin.Context) {
 	utils.OKResponse(c, "Variant updated successfully", response)
 }
 
+// GetVariantsByCollaborator handles GET /api/v1/collaborators/:id/variants
+// @Summary Get Variants by Collaborator
+// @Description Retrieve all variants for a specific collaborator with pagination
+// @Tags Product Variants
+// @Produce json
+// @Param id path string true "Collaborator ID (format: CLAB_xxxxxxxx)" example(CLAB_12345678)
+// @Param limit query integer false "Number of records to return (default: 50, max: 200)" example(50)
+// @Param offset query integer false "Number of records to skip (default: 0)" example(0)
+// @Success 200 {object} utils.PaginatedResponseModel{data=[]models.ProductVariantResponse} "Variants retrieved successfully"
+// @Failure 400 {object} utils.ErrorResponseModel "Bad request"
+// @Failure 404 {object} utils.ErrorResponseModel "Collaborator not found"
+// @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
+// @Router /api/v1/collaborators/{id}/variants [get]
+func (h *ProductVariantHandler) GetVariantsByCollaborator(c *gin.Context) {
+	h.logger.Info("Handling get variants by collaborator request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
+	// Get collaborator ID from URL
+	collaboratorID := c.Param("id")
+	if collaboratorID == "" {
+		h.logger.Error("Collaborator ID is required but not provided")
+		utils.BadRequestResponse(c, "Collaborator ID is required", nil)
+		return
+	}
+
+	// Get pagination parameters
+	params := utils.GetPaginationParams(c)
+
+	h.logger.Debug("Calling variant service to get variants by collaborator",
+		zap.String("collaborator_id", collaboratorID),
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset))
+
+	// Get variants with pagination
+	response, total, err := h.variantService.GetVariantsByCollaboratorPaginated(c.Request.Context(), collaboratorID, params.Limit, params.Offset)
+	if err != nil {
+		h.logger.Error("Failed to retrieve variants for collaborator via service",
+			zap.Error(err),
+			zap.String("collaborator_id", collaboratorID))
+		utils.HandleServiceError(c, "Failed to retrieve variants", err)
+		return
+	}
+
+	h.logger.Info("Collaborator variants retrieved successfully via handler",
+		zap.String("collaborator_id", collaboratorID),
+		zap.Int("count", len(response)),
+		zap.Int64("total", total))
+
+	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
+}
+
 // DeleteProductVariant handles DELETE /api/v1/variants/:id
 // @Summary Delete Product Variant
 // @Description Delete a product variant (soft delete, requires authentication)

@@ -513,7 +513,7 @@ func (h *CollaboratorHandler) SearchCollaborators(c *gin.Context) {
 }
 
 // RegisterRoutes registers all collaborator routes
-func (h *CollaboratorHandler) RegisterRoutes(router *gin.RouterGroup) {
+func (h *CollaboratorHandler) RegisterRoutes(router *gin.RouterGroup, variantHandler *ProductVariantHandler) {
 	collaborators := router.Group("/collaborators")
 	{
 		// Apply authentication middleware to all routes
@@ -527,6 +527,9 @@ func (h *CollaboratorHandler) RegisterRoutes(router *gin.RouterGroup) {
 		collaborators.GET("/active", h.aaaMiddleware.RequireOrgPermission("collaborator", "read"), h.GetActiveCollaborators)
 		collaborators.GET("/search", h.aaaMiddleware.RequireOrgPermission("collaborator", "read"), h.SearchCollaborators)
 		collaborators.GET("/:id", h.aaaMiddleware.RequireOrgPermission("collaborator", "read"), h.GetCollaborator)
+
+		// Nested route: Get variants by collaborator
+		collaborators.GET("/:id/variants", h.aaaMiddleware.RequireOrgPermission("variant", "read"), variantHandler.GetVariantsByCollaborator)
 
 		// Update: AAA HTTP service will validate addresses permissions internally
 		collaborators.PUT("/:id", h.aaaMiddleware.RequireOrgPermission("collaborator", "update"), h.UpdateCollaborator)
