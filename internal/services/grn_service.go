@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -21,6 +22,7 @@ type GRNService struct {
 	warehouseRepo *repositories.WarehouseRepository
 	productRepo   *repositories.ProductRepository
 	inventoryRepo *repositories.InventoryRepository
+	s3Service     *S3Service
 	logger        interfaces.Logger
 }
 
@@ -31,6 +33,7 @@ func NewGRNService(
 	warehouseRepo *repositories.WarehouseRepository,
 	productRepo *repositories.ProductRepository,
 	inventoryRepo *repositories.InventoryRepository,
+	s3Service *S3Service,
 	logger interfaces.Logger,
 ) *GRNService {
 	return &GRNService{
@@ -39,6 +42,7 @@ func NewGRNService(
 		warehouseRepo: warehouseRepo,
 		productRepo:   productRepo,
 		inventoryRepo: inventoryRepo,
+		s3Service:     s3Service,
 		logger:        logger,
 	}
 }
@@ -288,7 +292,7 @@ func (s *GRNService) GetGRN(ctx context.Context, id string) (*models.GRNResponse
 		return nil, err
 	}
 
-	return s.buildGRNResponse(grn)
+	return s.buildGRNResponse(ctx, grn)
 }
 
 // GetAllGRNs retrieves all GRNs with pagination
@@ -305,7 +309,7 @@ func (s *GRNService) GetAllGRNs(ctx context.Context, limit, offset int) ([]model
 		if err != nil {
 			continue
 		}
-		response, err := s.buildGRNResponse(grnWithItems)
+		response, err := s.buildGRNResponse(ctx, grnWithItems)
 		if err != nil {
 			continue
 		}
@@ -335,7 +339,7 @@ func (s *GRNService) GetGRNsByWarehouse(ctx context.Context, warehouseID string,
 		if err != nil {
 			continue
 		}
-		response, err := s.buildGRNResponse(grnWithItems)
+		response, err := s.buildGRNResponse(ctx, grnWithItems)
 		if err != nil {
 			continue
 		}
@@ -364,14 +368,15 @@ func (s *GRNService) GetGRNByPurchaseOrder(ctx context.Context, poID string) (*m
 		return nil, err
 	}
 
-	return s.buildGRNResponse(grnWithItems)
+	return s.buildGRNResponse(ctx, grnWithItems)
 }
 
 // UpdateGRN updates a GRN
+// Note: Documents are auto-synced via attachments API (POST /api/v1/attachments with entity_type="grn")
 func (s *GRNService) UpdateGRN(ctx context.Context, id string, request *models.UpdateGRNRequest) (*models.GRNResponse, error) {
 	s.logger.Info("Updating GRN",
 		zap.String("grn_id", id),
-		zap.Bool("has_document", request.GRNDocument != nil),
+		zap.Bool("has_remarks", request.Remarks != nil),
 		zap.Bool("has_quality_status", request.QualityStatus != nil))
 
 	// Validate GRN exists
@@ -385,9 +390,6 @@ func (s *GRNService) UpdateGRN(ctx context.Context, id string, request *models.U
 
 	// Build updates map
 	updates := make(map[string]interface{})
-	if request.GRNDocument != nil {
-		updates["grn_document"] = *request.GRNDocument
-	}
 	if request.Remarks != nil {
 		updates["remarks"] = *request.Remarks
 	}
@@ -408,11 +410,10 @@ func (s *GRNService) UpdateGRN(ctx context.Context, id string, request *models.U
 }
 
 // buildGRNResponse builds a response with related entity details
-func (s *GRNService) buildGRNResponse(grn *models.GRN) (*models.GRNResponse, error) {
+func (s *GRNService) buildGRNResponse(ctx context.Context, grn *models.GRN) (*models.GRNResponse, error) {
 	response := &models.GRNResponse{
 		ID:            grn.ID,
 		GRNNumber:     grn.GRNNumber,
-		GRNDocument:   grn.GRNDocument, // Attachment ID for vendor's GRN PDF
 		POID:          grn.POID,
 		PONumber:      grn.PurchaseOrder.PONumber,
 		WarehouseID:   grn.WarehouseID,
@@ -423,6 +424,29 @@ func (s *GRNService) buildGRNResponse(grn *models.GRN) (*models.GRNResponse, err
 		Remarks:       grn.Remarks,
 		CreatedAt:     grn.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:     grn.UpdatedAt.UTC().Format(time.RFC3339),
+	}
+
+	// Generate presigned URLs for documents (auto-synced JSON array of S3 keys)
+	if grn.Documents != nil && *grn.Documents != "" && s.s3Service != nil {
+		var docKeys []string
+		if err := json.Unmarshal([]byte(*grn.Documents), &docKeys); err == nil {
+			var docURLs []string
+			for _, key := range docKeys {
+				if url, err := s.s3Service.GeneratePresignedURLForKey(ctx, key, time.Hour); err == nil {
+					docURLs = append(docURLs, url)
+				} else {
+					s.logger.Warn("Failed to generate presigned URL for GRN document",
+						zap.String("grn_id", grn.ID),
+						zap.String("s3_key", key),
+						zap.Error(err))
+				}
+			}
+			response.Documents = docURLs
+		} else {
+			s.logger.Warn("Failed to parse GRN documents JSON",
+				zap.String("grn_id", grn.ID),
+				zap.Error(err))
+		}
 	}
 
 	// Add items

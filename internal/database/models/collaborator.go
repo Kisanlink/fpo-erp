@@ -18,7 +18,7 @@ type Collaborator struct {
 
 	// Business Info
 	CompanyName   string  `gorm:"type:varchar(150);not null" json:"company_name"`
-	Logo          *string `gorm:"type:varchar(500)" json:"logo"` // Attachment ID (ATT_xxxxxxxx) - Use /api/v1/attachments/{id}/url to get image URL
+	Logo          *string `gorm:"type:varchar(2000)" json:"logo"` // Presigned S3 URL (auto-synced on upload)
 	ContactPerson string  `gorm:"type:varchar(100);not null" json:"contact_person"`
 	ContactNumber string  `gorm:"type:varchar(20);not null" json:"contact_number"`
 	Email         *string `gorm:"type:varchar(255)" json:"email"`

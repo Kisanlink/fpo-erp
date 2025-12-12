@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -26,6 +27,7 @@ type PurchaseOrderService struct {
 	grnRepo          *repositories.GRNRepository
 	inventoryRepo    *repositories.InventoryRepository
 	addressClient    *aaa.AddressGRPCClient // For fetching state info from AAA
+	s3Service        *S3Service             // For generating presigned URLs for documents
 	logger           interfaces.Logger
 }
 
@@ -52,6 +54,7 @@ func NewPurchaseOrderService(
 	grnRepo *repositories.GRNRepository,
 	inventoryRepo *repositories.InventoryRepository,
 	addressClient *aaa.AddressGRPCClient,
+	s3Service *S3Service,
 	logger interfaces.Logger,
 ) *PurchaseOrderService {
 	return &PurchaseOrderService{
@@ -63,6 +66,7 @@ func NewPurchaseOrderService(
 		grnRepo:          grnRepo,
 		inventoryRepo:    inventoryRepo,
 		addressClient:    addressClient,
+		s3Service:        s3Service,
 		logger:           logger,
 	}
 }
@@ -250,7 +254,7 @@ func (s *PurchaseOrderService) GetPurchaseOrder(ctx context.Context, id string) 
 		return nil, err
 	}
 
-	return s.buildPurchaseOrderResponse(po)
+	return s.buildPurchaseOrderResponse(ctx, po)
 }
 
 // GetAllPurchaseOrders retrieves all purchase orders with pagination
@@ -276,7 +280,7 @@ func (s *PurchaseOrderService) GetAllPurchaseOrders(ctx context.Context, limit, 
 		if err != nil {
 			continue
 		}
-		response, err := s.buildPurchaseOrderResponse(poWithItems)
+		response, err := s.buildPurchaseOrderResponse(ctx, poWithItems)
 		if err != nil {
 			continue
 		}
@@ -306,7 +310,7 @@ func (s *PurchaseOrderService) GetPurchaseOrdersByCollaborator(ctx context.Conte
 		if err != nil {
 			continue
 		}
-		response, err := s.buildPurchaseOrderResponse(poWithItems)
+		response, err := s.buildPurchaseOrderResponse(ctx, poWithItems)
 		if err != nil {
 			continue
 		}
@@ -335,7 +339,7 @@ func (s *PurchaseOrderService) GetPurchaseOrdersByStatus(ctx context.Context, st
 		if err != nil {
 			continue
 		}
-		response, err := s.buildPurchaseOrderResponse(poWithItems)
+		response, err := s.buildPurchaseOrderResponse(ctx, poWithItems)
 		if err != nil {
 			continue
 		}
@@ -359,7 +363,7 @@ func (s *PurchaseOrderService) GetPendingDeliveries(ctx context.Context, limit, 
 		if err != nil {
 			continue
 		}
-		response, err := s.buildPurchaseOrderResponse(poWithItems)
+		response, err := s.buildPurchaseOrderResponse(ctx, poWithItems)
 		if err != nil {
 			continue
 		}
@@ -909,7 +913,7 @@ func (s *PurchaseOrderService) generatePONumber() (string, error) {
 }
 
 // buildPurchaseOrderResponse builds a response with related entity details
-func (s *PurchaseOrderService) buildPurchaseOrderResponse(po *models.PurchaseOrder) (*models.PurchaseOrderResponse, error) {
+func (s *PurchaseOrderService) buildPurchaseOrderResponse(ctx context.Context, po *models.PurchaseOrder) (*models.PurchaseOrderResponse, error) {
 	// Calculate total rejected amount from GRN (if GRN exists)
 	totalRejectedAmount, err := s.grnRepo.GetTotalRejectedAmountByPO(po.ID)
 	if err != nil {
@@ -941,6 +945,20 @@ func (s *PurchaseOrderService) buildPurchaseOrderResponse(po *models.PurchaseOrd
 		IsInterState:        po.IsInterState,
 		CreatedAt:           po.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:           po.UpdatedAt.UTC().Format(time.RFC3339),
+	}
+
+	// Generate presigned URLs for documents
+	if po.Documents != nil && *po.Documents != "" && s.s3Service != nil {
+		var docKeys []string
+		if err := json.Unmarshal([]byte(*po.Documents), &docKeys); err == nil {
+			var docURLs []string
+			for _, key := range docKeys {
+				if url, err := s.s3Service.GeneratePresignedURLForKey(ctx, key, time.Hour); err == nil {
+					docURLs = append(docURLs, url)
+				}
+			}
+			response.Documents = docURLs
+		}
 	}
 
 	if po.ActualDelivery != nil {

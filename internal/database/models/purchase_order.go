@@ -41,6 +41,9 @@ type PurchaseOrder struct {
 	// Inter-state flag (determined at PO creation by comparing collaborator vs warehouse state)
 	IsInterState *bool `gorm:"type:boolean" json:"is_inter_state"` // nil = unknown, true = inter-state (IGST), false = intra-state (CGST+SGST)
 
+	// Document attachments (JSON array of S3 keys, auto-synced on upload)
+	Documents *string `gorm:"type:text" json:"documents"` // JSON array: ["po/{id}/file1.pdf", "po/{id}/file2.pdf"]
+
 	// Associations
 	Collaborator Collaborator        `gorm:"foreignKey:CollaboratorID" json:"collaborator,omitempty"`
 	Warehouse    Warehouse           `gorm:"foreignKey:WarehouseID" json:"warehouse,omitempty"`
@@ -130,22 +133,23 @@ func (PurchaseOrderItem) TableName() string {
 
 // PurchaseOrderResponse represents the API response for purchase order
 type PurchaseOrderResponse struct {
-	ID                  string  `json:"id"`
-	PONumber            string  `json:"po_number"`
-	CollaboratorID      string  `json:"collaborator_id"`
-	CollaboratorName    string  `json:"collaborator_name"`
-	WarehouseID         string  `json:"warehouse_id"`
-	WarehouseName       string  `json:"warehouse_name"`
-	OrderDate           string  `json:"order_date"`
-	ExpectedDelivery    string  `json:"expected_delivery_date"`
-	ActualDelivery      *string `json:"actual_delivery_date"`
-	Status              string  `json:"status"`
-	TotalAmount         float64 `json:"total_amount"`
-	TotalRejectedAmount float64 `json:"total_rejected_amount"` // Total value of rejected items from GRN
-	AmountOwed          float64 `json:"amount_owed"`           // TotalAmount - TotalRejectedAmount
-	PaymentStatus       string  `json:"payment_status"`
-	PaidAmount          float64 `json:"paid_amount"`
-	IsInterState        *bool   `json:"is_inter_state"` // nil = unknown, true = inter-state, false = intra-state
+	ID                  string   `json:"id"`
+	PONumber            string   `json:"po_number"`
+	CollaboratorID      string   `json:"collaborator_id"`
+	CollaboratorName    string   `json:"collaborator_name"`
+	WarehouseID         string   `json:"warehouse_id"`
+	WarehouseName       string   `json:"warehouse_name"`
+	OrderDate           string   `json:"order_date"`
+	ExpectedDelivery    string   `json:"expected_delivery_date"`
+	ActualDelivery      *string  `json:"actual_delivery_date"`
+	Status              string   `json:"status"`
+	TotalAmount         float64  `json:"total_amount"`
+	TotalRejectedAmount float64  `json:"total_rejected_amount"` // Total value of rejected items from GRN
+	AmountOwed          float64  `json:"amount_owed"`           // TotalAmount - TotalRejectedAmount
+	PaymentStatus       string   `json:"payment_status"`
+	PaidAmount          float64  `json:"paid_amount"`
+	IsInterState        *bool    `json:"is_inter_state"`      // nil = unknown, true = inter-state, false = intra-state
+	Documents           []string `json:"documents,omitempty"` // Array of presigned URLs (auto-synced)
 	// PO-level GST Totals (sum of all items)
 	TotalBaseAmount float64                     `json:"total_base_amount"` // Sum of all item base prices (excluding GST)
 	TotalGSTAmount  float64                     `json:"total_gst_amount"`  // Sum of all item GST amounts

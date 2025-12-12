@@ -17,19 +17,25 @@ import (
 
 // AttachmentService handles attachment business logic
 type AttachmentService struct {
-	attachmentRepo *repositories.AttachmentRepository
-	variantRepo    *repositories.ProductVariantRepository
-	s3Service      *S3Service
-	logger         interfaces.Logger
+	attachmentRepo   *repositories.AttachmentRepository
+	variantRepo      *repositories.ProductVariantRepository
+	collaboratorRepo *repositories.CollaboratorRepository
+	poRepo           *repositories.PurchaseOrderRepository
+	grnRepo          *repositories.GRNRepository
+	s3Service        *S3Service
+	logger           interfaces.Logger
 }
 
 // NewAttachmentService creates a new attachment service
-func NewAttachmentService(attachmentRepo *repositories.AttachmentRepository, variantRepo *repositories.ProductVariantRepository, s3Service *S3Service, logger interfaces.Logger) *AttachmentService {
+func NewAttachmentService(attachmentRepo *repositories.AttachmentRepository, variantRepo *repositories.ProductVariantRepository, collaboratorRepo *repositories.CollaboratorRepository, poRepo *repositories.PurchaseOrderRepository, grnRepo *repositories.GRNRepository, s3Service *S3Service, logger interfaces.Logger) *AttachmentService {
 	return &AttachmentService{
-		attachmentRepo: attachmentRepo,
-		variantRepo:    variantRepo,
-		s3Service:      s3Service,
-		logger:         logger,
+		attachmentRepo:   attachmentRepo,
+		variantRepo:      variantRepo,
+		collaboratorRepo: collaboratorRepo,
+		poRepo:           poRepo,
+		grnRepo:          grnRepo,
+		s3Service:        s3Service,
+		logger:           logger,
 	}
 }
 
@@ -109,6 +115,54 @@ func (s *AttachmentService) UploadAttachment(ctx context.Context, file *multipar
 		} else {
 			s.logger.Info("Auto-updated variant images",
 				zap.String("variant_id", entityID),
+				zap.String("s3_key", s3Key))
+		}
+	}
+
+	// Auto-update collaborator logo if entity_type is "logo"
+	if entityType == "logo" && s.collaboratorRepo != nil {
+		// Generate a long-lived presigned URL (1 year) for the logo
+		if logoURL, err := s.s3Service.GeneratePresignedURLForKey(ctx, s3Key, 365*24*time.Hour); err == nil {
+			if err := s.updateCollaboratorLogo(entityID, logoURL); err != nil {
+				s.logger.Warn("Failed to auto-update collaborator logo",
+					zap.Error(err),
+					zap.String("collaborator_id", entityID),
+					zap.String("s3_key", s3Key))
+				// Don't fail the upload, just log the warning
+			} else {
+				s.logger.Info("Auto-updated collaborator logo",
+					zap.String("collaborator_id", entityID),
+					zap.String("logo_url", logoURL))
+			}
+		}
+	}
+
+	// Auto-update PO documents if entity_type is "po"
+	if entityType == "po" && s.poRepo != nil {
+		if err := s.addDocumentToPO(entityID, s3Key); err != nil {
+			s.logger.Warn("Failed to add document to PO",
+				zap.Error(err),
+				zap.String("po_id", entityID),
+				zap.String("s3_key", s3Key))
+			// Don't fail the upload, just log the warning
+		} else {
+			s.logger.Info("Auto-added document to PO",
+				zap.String("po_id", entityID),
+				zap.String("s3_key", s3Key))
+		}
+	}
+
+	// Auto-update GRN documents if entity_type is "grn"
+	if entityType == "grn" && s.grnRepo != nil {
+		if err := s.addDocumentToGRN(entityID, s3Key); err != nil {
+			s.logger.Warn("Failed to add document to GRN",
+				zap.Error(err),
+				zap.String("grn_id", entityID),
+				zap.String("s3_key", s3Key))
+			// Don't fail the upload, just log the warning
+		} else {
+			s.logger.Info("Auto-added document to GRN",
+				zap.String("grn_id", entityID),
 				zap.String("s3_key", s3Key))
 		}
 	}
@@ -196,6 +250,49 @@ func (s *AttachmentService) DeleteAttachment(ctx context.Context, id string) err
 		} else {
 			s.logger.Info("Removed image from variant",
 				zap.String("variant_id", attachment.EntityID),
+				zap.String("s3_key", attachment.FilePath))
+		}
+	}
+
+	// Remove logo from collaborator if entity_type is "logo"
+	if attachment.EntityType == "logo" && s.collaboratorRepo != nil {
+		if err := s.clearCollaboratorLogo(attachment.EntityID); err != nil {
+			s.logger.Warn("Failed to clear collaborator logo",
+				zap.Error(err),
+				zap.String("collaborator_id", attachment.EntityID))
+			// Don't fail the deletion, just log the warning
+		} else {
+			s.logger.Info("Cleared collaborator logo",
+				zap.String("collaborator_id", attachment.EntityID))
+		}
+	}
+
+	// Remove document from PO if entity_type is "po"
+	if attachment.EntityType == "po" && s.poRepo != nil {
+		if err := s.removeDocumentFromPO(attachment.EntityID, attachment.FilePath); err != nil {
+			s.logger.Warn("Failed to remove document from PO",
+				zap.Error(err),
+				zap.String("po_id", attachment.EntityID),
+				zap.String("s3_key", attachment.FilePath))
+			// Don't fail the deletion, just log the warning
+		} else {
+			s.logger.Info("Removed document from PO",
+				zap.String("po_id", attachment.EntityID),
+				zap.String("s3_key", attachment.FilePath))
+		}
+	}
+
+	// Remove document from GRN if entity_type is "grn"
+	if attachment.EntityType == "grn" && s.grnRepo != nil {
+		if err := s.removeDocumentFromGRN(attachment.EntityID, attachment.FilePath); err != nil {
+			s.logger.Warn("Failed to remove document from GRN",
+				zap.Error(err),
+				zap.String("grn_id", attachment.EntityID),
+				zap.String("s3_key", attachment.FilePath))
+			// Don't fail the deletion, just log the warning
+		} else {
+			s.logger.Info("Removed document from GRN",
+				zap.String("grn_id", attachment.EntityID),
 				zap.String("s3_key", attachment.FilePath))
 		}
 	}
@@ -402,6 +499,210 @@ func (s *AttachmentService) removeImageFromVariant(variantID, s3Key string) erro
 
 	if err := s.variantRepo.Update(variant); err != nil {
 		return fmt.Errorf("failed to update variant: %w", err)
+	}
+
+	return nil
+}
+
+// updateCollaboratorLogo updates the collaborator's logo field with a presigned URL
+func (s *AttachmentService) updateCollaboratorLogo(collaboratorID, logoURL string) error {
+	collaborator, err := s.collaboratorRepo.GetByID(collaboratorID)
+	if err != nil {
+		return fmt.Errorf("collaborator not found: %w", err)
+	}
+	collaborator.Logo = &logoURL
+	if err := s.collaboratorRepo.Update(collaborator); err != nil {
+		return fmt.Errorf("failed to update collaborator: %w", err)
+	}
+	return nil
+}
+
+// clearCollaboratorLogo removes the logo from a collaborator
+func (s *AttachmentService) clearCollaboratorLogo(collaboratorID string) error {
+	collaborator, err := s.collaboratorRepo.GetByID(collaboratorID)
+	if err != nil {
+		return fmt.Errorf("collaborator not found: %w", err)
+	}
+	collaborator.Logo = nil
+	if err := s.collaboratorRepo.Update(collaborator); err != nil {
+		return fmt.Errorf("failed to update collaborator: %w", err)
+	}
+	return nil
+}
+
+// addDocumentToPO adds an S3 key to the purchase order's documents JSON array
+func (s *AttachmentService) addDocumentToPO(poID, s3Key string) error {
+	po, err := s.poRepo.GetByID(poID)
+	if err != nil {
+		return fmt.Errorf("purchase order not found: %w", err)
+	}
+
+	// Parse existing documents
+	var docs []string
+	if po.Documents != nil && *po.Documents != "" {
+		if err := json.Unmarshal([]byte(*po.Documents), &docs); err != nil {
+			docs = []string{}
+		}
+	}
+
+	// Check if document already exists (avoid duplicates)
+	for _, doc := range docs {
+		if doc == s3Key {
+			return nil
+		}
+	}
+
+	// Add new document
+	docs = append(docs, s3Key)
+
+	// Marshal back to JSON
+	docsJSON, err := json.Marshal(docs)
+	if err != nil {
+		return fmt.Errorf("failed to marshal documents: %w", err)
+	}
+
+	docsStr := string(docsJSON)
+	po.Documents = &docsStr
+
+	if err := s.poRepo.Update(po); err != nil {
+		return fmt.Errorf("failed to update purchase order: %w", err)
+	}
+
+	return nil
+}
+
+// removeDocumentFromPO removes an S3 key from the purchase order's documents JSON array
+func (s *AttachmentService) removeDocumentFromPO(poID, s3Key string) error {
+	po, err := s.poRepo.GetByID(poID)
+	if err != nil {
+		return fmt.Errorf("purchase order not found: %w", err)
+	}
+
+	// Parse existing documents
+	var docs []string
+	if po.Documents != nil && *po.Documents != "" {
+		if err := json.Unmarshal([]byte(*po.Documents), &docs); err != nil {
+			return nil
+		}
+	}
+
+	// Find and remove the document
+	found := false
+	newDocs := make([]string, 0, len(docs))
+	for _, doc := range docs {
+		if doc == s3Key {
+			found = true
+			continue
+		}
+		newDocs = append(newDocs, doc)
+	}
+
+	if !found {
+		return nil
+	}
+
+	// Marshal back to JSON
+	docsJSON, err := json.Marshal(newDocs)
+	if err != nil {
+		return fmt.Errorf("failed to marshal documents: %w", err)
+	}
+
+	docsStr := string(docsJSON)
+	po.Documents = &docsStr
+
+	if err := s.poRepo.Update(po); err != nil {
+		return fmt.Errorf("failed to update purchase order: %w", err)
+	}
+
+	return nil
+}
+
+// addDocumentToGRN adds an S3 key to the GRN's documents JSON array
+func (s *AttachmentService) addDocumentToGRN(grnID, s3Key string) error {
+	grn, err := s.grnRepo.GetByID(grnID)
+	if err != nil {
+		return fmt.Errorf("GRN not found: %w", err)
+	}
+
+	// Parse existing documents
+	var docs []string
+	if grn.Documents != nil && *grn.Documents != "" {
+		if err := json.Unmarshal([]byte(*grn.Documents), &docs); err != nil {
+			docs = []string{}
+		}
+	}
+
+	// Check if document already exists (avoid duplicates)
+	for _, doc := range docs {
+		if doc == s3Key {
+			return nil
+		}
+	}
+
+	// Add new document
+	docs = append(docs, s3Key)
+
+	// Marshal back to JSON
+	docsJSON, err := json.Marshal(docs)
+	if err != nil {
+		return fmt.Errorf("failed to marshal documents: %w", err)
+	}
+
+	docsStr := string(docsJSON)
+
+	updates := map[string]interface{}{
+		"documents": docsStr,
+	}
+	if err := s.grnRepo.Update(grnID, updates); err != nil {
+		return fmt.Errorf("failed to update GRN: %w", err)
+	}
+
+	return nil
+}
+
+// removeDocumentFromGRN removes an S3 key from the GRN's documents JSON array
+func (s *AttachmentService) removeDocumentFromGRN(grnID, s3Key string) error {
+	grn, err := s.grnRepo.GetByID(grnID)
+	if err != nil {
+		return fmt.Errorf("GRN not found: %w", err)
+	}
+
+	// Parse existing documents
+	var docs []string
+	if grn.Documents != nil && *grn.Documents != "" {
+		if err := json.Unmarshal([]byte(*grn.Documents), &docs); err != nil {
+			return nil
+		}
+	}
+
+	// Find and remove the document
+	found := false
+	newDocs := make([]string, 0, len(docs))
+	for _, doc := range docs {
+		if doc == s3Key {
+			found = true
+			continue
+		}
+		newDocs = append(newDocs, doc)
+	}
+
+	if !found {
+		return nil
+	}
+
+	// Marshal back to JSON
+	docsJSON, err := json.Marshal(newDocs)
+	if err != nil {
+		return fmt.Errorf("failed to marshal documents: %w", err)
+	}
+
+	docsStr := string(docsJSON)
+
+	updates := map[string]interface{}{
+		"documents": docsStr,
+	}
+	if err := s.grnRepo.Update(grnID, updates); err != nil {
+		return fmt.Errorf("failed to update GRN: %w", err)
 	}
 
 	return nil
