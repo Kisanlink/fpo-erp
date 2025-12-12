@@ -114,6 +114,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 		collaboratorRepo,
 		addressClient,
 		s3Service,
+		attachmentService,
 		ecommerceClient,
 		ecommerceTimeout,
 		cfg.Ecommerce.AuthToken,

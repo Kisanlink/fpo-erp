@@ -32,6 +32,7 @@ func setupCollaboratorService(t *testing.T) (*services.CollaboratorService, *gor
 		collaboratorRepo,
 		nil, // addressClient (not needed for validation tests)
 		nil, // s3Service (not needed for validation tests)
+		nil, // attachmentService (not needed for validation tests)
 		nil, // ecomClient (nil = use legacy path)
 		0,   // ecomTimeout
 		"",  // ecomAuthToken

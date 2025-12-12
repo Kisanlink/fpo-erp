@@ -28,13 +28,14 @@ type collaboratorSyncClient interface {
 
 // CollaboratorService handles collaborator business logic
 type CollaboratorService struct {
-	collaboratorRepo *repositories.CollaboratorRepository
-	addressClient    *aaa.AddressGRPCClient
-	s3Service        *S3Service
-	ecomClient       collaboratorSyncClient
-	ecomTimeout      time.Duration
-	ecomAuthToken    string
-	logger           interfaces.Logger
+	collaboratorRepo  *repositories.CollaboratorRepository
+	addressClient     *aaa.AddressGRPCClient
+	s3Service         *S3Service
+	attachmentService *AttachmentService
+	ecomClient        collaboratorSyncClient
+	ecomTimeout       time.Duration
+	ecomAuthToken     string
+	logger            interfaces.Logger
 }
 
 // NewCollaboratorService creates a new collaborator service
@@ -42,6 +43,7 @@ func NewCollaboratorService(
 	collaboratorRepo *repositories.CollaboratorRepository,
 	addressClient *aaa.AddressGRPCClient,
 	s3Service *S3Service,
+	attachmentService *AttachmentService,
 	ecomClient collaboratorSyncClient,
 	ecomTimeout time.Duration,
 	ecomAuthToken string,
@@ -51,13 +53,14 @@ func NewCollaboratorService(
 		ecomTimeout = 5 * time.Second
 	}
 	return &CollaboratorService{
-		collaboratorRepo: collaboratorRepo,
-		addressClient:    addressClient,
-		s3Service:        s3Service,
-		ecomClient:       ecomClient,
-		ecomTimeout:      ecomTimeout,
-		ecomAuthToken:    ecomAuthToken,
-		logger:           logger,
+		collaboratorRepo:  collaboratorRepo,
+		addressClient:     addressClient,
+		s3Service:         s3Service,
+		attachmentService: attachmentService,
+		ecomClient:        ecomClient,
+		ecomTimeout:       ecomTimeout,
+		ecomAuthToken:     ecomAuthToken,
+		logger:            logger,
 	}
 }
 
@@ -608,7 +611,7 @@ func (s *CollaboratorService) updateCollaboratorViaEcommerce(ctx context.Context
 	}
 
 	s.logger.Debug("Applying update request to collaborator model")
-	s.applyUpdateRequestToModel(collaborator, request)
+	s.applyUpdateRequestToModel(ctx, collaborator, request)
 
 	s.logger.Debug("Saving collaborator updates to database")
 
@@ -688,7 +691,7 @@ func (s *CollaboratorService) updateCollaboratorLegacy(ctx context.Context, id s
 	}
 
 	s.logger.Debug("Applying update request to collaborator model")
-	s.applyUpdateRequestToModel(collaborator, request)
+	s.applyUpdateRequestToModel(ctx, collaborator, request)
 
 	s.logger.Debug("Saving collaborator updates to database")
 
@@ -859,11 +862,31 @@ func (s *CollaboratorService) applyCreateRequestToModel(collaborator *models.Col
 	collaborator.Experience = request.Experience
 }
 
-func (s *CollaboratorService) applyUpdateRequestToModel(collaborator *models.Collaborator, request *models.UpdateCollaboratorRequest) {
+func (s *CollaboratorService) applyUpdateRequestToModel(ctx context.Context, collaborator *models.Collaborator, request *models.UpdateCollaboratorRequest) {
 	if request.CompanyName != nil {
 		collaborator.CompanyName = *request.CompanyName
 	}
 	if request.Logo != nil {
+		// S3 CLEANUP: Delete old logo if it's being replaced with a different one
+		if collaborator.Logo != nil && *collaborator.Logo != "" && *collaborator.Logo != *request.Logo {
+			oldLogoID := *collaborator.Logo
+			s.logger.Info("Logo being replaced, cleaning up old logo from S3",
+				zap.String("collaborator_id", collaborator.ID),
+				zap.String("old_logo_id", oldLogoID),
+				zap.String("new_logo_id", *request.Logo))
+
+			if s.attachmentService != nil {
+				if err := s.attachmentService.DeleteAttachment(ctx, oldLogoID); err != nil {
+					// Log but don't fail the update
+					s.logger.Warn("Failed to delete old logo attachment",
+						zap.Error(err),
+						zap.String("old_logo_id", oldLogoID))
+				} else {
+					s.logger.Info("Old logo deleted successfully from S3",
+						zap.String("old_logo_id", oldLogoID))
+				}
+			}
+		}
 		collaborator.Logo = request.Logo
 	}
 	if request.ContactPerson != nil {
