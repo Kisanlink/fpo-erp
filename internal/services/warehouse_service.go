@@ -96,6 +96,22 @@ func (s *WarehouseService) CreateWarehouse(ctx context.Context, request *models.
 	// Create warehouse model using the proper constructor
 	warehouse := models.NewWarehouse(request.Name, addressID)
 
+	// SYNC: Fetch and store address locally for future reads (write-through cache)
+	if addressID != nil {
+		ctxAddr, cancel := context.WithTimeout(ctx, 3*time.Second)
+		defer cancel()
+		address, err := s.addressClient.GetAddress(ctxAddr, *addressID, jwtToken)
+		if err != nil {
+			s.logger.Warn("Failed to fetch address for local cache",
+				zap.Error(err),
+				zap.String("address_id", *addressID))
+		} else {
+			warehouse.SyncFromAAA(address)
+			s.logger.Debug("Address synced to local cache",
+				zap.String("address_id", *addressID))
+		}
+	}
+
 	s.logger.Debug("Saving warehouse to database")
 
 	// Save to database
@@ -120,15 +136,10 @@ func (s *WarehouseService) CreateWarehouse(ctx context.Context, request *models.
 }
 
 // GetWarehouse retrieves a warehouse by ID
+// NOTE: No gRPC call - reads address from local cache
 func (s *WarehouseService) GetWarehouse(ctx context.Context, id string, jwtToken string) (*models.WarehouseResponse, error) {
 	s.logger.Info("Retrieving warehouse",
 		zap.String("warehouse_id", id))
-
-	// Check if AAA service is available
-	if s.addressClient == nil {
-		s.logger.Error("AAA address service is not available - cannot retrieve warehouse")
-		return nil, errors.NewServiceUnavailableError("AAA address service is not available")
-	}
 
 	warehouse, err := s.warehouseRepo.GetByID(id)
 	if err != nil {
@@ -146,16 +157,11 @@ func (s *WarehouseService) GetWarehouse(ctx context.Context, id string, jwtToken
 }
 
 // GetAllWarehouses retrieves all warehouses with pagination
+// NOTE: No gRPC calls - reads addresses from local cache
 func (s *WarehouseService) GetAllWarehouses(ctx context.Context, limit, offset int, jwtToken string) ([]models.WarehouseResponse, int64, error) {
 	s.logger.Info("Retrieving all warehouses",
 		zap.Int("limit", limit),
 		zap.Int("offset", offset))
-
-	// Check if AAA service is available
-	if s.addressClient == nil {
-		s.logger.Error("AAA address service is not available - cannot retrieve warehouses")
-		return nil, 0, errors.NewServiceUnavailableError("AAA address service is not available")
-	}
 
 	warehouses, total, err := s.warehouseRepo.GetAll(limit, offset)
 	if err != nil {
@@ -247,7 +253,9 @@ func (s *WarehouseService) UpdateWarehouse(ctx context.Context, id string, reque
 			return nil, fmt.Errorf("failed to update address: %w", err)
 		}
 		warehouse.AddressID = &address.ID
-		s.logger.Debug("Address updated successfully",
+		// SYNC: Update local cache with new address data
+		warehouse.SyncFromAAA(address)
+		s.logger.Debug("Address updated and synced to local cache",
 			zap.String("address_id", address.ID))
 	}
 
@@ -326,15 +334,10 @@ func (s *WarehouseService) DeleteWarehouse(ctx context.Context, id string, jwtTo
 }
 
 // SearchWarehouses searches warehouses by name
+// NOTE: No gRPC calls - reads addresses from local cache
 func (s *WarehouseService) SearchWarehouses(ctx context.Context, query string, jwtToken string) ([]models.WarehouseResponse, error) {
 	s.logger.Info("Searching warehouses",
 		zap.String("query", query))
-
-	// Check if AAA service is available
-	if s.addressClient == nil {
-		s.logger.Error("AAA address service is not available - cannot search warehouses")
-		return nil, errors.NewServiceUnavailableError("AAA address service is not available")
-	}
 
 	warehouses, err := s.warehouseRepo.GetByName(query)
 	if err != nil {
@@ -364,39 +367,15 @@ func (s *WarehouseService) SearchWarehouses(ctx context.Context, query string, j
 	return responses, nil
 }
 
-// buildWarehouseResponse builds a warehouse response with address details
+// buildWarehouseResponse builds a warehouse response from LOCAL data (NO gRPC)
+// This is the key optimization - address data is read from local cache
 func (s *WarehouseService) buildWarehouseResponse(ctx context.Context, warehouse *models.Warehouse, jwtToken string) (*models.WarehouseResponse, error) {
 	response := &models.WarehouseResponse{
 		ID:        warehouse.ID,
 		Name:      warehouse.Name,
+		Address:   warehouse.BuildAddressInfo(), // Uses local fields - NO gRPC call!
 		CreatedAt: warehouse.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt: warehouse.UpdatedAt.UTC().Format(time.RFC3339),
-	}
-
-	// Fetch address details if address ID exists
-	if warehouse.AddressID != nil {
-		address, err := s.addressClient.GetAddress(ctx, *warehouse.AddressID, jwtToken)
-		if err != nil {
-			// Log error but don't fail the request
-			// You might want to handle this differently based on requirements
-			return response, nil
-		}
-
-		response.Address = &models.AddressInfo{
-			ID:          address.ID,
-			Type:        address.Type,
-			House:       address.House,
-			Street:      address.Street,
-			Landmark:    address.Landmark,
-			PostOffice:  address.PostOffice,
-			Subdistrict: address.Subdistrict,
-			District:    address.District,
-			VTC:         address.VTC,
-			State:       address.State,
-			Country:     address.Country,
-			Pincode:     address.Pincode,
-			FullAddress: address.BuildFullAddress(),
-		}
 	}
 
 	return response, nil
