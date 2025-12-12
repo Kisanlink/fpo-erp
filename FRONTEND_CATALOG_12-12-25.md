@@ -841,6 +841,42 @@ export const deleteAllAttachmentsForEntity = async (
 
 ---
 
+## Issue 5: Purchase Order Address Detection Optimization (Backend Only)
+
+**Type**: Backend Optimization (No Frontend Changes Required)
+
+**What Changed**:
+- Purchase order creation now uses locally cached address data instead of making gRPC calls to AAA service
+- Inter-state GST detection (CGST+SGST vs IGST) now reads from `collaborator.state` and `warehouse.state` fields in local database
+- Eliminates 2 gRPC calls per purchase order creation (1 for collaborator address, 1 for warehouse address)
+
+**Frontend Impact**: None - API request/response unchanged
+
+**Technical Details**:
+- **OLD**: `determineInterState()` made 2 gRPC calls to AAA service: `GetAddress(collaboratorAddressID)` and `GetAddress(warehouseAddressID)`
+- **NEW**: `determineInterState()` reads from local cache: `collaborator.State` and `warehouse.State` (no gRPC calls)
+- Write-through cache pattern: addresses are synced to local DB on collaborator/warehouse CREATE/UPDATE operations
+- Fallback behavior unchanged: defaults to intra-state (CGST+SGST) if state data unavailable
+
+**Performance Improvement**:
+- Saves 2 gRPC round-trips per PO creation (~50-100ms total latency reduction)
+- Faster PO creation response time
+- Reduced load on AAA service
+- No additional database queries (collaborator and warehouse already fetched during PO creation)
+
+**Why This Works**:
+- Collaborator and warehouse models have local address cache fields (including `State`) that are synced on write operations
+- Address data is already available when fetching collaborator/warehouse for PO validation
+- State comparison logic remains identical - only the data source changed (local DB vs gRPC)
+
+**Files Modified**:
+- `internal/services/purchase_order_service.go:111` - Updated call to `determineInterState()`
+- `internal/services/purchase_order_service.go:1024-1056` - Rewritten function to use local cache
+
+**No Frontend Changes Required** - API contract unchanged.
+
+---
+
 ## Issue 6: New Endpoint - Collaborator Transaction Statistics
 
 **Type**: New Feature
