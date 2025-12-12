@@ -367,13 +367,41 @@ func (s *WarehouseService) SearchWarehouses(ctx context.Context, query string, j
 	return responses, nil
 }
 
-// buildWarehouseResponse builds a warehouse response from LOCAL data (NO gRPC)
-// This is the key optimization - address data is read from local cache
+// buildWarehouseResponse builds a warehouse response from LOCAL data
+// LAZY FETCH: For legacy records with address_id but empty cache, fetch from AAA on first GET
 func (s *WarehouseService) buildWarehouseResponse(ctx context.Context, warehouse *models.Warehouse, jwtToken string) (*models.WarehouseResponse, error) {
+	// LAZY FETCH: If address_id exists but cache is empty, fetch from AAA
+	if warehouse.AddressID != nil && !warehouse.HasAddressCache() {
+		if s.addressClient != nil && jwtToken != "" {
+			ctxAddr, cancel := context.WithTimeout(ctx, 3*time.Second)
+			defer cancel()
+
+			address, err := s.addressClient.GetAddress(ctxAddr, *warehouse.AddressID, jwtToken)
+			if err != nil {
+				s.logger.Warn("Failed to lazy-fetch address for warehouse",
+					zap.Error(err),
+					zap.String("warehouse_id", warehouse.ID),
+					zap.String("address_id", *warehouse.AddressID))
+			} else {
+				warehouse.SyncFromAAA(address)
+				// Persist to DB for future GETs
+				if updateErr := s.warehouseRepo.Update(warehouse); updateErr != nil {
+					s.logger.Warn("Failed to persist lazy-fetched address",
+						zap.Error(updateErr),
+						zap.String("warehouse_id", warehouse.ID))
+				} else {
+					s.logger.Debug("Lazy-fetched and cached address for warehouse",
+						zap.String("warehouse_id", warehouse.ID),
+						zap.String("address_id", *warehouse.AddressID))
+				}
+			}
+		}
+	}
+
 	response := &models.WarehouseResponse{
 		ID:        warehouse.ID,
 		Name:      warehouse.Name,
-		Address:   warehouse.BuildAddressInfo(), // Uses local fields - NO gRPC call!
+		Address:   warehouse.BuildAddressInfo(), // Uses local fields - NO gRPC call after first fetch!
 		CreatedAt: warehouse.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt: warehouse.UpdatedAt.UTC().Format(time.RFC3339),
 	}

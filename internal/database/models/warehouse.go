@@ -110,6 +110,16 @@ func ptrStringValue(s *string) string {
 	return *s
 }
 
+// HasAddressCache returns true if local address fields are populated
+// Used for lazy-fetch detection on GET operations for legacy records
+func (w *Warehouse) HasAddressCache() bool {
+	if w.AddressID == nil {
+		return true // No address = nothing to cache
+	}
+	// State is always required for valid Indian addresses
+	return w.State != nil && *w.State != ""
+}
+
 // AddressInfo represents address information from AAA service - Indian hierarchical format
 type AddressInfo struct {
 	ID          string  `json:"id"`

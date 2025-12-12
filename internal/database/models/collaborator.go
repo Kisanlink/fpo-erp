@@ -135,6 +135,16 @@ func (c *Collaborator) SyncFromAAA(addr *aaa.Address) {
 	c.Pincode = addr.Pincode
 }
 
+// HasAddressCache returns true if local address fields are populated
+// Used for lazy-fetch detection on GET operations for legacy records
+func (c *Collaborator) HasAddressCache() bool {
+	if c.AddressID == nil {
+		return true // No address = nothing to cache
+	}
+	// State is always required for valid Indian addresses
+	return c.State != nil && *c.State != ""
+}
+
 // CollaboratorResponse represents the API response for collaborator
 type CollaboratorResponse struct {
 	ID            string       `json:"id"`

@@ -785,9 +785,37 @@ func (s *CollaboratorService) deleteCollaboratorLegacy(ctx context.Context, id s
 	return nil
 }
 
-// buildCollaboratorResponse builds a collaborator response from LOCAL data (NO gRPC)
-// This is the key optimization - address data is read from local cache
+// buildCollaboratorResponse builds a collaborator response from LOCAL data
+// LAZY FETCH: For legacy records with address_id but empty cache, fetch from AAA on first GET
 func (s *CollaboratorService) buildCollaboratorResponse(ctx context.Context, collaborator *models.Collaborator, jwtToken string) (*models.CollaboratorResponse, error) {
+	// LAZY FETCH: If address_id exists but cache is empty, fetch from AAA
+	if collaborator.AddressID != nil && !collaborator.HasAddressCache() {
+		if s.addressClient != nil && jwtToken != "" {
+			ctxAddr, cancel := context.WithTimeout(ctx, 3*time.Second)
+			defer cancel()
+
+			address, err := s.addressClient.GetAddress(ctxAddr, *collaborator.AddressID, jwtToken)
+			if err != nil {
+				s.logger.Warn("Failed to lazy-fetch address for collaborator",
+					zap.Error(err),
+					zap.String("collaborator_id", collaborator.ID),
+					zap.String("address_id", *collaborator.AddressID))
+			} else {
+				collaborator.SyncFromAAA(address)
+				// Persist to DB for future GETs
+				if updateErr := s.collaboratorRepo.Update(collaborator); updateErr != nil {
+					s.logger.Warn("Failed to persist lazy-fetched address",
+						zap.Error(updateErr),
+						zap.String("collaborator_id", collaborator.ID))
+				} else {
+					s.logger.Debug("Lazy-fetched and cached address for collaborator",
+						zap.String("collaborator_id", collaborator.ID),
+						zap.String("address_id", *collaborator.AddressID))
+				}
+			}
+		}
+	}
+
 	isActiveValue := false
 	if collaborator.IsActive != nil {
 		isActiveValue = *collaborator.IsActive
@@ -808,7 +836,7 @@ func (s *CollaboratorService) buildCollaboratorResponse(ctx context.Context, col
 		BankName:      collaborator.BankName,
 		Experience:    collaborator.Experience,
 		IsActive:      isActiveValue,
-		Address:       collaborator.BuildAddressInfo(), // Uses local fields - NO gRPC call!
+		Address:       collaborator.BuildAddressInfo(), // Uses local fields - NO gRPC call after first fetch!
 		CreatedAt:     collaborator.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:     collaborator.UpdatedAt.UTC().Format(time.RFC3339),
 	}
