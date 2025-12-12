@@ -21,6 +21,7 @@ var invoiceCounter int64
 // =============================================================================
 // Test Setup & Fixtures
 // =============================================================================
+// Note: createTestWarehouse is defined in purchase_order_service_test.go and shared across package
 
 // setupSalesService creates service with all dependencies
 func setupSalesService(t *testing.T) (*services.SalesService, *gorm.DB, func()) {
