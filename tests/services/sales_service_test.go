@@ -61,6 +61,20 @@ func setupSalesService(t *testing.T) (*services.SalesService, *gorm.DB, func()) 
 	return service, db, cleanup
 }
 
+// createTestWarehouse creates a test warehouse
+func createTestWarehouse(t *testing.T, db *gorm.DB, id string) *models.Warehouse {
+	t.Helper()
+
+	warehouse := models.NewWarehouse("Test Warehouse "+id, nil)
+	warehouse.ID = id
+
+	if err := db.Create(warehouse).Error; err != nil {
+		t.Fatalf("Failed to create test warehouse: %v", err)
+	}
+
+	return warehouse
+}
+
 // createTestSale creates a test sale
 func createTestSale(t *testing.T, db *gorm.DB, warehouseID string, totalAmount float64, status string) *models.Sale {
 	t.Helper()
