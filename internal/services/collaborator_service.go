@@ -29,6 +29,8 @@ type collaboratorSyncClient interface {
 // CollaboratorService handles collaborator business logic
 type CollaboratorService struct {
 	collaboratorRepo  *repositories.CollaboratorRepository
+	purchaseOrderRepo *repositories.PurchaseOrderRepository
+	grnRepo           *repositories.GRNRepository
 	addressClient     *aaa.AddressGRPCClient
 	s3Service         *S3Service
 	attachmentService *AttachmentService
@@ -41,6 +43,8 @@ type CollaboratorService struct {
 // NewCollaboratorService creates a new collaborator service
 func NewCollaboratorService(
 	collaboratorRepo *repositories.CollaboratorRepository,
+	purchaseOrderRepo *repositories.PurchaseOrderRepository,
+	grnRepo *repositories.GRNRepository,
 	addressClient *aaa.AddressGRPCClient,
 	s3Service *S3Service,
 	attachmentService *AttachmentService,
@@ -54,6 +58,8 @@ func NewCollaboratorService(
 	}
 	return &CollaboratorService{
 		collaboratorRepo:  collaboratorRepo,
+		purchaseOrderRepo: purchaseOrderRepo,
+		grnRepo:           grnRepo,
 		addressClient:     addressClient,
 		s3Service:         s3Service,
 		attachmentService: attachmentService,
@@ -1305,4 +1311,82 @@ func validateBankDetails(accountNo, ifsc *string) error {
 		return errors.NewValidationError("bank_account_no is required when bank_ifsc is provided")
 	}
 	return nil
+}
+
+// GetCollaboratorStats retrieves transaction statistics for a collaborator
+func (s *CollaboratorService) GetCollaboratorStats(ctx context.Context, collaboratorID string) (*models.CollaboratorStats, error) {
+	s.logger.Info("Retrieving collaborator stats",
+		zap.String("collaborator_id", collaboratorID))
+
+	// Get collaborator details
+	collaborator, err := s.collaboratorRepo.GetByID(collaboratorID)
+	if err != nil {
+		s.logger.Error("Failed to retrieve collaborator for stats",
+			zap.Error(err),
+			zap.String("collaborator_id", collaboratorID))
+		return nil, err
+	}
+
+	// Get PO count
+	poCount, err := s.purchaseOrderRepo.CountByCollaborator(collaboratorID)
+	if err != nil {
+		s.logger.Error("Failed to count purchase orders",
+			zap.Error(err),
+			zap.String("collaborator_id", collaboratorID))
+		return nil, err
+	}
+
+	// Get GRN count
+	grnCount, err := s.grnRepo.CountByCollaborator(collaboratorID)
+	if err != nil {
+		s.logger.Error("Failed to count GRNs",
+			zap.Error(err),
+			zap.String("collaborator_id", collaboratorID))
+		return nil, err
+	}
+
+	// Get total amount
+	totalAmount, err := s.purchaseOrderRepo.SumAmountByCollaborator(collaboratorID)
+	if err != nil {
+		s.logger.Error("Failed to sum purchase order amounts",
+			zap.Error(err),
+			zap.String("collaborator_id", collaboratorID))
+		return nil, err
+	}
+
+	// Get active PO count
+	activePOCount, err := s.purchaseOrderRepo.CountActiveByCollaborator(collaboratorID)
+	if err != nil {
+		s.logger.Error("Failed to count active purchase orders",
+			zap.Error(err),
+			zap.String("collaborator_id", collaboratorID))
+		return nil, err
+	}
+
+	// Get latest PO date
+	lastPODate, err := s.purchaseOrderRepo.GetLatestPODate(collaboratorID)
+	if err != nil {
+		s.logger.Error("Failed to get latest PO date",
+			zap.Error(err),
+			zap.String("collaborator_id", collaboratorID))
+		return nil, err
+	}
+
+	stats := &models.CollaboratorStats{
+		CollaboratorID: collaborator.ID,
+		CompanyName:    collaborator.CompanyName,
+		POCount:        poCount,
+		GRNCount:       grnCount,
+		TotalAmount:    totalAmount,
+		ActivePOCount:  activePOCount,
+		LastPODate:     lastPODate,
+	}
+
+	s.logger.Info("Collaborator stats retrieved successfully",
+		zap.String("collaborator_id", collaboratorID),
+		zap.Int64("po_count", poCount),
+		zap.Int64("grn_count", grnCount),
+		zap.Float64("total_amount", totalAmount))
+
+	return stats, nil
 }

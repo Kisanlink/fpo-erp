@@ -199,3 +199,14 @@ type UpdateCollaboratorRequest struct {
 	IsActive      *bool                 `json:"is_active,omitempty"`
 	Address       *UpdateAddressRequest `json:"address,omitempty"`
 }
+
+// CollaboratorStats holds transaction statistics for a collaborator
+type CollaboratorStats struct {
+	CollaboratorID string  `json:"collaborator_id"`
+	CompanyName    string  `json:"company_name"`
+	POCount        int64   `json:"po_count"`
+	GRNCount       int64   `json:"grn_count"`
+	TotalAmount    float64 `json:"total_amount"`
+	ActivePOCount  int64   `json:"active_po_count"`
+	LastPODate     *string `json:"last_po_date"`
+}

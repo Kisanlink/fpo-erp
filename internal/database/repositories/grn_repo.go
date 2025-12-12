@@ -263,3 +263,16 @@ func (r *GRNRepository) GetLastGRNNumberForYear(year int) (int, error) {
 
 	return maxNumber, nil
 }
+
+// CountByCollaborator counts GRNs for a collaborator via purchase order relationship
+func (r *GRNRepository) CountByCollaborator(collaboratorID string) (int64, error) {
+	var count int64
+	err := r.db.Table("goods_receipt_notes").
+		Joins("JOIN purchase_orders ON goods_receipt_notes.po_id = purchase_orders.id").
+		Where("purchase_orders.collaborator_id = ?", collaboratorID).
+		Count(&count).Error
+	if err != nil {
+		return 0, errors.NewInternalServerError("Failed to count GRNs by collaborator")
+	}
+	return count, nil
+}
