@@ -333,13 +333,11 @@ func TestProductVariantHandler_CreateProductVariant_Success(t *testing.T) {
 	mockService.On("CreateProductVariant", mock.Anything, mock.Anything, mock.AnythingOfType("*models.CreateProductVariantRequest")).
 		Return(expectedResponse, nil)
 
-	// Create request
-	reqSKU := "RICE-1KG-001"
+	// Create request (Issue 1: SKU removed from request - auto-generated)
 	reqBody := models.CreateProductVariantRequest{
 		VariantName: "1kg Pack",
 		Quantity:    "1",
 		PackSize:    "1kg",
-		SKU:         &reqSKU,
 		HSNCode:     "1006", // Required field
 	}
 	body, _ := json.Marshal(reqBody)
@@ -396,13 +394,11 @@ func TestProductVariantHandler_CreateProductVariant_ServiceError(t *testing.T) {
 	mockService.On("CreateProductVariant", mock.Anything, mock.Anything, mock.AnythingOfType("*models.CreateProductVariantRequest")).
 		Return(nil, errors.New("database error"))
 
-	// Create request
-	reqSKU := "RICE-1KG-001"
+	// Create request (Issue 1: SKU removed from request - auto-generated)
 	reqBody := models.CreateProductVariantRequest{
 		VariantName: "1kg Pack",
 		Quantity:    "1",
 		PackSize:    "1kg",
-		SKU:         &reqSKU,
 		HSNCode:     "1006", // Required field
 	}
 	body, _ := json.Marshal(reqBody)
