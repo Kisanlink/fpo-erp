@@ -1303,6 +1303,279 @@ func TestSalesService_CancelSale_EmptyReason_Success(t *testing.T) {
 }
 
 // =============================================================================
+// PatchSale Tests (Issue 9)
+// =============================================================================
+
+func TestSalesService_PatchSale_UpdatePaymentMode(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// Create test data
+	warehouse := createTestWarehouse(t, db, "WH-PATCH-001")
+	sale := createTestSale(t, db, warehouse.ID, 1000.00, "pending")
+
+	// Create patch request
+	newPaymentMode := "upi"
+	request := &models.PatchSaleRequest{
+		PaymentMode: &newPaymentMode,
+	}
+
+	// Execute
+	response, err := service.PatchSale(sale.ID, request)
+
+	// Assert
+	testutils.AssertNoError(t, err, "PatchSale should succeed")
+	testutils.AssertNotNil(t, response, "Response should not be nil")
+	testutils.AssertEqual(t, response.PaymentMode, "upi", "PaymentMode should be updated")
+}
+
+func TestSalesService_PatchSale_UpdateSaleType(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// Create test data
+	warehouse := createTestWarehouse(t, db, "WH-PATCH-002")
+	sale := createTestSale(t, db, warehouse.ID, 1000.00, "pending")
+
+	// Create patch request
+	newSaleType := "delivery"
+	request := &models.PatchSaleRequest{
+		SaleType: &newSaleType,
+	}
+
+	// Execute
+	response, err := service.PatchSale(sale.ID, request)
+
+	// Assert
+	testutils.AssertNoError(t, err, "PatchSale should succeed")
+	testutils.AssertNotNil(t, response, "Response should not be nil")
+	testutils.AssertEqual(t, response.SaleType, "delivery", "SaleType should be updated")
+}
+
+func TestSalesService_PatchSale_UpdateCustomerPhone(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// Create test data
+	warehouse := createTestWarehouse(t, db, "WH-PATCH-003")
+	sale := createTestSale(t, db, warehouse.ID, 1000.00, "pending")
+
+	// Create patch request
+	newCustomerPhone := "9876543210"
+	request := &models.PatchSaleRequest{
+		CustomerPhone: &newCustomerPhone,
+	}
+
+	// Execute
+	response, err := service.PatchSale(sale.ID, request)
+
+	// Assert
+	testutils.AssertNoError(t, err, "PatchSale should succeed")
+	testutils.AssertNotNil(t, response, "Response should not be nil")
+	testutils.AssertNotNil(t, response.CustomerPhone, "CustomerPhone should not be nil")
+	testutils.AssertEqual(t, *response.CustomerPhone, "9876543210", "CustomerPhone should be updated")
+}
+
+func TestSalesService_PatchSale_UpdateCustomerName(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// Create test data
+	warehouse := createTestWarehouse(t, db, "WH-PATCH-004")
+	sale := createTestSale(t, db, warehouse.ID, 1000.00, "pending")
+
+	// Create patch request
+	newCustomerName := "John Doe"
+	request := &models.PatchSaleRequest{
+		CustomerName: &newCustomerName,
+	}
+
+	// Execute
+	response, err := service.PatchSale(sale.ID, request)
+
+	// Assert
+	testutils.AssertNoError(t, err, "PatchSale should succeed")
+	testutils.AssertNotNil(t, response, "Response should not be nil")
+	testutils.AssertNotNil(t, response.CustomerName, "CustomerName should not be nil")
+	testutils.AssertEqual(t, *response.CustomerName, "John Doe", "CustomerName should be updated")
+}
+
+func TestSalesService_PatchSale_UpdateMultipleFields(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// Create test data
+	warehouse := createTestWarehouse(t, db, "WH-PATCH-005")
+	sale := createTestSale(t, db, warehouse.ID, 1000.00, "pending")
+
+	// Create patch request with multiple fields
+	newPaymentMode := "online"
+	newSaleType := "delivery"
+	newCustomerPhone := "9876543210"
+	newCustomerName := "Jane Smith"
+	request := &models.PatchSaleRequest{
+		PaymentMode:   &newPaymentMode,
+		SaleType:      &newSaleType,
+		CustomerPhone: &newCustomerPhone,
+		CustomerName:  &newCustomerName,
+	}
+
+	// Execute
+	response, err := service.PatchSale(sale.ID, request)
+
+	// Assert
+	testutils.AssertNoError(t, err, "PatchSale should succeed")
+	testutils.AssertNotNil(t, response, "Response should not be nil")
+	testutils.AssertEqual(t, response.PaymentMode, "online", "PaymentMode should be updated")
+	testutils.AssertEqual(t, response.SaleType, "delivery", "SaleType should be updated")
+	testutils.AssertNotNil(t, response.CustomerPhone, "CustomerPhone should not be nil")
+	testutils.AssertEqual(t, *response.CustomerPhone, "9876543210", "CustomerPhone should be updated")
+	testutils.AssertNotNil(t, response.CustomerName, "CustomerName should not be nil")
+	testutils.AssertEqual(t, *response.CustomerName, "Jane Smith", "CustomerName should be updated")
+}
+
+func TestSalesService_PatchSale_NotFound(t *testing.T) {
+	service, _, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// Create patch request
+	newPaymentMode := "upi"
+	request := &models.PatchSaleRequest{
+		PaymentMode: &newPaymentMode,
+	}
+
+	// Execute
+	_, err := service.PatchSale("INVALID-SALE-ID", request)
+
+	// Assert
+	testutils.AssertError(t, err, "Should return error for non-existent sale")
+}
+
+func TestSalesService_PatchSale_NoChanges(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// Create test data
+	warehouse := createTestWarehouse(t, db, "WH-PATCH-006")
+	sale := createTestSale(t, db, warehouse.ID, 1000.00, "pending")
+
+	// Create empty patch request (nil fields)
+	request := &models.PatchSaleRequest{}
+
+	// Execute
+	response, err := service.PatchSale(sale.ID, request)
+
+	// Assert - should succeed but make no changes
+	testutils.AssertNoError(t, err, "PatchSale should succeed even with no changes")
+	testutils.AssertNotNil(t, response, "Response should not be nil")
+	testutils.AssertEqual(t, response.ID, sale.ID, "Sale ID should match")
+}
+
+// =============================================================================
+// GetSalesByCustomerPhone Tests (Issue 7)
+// =============================================================================
+
+func TestSalesService_GetSalesByCustomerPhone_Success(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// Create test data
+	warehouse := createTestWarehouse(t, db, "WH-PHONE-001")
+
+	// Create sales with customer phone
+	customerPhone := "9876543210"
+	now := time.Now().UTC()
+	sale1 := models.NewSale(warehouse.ID, "INV-PHONE-001", now, 1000.00, "completed", nil, &customerPhone, false, "cash", "in_store", false)
+	sale2 := models.NewSale(warehouse.ID, "INV-PHONE-002", now, 2000.00, "completed", nil, &customerPhone, false, "upi", "delivery", false)
+	db.Create(sale1)
+	db.Create(sale2)
+
+	// Execute
+	responses, total, err := service.GetSalesByCustomerPhone(customerPhone, 10, 0)
+
+	// Assert
+	testutils.AssertNoError(t, err, "GetSalesByCustomerPhone should succeed")
+	testutils.AssertEqual(t, len(responses), 2, "Should return 2 sales")
+	testutils.AssertEqual(t, int(total), 2, "Total should be 2")
+	for _, resp := range responses {
+		testutils.AssertNotNil(t, resp.CustomerPhone, "CustomerPhone should not be nil")
+		testutils.AssertEqual(t, *resp.CustomerPhone, customerPhone, "CustomerPhone should match")
+	}
+}
+
+func TestSalesService_GetSalesByCustomerPhone_MultipleMatches(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// Create test data
+	warehouse := createTestWarehouse(t, db, "WH-PHONE-002")
+
+	// Create multiple sales with same customer phone
+	customerPhone := "9876543210"
+	now := time.Now().UTC()
+	for i := 0; i < 5; i++ {
+		sale := models.NewSale(warehouse.ID, fmt.Sprintf("INV-MULTI-%d", i), now, float64(i+1)*100, "completed", nil, &customerPhone, false, "cash", "in_store", false)
+		db.Create(sale)
+	}
+
+	// Execute
+	responses, total, err := service.GetSalesByCustomerPhone(customerPhone, 10, 0)
+
+	// Assert
+	testutils.AssertNoError(t, err, "GetSalesByCustomerPhone should succeed")
+	testutils.AssertEqual(t, len(responses), 5, "Should return 5 sales")
+	testutils.AssertEqual(t, int(total), 5, "Total should be 5")
+}
+
+func TestSalesService_GetSalesByCustomerPhone_NoMatches(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// Create test data with different phone
+	warehouse := createTestWarehouse(t, db, "WH-PHONE-003")
+	otherPhone := "1234567890"
+	now := time.Now().UTC()
+	sale := models.NewSale(warehouse.ID, "INV-OTHER-001", now, 1000.00, "completed", nil, &otherPhone, false, "cash", "in_store", false)
+	db.Create(sale)
+
+	// Execute - search for different phone
+	responses, total, err := service.GetSalesByCustomerPhone("9876543210", 10, 0)
+
+	// Assert
+	testutils.AssertNoError(t, err, "GetSalesByCustomerPhone should succeed")
+	testutils.AssertEqual(t, len(responses), 0, "Should return empty list")
+	testutils.AssertEqual(t, int(total), 0, "Total should be 0")
+}
+
+func TestSalesService_GetSalesByCustomerPhone_Pagination(t *testing.T) {
+	service, db, cleanup := setupSalesService(t)
+	defer cleanup()
+
+	// Create test data
+	warehouse := createTestWarehouse(t, db, "WH-PHONE-004")
+
+	// Create 10 sales with same customer phone
+	customerPhone := "9876543210"
+	now := time.Now().UTC()
+	for i := 0; i < 10; i++ {
+		sale := models.NewSale(warehouse.ID, fmt.Sprintf("INV-PAGE-%d", i), now, float64(i+1)*100, "completed", nil, &customerPhone, false, "cash", "in_store", false)
+		db.Create(sale)
+	}
+
+	// Execute - Get first 5
+	page1, total1, err := service.GetSalesByCustomerPhone(customerPhone, 5, 0)
+	testutils.AssertNoError(t, err, "GetSalesByCustomerPhone should succeed")
+	testutils.AssertEqual(t, len(page1), 5, "Should return 5 sales")
+	testutils.AssertEqual(t, int(total1), 10, "Total should be 10")
+
+	// Execute - Get next 5
+	page2, total2, err := service.GetSalesByCustomerPhone(customerPhone, 5, 5)
+	testutils.AssertNoError(t, err, "GetSalesByCustomerPhone should succeed")
+	testutils.AssertEqual(t, len(page2), 5, "Should return 5 sales")
+	testutils.AssertEqual(t, int(total2), 10, "Total should be 10")
+}
+
+// =============================================================================
 // CancelItems Tests - Partial Cancellation
 // =============================================================================
 
