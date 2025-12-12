@@ -119,29 +119,6 @@ func main() {
 		log.Println("Skipping AAA role/permission seeding (AAA disabled or gRPC address missing).")
 	}
 
-	// Sync existing addresses to local cache (idempotent - only syncs records without local data)
-	if cfg.AAA.Enabled && cfg.AAA.GRPCAddress != "" && cfg.AAA.APIKey != "" {
-		log.Println("Checking for addresses that need local cache sync...")
-
-		addressClient, err := aaa.NewAddressGRPCClient(cfg.AAA.GRPCAddress, cfg.AAA.UseTLS)
-		if err != nil {
-			log.Printf("Warning: Could not create address client for migration: %v", err)
-		} else {
-			defer func() {
-				if err := addressClient.Close(); err != nil {
-					log.Printf("Warning: failed to close address client: %v", err)
-				}
-			}()
-
-			// Use API key as bearer token for service-to-service authentication
-			if err := database.SyncExistingAddressesToLocal(pg, addressClient, cfg.AAA.APIKey); err != nil {
-				log.Printf("Warning: Address sync migration failed: %v", err)
-			}
-		}
-	} else {
-		log.Println("Skipping address sync (AAA disabled or credentials missing).")
-	}
-
 	// Initialize HTTP server with AAA middleware
 	httpServer := api_server.NewServer(pg, cfg, logger)
 
