@@ -66,13 +66,11 @@ func TestProductVariantService_CreateVariant_WithSKU(t *testing.T) {
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
 	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, nil, mockLogger)
 
-	// Create request with SKU
-	sku := "TOM-1KG-001"
+	// Create request (Issue 1: SKU auto-generated, not provided in request)
 	request := &models.CreateProductVariantRequest{
 		VariantName: "1kg",
 		Quantity:    "1.0",
 		PackSize:    "kg",
-		SKU:         &sku,
 	}
 
 	// Execute
@@ -81,11 +79,11 @@ func TestProductVariantService_CreateVariant_WithSKU(t *testing.T) {
 	// Assert
 	testutils.AssertNoError(t, err, "CreateProductVariant should succeed")
 	testutils.AssertNotNil(t, response, "Response should not be nil")
-	testutils.AssertNotNil(t, response.SKU, "SKU should not be nil")
-	testutils.AssertEqual(t, *response.SKU, sku, "SKU mismatch")
+	testutils.AssertNotNil(t, response.SKU, "SKU should be auto-generated")
 }
 
-func TestProductVariantService_CreateVariant_DuplicateSKU(t *testing.T) {
+func TestProductVariantService_CreateVariant_MultipleVariants(t *testing.T) {
+	// Issue 1: SKU is now auto-generated, duplicate SKU test replaced with multiple variants test
 	// Setup in-memory database
 	db := testutils.SetupTestDB(t)
 	defer testutils.CleanupTestDB(db)
@@ -93,12 +91,6 @@ func TestProductVariantService_CreateVariant_DuplicateSKU(t *testing.T) {
 	// Create product first
 	product := testutils.FixtureProduct("Tomato")
 	db.Create(product)
-
-	// Create existing variant with SKU
-	sku := "TOM-1KG-001"
-	variant := testutils.FixtureProductVariant(product.ID, "1kg")
-	variant.SKU = &sku
-	db.Create(variant)
 
 	// Create repositories
 	variantRepo := repositories.NewProductVariantRepository(db)
@@ -108,19 +100,28 @@ func TestProductVariantService_CreateVariant_DuplicateSKU(t *testing.T) {
 	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
 	service := services.NewProductVariantService(variantRepo, productRepo, nil, nil, nil, mockLogger)
 
-	// Create request with duplicate SKU
-	request := &models.CreateProductVariantRequest{
+	// Create first variant
+	request1 := &models.CreateProductVariantRequest{
+		VariantName: "1kg",
+		Quantity:    "1.0",
+		PackSize:    "kg",
+	}
+	response1, err1 := service.CreateProductVariant(context.Background(), product.ID, request1)
+	testutils.AssertNoError(t, err1, "First variant should succeed")
+
+	// Create second variant
+	request2 := &models.CreateProductVariantRequest{
 		VariantName: "2kg",
 		Quantity:    "2.0",
 		PackSize:    "kg",
-		SKU:         &sku, // Duplicate SKU
 	}
+	response2, err2 := service.CreateProductVariant(context.Background(), product.ID, request2)
+	testutils.AssertNoError(t, err2, "Second variant should succeed")
 
-	// Execute
-	_, err := service.CreateProductVariant(context.Background(), product.ID, request)
-
-	// Assert
-	testutils.AssertError(t, err, "Should fail with duplicate SKU")
+	// Assert both have unique auto-generated SKUs
+	testutils.AssertNotNil(t, response1.SKU, "First SKU should be auto-generated")
+	testutils.AssertNotNil(t, response2.SKU, "Second SKU should be auto-generated")
+	testutils.AssertNotEqual(t, *response1.SKU, *response2.SKU, "SKUs should be unique")
 }
 
 func TestProductVariantService_CreateVariant_ProductNotFound(t *testing.T) {
