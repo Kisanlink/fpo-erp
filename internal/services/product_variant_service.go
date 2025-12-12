@@ -20,12 +20,13 @@ import (
 
 // ProductVariantService handles product variant business logic
 type ProductVariantService struct {
-	variantRepo  *repositories.ProductVariantRepository
-	productRepo  *repositories.ProductRepository
-	priceRepo    *repositories.ProductPriceRepository
-	categoryRepo *repositories.CategoryRepository
-	s3Service    *S3Service
-	logger       interfaces.Logger
+	variantRepo       *repositories.ProductVariantRepository
+	productRepo       *repositories.ProductRepository
+	priceRepo         *repositories.ProductPriceRepository
+	categoryRepo      *repositories.CategoryRepository
+	s3Service         *S3Service
+	attachmentService *AttachmentService // For S3 cleanup on image updates/deletes
+	logger            interfaces.Logger
 }
 
 // NewProductVariantService creates a new product variant service
@@ -35,15 +36,17 @@ func NewProductVariantService(
 	priceRepo *repositories.ProductPriceRepository,
 	categoryRepo *repositories.CategoryRepository,
 	s3Service *S3Service,
+	attachmentService *AttachmentService,
 	logger interfaces.Logger,
 ) *ProductVariantService {
 	return &ProductVariantService{
-		variantRepo:  variantRepo,
-		productRepo:  productRepo,
-		priceRepo:    priceRepo,
-		categoryRepo: categoryRepo,
-		s3Service:    s3Service,
-		logger:       logger,
+		variantRepo:       variantRepo,
+		productRepo:       productRepo,
+		priceRepo:         priceRepo,
+		categoryRepo:      categoryRepo,
+		s3Service:         s3Service,
+		attachmentService: attachmentService,
+		logger:            logger,
 	}
 }
 
@@ -398,6 +401,44 @@ func (s *ProductVariantService) UpdateProductVariant(ctx context.Context, id str
 		variant.IsActive = *request.IsActive
 	}
 	if request.Images != nil {
+		// S3 CLEANUP: Delete old images that are being removed
+		if s.attachmentService != nil {
+			// Parse old images from variant
+			var oldImages []string
+			if variant.Images != nil && *variant.Images != "" {
+				if err := json.Unmarshal([]byte(*variant.Images), &oldImages); err != nil {
+					s.logger.Warn("Failed to parse old images for cleanup",
+						zap.Error(err),
+						zap.String("variant_id", id))
+				}
+			}
+
+			// Find images that are being removed (in old but not in new)
+			newImagesMap := make(map[string]bool)
+			for _, img := range *request.Images {
+				newImagesMap[img] = true
+			}
+
+			for _, oldImg := range oldImages {
+				if !newImagesMap[oldImg] {
+					// This image is being removed, delete from S3
+					s.logger.Info("Image being removed from variant, cleaning up from S3",
+						zap.String("variant_id", id),
+						zap.String("attachment_id", oldImg))
+
+					if err := s.attachmentService.DeleteAttachment(ctx, oldImg); err != nil {
+						s.logger.Warn("Failed to delete removed image attachment",
+							zap.Error(err),
+							zap.String("attachment_id", oldImg))
+						// Continue with update - don't fail the main operation
+					} else {
+						s.logger.Info("Removed image deleted successfully from S3",
+							zap.String("attachment_id", oldImg))
+					}
+				}
+			}
+		}
+
 		// Marshal attachment IDs to JSON
 		imagesBytes, err := json.Marshal(*request.Images)
 		if err != nil {
