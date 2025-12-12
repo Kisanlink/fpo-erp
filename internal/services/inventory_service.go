@@ -486,6 +486,7 @@ func (s *InventoryService) GetAllProductsAvailability(ctx context.Context, jwtTo
 				WarehouseID:   batch.WarehouseID,
 				WarehouseName: batch.Warehouse.Name,
 				AddressID:     batch.Warehouse.AddressID,
+				Address:       batch.Warehouse.BuildAddressInfo(), // Uses local fields - NO gRPC call!
 			}
 		}
 
@@ -543,35 +544,8 @@ func (s *InventoryService) GetAllProductsAvailability(ctx context.Context, jwtTo
 				}
 			}
 
-			// Fetch address details if warehouse has an address ID
-			if warehouseData.AddressID != nil {
-				s.logger.Debug("Fetching warehouse address",
-					zap.String("warehouse_id", warehouseData.WarehouseID),
-					zap.String("address_id", *warehouseData.AddressID))
-				address, err := s.addressClient.GetAddress(ctx, *warehouseData.AddressID, jwtToken)
-				if err == nil {
-					detail.Address = &models.AddressInfo{
-						ID:          address.ID,
-						Type:        address.Type,
-						House:       address.House,
-						Street:      address.Street,
-						Landmark:    address.Landmark,
-						PostOffice:  address.PostOffice,
-						Subdistrict: address.Subdistrict,
-						District:    address.District,
-						VTC:         address.VTC,
-						State:       address.State,
-						Country:     address.Country,
-						Pincode:     address.Pincode,
-						FullAddress: address.BuildFullAddress(),
-					}
-				} else {
-					s.logger.Error("Failed to fetch warehouse address",
-						zap.Error(err),
-						zap.String("warehouse_id", warehouseData.WarehouseID),
-						zap.String("address_id", *warehouseData.AddressID))
-				}
-			}
+			// Use pre-populated address from local cache (NO gRPC call!)
+			detail.Address = warehouseData.Address
 
 			response.TotalQuantity += warehouseData.Quantity
 			response.ExpiredQuantity += warehouseData.ExpiredQuantity
@@ -653,6 +627,7 @@ type warehouseDetail struct {
 	WarehouseID     string
 	WarehouseName   string
 	AddressID       *string
+	Address         *models.AddressInfo // Local cache - NO gRPC needed
 	Quantity        int64
 	ExpiredQuantity int64
 	EarliestExpiry  time.Time
