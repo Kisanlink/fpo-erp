@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -13,6 +14,9 @@ import (
 
 	"gorm.io/gorm"
 )
+
+// Counter for generating unique invoice numbers
+var invoiceCounter int64
 
 // =============================================================================
 // Test Setup & Fixtures
@@ -61,7 +65,9 @@ func setupSalesService(t *testing.T) (*services.SalesService, *gorm.DB, func()) 
 func createTestSale(t *testing.T, db *gorm.DB, warehouseID string, totalAmount float64, status string) *models.Sale {
 	t.Helper()
 
-	sale := models.NewSale(warehouseID, fmt.Sprintf("INV-%d", time.Now().UnixNano()), time.Now().UTC(), totalAmount, status, nil, nil, false, "cash", "in_store", false)
+	// Use atomic counter to ensure unique invoice numbers even in fast loops
+	counter := atomic.AddInt64(&invoiceCounter, 1)
+	sale := models.NewSale(warehouseID, fmt.Sprintf("INV-%d-%d", time.Now().UnixNano(), counter), time.Now().UTC(), totalAmount, status, nil, nil, false, "cash", "in_store", false)
 
 	if err := db.Create(sale).Error; err != nil {
 		t.Fatalf("Failed to create test sale: %v", err)
