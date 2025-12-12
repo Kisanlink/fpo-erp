@@ -345,16 +345,19 @@ func TestSalesHandler_GetAllSales_Success(t *testing.T) {
 	handler.RegisterRoutes(router.Group("/api/v1"))
 
 	// Mock expectations
-	expectedResponse := []models.SaleResponse{
+	customerPhone := "9876543210"
+	customerName := "Test Customer"
+	expectedResponse := []models.SaleListResponse{
 		{
-			ID:          "SALE00000001",
-			WarehouseID: "WRHS00000001",
-			SaleDate:    time.Now().Format(time.RFC3339),
-			TotalAmount: 1500.00,
-			Status:      "completed",
-			PaymentMode: "cash",
-			SaleType:    "in_store",
-			ApplyTaxes:  false,
+			ID:            "SALE00000001",
+			WarehouseID:   "WRHS00000001",
+			SaleDate:      time.Now().Format(time.RFC3339),
+			TotalAmount:   1500.00,
+			Status:        "completed",
+			CustomerPhone: &customerPhone,
+			CustomerName:  &customerName,
+			PaymentMode:   "cash",
+			SaleType:      "in_store",
 		},
 		{
 			ID:          "SALE00000002",
@@ -364,7 +367,6 @@ func TestSalesHandler_GetAllSales_Success(t *testing.T) {
 			Status:      "pending",
 			PaymentMode: "upi",
 			SaleType:    "delivery",
-			ApplyTaxes:  true,
 		},
 	}
 	mockService.On("GetAllSales", 10, 0).
@@ -397,7 +399,7 @@ func TestSalesHandler_GetAllSales_EmptyList(t *testing.T) {
 
 	// Mock expectations
 	mockService.On("GetAllSales", 50, 0).
-		Return([]models.SaleResponse{}, int64(0), nil)
+		Return([]models.SaleListResponse{}, int64(0), nil)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/sales", nil)
@@ -421,7 +423,7 @@ func TestSalesHandler_GetAllSales_CustomPagination(t *testing.T) {
 
 	// Mock expectations
 	mockService.On("GetAllSales", 20, 10).
-		Return([]models.SaleResponse{}, int64(0), nil)
+		Return([]models.SaleListResponse{}, int64(0), nil)
 
 	// Create request with custom pagination
 	req := httptest.NewRequest("GET", "/api/v1/sales?limit=20&offset=10", nil)
@@ -445,7 +447,7 @@ func TestSalesHandler_GetAllSales_InvalidLimit(t *testing.T) {
 
 	// Mock expectations (in case handler still calls service despite invalid limit)
 	mockService.On("GetAllSales", 50, 0).
-		Return([]models.SaleResponse{}, int64(0), nil).Maybe()
+		Return([]models.SaleListResponse{}, int64(0), nil).Maybe()
 
 	// Create request with invalid limit
 	req := httptest.NewRequest("GET", "/api/v1/sales?limit=invalid&offset=0", nil)
@@ -468,7 +470,7 @@ func TestSalesHandler_GetAllSales_InvalidOffset(t *testing.T) {
 
 	// Mock expectations (in case handler still calls service despite invalid offset)
 	mockService.On("GetAllSales", 10, 0).
-		Return([]models.SaleResponse{}, int64(0), nil).Maybe()
+		Return([]models.SaleListResponse{}, int64(0), nil).Maybe()
 
 	// Create request with invalid offset
 	req := httptest.NewRequest("GET", "/api/v1/sales?limit=10&offset=invalid", nil)
@@ -1034,4 +1036,402 @@ func TestSalesHandler_UpdateSaleStatus_ValidationError(t *testing.T) {
 
 	// Assert
 	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+// ==================== PatchSale Tests (Issue 9) ====================
+
+func TestSalesHandler_PatchSale_Success(t *testing.T) {
+	// Setup
+	mockService := new(mockServices.MockSalesService)
+	router := testutils.SetupTestRouter()
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
+	handler.RegisterRoutes(router.Group("/api/v1"))
+
+	// Setup mock expectations
+	paymentMode := "upi"
+	saleType := "delivery"
+	customerPhone := "9876543210"
+	customerName := "Updated Customer"
+	expectedResponse := &models.SaleResponse{
+		ID:            "SALE00000001",
+		WarehouseID:   "WRHS00000001",
+		SaleDate:      time.Now().Format(time.RFC3339),
+		TotalAmount:   1500.00,
+		Status:        "completed",
+		CustomerPhone: &customerPhone,
+		CustomerName:  &customerName,
+		PaymentMode:   "upi",
+		SaleType:      "delivery",
+		ApplyTaxes:    false,
+	}
+	mockService.On("PatchSale", "SALE00000001", mock.AnythingOfType("*models.PatchSaleRequest")).
+		Return(expectedResponse, nil)
+
+	// Create request
+	reqBody := models.PatchSaleRequest{
+		PaymentMode:   &paymentMode,
+		SaleType:      &saleType,
+		CustomerPhone: &customerPhone,
+		CustomerName:  &customerName,
+	}
+	body, _ := json.Marshal(reqBody)
+	req := httptest.NewRequest("PATCH", "/api/v1/sales/SALE00000001", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	// Execute
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Assert
+	assert.Equal(t, http.StatusOK, w.Code)
+	mockService.AssertExpectations(t)
+
+	var response map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &response)
+	assert.Equal(t, true, response["success"])
+	assert.NotNil(t, response["data"])
+}
+
+func TestSalesHandler_PatchSale_UpdatePaymentMode(t *testing.T) {
+	// Setup
+	mockService := new(mockServices.MockSalesService)
+	router := testutils.SetupTestRouter()
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
+	handler.RegisterRoutes(router.Group("/api/v1"))
+
+	// Setup mock expectations
+	paymentMode := "online"
+	expectedResponse := &models.SaleResponse{
+		ID:          "SALE00000001",
+		WarehouseID: "WRHS00000001",
+		SaleDate:    time.Now().Format(time.RFC3339),
+		TotalAmount: 1500.00,
+		Status:      "completed",
+		PaymentMode: "online",
+		SaleType:    "in_store",
+		ApplyTaxes:  false,
+	}
+	mockService.On("PatchSale", "SALE00000001", mock.AnythingOfType("*models.PatchSaleRequest")).
+		Return(expectedResponse, nil)
+
+	// Create request - update payment_mode only
+	reqBody := models.PatchSaleRequest{
+		PaymentMode: &paymentMode,
+	}
+	body, _ := json.Marshal(reqBody)
+	req := httptest.NewRequest("PATCH", "/api/v1/sales/SALE00000001", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	// Execute
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Assert
+	assert.Equal(t, http.StatusOK, w.Code)
+	mockService.AssertExpectations(t)
+}
+
+func TestSalesHandler_PatchSale_UpdateSaleType(t *testing.T) {
+	// Setup
+	mockService := new(mockServices.MockSalesService)
+	router := testutils.SetupTestRouter()
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
+	handler.RegisterRoutes(router.Group("/api/v1"))
+
+	// Setup mock expectations
+	saleType := "delivery"
+	expectedResponse := &models.SaleResponse{
+		ID:          "SALE00000001",
+		WarehouseID: "WRHS00000001",
+		SaleDate:    time.Now().Format(time.RFC3339),
+		TotalAmount: 1500.00,
+		Status:      "completed",
+		PaymentMode: "cash",
+		SaleType:    "delivery",
+		ApplyTaxes:  false,
+	}
+	mockService.On("PatchSale", "SALE00000001", mock.AnythingOfType("*models.PatchSaleRequest")).
+		Return(expectedResponse, nil)
+
+	// Create request - update sale_type only
+	reqBody := models.PatchSaleRequest{
+		SaleType: &saleType,
+	}
+	body, _ := json.Marshal(reqBody)
+	req := httptest.NewRequest("PATCH", "/api/v1/sales/SALE00000001", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	// Execute
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Assert
+	assert.Equal(t, http.StatusOK, w.Code)
+	mockService.AssertExpectations(t)
+}
+
+func TestSalesHandler_PatchSale_UpdateCustomerInfo(t *testing.T) {
+	// Setup
+	mockService := new(mockServices.MockSalesService)
+	router := testutils.SetupTestRouter()
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
+	handler.RegisterRoutes(router.Group("/api/v1"))
+
+	// Setup mock expectations
+	customerPhone := "9998887776"
+	customerName := "New Customer Name"
+	expectedResponse := &models.SaleResponse{
+		ID:            "SALE00000001",
+		WarehouseID:   "WRHS00000001",
+		SaleDate:      time.Now().Format(time.RFC3339),
+		TotalAmount:   1500.00,
+		Status:        "completed",
+		CustomerPhone: &customerPhone,
+		CustomerName:  &customerName,
+		PaymentMode:   "cash",
+		SaleType:      "in_store",
+		ApplyTaxes:    false,
+	}
+	mockService.On("PatchSale", "SALE00000001", mock.AnythingOfType("*models.PatchSaleRequest")).
+		Return(expectedResponse, nil)
+
+	// Create request - update customer info only
+	reqBody := models.PatchSaleRequest{
+		CustomerPhone: &customerPhone,
+		CustomerName:  &customerName,
+	}
+	body, _ := json.Marshal(reqBody)
+	req := httptest.NewRequest("PATCH", "/api/v1/sales/SALE00000001", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	// Execute
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Assert
+	assert.Equal(t, http.StatusOK, w.Code)
+	mockService.AssertExpectations(t)
+}
+
+func TestSalesHandler_PatchSale_NotFound(t *testing.T) {
+	// Setup
+	mockService := new(mockServices.MockSalesService)
+	router := testutils.SetupTestRouter()
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
+	handler.RegisterRoutes(router.Group("/api/v1"))
+
+	// Setup mock expectations - service returns not found error
+	mockService.On("PatchSale", "SALE99999999", mock.AnythingOfType("*models.PatchSaleRequest")).
+		Return(nil, errors.New("sale not found"))
+
+	// Create request
+	paymentMode := "upi"
+	reqBody := models.PatchSaleRequest{
+		PaymentMode: &paymentMode,
+	}
+	body, _ := json.Marshal(reqBody)
+	req := httptest.NewRequest("PATCH", "/api/v1/sales/SALE99999999", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	// Execute
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Assert
+	assert.Equal(t, http.StatusNotFound, w.Code)
+	mockService.AssertExpectations(t)
+}
+
+func TestSalesHandler_PatchSale_InvalidPaymentMode(t *testing.T) {
+	// Setup
+	mockService := new(mockServices.MockSalesService)
+	router := testutils.SetupTestRouter()
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
+	handler.RegisterRoutes(router.Group("/api/v1"))
+
+	// Create request with invalid payment_mode
+	invalidPaymentMode := "credit_card" // Invalid value, only cash/upi/online allowed
+	reqBody := models.PatchSaleRequest{
+		PaymentMode: &invalidPaymentMode,
+	}
+	body, _ := json.Marshal(reqBody)
+	req := httptest.NewRequest("PATCH", "/api/v1/sales/SALE00000001", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	// Execute
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Assert - validation error
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestSalesHandler_PatchSale_InvalidSaleType(t *testing.T) {
+	// Setup
+	mockService := new(mockServices.MockSalesService)
+	router := testutils.SetupTestRouter()
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
+	handler.RegisterRoutes(router.Group("/api/v1"))
+
+	// Create request with invalid sale_type
+	invalidSaleType := "online_order" // Invalid value, only in_store/delivery allowed
+	reqBody := models.PatchSaleRequest{
+		SaleType: &invalidSaleType,
+	}
+	body, _ := json.Marshal(reqBody)
+	req := httptest.NewRequest("PATCH", "/api/v1/sales/SALE00000001", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	// Execute
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Assert - validation error
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestSalesHandler_PatchSale_ServiceError(t *testing.T) {
+	// Setup
+	mockService := new(mockServices.MockSalesService)
+	router := testutils.SetupTestRouter()
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
+	handler.RegisterRoutes(router.Group("/api/v1"))
+
+	// Setup mock expectations - service returns generic error
+	mockService.On("PatchSale", "SALE00000001", mock.AnythingOfType("*models.PatchSaleRequest")).
+		Return(nil, errors.New("database connection failed"))
+
+	// Create request
+	paymentMode := "upi"
+	reqBody := models.PatchSaleRequest{
+		PaymentMode: &paymentMode,
+	}
+	body, _ := json.Marshal(reqBody)
+	req := httptest.NewRequest("PATCH", "/api/v1/sales/SALE00000001", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	// Execute
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Assert - internal server error
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	mockService.AssertExpectations(t)
+}
+
+// ==================== GetSalesByPhone Tests (Issue 7) ====================
+
+func TestSalesHandler_GetAllSales_WithPhoneFilter_Success(t *testing.T) {
+	// Setup
+	mockService := new(mockServices.MockSalesService)
+	router := testutils.SetupTestRouter()
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
+	handler.RegisterRoutes(router.Group("/api/v1"))
+
+	// Mock expectations
+	customerPhone := "9876543210"
+	customerName := "Test Customer"
+	expectedResponse := []models.SaleListResponse{
+		{
+			ID:            "SALE00000001",
+			WarehouseID:   "WRHS00000001",
+			SaleDate:      time.Now().Format(time.RFC3339),
+			TotalAmount:   1500.00,
+			Status:        "completed",
+			CustomerPhone: &customerPhone,
+			CustomerName:  &customerName,
+			PaymentMode:   "cash",
+			SaleType:      "in_store",
+		},
+		{
+			ID:            "SALE00000002",
+			WarehouseID:   "WRHS00000002",
+			SaleDate:      time.Now().Format(time.RFC3339),
+			TotalAmount:   2000.00,
+			Status:        "pending",
+			CustomerPhone: &customerPhone,
+			CustomerName:  &customerName,
+			PaymentMode:   "upi",
+			SaleType:      "delivery",
+		},
+	}
+	mockService.On("GetSalesByCustomerPhone", "9876543210", 50, 0).
+		Return(expectedResponse, int64(2), nil)
+
+	// Create request with phone filter
+	req := httptest.NewRequest("GET", "/api/v1/sales?customer_phone=9876543210", nil)
+
+	// Execute
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Assert
+	assert.Equal(t, http.StatusOK, w.Code)
+	mockService.AssertExpectations(t)
+
+	var response map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &response)
+	assert.Equal(t, true, response["success"])
+	assert.NotNil(t, response["data"])
+}
+
+func TestSalesHandler_GetAllSales_WithPhoneFilter_Empty(t *testing.T) {
+	// Setup
+	mockService := new(mockServices.MockSalesService)
+	router := testutils.SetupTestRouter()
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
+	handler.RegisterRoutes(router.Group("/api/v1"))
+
+	// Mock expectations - no results for this phone
+	mockService.On("GetSalesByCustomerPhone", "9999999999", 50, 0).
+		Return([]models.SaleListResponse{}, int64(0), nil)
+
+	// Create request with phone filter
+	req := httptest.NewRequest("GET", "/api/v1/sales?customer_phone=9999999999", nil)
+
+	// Execute
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Assert
+	assert.Equal(t, http.StatusOK, w.Code)
+	mockService.AssertExpectations(t)
+
+	var response map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &response)
+	assert.Equal(t, true, response["success"])
+}
+
+func TestSalesHandler_GetAllSales_WithPhoneFilter_ServiceError(t *testing.T) {
+	// Setup
+	mockService := new(mockServices.MockSalesService)
+	router := testutils.SetupTestRouter()
+	mockLogger := utils.NewLoggerAdapter(utils.GetZapLogger())
+	handler := handlers.NewSalesHandler(mockService, testutils.NewMockAAAMiddleware(), mockLogger)
+	handler.RegisterRoutes(router.Group("/api/v1"))
+
+	// Mock expectations - service returns error
+	mockService.On("GetSalesByCustomerPhone", "9876543210", 50, 0).
+		Return(nil, int64(0), errors.New("database error"))
+
+	// Create request with phone filter
+	req := httptest.NewRequest("GET", "/api/v1/sales?customer_phone=9876543210", nil)
+
+	// Execute
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Assert
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	mockService.AssertExpectations(t)
 }

@@ -29,12 +29,30 @@ func (m *MockSalesService) GetSale(id string) (*models.SaleResponse, error) {
 	return args.Get(0).(*models.SaleResponse), args.Error(1)
 }
 
-func (m *MockSalesService) GetAllSales(limit, offset int) ([]models.SaleResponse, int64, error) {
+func (m *MockSalesService) GetAllSales(limit, offset int) ([]models.SaleListResponse, int64, error) {
 	args := m.Called(limit, offset)
 	if args.Get(0) == nil {
 		return nil, 0, args.Error(2)
 	}
-	return args.Get(0).([]models.SaleResponse), args.Get(1).(int64), args.Error(2)
+	return args.Get(0).([]models.SaleListResponse), args.Get(1).(int64), args.Error(2)
+}
+
+// GetSalesByCustomerPhone retrieves sales filtered by customer phone number (Issue 7)
+func (m *MockSalesService) GetSalesByCustomerPhone(phone string, limit, offset int) ([]models.SaleListResponse, int64, error) {
+	args := m.Called(phone, limit, offset)
+	if args.Get(0) == nil {
+		return nil, 0, args.Error(2)
+	}
+	return args.Get(0).([]models.SaleListResponse), args.Get(1).(int64), args.Error(2)
+}
+
+// PatchSale partially updates a sale (Issue 9)
+func (m *MockSalesService) PatchSale(id string, req *models.PatchSaleRequest) (*models.SaleResponse, error) {
+	args := m.Called(id, req)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.SaleResponse), args.Error(1)
 }
 
 func (m *MockSalesService) UpdateSale(id string, req *models.UpdateSaleRequest) (*models.SaleResponse, error) {
