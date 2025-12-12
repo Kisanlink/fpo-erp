@@ -316,6 +316,121 @@ const GRNDocumentDisplay = ({ grn }) => {
 
 ---
 
+## Issue 5: Invoice Number Format Change (BREAKING CHANGE)
+
+**Type**: Breaking Change
+
+**Old Format**: `MMYYNNNN` (8 characters, sequential counter)
+**New Format**: `MMYYXXXXXXXX` (12 characters, using sale ID suffix)
+
+**Problem with Old Format**:
+- Sequential counter (NNNN) was limited to 4 digits (0001-9999)
+- Counter would overflow after 9,999 sales
+- Counter did NOT reset monthly, causing potential overflow issues
+
+**New Format Solution**:
+- Uses sale ID as source of uniqueness (guaranteed unique by database)
+- Format: `MMYY` + 8-character suffix from sale ID
+- No overflow issues - as scalable as sale IDs
+
+**Examples**:
+
+| Sale ID | Month/Year | Invoice Number | Explanation |
+|---------|------------|----------------|-------------|
+| `SALE12345678` | December 2025 | `122512345678` | MMYY (1225) + Sale ID suffix (12345678) |
+| `SALEabcdefgh` | January 2026 | `0126abcdefgh` | MMYY (0126) + Sale ID suffix (abcdefgh) |
+| `SALE99887766` | March 2025 | `032599887766` | MMYY (0325) + Sale ID suffix (99887766) |
+
+**Technical Details**:
+- Sale ID format: `SALE` + 8-character hash (from kisanlink-db package)
+- Invoice number extracts characters 4-12 from sale ID (skips "SALE" prefix)
+- Database field updated: `varchar(10)` → `varchar(20)` to accommodate 12 characters
+
+**Frontend Migration**:
+
+```typescript
+// BEFORE (8 characters)
+interface Sale {
+  invoice_number: string;  // "12250001"
+}
+
+// Display logic
+const displayInvoiceNumber = (invoice: string) => {
+  // Assumed 8 characters: MMYYNNNN
+  const month = invoice.substring(0, 2);   // "12"
+  const year = invoice.substring(2, 4);    // "25"
+  const sequence = invoice.substring(4);   // "0001"
+  return `${month}/${year}-${sequence}`;   // "12/25-0001"
+};
+
+// AFTER (12 characters)
+interface Sale {
+  invoice_number: string;  // "122512345678"
+}
+
+// Display logic
+const displayInvoiceNumber = (invoice: string) => {
+  // Now 12 characters: MMYYXXXXXXXX
+  const month = invoice.substring(0, 2);   // "12"
+  const year = invoice.substring(2, 4);    // "25"
+  const suffix = invoice.substring(4);     // "12345678"
+  return `${month}/${year}-${suffix}`;     // "12/25-12345678"
+};
+```
+
+**Invoice Display Updates Required**:
+
+1. **Invoice List Table**:
+   - Update column width to accommodate 12 characters
+   - Test with long invoice numbers (e.g., `122512345678`)
+
+2. **Invoice Detail Page**:
+   - Ensure invoice number field width is sufficient
+   - Update any fixed-width fonts or formatting
+
+3. **Invoice Search**:
+   - Update search input validation (accept 12 characters)
+   - Update regex patterns: `/^\d{8}$/` → `/^\d{12}$/`
+
+4. **Invoice PDF/Print**:
+   - Verify invoice number fits in PDF header
+   - Test with maximum width numbers
+
+5. **Export/Reports**:
+   - Update CSV/Excel column width for invoice numbers
+   - Test export with new format
+
+**Validation Updates**:
+
+```typescript
+// BEFORE
+const invoiceNumberRegex = /^\d{8}$/;  // 8 digits only
+
+// AFTER
+const invoiceNumberRegex = /^\d{12}$/; // 12 digits only
+// OR (more flexible - alphanumeric suffix)
+const invoiceNumberRegex = /^\d{4}[a-zA-Z0-9]{8}$/; // MMYY + 8 chars
+```
+
+**Benefits**:
+- No overflow issues (unlimited sales)
+- Each invoice number tied to unique sale ID
+- Easier debugging (can trace invoice back to sale ID)
+- No need to maintain separate sequence counter
+
+**Migration Notes**:
+- Old invoices (8 characters) will remain in database
+- New invoices (12 characters) will be generated going forward
+- Frontend should handle both formats gracefully during transition period
+
+**Database Migration**:
+```sql
+-- Update column length to support new format
+ALTER TABLE sales ALTER COLUMN invoice_number TYPE varchar(20);
+```
+
+---
+
 ## Issue 4: Deleting Attachments (Important for Storage Management)
 
 **Why Delete Matters**:

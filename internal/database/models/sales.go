@@ -49,7 +49,7 @@ func ValidateStatusTransition(fromStatus, toStatus string) error {
 type Sale struct {
 	base.BaseModel
 	WarehouseID   string    `gorm:"type:varchar(100);not null" json:"warehouse_id"`
-	InvoiceNumber string    `gorm:"type:varchar(10);uniqueIndex" json:"invoice_number"` // Format: MMYYNNNN (e.g., 12250001)
+	InvoiceNumber string    `gorm:"type:varchar(20);uniqueIndex" json:"invoice_number"` // Format: MMYYXXXXXXXX (e.g., 122512345678 = Dec 2025 + sale ID suffix)
 	SaleDate      time.Time `gorm:"type:timestamptz;not null;default:now()" json:"sale_date"`
 	TotalAmount   float64   `gorm:"type:numeric(14,4);not null" json:"total_amount"`
 	Status        string    `gorm:"type:varchar(20);not null" json:"status"`
@@ -196,7 +196,7 @@ func NewSaleSummary(summaryDate time.Time, warehouseID string, totalSales float6
 // SaleResponse represents the API response for sale
 type SaleResponse struct {
 	ID            string  `json:"id"`
-	InvoiceNumber string  `json:"invoice_number"` // Format: MMYYNNNN (e.g., 12250001)
+	InvoiceNumber string  `json:"invoice_number"` // Format: MMYYXXXXXXXX (e.g., 122512345678 = Dec 2025 + sale ID suffix)
 	WarehouseID   string  `json:"warehouse_id"`
 	SaleDate      string  `json:"sale_date"`
 	TotalAmount   float64 `json:"total_amount"`

@@ -19,17 +19,23 @@ func stringPtr(s string) *string {
 	return &s
 }
 
-// generateInvoiceNumber generates an invoice number in the format MMYYNNNN
+// generateInvoiceNumber generates an invoice number in the format MMYY + 8-digit sale ID suffix
 // - MM: 2-digit month (01-12)
 // - YY: 2-digit year (e.g., 25 for 2025)
-// - NNNN: 4-digit sequence number (does NOT reset each month)
-// Example: 12250001 = December 2025, sequence 1
-func generateInvoiceNumber(lastSequence int) string {
+// - XXXXXXXX: 8-character suffix from sale ID (characters after "SALE" prefix)
+// Example: Sale ID "SALE12345678" in December 2025 -> Invoice "122512345678"
+func generateInvoiceNumber(saleID string) string {
 	now := time.Now()
 	month := now.Format("01") // MM
 	year := now.Format("06")  // YY
-	sequence := lastSequence + 1
-	return fmt.Sprintf("%s%s%04d", month, year, sequence)
+
+	// Extract 8 characters after "SALE" prefix
+	saleIDSuffix := ""
+	if len(saleID) >= 12 { // "SALE" (4 chars) + 8 chars = 12 chars minimum
+		saleIDSuffix = saleID[4:12] // Get characters from index 4 to 12 (8 chars)
+	}
+
+	return fmt.Sprintf("%s%s%s", month, year, saleIDSuffix)
 }
 
 type SalesService struct {
@@ -208,40 +214,42 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 			applyTaxes = *req.ApplyTaxes
 		}
 
-		// Generate invoice number within transaction for concurrency safety
-		s.logger.Debug("Generating invoice number")
-		lastSequence, err := s.salesRepo.GetLastInvoiceSequenceWithTx(tx)
-		if err != nil {
-			s.logger.Error("Failed to get last invoice sequence",
-				zap.Error(err))
-			return errors.NewInternalServerError("failed to generate invoice number")
-		}
-		invoiceNumber := generateInvoiceNumber(lastSequence)
-		s.logger.Debug("Invoice number generated",
-			zap.String("invoice_number", invoiceNumber),
-			zap.Int("last_sequence", lastSequence))
-
-		// Create sale using the proper constructor with BRD requirements
+		// Create sale first to get sale ID (invoice number will be generated from it)
 		s.logger.Debug("Creating sale",
 			zap.String("warehouse_id", req.WarehouseID),
-			zap.String("invoice_number", invoiceNumber),
 			zap.Time("sale_date", saleDate),
 			zap.String("payment_mode", req.PaymentMode),
 			zap.String("sale_type", req.SaleType),
 			zap.Bool("apply_taxes", applyTaxes),
 			zap.Bool("is_org_member", req.IsOrgMember))
-		sale := models.NewSale(req.WarehouseID, invoiceNumber, saleDate, 0, models.SaleStatusPending, req.CustomerPhone, req.CustomerName, req.IsOrgMember, req.PaymentMode, req.SaleType, applyTaxes)
-		s.logger.Info("Sale created",
-			zap.String("sale_id", sale.ID),
-			zap.String("invoice_number", sale.InvoiceNumber),
-			zap.Bool("apply_taxes", sale.ApplyTaxes))
+
+		// Create sale with empty invoice number initially
+		sale := models.NewSale(req.WarehouseID, "", saleDate, 0, models.SaleStatusPending, req.CustomerPhone, req.CustomerName, req.IsOrgMember, req.PaymentMode, req.SaleType, applyTaxes)
 
 		if err := s.salesRepo.CreateSaleWithTx(tx, sale); err != nil {
 			s.logger.Error("Failed to create sale in database",
 				zap.Error(err))
 			return err
 		}
-		s.logger.Debug("Sale created successfully in database")
+		s.logger.Debug("Sale created successfully in database", zap.String("sale_id", sale.ID))
+
+		// Generate invoice number using sale ID
+		invoiceNumber := generateInvoiceNumber(sale.ID)
+		sale.InvoiceNumber = invoiceNumber
+		s.logger.Debug("Invoice number generated",
+			zap.String("invoice_number", invoiceNumber),
+			zap.String("sale_id", sale.ID))
+
+		// Update sale with invoice number
+		if err := s.salesRepo.UpdateSaleWithTx(tx, sale); err != nil {
+			s.logger.Error("Failed to update sale with invoice number",
+				zap.Error(err))
+			return err
+		}
+		s.logger.Info("Sale updated with invoice number",
+			zap.String("sale_id", sale.ID),
+			zap.String("invoice_number", sale.InvoiceNumber),
+			zap.Bool("apply_taxes", sale.ApplyTaxes))
 
 		// Create sale items using pre-fetched data
 		s.logger.Debug("Starting to process sale items",
