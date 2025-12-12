@@ -349,6 +349,22 @@ func (s *CollaboratorService) createCollaboratorViaEcommerce(ctx context.Context
 		collaborator.IsActive = statusPtr
 	}
 
+	// SYNC: Fetch and store address locally for future reads (write-through cache)
+	if addressID != nil && s.addressClient != nil {
+		ctxAddr, cancel := context.WithTimeout(ctx, 3*time.Second)
+		defer cancel()
+		addr, err := s.addressClient.GetAddress(ctxAddr, *addressID, jwtToken)
+		if err != nil {
+			s.logger.Warn("Failed to fetch address for local cache",
+				zap.Error(err),
+				zap.String("address_id", *addressID))
+		} else {
+			collaborator.SyncFromAAA(addr)
+			s.logger.Debug("Address synced to local cache",
+				zap.String("address_id", *addressID))
+		}
+	}
+
 	if err := s.collaboratorRepo.Create(collaborator); err != nil {
 		s.logger.Error("Failed to create collaborator",
 			zap.Error(err),
@@ -412,6 +428,23 @@ func (s *CollaboratorService) createCollaboratorLegacy(ctx context.Context, requ
 			zap.String("address_id", address.ID))
 	}
 
+	// SYNC: Fetch address and store locally for future reads (write-through cache)
+	var aaaAddress *aaa.Address
+	if addressID != nil {
+		ctxAddr, cancel := context.WithTimeout(ctx, 3*time.Second)
+		defer cancel()
+		addr, err := s.addressClient.GetAddress(ctxAddr, *addressID, jwtToken)
+		if err != nil {
+			s.logger.Warn("Failed to fetch address for local cache",
+				zap.Error(err),
+				zap.String("address_id", *addressID))
+		} else {
+			aaaAddress = addr
+			s.logger.Debug("Address fetched for local cache",
+				zap.String("address_id", *addressID))
+		}
+	}
+
 	if request.GSTNumber != "" {
 		s.logger.Debug("Checking GST number uniqueness",
 			zap.String("gst_number", request.GSTNumber))
@@ -452,6 +485,13 @@ func (s *CollaboratorService) createCollaboratorLegacy(ctx context.Context, requ
 	collaborator.PANNumber = request.PANNumber
 	collaborator.BankName = request.BankName
 	collaborator.Experience = request.Experience
+
+	// SYNC: Store address data locally (write-through cache)
+	if aaaAddress != nil {
+		collaborator.SyncFromAAA(aaaAddress)
+		s.logger.Debug("Address synced to local cache",
+			zap.String("address_id", aaaAddress.ID))
+	}
 
 	s.logger.Debug("Saving collaborator to database")
 
@@ -641,7 +681,9 @@ func (s *CollaboratorService) updateCollaboratorLegacy(ctx context.Context, id s
 			return nil, errors.NewInternalServerError("failed to update address")
 		}
 		collaborator.AddressID = &address.ID
-		s.logger.Debug("Address updated successfully",
+		// SYNC: Update local cache with new address data
+		collaborator.SyncFromAAA(address)
+		s.logger.Debug("Address updated and synced to local cache",
 			zap.String("address_id", address.ID))
 	}
 
@@ -743,12 +785,9 @@ func (s *CollaboratorService) deleteCollaboratorLegacy(ctx context.Context, id s
 	return nil
 }
 
-// buildCollaboratorResponse builds a collaborator response with address details
+// buildCollaboratorResponse builds a collaborator response from LOCAL data (NO gRPC)
+// This is the key optimization - address data is read from local cache
 func (s *CollaboratorService) buildCollaboratorResponse(ctx context.Context, collaborator *models.Collaborator, jwtToken string) (*models.CollaboratorResponse, error) {
-	s.logger.Debug("Building collaborator response",
-		zap.String("collaborator_id", collaborator.ID),
-		zap.Bool("has_address_id", collaborator.AddressID != nil))
-
 	isActiveValue := false
 	if collaborator.IsActive != nil {
 		isActiveValue = *collaborator.IsActive
@@ -769,38 +808,9 @@ func (s *CollaboratorService) buildCollaboratorResponse(ctx context.Context, col
 		BankName:      collaborator.BankName,
 		Experience:    collaborator.Experience,
 		IsActive:      isActiveValue,
+		Address:       collaborator.BuildAddressInfo(), // Uses local fields - NO gRPC call!
 		CreatedAt:     collaborator.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:     collaborator.UpdatedAt.UTC().Format(time.RFC3339),
-	}
-
-	if collaborator.AddressID != nil {
-		s.logger.Debug("Fetching address details from AAA service",
-			zap.String("address_id", *collaborator.AddressID))
-
-		address, err := s.addressClient.GetAddress(ctx, *collaborator.AddressID, jwtToken)
-		if err == nil {
-			response.Address = &models.AddressInfo{
-				ID:          address.ID,
-				Type:        address.Type,
-				House:       address.House,
-				Street:      address.Street,
-				Landmark:    address.Landmark,
-				PostOffice:  address.PostOffice,
-				Subdistrict: address.Subdistrict,
-				District:    address.District,
-				VTC:         address.VTC,
-				State:       address.State,
-				Country:     address.Country,
-				Pincode:     address.Pincode,
-				FullAddress: address.BuildFullAddress(),
-			}
-			s.logger.Debug("Address details retrieved successfully",
-				zap.String("address_id", address.ID))
-		} else {
-			s.logger.Warn("Failed to fetch address details",
-				zap.Error(err),
-				zap.String("address_id", *collaborator.AddressID))
-		}
 	}
 
 	return response, nil
@@ -867,7 +877,7 @@ func (s *CollaboratorService) updateCollaboratorAddress(ctx context.Context, col
 	if req.ID == "" || *collaborator.AddressID != req.ID {
 		return errors.NewBadRequestError("address mismatch: update not permitted")
 	}
-	_, err := s.addressClient.UpdateAddress(ctx, &aaa.UpdateAddressRequest{
+	address, err := s.addressClient.UpdateAddress(ctx, &aaa.UpdateAddressRequest{
 		ID:          req.ID,
 		Type:        req.Type,
 		House:       req.House,
@@ -883,7 +893,14 @@ func (s *CollaboratorService) updateCollaboratorAddress(ctx context.Context, col
 		IsPrimary:   req.IsPrimary != nil && *req.IsPrimary,
 		IsActive:    true,
 	}, jwtToken)
-	return err
+	if err != nil {
+		return err
+	}
+	// SYNC: Update local cache with new address data
+	collaborator.SyncFromAAA(address)
+	s.logger.Debug("Address updated and synced to local cache",
+		zap.String("address_id", address.ID))
+	return nil
 }
 
 func (s *CollaboratorService) syncCollaboratorStatus(ctx context.Context, externalID string, newStatus pb.CollaboratorStatus, organizationID string, userID string) error {

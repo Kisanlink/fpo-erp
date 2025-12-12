@@ -16,17 +16,17 @@ type Warehouse struct {
 	AddressID *string `gorm:"type:varchar(50)" json:"address_id"` // Reference to AAA address
 
 	// Local address cache (synced on write operations) - eliminates gRPC calls on GET
-	AddressType  *string `gorm:"type:varchar(20);column:address_type" json:"-"`
-	House        *string `gorm:"type:varchar(255);column:house" json:"-"`
-	Street       *string `gorm:"type:varchar(255);column:street" json:"-"`
-	Landmark     *string `gorm:"type:varchar(255);column:landmark" json:"-"`
-	PostOffice   *string `gorm:"type:varchar(255);column:post_office" json:"-"`
-	Subdistrict  *string `gorm:"type:varchar(255);column:subdistrict" json:"-"`
-	District     *string `gorm:"type:varchar(255);column:district" json:"-"`
-	VTC          *string `gorm:"type:varchar(255);column:vtc" json:"-"`
-	State        *string `gorm:"type:varchar(100);column:state" json:"-"`
-	Country      *string `gorm:"type:varchar(100);column:country" json:"-"`
-	Pincode      *string `gorm:"type:varchar(10);column:pincode" json:"-"`
+	AddressType *string `gorm:"type:varchar(20);column:address_type" json:"-"`
+	House       *string `gorm:"type:varchar(255);column:house" json:"-"`
+	Street      *string `gorm:"type:varchar(255);column:street" json:"-"`
+	Landmark    *string `gorm:"type:varchar(255);column:landmark" json:"-"`
+	PostOffice  *string `gorm:"type:varchar(255);column:post_office" json:"-"`
+	Subdistrict *string `gorm:"type:varchar(255);column:subdistrict" json:"-"`
+	District    *string `gorm:"type:varchar(255);column:district" json:"-"`
+	VTC         *string `gorm:"type:varchar(255);column:vtc" json:"-"`
+	State       *string `gorm:"type:varchar(100);column:state" json:"-"`
+	Country     *string `gorm:"type:varchar(100);column:country" json:"-"`
+	Pincode     *string `gorm:"type:varchar(10);column:pincode" json:"-"`
 }
 
 // NewWarehouse creates a new Warehouse with initialized fields

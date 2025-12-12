@@ -128,10 +128,10 @@ type ProductAvailabilityGroupedResponse struct {
 	Prices             []ProductPriceResponse        `json:"prices,omitempty"`  // Active prices for this variant
 
 	// GST Details (Issue 3)
-	HSNCode  string  `json:"hsn_code"`   // HSN code for GST classification
-	GSTRate  float64 `json:"gst_rate"`   // GST rate (0, 5, 12, 18, 28)
-	CGSTRate float64 `json:"cgst_rate"`  // Central GST rate (GSTRate / 2)
-	SGSTRate float64 `json:"sgst_rate"`  // State GST rate (GSTRate / 2)
+	HSNCode  string  `json:"hsn_code"`  // HSN code for GST classification
+	GSTRate  float64 `json:"gst_rate"`  // GST rate (0, 5, 12, 18, 28)
+	CGSTRate float64 `json:"cgst_rate"` // Central GST rate (GSTRate / 2)
+	SGSTRate float64 `json:"sgst_rate"` // State GST rate (GSTRate / 2)
 
 	// Images (Issue 8)
 	Images []string `json:"images,omitempty"` // S3 paths for variant images
