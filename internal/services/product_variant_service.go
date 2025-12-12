@@ -577,13 +577,39 @@ func (s *ProductVariantService) DeleteProductVariant(ctx context.Context, id str
 	s.logger.Info("Deleting product variant",
 		zap.String("variant_id", id))
 
-	// Validate variant exists
-	_, err := s.variantRepo.GetByID(id)
+	// Validate variant exists and get current data
+	variant, err := s.variantRepo.GetByID(id)
 	if err != nil {
 		s.logger.Error("Variant not found",
 			zap.Error(err),
 			zap.String("variant_id", id))
 		return err
+	}
+
+	// S3 CLEANUP: Delete all images before soft-deleting the variant
+	if s.attachmentService != nil && variant.Images != nil && *variant.Images != "" {
+		var images []string
+		if err := json.Unmarshal([]byte(*variant.Images), &images); err != nil {
+			s.logger.Warn("Failed to parse variant images for cleanup",
+				zap.Error(err),
+				zap.String("variant_id", id))
+		} else {
+			s.logger.Info("Deleting variant images from S3",
+				zap.String("variant_id", id),
+				zap.Int("image_count", len(images)))
+
+			for _, imageID := range images {
+				if err := s.attachmentService.DeleteAttachment(ctx, imageID); err != nil {
+					s.logger.Warn("Failed to delete variant image attachment",
+						zap.Error(err),
+						zap.String("attachment_id", imageID))
+					// Continue with other images - don't fail the deletion
+				} else {
+					s.logger.Info("Variant image deleted from S3",
+						zap.String("attachment_id", imageID))
+				}
+			}
+		}
 	}
 
 	if err = s.variantRepo.Delete(id); err != nil {
