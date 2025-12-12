@@ -108,23 +108,18 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 		},
 	)
 
-	// Use :memory: database with shared cache mode for transaction visibility
-	// This allows transactions to see data committed outside the transaction
-	// Enable WAL mode for better concurrent access and read_uncommitted for transaction visibility
-	// Added _busy_timeout to wait for locks instead of failing immediately
-	// Added _txlock=immediate to acquire locks immediately and avoid deadlocks
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared&_journal_mode=WAL&_read_uncommitted=true&_busy_timeout=5000&_txlock=immediate"), &gorm.Config{
+	// Use :memory: database with simplified configuration for faster test execution
+	// Removed cache=shared to prevent lock contention between test connections
+	// Reduced busy_timeout to 1000ms to fail fast on deadlocks
+	// Removed txlock=immediate to prevent lock escalation
+	// Keep WAL mode for better concurrent performance
+	db, err := gorm.Open(sqlite.Open("file::memory:?_journal_mode=WAL&_busy_timeout=1000"), &gorm.Config{
 		Logger:                                   silentLogger,
 		NamingStrategy:                           SQLiteJSONNamingStrategy{},
 		DisableForeignKeyConstraintWhenMigrating: true,
 	})
 	if err != nil {
 		t.Fatalf("failed to connect to test database: %v", err)
-	}
-
-	// Execute PRAGMA to enable read uncommitted mode
-	if err := db.Exec("PRAGMA read_uncommitted = ON").Error; err != nil {
-		t.Fatalf("failed to set read_uncommitted pragma: %v", err)
 	}
 
 	// Create SQLite-compatible tables for all models
