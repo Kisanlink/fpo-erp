@@ -687,8 +687,6 @@ definitions:
         type: array
       quantity:
         type: string
-      sku:
-        type: string
       usage_details:
         type: string
       variant_name:
@@ -1662,6 +1660,24 @@ definitions:
       total:
         type: integer
     type: object
+  kisanlink-erp_internal_database_models.PatchSaleRequest:
+    properties:
+      customer_name:
+        type: string
+      customer_phone:
+        type: string
+      payment_mode:
+        enum:
+        - cash
+        - upi
+        - online
+        type: string
+      sale_type:
+        enum:
+        - in_store
+        - delivery
+        type: string
+    type: object
   kisanlink-erp_internal_database_models.PaymentMethodInfo:
     properties:
       credit_days:
@@ -1687,6 +1703,9 @@ definitions:
     type: object
   kisanlink-erp_internal_database_models.ProductAvailabilityGroupedResponse:
     properties:
+      cgst_rate:
+        description: Central GST rate (GSTRate / 2)
+        type: number
       earliest_expiry:
         description: Earliest expiry date across all warehouses
         type: string
@@ -1696,6 +1715,17 @@ definitions:
       expiry_status:
         description: 'Overall status: "fresh", "expiring_soon", "expired"'
         type: string
+      gst_rate:
+        description: GST rate (0, 5, 12, 18, 28)
+        type: number
+      hsn_code:
+        description: GST Details (Issue 3)
+        type: string
+      images:
+        description: Images (Issue 8)
+        items:
+          type: string
+        type: array
       prices:
         description: Active prices for this variant
         items:
@@ -1705,6 +1735,9 @@ definitions:
         type: string
       product_name:
         type: string
+      sgst_rate:
+        description: State GST rate (GSTRate / 2)
+        type: number
       sku:
         type: string
       total_quantity:
@@ -2249,6 +2282,9 @@ definitions:
         type: number
       sgst_amount:
         type: number
+      sku:
+        description: Product variant SKU (Issue 4)
+        type: string
       total_tax_amount:
         type: number
     type: object
@@ -8110,6 +8146,100 @@ paths:
       summary: Generate Customer Report
       tags:
       - Reports
+  /api/v1/reports/grn:
+    get:
+      description: Generate a goods receipt note report with filtering, pagination,
+        and export options
+      parameters:
+      - default: json
+        description: 'Output format: json, xlsx, pdf'
+        enum:
+        - json
+        - xlsx
+        - pdf
+        in: query
+        name: format
+        type: string
+      - default: 50
+        description: 'Records per page (max: 500)'
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Records to skip
+        in: query
+        name: offset
+        type: integer
+      - description: Filter by purchase order ID
+        in: query
+        name: po_id
+        type: string
+      - description: Search by PO number
+        in: query
+        name: po_number
+        type: string
+      - description: Filter by vendor/collaborator ID
+        in: query
+        name: vendor_id
+        type: string
+      - description: Filter by warehouse ID
+        in: query
+        name: warehouse_id
+        type: string
+      - collectionFormat: csv
+        description: Filter by quality status (comma-separated)
+        in: query
+        items:
+          type: string
+        name: quality_status
+        type: array
+      - description: Minimum received value
+        in: query
+        name: min_value
+        type: number
+      - description: Maximum received value
+        in: query
+        name: max_value
+        type: number
+      - description: Filter start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: Filter end date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      - application/pdf
+      responses:
+        "200":
+          description: Report generated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/kisanlink-erp_internal_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/kisanlink-erp_internal_database_models.ReportResponse'
+              type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Generate GRN Report
+      tags:
+      - Reports
   /api/v1/reports/inventory:
     get:
       description: Generate an inventory report with filtering, pagination, and export
@@ -9585,6 +9715,61 @@ paths:
       security:
       - BearerAuth: []
       summary: Get Sale
+      tags:
+      - Sales
+    patch:
+      consumes:
+      - application/json
+      description: Partially update a sale (payment_mode, sale_type, customer_phone,
+        customer_name)
+      parameters:
+      - description: Sale ID
+        example: SALE00000001
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/kisanlink-erp_internal_database_models.PatchSaleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sale updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/kisanlink-erp_internal_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/kisanlink-erp_internal_database_models.SaleResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+        "404":
+          description: Sale not found
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+        "422":
+          description: Unprocessable Entity - validation failed
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Patch Sale
       tags:
       - Sales
     put:
