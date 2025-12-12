@@ -708,6 +708,89 @@ func (s *ProductVariantService) validatePrices(prices []models.VariantPrice) err
 	return nil
 }
 
+// GetVariantsByCollaborator retrieves all variants for a collaborator
+func (s *ProductVariantService) GetVariantsByCollaborator(ctx context.Context, collaboratorID string) ([]models.ProductVariantResponse, error) {
+	s.logger.Info("Retrieving variants by collaborator",
+		zap.String("collaborator_id", collaboratorID))
+
+	// Get all variants for this collaborator
+	variants, err := s.variantRepo.GetByCollaboratorID(collaboratorID)
+	if err != nil {
+		s.logger.Error("Failed to retrieve variants by collaborator",
+			zap.Error(err),
+			zap.String("collaborator_id", collaboratorID))
+		return nil, err
+	}
+
+	var responses []models.ProductVariantResponse
+	for _, variant := range variants {
+		// Get product details
+		product, err := s.productRepo.GetByID(variant.ProductID)
+		if err != nil {
+			s.logger.Warn("Failed to get product for variant",
+				zap.Error(err),
+				zap.String("variant_id", variant.ID),
+				zap.String("product_id", variant.ProductID))
+			continue // Skip on error
+		}
+
+		response, err := s.buildProductVariantResponse(ctx, &variant, product)
+		if err != nil {
+			continue // Skip on error
+		}
+		responses = append(responses, *response)
+	}
+
+	s.logger.Info("Variants retrieved successfully by collaborator",
+		zap.String("collaborator_id", collaboratorID),
+		zap.Int("count", len(responses)))
+
+	return responses, nil
+}
+
+// GetVariantsByCollaboratorPaginated retrieves variants for a collaborator with pagination
+func (s *ProductVariantService) GetVariantsByCollaboratorPaginated(ctx context.Context, collaboratorID string, limit, offset int) ([]models.ProductVariantResponse, int64, error) {
+	s.logger.Info("Retrieving variants by collaborator with pagination",
+		zap.String("collaborator_id", collaboratorID),
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
+
+	// Get paginated variants for this collaborator
+	variants, total, err := s.variantRepo.GetByCollaboratorIDPaginated(collaboratorID, limit, offset)
+	if err != nil {
+		s.logger.Error("Failed to retrieve paginated variants by collaborator",
+			zap.Error(err),
+			zap.String("collaborator_id", collaboratorID))
+		return nil, 0, err
+	}
+
+	var responses []models.ProductVariantResponse
+	for _, variant := range variants {
+		// Get product details
+		product, err := s.productRepo.GetByID(variant.ProductID)
+		if err != nil {
+			s.logger.Warn("Failed to get product for variant",
+				zap.Error(err),
+				zap.String("variant_id", variant.ID),
+				zap.String("product_id", variant.ProductID))
+			continue // Skip on error
+		}
+
+		response, err := s.buildProductVariantResponse(ctx, &variant, product)
+		if err != nil {
+			continue // Skip on error
+		}
+		responses = append(responses, *response)
+	}
+
+	s.logger.Info("Paginated variants retrieved successfully by collaborator",
+		zap.String("collaborator_id", collaboratorID),
+		zap.Int("count", len(responses)),
+		zap.Int64("total", total))
+
+	return responses, total, nil
+}
+
 // buildProductVariantResponse builds a response with product details and presigned image URLs
 func (s *ProductVariantService) buildProductVariantResponse(ctx context.Context, variant *models.ProductVariant, product *models.Product) (*models.ProductVariantResponse, error) {
 	// Unmarshal image paths from JSON

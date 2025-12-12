@@ -1,6 +1,162 @@
 # Frontend API Changes Catalog - December 12, 2025
 
-## Issue 1: Collaborator Logo Auto-Sync (BREAKING CHANGE)
+## Issue 1: New Endpoint - Get Variants by Collaborator
+
+**Type**: New Feature
+
+**Endpoint**: `GET /api/v1/collaborators/{collaborator_id}/variants`
+
+**Description**: Retrieve all product variants associated with a specific collaborator with pagination support.
+
+**Query Parameters**:
+- `limit` (optional, integer, default: 50, max: 200) - Number of records to return
+- `offset` (optional, integer, default: 0) - Number of records to skip
+
+**Path Parameters**:
+- `collaborator_id` (required, string) - Collaborator ID (format: `CLAB00000001`)
+
+**Authentication**: Required (Bearer token)
+
+**Authorization**: Requires `variant:read` permission
+
+**Request Example**:
+```bash
+GET /api/v1/collaborators/CLAB00000001/variants?limit=50&offset=0
+Authorization: Bearer <token>
+```
+
+**Success Response** (200 OK):
+```json
+{
+  "success": true,
+  "message": "Variants retrieved successfully",
+  "data": [
+    {
+      "id": "PVAR00000001",
+      "product_id": "PROD00000001",
+      "variant_name": "500g",
+      "description": "Half kilogram pack",
+      "quantity": "500",
+      "pack_size": "500g",
+      "sku": "TOM-500G-ABC123",
+      "barcode": "1234567890123",
+      "images": [
+        "product-variants/PVAR00000001/image1.jpg"
+      ],
+      "image_urls": [
+        "https://s3.amazonaws.com/bucket/product-variants/PVAR00000001/image1.jpg?..."
+      ],
+      "prices": [
+        {
+          "id": "PRIC00000001",
+          "variant_id": "PVAR00000001",
+          "price_type": "retail",
+          "price": 100.50,
+          "currency": "INR",
+          "effective_from": "2025-01-01T00:00:00Z",
+          "effective_to": null,
+          "is_active": true,
+          "created_at": "2025-12-12T10:00:00Z",
+          "updated_at": "2025-12-12T10:00:00Z"
+        }
+      ],
+      "is_active": true,
+      "created_at": "2025-12-12T10:00:00Z",
+      "updated_at": "2025-12-12T10:00:00Z"
+    }
+  ],
+  "pagination": {
+    "total": 15,
+    "limit": 50,
+    "offset": 0
+  }
+}
+```
+
+**Error Responses**:
+- `400 Bad Request` - Invalid collaborator ID
+- `401 Unauthorized` - Missing or invalid authentication token
+- `403 Forbidden` - Insufficient permissions
+- `500 Internal Server Error` - Server error
+
+**Use Cases**:
+- Display all variants sold by a specific vendor/supplier
+- Filter products by collaborator on frontend
+- Show collaborator's product catalog
+- Export collaborator-specific product list
+
+**Implementation Notes**:
+- Searches within `collaborator_ids` JSON array using PostgreSQL `@>` operator
+- Only returns active variants (`is_active = true`)
+- Results ordered by `created_at DESC` (newest first)
+- Pagination follows standard ERP pagination pattern
+- Image URLs are presigned S3 URLs (valid for 1 hour)
+- Prices fetched from `product_prices` table
+
+**Frontend Integration Example**:
+```typescript
+// API call
+const getVariantsByCollaborator = async (
+  collaboratorId: string,
+  limit: number = 50,
+  offset: number = 0
+) => {
+  const response = await fetch(
+    `/api/v1/collaborators/${collaboratorId}/variants?limit=${limit}&offset=${offset}`,
+    {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch collaborator variants');
+  }
+
+  return response.json();
+};
+
+// React component usage
+const CollaboratorVariantsList = ({ collaboratorId }) => {
+  const [variants, setVariants] = useState([]);
+  const [pagination, setPagination] = useState({ total: 0, limit: 50, offset: 0 });
+
+  useEffect(() => {
+    const fetchVariants = async () => {
+      const result = await getVariantsByCollaborator(
+        collaboratorId,
+        pagination.limit,
+        pagination.offset
+      );
+      setVariants(result.data);
+      setPagination(result.pagination);
+    };
+
+    fetchVariants();
+  }, [collaboratorId, pagination.offset]);
+
+  return (
+    <div>
+      <h2>Variants for Collaborator {collaboratorId}</h2>
+      <ul>
+        {variants.map(variant => (
+          <li key={variant.id}>
+            {variant.variant_name} - SKU: {variant.sku}
+            {variant.prices[0] && ` - ₹${variant.prices[0].price}`}
+          </li>
+        ))}
+      </ul>
+      <p>Total: {pagination.total} variants</p>
+    </div>
+  );
+};
+```
+
+---
+
+## Issue 2: Collaborator Logo Auto-Sync (BREAKING CHANGE)
 
 **Type**: Breaking Change
 

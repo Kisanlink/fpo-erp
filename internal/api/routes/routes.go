@@ -250,7 +250,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 		bankPaymentsHandler.RegisterRoutes(v1)
 
 		// Procurement handlers
-		collaboratorHandler.RegisterRoutes(v1)
+		collaboratorHandler.RegisterRoutes(v1, productVariantHandler)
 		productVariantHandler.RegisterRoutes(v1)
 		priceHandler.RegisterRoutes(v1)
 		purchaseOrderHandler.RegisterRoutes(v1)
