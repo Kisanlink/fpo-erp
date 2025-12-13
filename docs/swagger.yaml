@@ -384,6 +384,23 @@ definitions:
       updated_at:
         type: string
     type: object
+  kisanlink-erp_internal_database_models.CollaboratorStats:
+    properties:
+      active_po_count:
+        type: integer
+      collaborator_id:
+        type: string
+      company_name:
+        type: string
+      grn_count:
+        type: integer
+      last_po_date:
+        type: string
+      po_count:
+        type: integer
+      total_amount:
+        type: number
+    type: object
   kisanlink-erp_internal_database_models.CreateAddressRequest:
     properties:
       country:
@@ -1169,9 +1186,11 @@ definitions:
     properties:
       created_at:
         type: string
-      grn_document:
-        description: Attachment ID for vendor's GRN PDF
-        type: string
+      documents:
+        description: Array of presigned URLs (auto-synced)
+        items:
+          type: string
+        type: array
       grn_number:
         type: string
       id:
@@ -1971,6 +1990,11 @@ definitions:
         type: string
       created_at:
         type: string
+      documents:
+        description: Array of presigned URLs (auto-synced)
+        items:
+          type: string
+        type: array
       expected_delivery_date:
         type: string
       id:
@@ -2311,7 +2335,8 @@ definitions:
       id:
         type: string
       invoice_number:
-        description: 'Format: MMYYNNNN (e.g., 12250001)'
+        description: 'Format: MMYYXXXXXXXX (e.g., 122512345678 = Dec 2025 + sale ID
+          suffix)'
         type: string
       is_org_member:
         type: boolean
@@ -2611,9 +2636,6 @@ definitions:
     type: object
   kisanlink-erp_internal_database_models.UpdateGRNRequest:
     properties:
-      grn_document:
-        description: Attachment ID for vendor's GRN PDF
-        type: string
       quality_status:
         description: accepted, rejected, partial
         type: string
@@ -5021,6 +5043,94 @@ paths:
       summary: Get Purchase Orders by Collaborator
       tags:
       - Purchase Orders
+  /api/v1/collaborators/{id}/stats:
+    get:
+      description: Retrieve transaction statistics for a specific collaborator
+      parameters:
+      - description: 'Collaborator ID (format: CLAB_xxxxxxxx)'
+        example: CLAB_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Collaborator statistics
+          schema:
+            allOf:
+            - $ref: '#/definitions/kisanlink-erp_internal_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/kisanlink-erp_internal_database_models.CollaboratorStats'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+        "404":
+          description: Collaborator not found
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Collaborator Transaction Statistics
+      tags:
+      - Collaborators
+  /api/v1/collaborators/{id}/variants:
+    get:
+      description: Retrieve all variants for a specific collaborator with pagination
+      parameters:
+      - description: 'Collaborator ID (format: CLAB_xxxxxxxx)'
+        example: CLAB_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Variants retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/kisanlink-erp_internal_utils.PaginatedResponseModel'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/kisanlink-erp_internal_database_models.ProductVariantResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+        "404":
+          description: Collaborator not found
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+      summary: Get Variants by Collaborator
+      tags:
+      - Product Variants
   /api/v1/collaborators/active:
     get:
       description: Retrieve all active collaborators with pagination (requires authentication)

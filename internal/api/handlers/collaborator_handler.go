@@ -518,7 +518,7 @@ func (h *CollaboratorHandler) SearchCollaborators(c *gin.Context) {
 // @Tags Collaborators
 // @Produce json
 // @Param id path string true "Collaborator ID (format: CLAB_xxxxxxxx)" example(CLAB_12345678)
-// @Success 200 {object} utils.Response{data=services.CollaboratorStats} "Collaborator statistics"
+// @Success 200 {object} utils.Response{data=models.CollaboratorStats} "Collaborator statistics"
 // @Failure 400 {object} utils.ErrorResponseModel "Bad request"
 // @Failure 404 {object} utils.ErrorResponseModel "Collaborator not found"
 // @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
