@@ -2223,13 +2223,12 @@ func (s *SalesService) CancelItems(saleID string, req *models.CancelItemsRequest
 			s.logger.Warn("Failed to update cancellation amount", zap.Error(err))
 		}
 
-		// 8. Update sale total (keep original status for partial cancellations)
+		// 8. Update sale total
 		newSaleTotal := sale.TotalAmount - totalCancelledAmount
 		if err := tx.Model(&models.Sale{}).Where("id = ?", sale.ID).Update("total_amount", newSaleTotal).Error; err != nil {
 			s.logger.Error("Failed to update sale total", zap.Error(err))
 			return errors.NewInternalServerError("Failed to update sale")
 		}
-		// Note: Status remains unchanged for partial cancellations (pending/completed)
 
 		// 9. Re-fetch sale to get updated items (avoids stale data in response)
 		updatedSale, err := s.salesRepo.GetSaleForUpdateWithTx(tx, sale.ID)
@@ -2239,7 +2238,28 @@ func (s *SalesService) CancelItems(saleID string, req *models.CancelItemsRequest
 			updatedSale.TotalAmount = newSaleTotal
 		}
 
-		// Build response with fresh data
+		// 10. If all items are effectively cancelled, treat this as a full sale cancellation
+		remainingItems := len(updatedSale.Items)
+		if remainingItems == 0 || newSaleTotal <= 0 {
+			s.logger.Info("All items cancelled via partial cancellation, marking sale as fully cancelled",
+				zap.String("sale_id", sale.ID))
+
+			updatedSale.Status = models.SaleStatusCancelled
+			now := time.Now()
+			updatedSale.CancelledAt = &now
+			updatedSale.CancellationReason = &req.Reason
+			updatedSale.TotalAmount = 0
+			newSaleTotal = 0
+
+			if err := s.salesRepo.UpdateSaleWithTx(tx, updatedSale); err != nil {
+				s.logger.Error("Failed to update sale status after full cancellation via cancel-items",
+					zap.Error(err),
+					zap.String("sale_id", sale.ID))
+				return errors.NewInternalServerError("Failed to update sale status after cancellation")
+			}
+		}
+
+		// 11. Build response with fresh data
 		response = &models.CancelItemsResponse{
 			Sale:                 *s.mapSaleToResponse(updatedSale),
 			ItemsCancelled:       cancelledItems,
