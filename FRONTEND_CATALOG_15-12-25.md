@@ -235,4 +235,61 @@
 - **Discounts are applied first**, then **GST is calculated on the discounted (net) line amounts**.
 - `margin` in responses is always **after discount**, using `net_selling_price`.
 
+---
+
+## Sales – Cancellation & Refunds (Full and Partial)
+
+### Cancel Full Sale – `POST /api/v1/sales/{id}/cancel`
+
+- **Purpose**: Cancel an entire sale and reverse inventory, discounts, and taxes.
+- **Refund principle**: The effective refund equals the **final paid amount** (`sale.total_amount`), which is net after discounts and taxes.
+
+#### Response (key points)
+
+- `sale.total_amount`: Final amount of the sale (before cancellation, for reference).
+- `financial_adjustments`:
+  - `discount_reversed.amount_reversed`: Total discount reversed for this cancellation.
+  - `tax_voided.amount_voided`: Total GST voided.
+- `cancellation_id`: ID for the `SaleCancellation` record.
+- In `GET /api/v1/sales/{id}/cancellations`, each `SaleCancellationItem` has:
+  - `refund_amount`: Per-line refund based on **net after discount + tax**.
+
+### Cancel Items (Partial) – `POST /api/v1/sales/{id}/cancel-items`
+
+- **Purpose**: Cancel specific items or quantities in a sale.
+- **Refund principle**: Each cancelled unit is refunded at its **final paid price**:
+  - `refund_per_unit = net_unit_price_after_discount + tax_per_unit`.
+
+#### Per-line refund math (backend)
+
+- For a sale item:
+  - `line_total` = gross base (`selling_price * quantity`).
+  - `discount_amount` = discount allocated to this line.
+  - `total_tax_amount` = GST on the net line after discount.
+- Backend computes:
+  - `net_line_total = line_total - discount_amount`.
+  - `net_base_per_unit = net_line_total / quantity`.
+  - `tax_per_unit = total_tax_amount / quantity`.
+  - `refund_per_unit = net_base_per_unit + tax_per_unit`.
+  - For a cancelled quantity `q`: `refund_amount = refund_per_unit * q`.
+
+#### Cancellation record & sale total
+
+- `cancellation.cancelled_amount` (in history):
+  - Sum of all per-line `refund_amount` values for that cancellation.
+- `sale.total_amount` after a partial cancellation:
+  - Updated to `old_total_amount - cancelled_amount`.
+  - Always reflects the **remaining final amount** after all discounts, taxes, and cancellations.
+
+#### Frontend expectations
+
+- For **full cancellation**:
+  - Treat the effective refund as the original `sale.total_amount` at the time of cancellation.
+  - Per-line refund breakdown is visible via the cancellation history.
+- For **partial cancellation**:
+  - Use `CancelItemsResponse`:
+    - `new_sale_total`: Updated final amount after cancellation.
+    - `items_cancelled[*].amount_refunded`: Per-line refunded amount (matches backend formulas above).
+    - `financial_adjustments` for proportional discount and tax reversals.
+
 

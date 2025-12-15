@@ -1538,10 +1538,11 @@ func (s *SalesService) CancelSale(saleID string, req *models.CancelSaleRequest) 
 		s.logger.Info("Cancellation record created",
 			zap.String("cancellation_id", cancellation.ID))
 
-		// 4. For each SaleItem: restore inventory
-		s.logger.Debug("Processing sale items for inventory restoration",
+		// 4. For each SaleItem: restore inventory and compute refund based on final paid price
+		s.logger.Debug("Processing sale items for inventory restoration and refund calculation",
 			zap.Int("item_count", len(sale.Items)))
 		var inventoryRestored []models.InventoryRestoredItem
+		var totalRefundAmount float64
 
 		for i, saleItem := range sale.Items {
 			s.logger.Debug("Processing sale item",
@@ -1633,13 +1634,30 @@ func (s *SalesService) CancelSale(saleID string, req *models.CancelSaleRequest) 
 					zap.String("batch_id", saleItem.BatchID))
 			}
 
-			// Bug #2 Fix: Create SaleCancellationItem with accurate inventoryRestored flag
+			// Calculate final paid price (net after discount + tax) for this item
+			refundAmount := 0.0
+			if saleItem.Quantity > 0 {
+				netLineTotal := saleItem.LineTotal - saleItem.DiscountAmount
+				if netLineTotal < 0 {
+					netLineTotal = 0
+				}
+				netBasePerUnit := netLineTotal / float64(saleItem.Quantity)
+				taxPerUnit := 0.0
+				if saleItem.TotalTaxAmount > 0 {
+					taxPerUnit = saleItem.TotalTaxAmount / float64(saleItem.Quantity)
+				}
+				refundPerUnit := netBasePerUnit + taxPerUnit
+				refundAmount = refundPerUnit * float64(saleItem.Quantity)
+			}
+			totalRefundAmount += refundAmount
+
+			// Bug #2 Fix: Create SaleCancellationItem with accurate inventoryRestored flag and refund amount
 			cancellationItem := models.NewSaleCancellationItem(
 				cancellation.ID,
 				saleItem.ID,
 				saleItem.BatchID,
 				saleItem.Quantity,
-				saleItem.LineTotal,
+				refundAmount,
 				transactionID,
 				inventoryWasRestored, // Now accurately reflects whether inventory was restored
 			)
@@ -1973,11 +1991,18 @@ func (s *SalesService) CancelItems(saleID string, req *models.CancelItemsRequest
 				return errors.NewInternalServerError("Data integrity error: sale item has invalid quantity")
 			}
 
-			// Calculate refund amount for this item (including proportional taxes)
-			basePricePerUnit := saleItem.LineTotal / float64(saleItem.Quantity)
-			taxPerUnit := saleItem.TotalTaxAmount / float64(saleItem.Quantity)
-			totalPricePerUnit := basePricePerUnit + taxPerUnit
-			refundAmount := totalPricePerUnit * float64(itemReq.Quantity)
+			// Calculate refund amount for this item based on final paid price (net after discount + tax)
+			netLineTotal := saleItem.LineTotal - saleItem.DiscountAmount
+			if netLineTotal < 0 {
+				netLineTotal = 0
+			}
+			netBasePerUnit := netLineTotal / float64(saleItem.Quantity)
+			taxPerUnit := 0.0
+			if saleItem.TotalTaxAmount > 0 {
+				taxPerUnit = saleItem.TotalTaxAmount / float64(saleItem.Quantity)
+			}
+			refundPerUnit := netBasePerUnit + taxPerUnit
+			refundAmount := refundPerUnit * float64(itemReq.Quantity)
 			totalCancelledAmount += refundAmount
 
 			// Use transactional batch read (includes soft-deleted batches)
@@ -2056,14 +2081,36 @@ func (s *SalesService) CancelItems(saleID string, req *models.CancelItemsRequest
 			// Update sale item quantity if partial
 			if itemReq.Quantity < saleItem.Quantity {
 				newQuantity := saleItem.Quantity - itemReq.Quantity
-				// Recalculate all proportional fields (GST-only tax system)
-				newLineTotal := basePricePerUnit * float64(newQuantity)
-				marginPerUnit := saleItem.Margin / float64(saleItem.Quantity)
-				cgstPerUnit := saleItem.CGSTAmount / float64(saleItem.Quantity)
-				sgstPerUnit := saleItem.SGSTAmount / float64(saleItem.Quantity)
-				igstPerUnit := saleItem.IGSTAmount / float64(saleItem.Quantity)
+				// Recalculate all proportional fields using ratios to keep net/discount/tax consistent
+				ratio := float64(newQuantity) / float64(saleItem.Quantity)
 
-				newMargin := marginPerUnit * float64(newQuantity)
+				// Line totals and discount
+				newLineTotal := saleItem.LineTotal * ratio
+				newDiscountAmount := saleItem.DiscountAmount * ratio
+
+				// Net line totals and margin after discount
+				oldNetLineTotal := saleItem.LineTotal - saleItem.DiscountAmount
+				if oldNetLineTotal < 0 {
+					oldNetLineTotal = 0
+				}
+				newNetLineTotal := oldNetLineTotal * ratio
+				netUnitPriceNew := 0.0
+				if newQuantity > 0 && newNetLineTotal > 0 {
+					netUnitPriceNew = newNetLineTotal / float64(newQuantity)
+				}
+				newMarginPerUnit := netUnitPriceNew - saleItem.CostPrice
+				newMargin := newMarginPerUnit * float64(newQuantity)
+
+				// Tax amounts proportional to remaining quantity
+				cgstPerUnit := 0.0
+				sgstPerUnit := 0.0
+				igstPerUnit := 0.0
+				if saleItem.Quantity > 0 {
+					cgstPerUnit = saleItem.CGSTAmount / float64(saleItem.Quantity)
+					sgstPerUnit = saleItem.SGSTAmount / float64(saleItem.Quantity)
+					igstPerUnit = saleItem.IGSTAmount / float64(saleItem.Quantity)
+				}
+
 				newCGST := cgstPerUnit * float64(newQuantity)
 				newSGST := sgstPerUnit * float64(newQuantity)
 				newIGST := igstPerUnit * float64(newQuantity)
@@ -2072,6 +2119,7 @@ func (s *SalesService) CancelItems(saleID string, req *models.CancelItemsRequest
 				if err := tx.Model(&models.SaleItem{}).Where("id = ?", saleItem.ID).Updates(map[string]interface{}{
 					"quantity":         newQuantity,
 					"line_total":       newLineTotal,
+					"discount_amount":  newDiscountAmount,
 					"margin":           newMargin,
 					"cgst_amount":      newCGST,
 					"sgst_amount":      newSGST,
