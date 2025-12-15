@@ -23,11 +23,21 @@ type InventoryService struct {
 	variantRepo   *repositories.ProductVariantRepository
 	priceRepo     *repositories.ProductPriceRepository
 	addressClient *aaa.AddressGRPCClient
+	s3Service     *S3Service
 	logger        interfaces.Logger
 }
 
 // NewInventoryService creates a new inventory service
-func NewInventoryService(inventoryRepo *repositories.InventoryRepository, warehouseRepo *repositories.WarehouseRepository, productRepo *repositories.ProductRepository, variantRepo *repositories.ProductVariantRepository, priceRepo *repositories.ProductPriceRepository, addressClient *aaa.AddressGRPCClient, logger interfaces.Logger) *InventoryService {
+func NewInventoryService(
+	inventoryRepo *repositories.InventoryRepository,
+	warehouseRepo *repositories.WarehouseRepository,
+	productRepo *repositories.ProductRepository,
+	variantRepo *repositories.ProductVariantRepository,
+	priceRepo *repositories.ProductPriceRepository,
+	addressClient *aaa.AddressGRPCClient,
+	s3Service *S3Service,
+	logger interfaces.Logger,
+) *InventoryService {
 	return &InventoryService{
 		inventoryRepo: inventoryRepo,
 		warehouseRepo: warehouseRepo,
@@ -35,6 +45,7 @@ func NewInventoryService(inventoryRepo *repositories.InventoryRepository, wareho
 		variantRepo:   variantRepo,
 		priceRepo:     priceRepo,
 		addressClient: addressClient,
+		s3Service:     s3Service,
 		logger:        logger,
 	}
 }
@@ -458,6 +469,20 @@ func (s *InventoryService) GetAllProductsAvailability(ctx context.Context, jwtTo
 						zap.String("variant_id", batch.VariantID))
 				}
 			}
+			// Generate presigned URLs for each image (mirror product variant behavior)
+			var imageURLs []string
+			if s.s3Service != nil && len(images) > 0 {
+				for _, imagePath := range images {
+					if url, err := s.s3Service.GeneratePresignedURLForKey(ctx, imagePath, time.Hour); err == nil {
+						imageURLs = append(imageURLs, url)
+					} else {
+						s.logger.Warn("Failed to generate presigned URL for variant image",
+							zap.Error(err),
+							zap.String("variant_id", batch.VariantID),
+							zap.String("image_path", imagePath))
+					}
+				}
+			}
 			variantMap[sku] = &variantAvailability{
 				VariantID:          batch.VariantID,
 				ProductName:        batch.Variant.VariantName,
@@ -469,7 +494,8 @@ func (s *InventoryService) GetAllProductsAvailability(ctx context.Context, jwtTo
 				CGSTRate: gstRate / 2,
 				SGSTRate: gstRate / 2,
 				// Images (Issue 8)
-				Images: images,
+				Images:    images,
+				ImageURLs: imageURLs,
 			}
 		}
 
@@ -521,7 +547,8 @@ func (s *InventoryService) GetAllProductsAvailability(ctx context.Context, jwtTo
 			CGSTRate: variantData.CGSTRate,
 			SGSTRate: variantData.SGSTRate,
 			// Images (Issue 8)
-			Images: variantData.Images,
+			Images:    variantData.Images,
+			ImageURLs: variantData.ImageURLs,
 		}
 
 		// Process warehouse details
@@ -620,7 +647,8 @@ type variantAvailability struct {
 	CGSTRate float64
 	SGSTRate float64
 	// Images (Issue 8)
-	Images []string
+	Images    []string
+	ImageURLs []string
 }
 
 type warehouseDetail struct {
