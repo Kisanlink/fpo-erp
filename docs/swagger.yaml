@@ -45,6 +45,15 @@ definitions:
         description: Village/Town/City
         type: string
     type: object
+  kisanlink-erp_internal_database_models.AllCollaboratorsStatsResponse:
+    properties:
+      collaborators:
+        items:
+          $ref: '#/definitions/kisanlink-erp_internal_database_models.CollaboratorStatsSummary'
+        type: array
+      total_po_count:
+        type: integer
+    type: object
   kisanlink-erp_internal_database_models.AlternatePriceInfo:
     properties:
       min_quantity:
@@ -400,6 +409,15 @@ definitions:
         type: integer
       total_amount:
         type: number
+    type: object
+  kisanlink-erp_internal_database_models.CollaboratorStatsSummary:
+    properties:
+      collaborator_id:
+        type: string
+      company_name:
+        type: string
+      po_count:
+        type: integer
     type: object
   kisanlink-erp_internal_database_models.CreateAddressRequest:
     properties:
@@ -5245,6 +5263,31 @@ paths:
       security:
       - BearerAuth: []
       summary: Search Collaborators
+      tags:
+      - Collaborators
+  /api/v1/collaborators/stats:
+    get:
+      description: Retrieve transaction statistics for all collaborators (PO counts)
+        and total PO count
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: All collaborators statistics
+          schema:
+            allOf:
+            - $ref: '#/definitions/kisanlink-erp_internal_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/kisanlink-erp_internal_database_models.AllCollaboratorsStatsResponse'
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get All Collaborators Stats
       tags:
       - Collaborators
   /api/v1/discounts:

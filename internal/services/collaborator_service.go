@@ -1390,3 +1390,58 @@ func (s *CollaboratorService) GetCollaboratorStats(ctx context.Context, collabor
 
 	return stats, nil
 }
+
+// GetAllCollaboratorsStats retrieves transaction statistics for all collaborators
+func (s *CollaboratorService) GetAllCollaboratorsStats(ctx context.Context) (*models.AllCollaboratorsStatsResponse, error) {
+	s.logger.Info("Retrieving all collaborators stats")
+
+	// Get all collaborators
+	collaborators, err := s.collaboratorRepo.GetAll()
+	if err != nil {
+		s.logger.Error("Failed to retrieve collaborators for stats",
+			zap.Error(err))
+		return nil, err
+	}
+
+	// Get PO counts for all collaborators efficiently
+	poStatsMap, err := s.purchaseOrderRepo.GetAllCollaboratorsStats()
+	if err != nil {
+		s.logger.Error("Failed to get collaborators PO stats",
+			zap.Error(err))
+		return nil, err
+	}
+
+	// Get total PO count
+	totalPOCount, err := s.purchaseOrderRepo.GetTotalPOCount()
+	if err != nil {
+		s.logger.Error("Failed to get total PO count",
+			zap.Error(err))
+		return nil, err
+	}
+
+	// Build response with stats for each collaborator
+	collaboratorStats := make([]models.CollaboratorStatsSummary, 0, len(collaborators))
+	for _, collaborator := range collaborators {
+		poCount := int64(0)
+		if count, exists := poStatsMap[collaborator.ID]; exists {
+			poCount = count
+		}
+
+		collaboratorStats = append(collaboratorStats, models.CollaboratorStatsSummary{
+			CollaboratorID: collaborator.ID,
+			CompanyName:    collaborator.CompanyName,
+			POCount:        poCount,
+		})
+	}
+
+	response := &models.AllCollaboratorsStatsResponse{
+		Collaborators: collaboratorStats,
+		TotalPOCount:  totalPOCount,
+	}
+
+	s.logger.Info("All collaborators stats retrieved successfully",
+		zap.Int("collaborators_count", len(collaboratorStats)),
+		zap.Int64("total_po_count", totalPOCount))
+
+	return response, nil
+}

@@ -210,3 +210,16 @@ type CollaboratorStats struct {
 	ActivePOCount  int64   `json:"active_po_count"`
 	LastPODate     *string `json:"last_po_date"`
 }
+
+// CollaboratorStatsSummary holds simplified stats for a collaborator (for bulk stats endpoint)
+type CollaboratorStatsSummary struct {
+	CollaboratorID string `json:"collaborator_id"`
+	CompanyName    string `json:"company_name"`
+	POCount        int64  `json:"po_count"`
+}
+
+// AllCollaboratorsStatsResponse holds stats for all collaborators
+type AllCollaboratorsStatsResponse struct {
+	Collaborators []CollaboratorStatsSummary `json:"collaborators"`
+	TotalPOCount  int64                      `json:"total_po_count"`
+}

@@ -562,6 +562,42 @@ func (h *CollaboratorHandler) GetCollaboratorStats(c *gin.Context) {
 	utils.OKResponse(c, "Collaborator statistics retrieved successfully", stats)
 }
 
+// GetAllCollaboratorsStats handles GET /api/v1/collaborators/stats
+// @Summary Get All Collaborators Stats
+// @Description Retrieve transaction statistics for all collaborators (PO counts) and total PO count
+// @Tags Collaborators
+// @Produce json
+// @Success 200 {object} utils.Response{data=models.AllCollaboratorsStatsResponse} "All collaborators statistics"
+// @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
+// @Security BearerAuth
+// @Router /api/v1/collaborators/stats [get]
+func (h *CollaboratorHandler) GetAllCollaboratorsStats(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get all collaborators stats request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
+	// 3. Service Call Log
+	h.logger.Debug("Calling service to get all collaborators stats")
+
+	// Get all collaborators stats
+	stats, err := h.collaboratorService.GetAllCollaboratorsStats(c.Request.Context())
+	if err != nil {
+		// 4. Service Error Log
+		h.logger.Error("Service error getting all collaborators stats",
+			zap.Error(err))
+		utils.HandleServiceError(c, "Failed to retrieve all collaborators stats", err)
+		return
+	}
+
+	// 5. Success Log
+	h.logger.Info("All collaborators stats retrieved successfully",
+		zap.Int("collaborators_count", len(stats.Collaborators)),
+		zap.Int64("total_po_count", stats.TotalPOCount))
+
+	utils.OKResponse(c, "All collaborators statistics retrieved successfully", stats)
+}
+
 // RegisterRoutes registers all collaborator routes
 func (h *CollaboratorHandler) RegisterRoutes(router *gin.RouterGroup, variantHandler *ProductVariantHandler) {
 	collaborators := router.Group("/collaborators")
@@ -576,6 +612,7 @@ func (h *CollaboratorHandler) RegisterRoutes(router *gin.RouterGroup, variantHan
 		collaborators.GET("", h.aaaMiddleware.RequireOrgPermission("collaborator", "read"), h.GetAllCollaborators)
 		collaborators.GET("/active", h.aaaMiddleware.RequireOrgPermission("collaborator", "read"), h.GetActiveCollaborators)
 		collaborators.GET("/search", h.aaaMiddleware.RequireOrgPermission("collaborator", "read"), h.SearchCollaborators)
+		collaborators.GET("/stats", h.aaaMiddleware.RequireOrgPermission("collaborator", "read"), h.GetAllCollaboratorsStats)
 		collaborators.GET("/:id", h.aaaMiddleware.RequireOrgPermission("collaborator", "read"), h.GetCollaborator)
 		collaborators.GET("/:id/stats", h.aaaMiddleware.RequireOrgPermission("collaborator", "read"), h.GetCollaboratorStats)
 

@@ -318,3 +318,36 @@ func (r *PurchaseOrderRepository) GetLatestPODate(collaboratorID string) (*strin
 	dateStr := dates[0].Format(time.RFC3339)
 	return &dateStr, nil
 }
+
+// GetAllCollaboratorsStats retrieves PO counts for all collaborators efficiently
+func (r *PurchaseOrderRepository) GetAllCollaboratorsStats() (map[string]int64, error) {
+	type statsResult struct {
+		CollaboratorID string
+		POCount        int64
+	}
+
+	var results []statsResult
+	err := r.db.Model(&models.PurchaseOrder{}).
+		Select("collaborator_id, COUNT(*) as po_count").
+		Group("collaborator_id").
+		Scan(&results).Error
+	if err != nil {
+		return nil, errors.NewInternalServerError("Failed to get collaborators stats")
+	}
+
+	statsMap := make(map[string]int64, len(results))
+	for _, result := range results {
+		statsMap[result.CollaboratorID] = result.POCount
+	}
+
+	return statsMap, nil
+}
+
+// GetTotalPOCount returns the total count of all purchase orders
+func (r *PurchaseOrderRepository) GetTotalPOCount() (int64, error) {
+	var total int64
+	if err := r.db.Model(&models.PurchaseOrder{}).Count(&total).Error; err != nil {
+		return 0, errors.NewInternalServerError("Failed to get total purchase order count")
+	}
+	return total, nil
+}
