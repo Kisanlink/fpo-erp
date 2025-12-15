@@ -153,26 +153,28 @@ func initializeHashCounters(db *gorm.DB) {
 
 	// Define all table identifiers and their sizes using centralized constants
 	tableConfigs := map[string]hash.TableSize{
-		constants.TableProduct:       hash.Medium, // Products
-		constants.TableWarehouse:     hash.Medium, // Warehouses
-		constants.TableSale:          hash.Medium, // Sales
-		constants.TableSaleItem:      hash.Medium, // Sale Items
-		constants.TableSaleSummary:   hash.Medium, // Sale Summaries
-		constants.TableBatch:         hash.Medium, // Inventory Batches
-		constants.TableTransaction:   hash.Medium, // Inventory Transactions
-		constants.TablePrice:         hash.Medium, // Product Prices
-		constants.TableDiscount:      hash.Medium, // Discounts
-		constants.TableDiscountUse:   hash.Medium, // Discount Usage
-		constants.TableTax:           hash.Medium, // Tax
-		constants.TableTaxTier:       hash.Medium, // Tax Tiers
-		constants.TableTaxApp:        hash.Medium, // Tax Applications
-		constants.TableTaxSummary:    hash.Medium, // Tax Summaries
-		constants.TableReturn:        hash.Medium, // Returns
-		constants.TableReturnItem:    hash.Medium, // Return Items
-		constants.TableReturnSummary: hash.Medium, // Return Summaries
-		constants.TableRefundPolicy:  hash.Medium, // Refund Policies
-		constants.TableBankPayment:   hash.Medium, // Bank Payments
-		constants.TableAttachment:    hash.Medium, // Attachments
+		constants.TableProduct:              hash.Medium, // Products
+		constants.TableWarehouse:            hash.Medium, // Warehouses
+		constants.TableSale:                 hash.Medium, // Sales
+		constants.TableSaleItem:             hash.Medium, // Sale Items
+		constants.TableSaleSummary:          hash.Medium, // Sale Summaries
+		constants.TableSaleCancellation:     hash.Medium, // Sale Cancellations
+		constants.TableSaleCancellationItem: hash.Medium, // Sale Cancellation Items
+		constants.TableBatch:                hash.Medium, // Inventory Batches
+		constants.TableTransaction:          hash.Medium, // Inventory Transactions
+		constants.TablePrice:                hash.Medium, // Product Prices
+		constants.TableDiscount:             hash.Medium, // Discounts
+		constants.TableDiscountUse:          hash.Medium, // Discount Usage
+		constants.TableTax:                  hash.Medium, // Tax
+		constants.TableTaxTier:              hash.Medium, // Tax Tiers
+		constants.TableTaxApp:               hash.Medium, // Tax Applications
+		constants.TableTaxSummary:           hash.Medium, // Tax Summaries
+		constants.TableReturn:               hash.Medium, // Returns
+		constants.TableReturnItem:           hash.Medium, // Return Items
+		constants.TableReturnSummary:        hash.Medium, // Return Summaries
+		constants.TableRefundPolicy:         hash.Medium, // Refund Policies
+		constants.TableBankPayment:          hash.Medium, // Bank Payments
+		constants.TableAttachment:           hash.Medium, // Attachments
 		// Procurement Module
 		constants.TableCollaborator:        hash.Medium, // Collaborators/Vendors
 		constants.TableCollaboratorProduct: hash.Medium, // Collaborator-Product Junction
@@ -207,26 +209,28 @@ func initializeHashCounters(db *gorm.DB) {
 func getExistingIDs(db *gorm.DB, tableID string) []string {
 	// Map table identifiers to actual database table names
 	tableNameMap := map[string]string{
-		constants.TableProduct:       "products",
-		constants.TableWarehouse:     "warehouses",
-		constants.TableSale:          "sales",
-		constants.TableSaleItem:      "sale_items",
-		constants.TableSaleSummary:   "sale_summaries",
-		constants.TableBatch:         "inventory_batches",
-		constants.TableTransaction:   "inventory_transactions",
-		constants.TablePrice:         "product_prices",
-		constants.TableDiscount:      "discounts",
-		constants.TableDiscountUse:   "discount_usages",
-		constants.TableTax:           "taxes",
-		constants.TableTaxTier:       "tax_tiers",
-		constants.TableTaxApp:        "tax_applications",
-		constants.TableTaxSummary:    "tax_summaries",
-		constants.TableReturn:        "returns",
-		constants.TableReturnItem:    "return_items",
-		constants.TableReturnSummary: "return_summaries",
-		constants.TableRefundPolicy:  "refund_policies",
-		constants.TableBankPayment:   "bank_payments",
-		constants.TableAttachment:    "attachments",
+		constants.TableProduct:              "products",
+		constants.TableWarehouse:            "warehouses",
+		constants.TableSale:                 "sales",
+		constants.TableSaleItem:             "sale_items",
+		constants.TableSaleSummary:          "sale_summaries",
+		constants.TableSaleCancellation:     "sale_cancellations",
+		constants.TableSaleCancellationItem: "sale_cancellation_items",
+		constants.TableBatch:                "inventory_batches",
+		constants.TableTransaction:          "inventory_transactions",
+		constants.TablePrice:                "product_prices",
+		constants.TableDiscount:             "discounts",
+		constants.TableDiscountUse:          "discount_usages",
+		constants.TableTax:                  "taxes",
+		constants.TableTaxTier:              "tax_tiers",
+		constants.TableTaxApp:               "tax_applications",
+		constants.TableTaxSummary:           "tax_summaries",
+		constants.TableReturn:               "returns",
+		constants.TableReturnItem:           "return_items",
+		constants.TableReturnSummary:        "return_summaries",
+		constants.TableRefundPolicy:         "refund_policies",
+		constants.TableBankPayment:          "bank_payments",
+		constants.TableAttachment:           "attachments",
 		// Procurement Module
 		constants.TableCollaborator:        "collaborators",
 		constants.TableCollaboratorProduct: "collaborator_products",
