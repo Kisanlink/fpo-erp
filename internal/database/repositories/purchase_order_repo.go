@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"fmt"
+	"time"
 
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/errors"
@@ -296,13 +297,24 @@ func (r *PurchaseOrderRepository) CountActiveByCollaborator(collaboratorID strin
 
 // GetLatestPODate retrieves the date of the most recent purchase order for a collaborator
 func (r *PurchaseOrderRepository) GetLatestPODate(collaboratorID string) (*string, error) {
-	var latestDate *string
-	if err := r.db.Model(&models.PurchaseOrder{}).
+	var dates []time.Time
+
+	err := r.db.Model(&models.PurchaseOrder{}).
 		Where("collaborator_id = ?", collaboratorID).
 		Order("created_at DESC").
 		Limit(1).
-		Pluck("created_at", &latestDate).Error; err != nil {
+		Pluck("created_at", &dates).Error
+
+	if err != nil {
 		return nil, errors.NewInternalServerError("Failed to get latest purchase order date")
 	}
-	return latestDate, nil
+
+	// If no results, return nil (valid state - no purchase orders yet)
+	if len(dates) == 0 {
+		return nil, nil
+	}
+
+	// Format the time to RFC3339 string (ISO 8601 format)
+	dateStr := dates[0].Format(time.RFC3339)
+	return &dateStr, nil
 }
