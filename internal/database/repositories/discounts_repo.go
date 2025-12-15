@@ -208,7 +208,7 @@ func (r *DiscountsRepository) GetDiscountUsageBySale(saleID string) ([]models.Di
 }
 
 // ValidateDiscount validates a discount for a given order
-func (r *DiscountsRepository) ValidateDiscount(code string, orderValue float64, productIDs []string, warehouseID string) (*models.Discount, error) {
+func (r *DiscountsRepository) ValidateDiscount(code string, orderValue float64, variantIDs []string, productIDs []string, warehouseID string) (*models.Discount, error) {
 	// Get discount by code
 	discount, err := r.GetDiscountByCode(code)
 	if err != nil {
@@ -251,17 +251,24 @@ func (r *DiscountsRepository) ValidateDiscount(code string, orderValue float64, 
 		}
 	}
 
-	// Check product applicability
-	if discount.ApplicableProducts != nil && *discount.ApplicableProducts != "" {
-		if !r.areProductIDsApplicable(*discount.ApplicableProducts, productIDs) {
-			return nil, errors.NewBadRequestError("Discount is not applicable to the products in this order")
+	// Prefer variant-level applicability when configured
+	if discount.ApplicableVariants != nil && *discount.ApplicableVariants != "" {
+		if !r.areIDsApplicable(*discount.ApplicableVariants, variantIDs) {
+			return nil, errors.NewBadRequestError("Discount is not applicable to the variants in this order")
 		}
-	}
+	} else {
+		// Fallback to product-level applicability
+		if discount.ApplicableProducts != nil && *discount.ApplicableProducts != "" {
+			if !r.areProductIDsApplicable(*discount.ApplicableProducts, productIDs) {
+				return nil, errors.NewBadRequestError("Discount is not applicable to the products in this order")
+			}
+		}
 
-	// Check excluded products
-	if discount.ExcludedProducts != nil && *discount.ExcludedProducts != "" {
-		if r.areProductIDsExcluded(*discount.ExcludedProducts, productIDs) {
-			return nil, errors.NewBadRequestError("Discount cannot be applied to excluded products in this order")
+		// Check excluded products
+		if discount.ExcludedProducts != nil && *discount.ExcludedProducts != "" {
+			if r.areProductIDsExcluded(*discount.ExcludedProducts, productIDs) {
+				return nil, errors.NewBadRequestError("Discount cannot be applied to excluded products in this order")
+			}
 		}
 	}
 
@@ -308,9 +315,9 @@ func (r *DiscountsRepository) CalculateDiscount(discount *models.Discount, order
 }
 
 // ValidateDiscountWithCategories validates a discount for a given order including category checks
-func (r *DiscountsRepository) ValidateDiscountWithCategories(code string, orderValue float64, productIDs []string, categoryIDs []string, warehouseID string) (*models.Discount, error) {
+func (r *DiscountsRepository) ValidateDiscountWithCategories(code string, orderValue float64, variantIDs []string, productIDs []string, categoryIDs []string, warehouseID string) (*models.Discount, error) {
 	// First perform basic validation
-	discount, err := r.ValidateDiscount(code, orderValue, productIDs, warehouseID)
+	discount, err := r.ValidateDiscount(code, orderValue, variantIDs, productIDs, warehouseID)
 	if err != nil {
 		return nil, err
 	}
@@ -352,6 +359,33 @@ func (r *DiscountsRepository) isIDInJSONArray(jsonArrayStr, targetID string) boo
 	for _, id := range ids {
 		if strings.TrimSpace(id) == targetID {
 			return true
+		}
+	}
+	return false
+}
+
+// areIDsApplicable checks if any of the given IDs are in the applicable IDs JSON array
+// This is a generic helper for variant IDs (and can be reused for other ID lists)
+func (r *DiscountsRepository) areIDsApplicable(jsonArrayStr string, ids []string) bool {
+	if jsonArrayStr == "" || len(ids) == 0 {
+		return true // If no restrictions, all IDs are applicable
+	}
+
+	var applicableIDs []string
+	if err := json.Unmarshal([]byte(jsonArrayStr), &applicableIDs); err != nil {
+		// If JSON parsing fails, try treating it as a comma-separated string
+		applicableIDs = strings.Split(jsonArrayStr, ",")
+		for i, id := range applicableIDs {
+			applicableIDs[i] = strings.TrimSpace(id)
+		}
+	}
+
+	// Check if any of the provided IDs are in the applicable list
+	for _, orderID := range ids {
+		for _, applicableID := range applicableIDs {
+			if strings.TrimSpace(applicableID) == orderID {
+				return true // At least one ID is applicable
+			}
 		}
 	}
 	return false
@@ -484,8 +518,8 @@ func (r *DiscountsRepository) GetApplicableDiscountsForOrder(orderValue float64,
 	var applicableDiscounts []models.Discount
 
 	for _, discount := range activeDiscounts {
-		// Validate each discount for the order
-		_, err := r.ValidateDiscountWithCategories(discount.Code, orderValue, productIDs, categoryIDs, warehouseID)
+		// Validate each discount for the order (no variant filtering at this stage)
+		_, err := r.ValidateDiscountWithCategories(discount.Code, orderValue, nil, productIDs, categoryIDs, warehouseID)
 		if err == nil {
 			applicableDiscounts = append(applicableDiscounts, discount)
 		}

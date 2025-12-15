@@ -392,6 +392,84 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 		discountAmount = totalDiscountAmount
 		appliedDiscounts = applications
 
+		// Allocate total discount across sale items and recompute tax & margin per line
+		if discountAmount > 0 && len(saleItems) > 0 && totalAmount > 0 {
+			s.logger.Debug("Allocating discount across sale items and recalculating taxes/margins",
+				zap.Float64("total_amount", totalAmount),
+				zap.Float64("discount_amount", discountAmount),
+				zap.Int("item_count", len(saleItems)))
+
+			var accumulatedDiscount float64
+
+			for i := range saleItems {
+				item := &saleItems[i]
+
+				// Pro-rate discount by line contribution to total (base before tax)
+				lineBase := item.LineTotal
+				if lineBase < 0 {
+					lineBase = 0
+				}
+
+				var lineDiscount float64
+				if i == len(saleItems)-1 {
+					// For the last item, adjust to ensure total matches exactly (handles rounding)
+					lineDiscount = discountAmount - accumulatedDiscount
+				} else if totalAmount > 0 {
+					share := lineBase / totalAmount
+					lineDiscount = utils.RoundPrice(discountAmount * share)
+				}
+
+				if lineDiscount < 0 {
+					lineDiscount = 0
+				}
+				if lineDiscount > lineBase {
+					lineDiscount = lineBase
+				}
+
+				item.DiscountAmount = lineDiscount
+				accumulatedDiscount += lineDiscount
+
+				// Recalculate taxes proportionally on discounted base
+				netLineTotal := lineBase - lineDiscount
+				if netLineTotal < 0 {
+					netLineTotal = 0
+				}
+
+				if lineBase > 0 {
+					factor := netLineTotal / lineBase
+					item.CGSTAmount = utils.RoundPrice(item.CGSTAmount * factor)
+					item.SGSTAmount = utils.RoundPrice(item.SGSTAmount * factor)
+					item.IGSTAmount = utils.RoundPrice(item.IGSTAmount * factor)
+					item.TotalTaxAmount = utils.RoundPrice(item.TotalTaxAmount * factor)
+				} else {
+					item.CGSTAmount = 0
+					item.SGSTAmount = 0
+					item.IGSTAmount = 0
+					item.TotalTaxAmount = 0
+				}
+
+				// Recalculate margin after discount (per-unit)
+				if item.Quantity > 0 {
+					netUnitPrice := 0.0
+					if netLineTotal > 0 {
+						netUnitPrice = netLineTotal / float64(item.Quantity)
+					}
+					item.Margin = utils.RoundPrice(netUnitPrice - item.CostPrice)
+				}
+
+				// Persist updated item within the same transaction
+				if err := s.salesRepo.UpdateSaleItemWithTx(tx, item); err != nil {
+					s.logger.Error("Failed to update sale item with discount and tax recalculation",
+						zap.Error(err),
+						zap.String("sale_item_id", item.ID))
+					return err
+				}
+			}
+
+			s.logger.Debug("Discount allocation and tax/margin recalculation completed",
+				zap.Float64("allocated_discount_total", accumulatedDiscount))
+		}
+
 		// Create discount usage records for applied discounts
 		for _, discount := range finalDiscounts {
 			discountUsage := s.discountsRepo.CalculateDiscount(&discount, totalAmount)
@@ -472,13 +550,14 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 		}
 
 		response.Breakdown = &models.SaleBreakdown{
-			BaseAmount:       totalAmount,
-			AppliedDiscounts: appliedDiscounts,
-			DiscountAmount:   discountAmount,
-			TaxBreakdown:     taxBreakdown,
-			TaxAmount:        taxAmount,
-			TotalSavings:     discountAmount,
-			FinalAmount:      finalAmount,
+			BaseAmount:         totalAmount,
+			AppliedDiscounts:   appliedDiscounts,
+			DiscountAmount:     discountAmount,
+			NetAmountBeforeTax: utils.RoundPrice(totalAmount - discountAmount),
+			TaxBreakdown:       taxBreakdown,
+			TaxAmount:          taxAmount,
+			TotalSavings:       discountAmount,
+			FinalAmount:        finalAmount,
 		}
 
 		return nil
@@ -1011,22 +1090,33 @@ func (s *SalesService) mapSaleToResponse(sale *models.Sale) *models.SaleResponse
 		if item.Batch.Variant.SKU != nil {
 			sku = *item.Batch.Variant.SKU
 		}
+		netLineTotal := item.LineTotal - item.DiscountAmount
+		if netLineTotal < 0 {
+			netLineTotal = 0
+		}
+		netSellingPrice := 0.0
+		if item.Quantity > 0 && netLineTotal > 0 {
+			netSellingPrice = netLineTotal / float64(item.Quantity)
+		}
+
 		response.Items = append(response.Items, models.SaleItemResponse{
-			ID:           item.ID,
-			SaleID:       item.SaleID,
-			BatchID:      item.BatchID,
-			SKU:          sku,
-			Quantity:     item.Quantity,
-			SellingPrice: utils.RoundPrice(item.SellingPrice),
-			LineTotal:    utils.RoundPrice(item.LineTotal),
-			// BRD Requirements - Cost and Margin
-			CostPrice:      utils.RoundPrice(item.CostPrice),
-			Margin:         utils.RoundPrice(item.Margin),
-			CGSTAmount:     utils.RoundPrice(item.CGSTAmount),
-			SGSTAmount:     utils.RoundPrice(item.SGSTAmount),
-			IGSTAmount:     utils.RoundPrice(item.IGSTAmount),
-			TotalTaxAmount: utils.RoundPrice(item.TotalTaxAmount),
-			CreatedAt:      item.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			ID:              item.ID,
+			SaleID:          item.SaleID,
+			BatchID:         item.BatchID,
+			SKU:             sku,
+			Quantity:        item.Quantity,
+			SellingPrice:    utils.RoundPrice(item.SellingPrice),
+			LineTotal:       utils.RoundPrice(item.LineTotal),
+			CostPrice:       utils.RoundPrice(item.CostPrice),
+			Margin:          utils.RoundPrice(item.Margin),
+			DiscountAmount:  utils.RoundPrice(item.DiscountAmount),
+			NetLineTotal:    utils.RoundPrice(netLineTotal),
+			NetSellingPrice: utils.RoundPrice(netSellingPrice),
+			CGSTAmount:      utils.RoundPrice(item.CGSTAmount),
+			SGSTAmount:      utils.RoundPrice(item.SGSTAmount),
+			IGSTAmount:      utils.RoundPrice(item.IGSTAmount),
+			TotalTaxAmount:  utils.RoundPrice(item.TotalTaxAmount),
+			CreatedAt:       item.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		})
 	}
 
@@ -1262,7 +1352,13 @@ func (s *SalesService) applyTaxesToSaleWithTx(tx *gorm.DB, saleID string, saleIt
 		totalSGST += item.SGSTAmount
 		totalIGST += item.IGSTAmount
 		totalTax += item.TotalTaxAmount
-		subTotal += item.LineTotal
+
+		// Subtotal should reflect base after discount (for tax-after-discount calculation)
+		netLineTotal := item.LineTotal - item.DiscountAmount
+		if netLineTotal < 0 {
+			netLineTotal = 0
+		}
+		subTotal += netLineTotal
 		// If any item has IGST, it's an inter-state sale
 		if item.IGSTAmount > 0 {
 			isInterState = true
@@ -1302,7 +1398,13 @@ func (s *SalesService) applyTaxesToSale(saleID string, saleItems []models.SaleIt
 		totalSGST += item.SGSTAmount
 		totalIGST += item.IGSTAmount
 		totalTax += item.TotalTaxAmount
-		subTotal += item.LineTotal
+
+		// Subtotal should reflect base after discount (for tax-after-discount calculation)
+		netLineTotal := item.LineTotal - item.DiscountAmount
+		if netLineTotal < 0 {
+			netLineTotal = 0
+		}
+		subTotal += netLineTotal
 		// If any item has IGST, it's an inter-state sale
 		if item.IGSTAmount > 0 {
 			isInterState = true

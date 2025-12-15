@@ -87,6 +87,8 @@ type SaleItem struct {
 	// BRD Requirements - Cost and Margin tracking
 	CostPrice float64 `gorm:"type:numeric(12,4);not null" json:"cost_price"` // Purchase price from batch
 	Margin    float64 `gorm:"type:numeric(12,4);not null" json:"margin"`     // SellingPrice - CostPrice
+	// Discount allocated to this line (for tax & margin after discount)
+	DiscountAmount float64 `gorm:"type:numeric(12,4);default:0" json:"discount_amount"`
 
 	// Tax amounts (calculated from variant GST rate)
 	CGSTAmount     float64 `gorm:"type:numeric(12,4);default:0" json:"cgst_amount"`
@@ -151,6 +153,7 @@ func NewSaleItem(saleID, batchID string, quantity int64, sellingPrice, costPrice
 		CostPrice:      costPrice,
 		Margin:         margin,
 		LineTotal:      lineTotal,
+		DiscountAmount: 0,
 		CGSTAmount:     0,
 		SGSTAmount:     0,
 		IGSTAmount:     0,
@@ -174,6 +177,7 @@ func NewSaleItemWithTax(saleID, batchID string, quantity int64, sellingPrice, co
 		CostPrice:      costPrice,
 		Margin:         margin,
 		LineTotal:      lineTotal,
+		DiscountAmount: 0,
 		CGSTAmount:     cgstAmount,
 		SGSTAmount:     sgstAmount,
 		IGSTAmount:     igstAmount,
@@ -251,13 +255,14 @@ type SaleListResponse struct {
 
 // SaleBreakdown represents detailed breakdown of sale calculations
 type SaleBreakdown struct {
-	BaseAmount       float64               `json:"base_amount"`       // Total before discounts and taxes
-	AppliedDiscounts []DiscountApplication `json:"applied_discounts"` // All discounts applied
-	DiscountAmount   float64               `json:"discount_amount"`   // Total discount amount
-	TaxBreakdown     *TaxSummaryBreakdown  `json:"tax_breakdown"`     // Tax details
-	TaxAmount        float64               `json:"tax_amount"`        // Total tax amount
-	TotalSavings     float64               `json:"total_savings"`     // Total discount savings
-	FinalAmount      float64               `json:"final_amount"`      // Final amount after discounts and taxes
+	BaseAmount         float64               `json:"base_amount"`           // Total before discounts and taxes
+	AppliedDiscounts   []DiscountApplication `json:"applied_discounts"`     // All discounts applied
+	DiscountAmount     float64               `json:"discount_amount"`       // Total discount amount
+	NetAmountBeforeTax float64               `json:"net_amount_before_tax"` // BaseAmount - DiscountAmount
+	TaxBreakdown       *TaxSummaryBreakdown  `json:"tax_breakdown"`         // Tax details
+	TaxAmount          float64               `json:"tax_amount"`            // Total tax amount
+	TotalSavings       float64               `json:"total_savings"`         // Total discount savings
+	FinalAmount        float64               `json:"final_amount"`          // Final amount after discounts and taxes
 }
 
 // DiscountApplication represents an applied discount in the breakdown
@@ -294,6 +299,10 @@ type SaleItemResponse struct {
 	// BRD Requirements - Cost and Margin
 	CostPrice float64 `json:"cost_price"` // Purchase price
 	Margin    float64 `json:"margin"`     // Profit margin
+	// Discount & net amounts
+	DiscountAmount  float64 `json:"discount_amount"`   // Discount allocated to this line
+	NetLineTotal    float64 `json:"net_line_total"`    // LineTotal - DiscountAmount
+	NetSellingPrice float64 `json:"net_selling_price"` // NetLineTotal / Quantity
 
 	// GST Tax amounts
 	CGSTAmount     float64 `json:"cgst_amount"`

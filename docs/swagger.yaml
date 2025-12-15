@@ -512,6 +512,8 @@ definitions:
         type: string
       applicable_products:
         type: string
+      applicable_variants:
+        type: string
       applicable_warehouses:
         type: string
       buy_quantity:
@@ -981,6 +983,8 @@ definitions:
       applicable_categories:
         type: string
       applicable_products:
+        type: string
+      applicable_variants:
         type: string
       applicable_warehouses:
         type: string
@@ -2234,6 +2238,9 @@ definitions:
       final_amount:
         description: Final amount after discounts and taxes
         type: number
+      net_amount_before_tax:
+        description: BaseAmount - DiscountAmount
+        type: number
       tax_amount:
         description: Total tax amount
         type: number
@@ -2311,6 +2318,9 @@ definitions:
         type: number
       created_at:
         type: string
+      discount_amount:
+        description: Discount & net amounts
+        type: number
       id:
         type: string
       igst_amount:
@@ -2320,6 +2330,12 @@ definitions:
         type: number
       margin:
         description: Profit margin
+        type: number
+      net_line_total:
+        description: LineTotal - DiscountAmount
+        type: number
+      net_selling_price:
+        description: NetLineTotal / Quantity
         type: number
       quantity:
         type: integer
@@ -2624,6 +2640,8 @@ definitions:
         type: string
       applicable_products:
         type: string
+      applicable_variants:
+        type: string
       applicable_warehouses:
         type: string
       description:
@@ -2839,11 +2857,16 @@ definitions:
         items:
           type: string
         type: array
+      variant_ids:
+        items:
+          type: string
+        type: array
       warehouse_id:
         type: string
     required:
     - discount_code
     - order_value
+    - variant_ids
     - warehouse_id
     type: object
   kisanlink-erp_internal_database_models.VariantDetailResponse:

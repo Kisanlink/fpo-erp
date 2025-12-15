@@ -70,6 +70,9 @@ func (s *DiscountsService) CreateDiscount(req *models.CreateDiscountRequest) (*m
 	if req.MaxOrderValue != nil {
 		discount.MaxOrderValue = req.MaxOrderValue
 	}
+	if req.ApplicableVariants != nil {
+		discount.ApplicableVariants = req.ApplicableVariants
+	}
 	if req.ApplicableProducts != nil {
 		discount.ApplicableProducts = req.ApplicableProducts
 	}
@@ -188,6 +191,9 @@ func (s *DiscountsService) UpdateDiscount(id string, req *models.UpdateDiscountR
 	if req.MaxOrderValue != nil {
 		discount.MaxOrderValue = req.MaxOrderValue
 	}
+	if req.ApplicableVariants != nil {
+		discount.ApplicableVariants = req.ApplicableVariants
+	}
 	if req.ApplicableProducts != nil {
 		discount.ApplicableProducts = req.ApplicableProducts
 	}
@@ -285,8 +291,8 @@ func (s *DiscountsService) GetDiscountsByStatus(status string) ([]models.Discoun
 
 // ValidateDiscount validates a discount for a given order
 func (s *DiscountsService) ValidateDiscount(req *models.ValidateDiscountRequest) (*models.DiscountValidationResponse, error) {
-	// Validate discount with categories
-	discount, err := s.discountRepo.ValidateDiscountWithCategories(req.DiscountCode, req.OrderValue, req.ProductIDs, req.CategoryIDs, req.WarehouseID)
+	// Validate discount with categories (including variant-level rules)
+	discount, err := s.discountRepo.ValidateDiscountWithCategories(req.DiscountCode, req.OrderValue, req.VariantIDs, req.ProductIDs, req.CategoryIDs, req.WarehouseID)
 	if err != nil {
 		return &models.DiscountValidationResponse{
 			IsValid: false,
@@ -410,6 +416,16 @@ func (s *DiscountsService) validateDiscountRequest(req *models.CreateDiscountReq
 
 // validateJSONFields validates that JSON string fields contain valid JSON arrays
 func (s *DiscountsService) validateJSONFields(req *models.CreateDiscountRequest) error {
+	if req.ApplicableVariants != nil && *req.ApplicableVariants != "" {
+		var variants []string
+		if err := json.Unmarshal([]byte(*req.ApplicableVariants), &variants); err != nil {
+			return apperrors.NewValidationError("applicable_variants must be a valid JSON array")
+		}
+		if len(variants) == 0 {
+			return apperrors.NewBadRequestError("applicable_variants cannot be an empty array")
+		}
+	}
+
 	if req.ApplicableProducts != nil && *req.ApplicableProducts != "" {
 		var products []string
 		if err := json.Unmarshal([]byte(*req.ApplicableProducts), &products); err != nil {
@@ -540,7 +556,7 @@ func (s *DiscountsService) CalculateOptimalDiscounts(orderValue float64, product
 // ValidateDiscountWithCategories validates a discount including category checks
 func (s *DiscountsService) ValidateDiscountWithCategories(req *models.ValidateDiscountRequest, categoryIDs []string) (*models.DiscountValidationResponse, error) {
 	// Validate discount with categories
-	discount, err := s.discountRepo.ValidateDiscountWithCategories(req.DiscountCode, req.OrderValue, req.ProductIDs, categoryIDs, req.WarehouseID)
+	discount, err := s.discountRepo.ValidateDiscountWithCategories(req.DiscountCode, req.OrderValue, req.VariantIDs, req.ProductIDs, categoryIDs, req.WarehouseID)
 	if err != nil {
 		return &models.DiscountValidationResponse{
 			IsValid: false,

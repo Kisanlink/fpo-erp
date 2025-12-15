@@ -32,6 +32,7 @@ type Discount struct {
 	MaxDiscountAmount    *float64     `gorm:"type:numeric(10,4)" json:"max_discount_amount"` // For percentage discounts
 	MinOrderValue        *float64     `gorm:"type:numeric(10,4)" json:"min_order_value"`     // Minimum order value required
 	MaxOrderValue        *float64     `gorm:"type:numeric(10,4)" json:"max_order_value"`     // Maximum order value for discount
+	ApplicableVariants   *string      `gorm:"type:text" json:"applicable_variants"`          // JSON array of variant IDs (PVAR...)
 	ApplicableProducts   *string      `gorm:"type:text" json:"applicable_products"`          // JSON array of product IDs
 	ExcludedProducts     *string      `gorm:"type:text" json:"excluded_products"`            // JSON array of excluded product IDs
 	ApplicableCategories *string      `gorm:"type:text" json:"applicable_categories"`        // JSON array of category IDs
@@ -115,6 +116,7 @@ type DiscountResponse struct {
 	MaxDiscountAmount    *float64     `json:"max_discount_amount"`
 	MinOrderValue        *float64     `json:"min_order_value"`
 	MaxOrderValue        *float64     `json:"max_order_value"`
+	ApplicableVariants   *string      `json:"applicable_variants"`
 	ApplicableProducts   *string      `json:"applicable_products"`
 	ExcludedProducts     *string      `json:"excluded_products"`
 	ApplicableCategories *string      `json:"applicable_categories"`
@@ -159,6 +161,7 @@ type CreateDiscountRequest struct {
 	MaxDiscountAmount    *float64     `json:"max_discount_amount"`
 	MinOrderValue        *float64     `json:"min_order_value"`
 	MaxOrderValue        *float64     `json:"max_order_value"`
+	ApplicableVariants   *string      `json:"applicable_variants"`
 	ApplicableProducts   *string      `json:"applicable_products"`
 	ExcludedProducts     *string      `json:"excluded_products"`
 	ApplicableCategories *string      `json:"applicable_categories"`
@@ -187,6 +190,7 @@ type UpdateDiscountRequest struct {
 	MaxDiscountAmount    *float64 `json:"max_discount_amount,omitempty"`
 	MinOrderValue        *float64 `json:"min_order_value,omitempty"`
 	MaxOrderValue        *float64 `json:"max_order_value,omitempty"`
+	ApplicableVariants   *string  `json:"applicable_variants,omitempty"`
 	ApplicableProducts   *string  `json:"applicable_products,omitempty"`
 	ExcludedProducts     *string  `json:"excluded_products,omitempty"`
 	ApplicableCategories *string  `json:"applicable_categories,omitempty"`
@@ -205,6 +209,7 @@ type UpdateDiscountRequest struct {
 type ValidateDiscountRequest struct {
 	DiscountCode string   `json:"discount_code" binding:"required"`
 	OrderValue   float64  `json:"order_value" binding:"required,gt=0"`
+	VariantIDs   []string `json:"variant_ids" binding:"required"`
 	ProductIDs   []string `json:"product_ids"`
 	CategoryIDs  []string `json:"category_ids"`
 	WarehouseID  string   `json:"warehouse_id" binding:"required"`
@@ -279,6 +284,7 @@ func (d *Discount) ToResponse() *DiscountResponse {
 		MaxDiscountAmount:    maxDiscountAmount,
 		MinOrderValue:        minOrderValue,
 		MaxOrderValue:        maxOrderValue,
+		ApplicableVariants:   d.ApplicableVariants,
 		ApplicableProducts:   d.ApplicableProducts,
 		ExcludedProducts:     d.ExcludedProducts,
 		ApplicableCategories: d.ApplicableCategories,

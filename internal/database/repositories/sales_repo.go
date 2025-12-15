@@ -32,6 +32,11 @@ func (r *SalesRepository) CreateSaleItemWithTx(tx *gorm.DB, item *models.SaleIte
 	return tx.Create(item).Error
 }
 
+// UpdateSaleItemWithTx updates a sale item within a transaction
+func (r *SalesRepository) UpdateSaleItemWithTx(tx *gorm.DB, item *models.SaleItem) error {
+	return tx.Save(item).Error
+}
+
 // UpdateSaleWithTx updates a sale within a transaction
 func (r *SalesRepository) UpdateSaleWithTx(tx *gorm.DB, sale *models.Sale) error {
 	return tx.Save(sale).Error
