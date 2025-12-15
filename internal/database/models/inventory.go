@@ -134,7 +134,8 @@ type ProductAvailabilityGroupedResponse struct {
 	SGSTRate float64 `json:"sgst_rate"` // State GST rate (GSTRate / 2)
 
 	// Images (Issue 8)
-	Images []string `json:"images,omitempty"` // S3 paths for variant images
+	Images    []string `json:"images,omitempty"`     // S3 paths for variant images
+	ImageURLs []string `json:"image_urls,omitempty"` // Presigned URLs for variant images
 }
 
 // InventoryTransactionResponse represents the API response for inventory transaction

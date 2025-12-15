@@ -1758,6 +1758,11 @@ definitions:
       hsn_code:
         description: GST Details (Issue 3)
         type: string
+      image_urls:
+        description: Presigned URLs for variant images
+        items:
+          type: string
+        type: array
       images:
         description: Images (Issue 8)
         items:
