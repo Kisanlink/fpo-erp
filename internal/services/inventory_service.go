@@ -488,6 +488,9 @@ func (s *InventoryService) GetAllProductsAvailability(ctx context.Context, jwtTo
 				ProductName:        batch.Variant.VariantName,
 				ProductDescription: batch.Variant.Description,
 				WarehouseDetails:   make(map[string]*warehouseDetail),
+				// Category Info (from Product - for e-commerce filtering)
+				CategoryID:    batch.Variant.Product.CategoryID,
+				SubcategoryID: batch.Variant.Product.SubcategoryID,
 				// GST Details
 				HSNCode:  batch.Variant.HSNCode,
 				GSTRate:  gstRate,
@@ -541,6 +544,9 @@ func (s *InventoryService) GetAllProductsAvailability(ctx context.Context, jwtTo
 			ProductName:        variantData.ProductName,
 			ProductDescription: variantData.ProductDescription,
 			WarehouseDetails:   []models.WarehouseAvailabilityDetail{},
+			// Category Info (for e-commerce filtering)
+			CategoryID:    variantData.CategoryID,
+			SubcategoryID: variantData.SubcategoryID,
 			// GST Details
 			HSNCode:  variantData.HSNCode,
 			GSTRate:  variantData.GSTRate,
@@ -641,6 +647,9 @@ type variantAvailability struct {
 	ProductName        string
 	ProductDescription *string
 	WarehouseDetails   map[string]*warehouseDetail
+	// Category Info (for e-commerce filtering)
+	CategoryID    *string
+	SubcategoryID *string
 	// GST Details
 	HSNCode  string
 	GSTRate  float64

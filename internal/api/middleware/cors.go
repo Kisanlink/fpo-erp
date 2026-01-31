@@ -45,6 +45,7 @@ func CORSMiddleware(cfg *config.Config) gin.HandlerFunc {
 			"Authorization",
 			"X-Requested-With",
 			"X-Request-ID",
+			"X-Organization-ID",
 		}
 	}
 

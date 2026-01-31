@@ -127,6 +127,10 @@ type ProductAvailabilityGroupedResponse struct {
 	WarehouseDetails   []WarehouseAvailabilityDetail `json:"warehouse_details"` // Per-warehouse breakdown
 	Prices             []ProductPriceResponse        `json:"prices,omitempty"`  // Active prices for this variant
 
+	// Category Info (for e-commerce filtering)
+	CategoryID    *string `json:"category_id,omitempty"`    // Product category ID
+	SubcategoryID *string `json:"subcategory_id,omitempty"` // Product subcategory ID
+
 	// GST Details (Issue 3)
 	HSNCode  string  `json:"hsn_code"`  // HSN code for GST classification
 	GSTRate  float64 `json:"gst_rate"`  // GST rate (0, 5, 12, 18, 28)

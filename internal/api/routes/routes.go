@@ -237,6 +237,20 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 
 	// API v1 routes
 	v1 := router.Group("/api/v1")
+
+	// CRITICAL: Authentication must run FIRST to set organization_id in context
+	// RequireDeploymentOrg depends on organization_id being set by Authenticate
+	v1.Use(aaaMiddleware.Authenticate())
+
+	// Apply deployment-level organization validation middleware to ALL authenticated routes
+	// This ensures tokens can only access the FPO deployment they belong to.
+	// Requires EXPECTED_ORG_ID environment variable to be set per deployment.
+	// See: internal/aaa/middleware.go RequireDeploymentOrg() for details.
+	v1.Use(aaaMiddleware.RequireDeploymentOrg())
+
+	// Also validate X-Organization-Id header matches token (optional but recommended)
+	v1.Use(aaaMiddleware.ValidateOrganizationHeader())
+
 	{
 		// Register all handlers
 		warehouseHandler.RegisterRoutes(v1)
