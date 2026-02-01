@@ -291,6 +291,9 @@ type SaleItemResponse struct {
 	ID           string  `json:"id"`
 	SaleID       string  `json:"sale_id"`
 	BatchID      string  `json:"batch_id"`
+	VariantID    string  `json:"variant_id"`
+	ProductName  string  `json:"product_name"`  // Parent product name
+	VariantName  string  `json:"variant_name"`  // Variant-specific name
 	SKU          string  `json:"sku"` // Product variant SKU (Issue 4)
 	Quantity     int64   `json:"quantity"`
 	SellingPrice float64 `json:"selling_price"`

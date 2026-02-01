@@ -59,7 +59,7 @@ func (r *SalesRepository) CreateSale(sale *models.Sale) error {
 
 func (r *SalesRepository) GetSaleByID(id string) (*models.Sale, error) {
 	var sale models.Sale
-	err := r.db.Preload("Items").Preload("Items.Batch").Preload("Items.Batch.Variant").First(&sale, "id = ?", id).Error
+	err := r.db.Preload("Items").Preload("Items.Batch").Preload("Items.Batch.Variant").Preload("Items.Batch.Variant.Product").First(&sale, "id = ?", id).Error
 	return &sale, err
 }
 
