@@ -28,20 +28,26 @@ type collaboratorSyncClient interface {
 
 // CollaboratorService handles collaborator business logic
 type CollaboratorService struct {
-	collaboratorRepo *repositories.CollaboratorRepository
-	addressClient    *aaa.AddressGRPCClient
-	s3Service        *S3Service
-	ecomClient       collaboratorSyncClient
-	ecomTimeout      time.Duration
-	ecomAuthToken    string
-	logger           interfaces.Logger
+	collaboratorRepo  *repositories.CollaboratorRepository
+	purchaseOrderRepo *repositories.PurchaseOrderRepository
+	grnRepo           *repositories.GRNRepository
+	addressClient     *aaa.AddressGRPCClient
+	s3Service         *S3Service
+	attachmentService *AttachmentService
+	ecomClient        collaboratorSyncClient
+	ecomTimeout       time.Duration
+	ecomAuthToken     string
+	logger            interfaces.Logger
 }
 
 // NewCollaboratorService creates a new collaborator service
 func NewCollaboratorService(
 	collaboratorRepo *repositories.CollaboratorRepository,
+	purchaseOrderRepo *repositories.PurchaseOrderRepository,
+	grnRepo *repositories.GRNRepository,
 	addressClient *aaa.AddressGRPCClient,
 	s3Service *S3Service,
+	attachmentService *AttachmentService,
 	ecomClient collaboratorSyncClient,
 	ecomTimeout time.Duration,
 	ecomAuthToken string,
@@ -51,13 +57,16 @@ func NewCollaboratorService(
 		ecomTimeout = 5 * time.Second
 	}
 	return &CollaboratorService{
-		collaboratorRepo: collaboratorRepo,
-		addressClient:    addressClient,
-		s3Service:        s3Service,
-		ecomClient:       ecomClient,
-		ecomTimeout:      ecomTimeout,
-		ecomAuthToken:    ecomAuthToken,
-		logger:           logger,
+		collaboratorRepo:  collaboratorRepo,
+		purchaseOrderRepo: purchaseOrderRepo,
+		grnRepo:           grnRepo,
+		addressClient:     addressClient,
+		s3Service:         s3Service,
+		attachmentService: attachmentService,
+		ecomClient:        ecomClient,
+		ecomTimeout:       ecomTimeout,
+		ecomAuthToken:     ecomAuthToken,
+		logger:            logger,
 	}
 }
 
@@ -349,6 +358,22 @@ func (s *CollaboratorService) createCollaboratorViaEcommerce(ctx context.Context
 		collaborator.IsActive = statusPtr
 	}
 
+	// SYNC: Fetch and store address locally for future reads (write-through cache)
+	if addressID != nil && s.addressClient != nil {
+		ctxAddr, cancel := context.WithTimeout(ctx, 3*time.Second)
+		defer cancel()
+		addr, err := s.addressClient.GetAddress(ctxAddr, *addressID, jwtToken)
+		if err != nil {
+			s.logger.Warn("Failed to fetch address for local cache",
+				zap.Error(err),
+				zap.String("address_id", *addressID))
+		} else {
+			collaborator.SyncFromAAA(addr)
+			s.logger.Debug("Address synced to local cache",
+				zap.String("address_id", *addressID))
+		}
+	}
+
 	if err := s.collaboratorRepo.Create(collaborator); err != nil {
 		s.logger.Error("Failed to create collaborator",
 			zap.Error(err),
@@ -412,6 +437,23 @@ func (s *CollaboratorService) createCollaboratorLegacy(ctx context.Context, requ
 			zap.String("address_id", address.ID))
 	}
 
+	// SYNC: Fetch address and store locally for future reads (write-through cache)
+	var aaaAddress *aaa.Address
+	if addressID != nil {
+		ctxAddr, cancel := context.WithTimeout(ctx, 3*time.Second)
+		defer cancel()
+		addr, err := s.addressClient.GetAddress(ctxAddr, *addressID, jwtToken)
+		if err != nil {
+			s.logger.Warn("Failed to fetch address for local cache",
+				zap.Error(err),
+				zap.String("address_id", *addressID))
+		} else {
+			aaaAddress = addr
+			s.logger.Debug("Address fetched for local cache",
+				zap.String("address_id", *addressID))
+		}
+	}
+
 	if request.GSTNumber != "" {
 		s.logger.Debug("Checking GST number uniqueness",
 			zap.String("gst_number", request.GSTNumber))
@@ -452,6 +494,13 @@ func (s *CollaboratorService) createCollaboratorLegacy(ctx context.Context, requ
 	collaborator.PANNumber = request.PANNumber
 	collaborator.BankName = request.BankName
 	collaborator.Experience = request.Experience
+
+	// SYNC: Store address data locally (write-through cache)
+	if aaaAddress != nil {
+		collaborator.SyncFromAAA(aaaAddress)
+		s.logger.Debug("Address synced to local cache",
+			zap.String("address_id", aaaAddress.ID))
+	}
 
 	s.logger.Debug("Saving collaborator to database")
 
@@ -568,7 +617,7 @@ func (s *CollaboratorService) updateCollaboratorViaEcommerce(ctx context.Context
 	}
 
 	s.logger.Debug("Applying update request to collaborator model")
-	s.applyUpdateRequestToModel(collaborator, request)
+	s.applyUpdateRequestToModel(ctx, collaborator, request)
 
 	s.logger.Debug("Saving collaborator updates to database")
 
@@ -641,12 +690,14 @@ func (s *CollaboratorService) updateCollaboratorLegacy(ctx context.Context, id s
 			return nil, errors.NewInternalServerError("failed to update address")
 		}
 		collaborator.AddressID = &address.ID
-		s.logger.Debug("Address updated successfully",
+		// SYNC: Update local cache with new address data
+		collaborator.SyncFromAAA(address)
+		s.logger.Debug("Address updated and synced to local cache",
 			zap.String("address_id", address.ID))
 	}
 
 	s.logger.Debug("Applying update request to collaborator model")
-	s.applyUpdateRequestToModel(collaborator, request)
+	s.applyUpdateRequestToModel(ctx, collaborator, request)
 
 	s.logger.Debug("Saving collaborator updates to database")
 
@@ -743,11 +794,36 @@ func (s *CollaboratorService) deleteCollaboratorLegacy(ctx context.Context, id s
 	return nil
 }
 
-// buildCollaboratorResponse builds a collaborator response with address details
+// buildCollaboratorResponse builds a collaborator response from LOCAL data
+// LAZY FETCH: For legacy records with address_id but empty cache, fetch from AAA on first GET
 func (s *CollaboratorService) buildCollaboratorResponse(ctx context.Context, collaborator *models.Collaborator, jwtToken string) (*models.CollaboratorResponse, error) {
-	s.logger.Debug("Building collaborator response",
-		zap.String("collaborator_id", collaborator.ID),
-		zap.Bool("has_address_id", collaborator.AddressID != nil))
+	// LAZY FETCH: If address_id exists but cache is empty, fetch from AAA
+	if collaborator.AddressID != nil && !collaborator.HasAddressCache() {
+		if s.addressClient != nil && jwtToken != "" {
+			ctxAddr, cancel := context.WithTimeout(ctx, 3*time.Second)
+			defer cancel()
+
+			address, err := s.addressClient.GetAddress(ctxAddr, *collaborator.AddressID, jwtToken)
+			if err != nil {
+				s.logger.Warn("Failed to lazy-fetch address for collaborator",
+					zap.Error(err),
+					zap.String("collaborator_id", collaborator.ID),
+					zap.String("address_id", *collaborator.AddressID))
+			} else {
+				collaborator.SyncFromAAA(address)
+				// Persist to DB for future GETs
+				if updateErr := s.collaboratorRepo.Update(collaborator); updateErr != nil {
+					s.logger.Warn("Failed to persist lazy-fetched address",
+						zap.Error(updateErr),
+						zap.String("collaborator_id", collaborator.ID))
+				} else {
+					s.logger.Debug("Lazy-fetched and cached address for collaborator",
+						zap.String("collaborator_id", collaborator.ID),
+						zap.String("address_id", *collaborator.AddressID))
+				}
+			}
+		}
+	}
 
 	isActiveValue := false
 	if collaborator.IsActive != nil {
@@ -769,38 +845,9 @@ func (s *CollaboratorService) buildCollaboratorResponse(ctx context.Context, col
 		BankName:      collaborator.BankName,
 		Experience:    collaborator.Experience,
 		IsActive:      isActiveValue,
+		Address:       collaborator.BuildAddressInfo(), // Uses local fields - NO gRPC call after first fetch!
 		CreatedAt:     collaborator.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:     collaborator.UpdatedAt.UTC().Format(time.RFC3339),
-	}
-
-	if collaborator.AddressID != nil {
-		s.logger.Debug("Fetching address details from AAA service",
-			zap.String("address_id", *collaborator.AddressID))
-
-		address, err := s.addressClient.GetAddress(ctx, *collaborator.AddressID, jwtToken)
-		if err == nil {
-			response.Address = &models.AddressInfo{
-				ID:          address.ID,
-				Type:        address.Type,
-				House:       address.House,
-				Street:      address.Street,
-				Landmark:    address.Landmark,
-				PostOffice:  address.PostOffice,
-				Subdistrict: address.Subdistrict,
-				District:    address.District,
-				VTC:         address.VTC,
-				State:       address.State,
-				Country:     address.Country,
-				Pincode:     address.Pincode,
-				FullAddress: address.BuildFullAddress(),
-			}
-			s.logger.Debug("Address details retrieved successfully",
-				zap.String("address_id", address.ID))
-		} else {
-			s.logger.Warn("Failed to fetch address details",
-				zap.Error(err),
-				zap.String("address_id", *collaborator.AddressID))
-		}
 	}
 
 	return response, nil
@@ -821,11 +868,31 @@ func (s *CollaboratorService) applyCreateRequestToModel(collaborator *models.Col
 	collaborator.Experience = request.Experience
 }
 
-func (s *CollaboratorService) applyUpdateRequestToModel(collaborator *models.Collaborator, request *models.UpdateCollaboratorRequest) {
+func (s *CollaboratorService) applyUpdateRequestToModel(ctx context.Context, collaborator *models.Collaborator, request *models.UpdateCollaboratorRequest) {
 	if request.CompanyName != nil {
 		collaborator.CompanyName = *request.CompanyName
 	}
 	if request.Logo != nil {
+		// S3 CLEANUP: Delete old logo if it's being replaced with a different one
+		if collaborator.Logo != nil && *collaborator.Logo != "" && *collaborator.Logo != *request.Logo {
+			oldLogoID := *collaborator.Logo
+			s.logger.Info("Logo being replaced, cleaning up old logo from S3",
+				zap.String("collaborator_id", collaborator.ID),
+				zap.String("old_logo_id", oldLogoID),
+				zap.String("new_logo_id", *request.Logo))
+
+			if s.attachmentService != nil {
+				if err := s.attachmentService.DeleteAttachment(ctx, oldLogoID); err != nil {
+					// Log but don't fail the update
+					s.logger.Warn("Failed to delete old logo attachment",
+						zap.Error(err),
+						zap.String("old_logo_id", oldLogoID))
+				} else {
+					s.logger.Info("Old logo deleted successfully from S3",
+						zap.String("old_logo_id", oldLogoID))
+				}
+			}
+		}
 		collaborator.Logo = request.Logo
 	}
 	if request.ContactPerson != nil {
@@ -867,7 +934,7 @@ func (s *CollaboratorService) updateCollaboratorAddress(ctx context.Context, col
 	if req.ID == "" || *collaborator.AddressID != req.ID {
 		return errors.NewBadRequestError("address mismatch: update not permitted")
 	}
-	_, err := s.addressClient.UpdateAddress(ctx, &aaa.UpdateAddressRequest{
+	address, err := s.addressClient.UpdateAddress(ctx, &aaa.UpdateAddressRequest{
 		ID:          req.ID,
 		Type:        req.Type,
 		House:       req.House,
@@ -883,7 +950,14 @@ func (s *CollaboratorService) updateCollaboratorAddress(ctx context.Context, col
 		IsPrimary:   req.IsPrimary != nil && *req.IsPrimary,
 		IsActive:    true,
 	}, jwtToken)
-	return err
+	if err != nil {
+		return err
+	}
+	// SYNC: Update local cache with new address data
+	collaborator.SyncFromAAA(address)
+	s.logger.Debug("Address updated and synced to local cache",
+		zap.String("address_id", address.ID))
+	return nil
 }
 
 func (s *CollaboratorService) syncCollaboratorStatus(ctx context.Context, externalID string, newStatus pb.CollaboratorStatus, organizationID string, userID string) error {
@@ -1237,4 +1311,137 @@ func validateBankDetails(accountNo, ifsc *string) error {
 		return errors.NewValidationError("bank_account_no is required when bank_ifsc is provided")
 	}
 	return nil
+}
+
+// GetCollaboratorStats retrieves transaction statistics for a collaborator
+func (s *CollaboratorService) GetCollaboratorStats(ctx context.Context, collaboratorID string) (*models.CollaboratorStats, error) {
+	s.logger.Info("Retrieving collaborator stats",
+		zap.String("collaborator_id", collaboratorID))
+
+	// Get collaborator details
+	collaborator, err := s.collaboratorRepo.GetByID(collaboratorID)
+	if err != nil {
+		s.logger.Error("Failed to retrieve collaborator for stats",
+			zap.Error(err),
+			zap.String("collaborator_id", collaboratorID))
+		return nil, err
+	}
+
+	// Get PO count
+	poCount, err := s.purchaseOrderRepo.CountByCollaborator(collaboratorID)
+	if err != nil {
+		s.logger.Error("Failed to count purchase orders",
+			zap.Error(err),
+			zap.String("collaborator_id", collaboratorID))
+		return nil, err
+	}
+
+	// Get GRN count
+	grnCount, err := s.grnRepo.CountByCollaborator(collaboratorID)
+	if err != nil {
+		s.logger.Error("Failed to count GRNs",
+			zap.Error(err),
+			zap.String("collaborator_id", collaboratorID))
+		return nil, err
+	}
+
+	// Get total amount
+	totalAmount, err := s.purchaseOrderRepo.SumAmountByCollaborator(collaboratorID)
+	if err != nil {
+		s.logger.Error("Failed to sum purchase order amounts",
+			zap.Error(err),
+			zap.String("collaborator_id", collaboratorID))
+		return nil, err
+	}
+
+	// Get active PO count
+	activePOCount, err := s.purchaseOrderRepo.CountActiveByCollaborator(collaboratorID)
+	if err != nil {
+		s.logger.Error("Failed to count active purchase orders",
+			zap.Error(err),
+			zap.String("collaborator_id", collaboratorID))
+		return nil, err
+	}
+
+	// Get latest PO date
+	lastPODate, err := s.purchaseOrderRepo.GetLatestPODate(collaboratorID)
+	if err != nil {
+		s.logger.Error("Failed to get latest PO date",
+			zap.Error(err),
+			zap.String("collaborator_id", collaboratorID))
+		return nil, err
+	}
+
+	stats := &models.CollaboratorStats{
+		CollaboratorID: collaborator.ID,
+		CompanyName:    collaborator.CompanyName,
+		POCount:        poCount,
+		GRNCount:       grnCount,
+		TotalAmount:    totalAmount,
+		ActivePOCount:  activePOCount,
+		LastPODate:     lastPODate,
+	}
+
+	s.logger.Info("Collaborator stats retrieved successfully",
+		zap.String("collaborator_id", collaboratorID),
+		zap.Int64("po_count", poCount),
+		zap.Int64("grn_count", grnCount),
+		zap.Float64("total_amount", totalAmount))
+
+	return stats, nil
+}
+
+// GetAllCollaboratorsStats retrieves transaction statistics for all collaborators
+func (s *CollaboratorService) GetAllCollaboratorsStats(ctx context.Context) (*models.AllCollaboratorsStatsResponse, error) {
+	s.logger.Info("Retrieving all collaborators stats")
+
+	// Get all collaborators
+	collaborators, err := s.collaboratorRepo.GetAll()
+	if err != nil {
+		s.logger.Error("Failed to retrieve collaborators for stats",
+			zap.Error(err))
+		return nil, err
+	}
+
+	// Get PO counts for all collaborators efficiently
+	poStatsMap, err := s.purchaseOrderRepo.GetAllCollaboratorsStats()
+	if err != nil {
+		s.logger.Error("Failed to get collaborators PO stats",
+			zap.Error(err))
+		return nil, err
+	}
+
+	// Get total PO count
+	totalPOCount, err := s.purchaseOrderRepo.GetTotalPOCount()
+	if err != nil {
+		s.logger.Error("Failed to get total PO count",
+			zap.Error(err))
+		return nil, err
+	}
+
+	// Build response with stats for each collaborator
+	collaboratorStats := make([]models.CollaboratorStatsSummary, 0, len(collaborators))
+	for _, collaborator := range collaborators {
+		poCount := int64(0)
+		if count, exists := poStatsMap[collaborator.ID]; exists {
+			poCount = count
+		}
+
+		collaboratorStats = append(collaboratorStats, models.CollaboratorStatsSummary{
+			CollaboratorID: collaborator.ID,
+			CompanyName:    collaborator.CompanyName,
+			POCount:        poCount,
+		})
+	}
+
+	response := &models.AllCollaboratorsStatsResponse{
+		Collaborators: collaboratorStats,
+		TotalPOCount:  totalPOCount,
+	}
+
+	s.logger.Info("All collaborators stats retrieved successfully",
+		zap.Int("collaborators_count", len(collaboratorStats)),
+		zap.Int64("total_po_count", totalPOCount))
+
+	return response, nil
 }

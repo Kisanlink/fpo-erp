@@ -49,7 +49,7 @@ func ValidateStatusTransition(fromStatus, toStatus string) error {
 type Sale struct {
 	base.BaseModel
 	WarehouseID   string    `gorm:"type:varchar(100);not null" json:"warehouse_id"`
-	InvoiceNumber string    `gorm:"type:varchar(10);uniqueIndex" json:"invoice_number"` // Format: MMYYNNNN (e.g., 12250001)
+	InvoiceNumber string    `gorm:"type:varchar(20);uniqueIndex" json:"invoice_number"` // Format: MMYYXXXXXXXX (e.g., 122512345678 = Dec 2025 + sale ID suffix)
 	SaleDate      time.Time `gorm:"type:timestamptz;not null;default:now()" json:"sale_date"`
 	TotalAmount   float64   `gorm:"type:numeric(14,4);not null" json:"total_amount"`
 	Status        string    `gorm:"type:varchar(20);not null" json:"status"`
@@ -87,6 +87,8 @@ type SaleItem struct {
 	// BRD Requirements - Cost and Margin tracking
 	CostPrice float64 `gorm:"type:numeric(12,4);not null" json:"cost_price"` // Purchase price from batch
 	Margin    float64 `gorm:"type:numeric(12,4);not null" json:"margin"`     // SellingPrice - CostPrice
+	// Discount allocated to this line (for tax & margin after discount)
+	DiscountAmount float64 `gorm:"type:numeric(12,4);default:0" json:"discount_amount"`
 
 	// Tax amounts (calculated from variant GST rate)
 	CGSTAmount     float64 `gorm:"type:numeric(12,4);default:0" json:"cgst_amount"`
@@ -151,6 +153,7 @@ func NewSaleItem(saleID, batchID string, quantity int64, sellingPrice, costPrice
 		CostPrice:      costPrice,
 		Margin:         margin,
 		LineTotal:      lineTotal,
+		DiscountAmount: 0,
 		CGSTAmount:     0,
 		SGSTAmount:     0,
 		IGSTAmount:     0,
@@ -174,6 +177,7 @@ func NewSaleItemWithTax(saleID, batchID string, quantity int64, sellingPrice, co
 		CostPrice:      costPrice,
 		Margin:         margin,
 		LineTotal:      lineTotal,
+		DiscountAmount: 0,
 		CGSTAmount:     cgstAmount,
 		SGSTAmount:     sgstAmount,
 		IGSTAmount:     igstAmount,
@@ -196,7 +200,7 @@ func NewSaleSummary(summaryDate time.Time, warehouseID string, totalSales float6
 // SaleResponse represents the API response for sale
 type SaleResponse struct {
 	ID            string  `json:"id"`
-	InvoiceNumber string  `json:"invoice_number"` // Format: MMYYNNNN (e.g., 12250001)
+	InvoiceNumber string  `json:"invoice_number"` // Format: MMYYXXXXXXXX (e.g., 122512345678 = Dec 2025 + sale ID suffix)
 	WarehouseID   string  `json:"warehouse_id"`
 	SaleDate      string  `json:"sale_date"`
 	TotalAmount   float64 `json:"total_amount"`
@@ -220,15 +224,45 @@ type SaleResponse struct {
 	UpdatedAt string             `json:"updated_at"`
 }
 
+// SaleListResponse represents the API response for sale list (without items for performance)
+// Use GET /api/v1/sales/{id} to get full details with items
+type SaleListResponse struct {
+	ID            string  `json:"id"`
+	InvoiceNumber string  `json:"invoice_number"`
+	WarehouseID   string  `json:"warehouse_id"`
+	SaleDate      string  `json:"sale_date"`
+	TotalAmount   float64 `json:"total_amount"`
+	Status        string  `json:"status"`
+
+	// BRD Requirements - Customer tracking
+	CustomerPhone *string `json:"customer_phone,omitempty"`
+	CustomerName  *string `json:"customer_name,omitempty"`
+	IsOrgMember   bool    `json:"is_org_member"`
+	PaymentMode   string  `json:"payment_mode"`
+	SaleType      string  `json:"sale_type"`
+	ApplyTaxes    bool    `json:"apply_taxes"`
+
+	// Cancellation fields
+	CancelledAt        *string `json:"cancelled_at,omitempty"`
+	CancellationReason *string `json:"cancellation_reason,omitempty"`
+
+	// Note: Items and Breakdown are omitted for performance
+	// Use GET /api/v1/sales/{id} for full details
+
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
 // SaleBreakdown represents detailed breakdown of sale calculations
 type SaleBreakdown struct {
-	BaseAmount       float64               `json:"base_amount"`       // Total before discounts and taxes
-	AppliedDiscounts []DiscountApplication `json:"applied_discounts"` // All discounts applied
-	DiscountAmount   float64               `json:"discount_amount"`   // Total discount amount
-	TaxBreakdown     *TaxSummaryBreakdown  `json:"tax_breakdown"`     // Tax details
-	TaxAmount        float64               `json:"tax_amount"`        // Total tax amount
-	TotalSavings     float64               `json:"total_savings"`     // Total discount savings
-	FinalAmount      float64               `json:"final_amount"`      // Final amount after discounts and taxes
+	BaseAmount         float64               `json:"base_amount"`           // Total before discounts and taxes
+	AppliedDiscounts   []DiscountApplication `json:"applied_discounts"`     // All discounts applied
+	DiscountAmount     float64               `json:"discount_amount"`       // Total discount amount
+	NetAmountBeforeTax float64               `json:"net_amount_before_tax"` // BaseAmount - DiscountAmount
+	TaxBreakdown       *TaxSummaryBreakdown  `json:"tax_breakdown"`         // Tax details
+	TaxAmount          float64               `json:"tax_amount"`            // Total tax amount
+	TotalSavings       float64               `json:"total_savings"`         // Total discount savings
+	FinalAmount        float64               `json:"final_amount"`          // Final amount after discounts and taxes
 }
 
 // DiscountApplication represents an applied discount in the breakdown
@@ -257,6 +291,10 @@ type SaleItemResponse struct {
 	ID           string  `json:"id"`
 	SaleID       string  `json:"sale_id"`
 	BatchID      string  `json:"batch_id"`
+	VariantID    string  `json:"variant_id"`
+	ProductName  string  `json:"product_name"` // Parent product name
+	VariantName  string  `json:"variant_name"` // Variant-specific name
+	SKU          string  `json:"sku"`          // Product variant SKU (Issue 4)
 	Quantity     int64   `json:"quantity"`
 	SellingPrice float64 `json:"selling_price"`
 	LineTotal    float64 `json:"line_total"`
@@ -264,6 +302,10 @@ type SaleItemResponse struct {
 	// BRD Requirements - Cost and Margin
 	CostPrice float64 `json:"cost_price"` // Purchase price
 	Margin    float64 `json:"margin"`     // Profit margin
+	// Discount & net amounts
+	DiscountAmount  float64 `json:"discount_amount"`   // Discount allocated to this line
+	NetLineTotal    float64 `json:"net_line_total"`    // LineTotal - DiscountAmount
+	NetSellingPrice float64 `json:"net_selling_price"` // NetLineTotal / Quantity
 
 	// GST Tax amounts
 	CGSTAmount     float64 `json:"cgst_amount"`
@@ -313,6 +355,14 @@ type UpdateSaleRequest struct {
 // UpdateSaleStatusRequest represents the request to update sale status
 type UpdateSaleStatusRequest struct {
 	Status string `json:"status" binding:"required"`
+}
+
+// PatchSaleRequest represents the request to partially update a sale (Issue 9)
+type PatchSaleRequest struct {
+	PaymentMode   *string `json:"payment_mode" binding:"omitempty,oneof=cash upi online"`
+	SaleType      *string `json:"sale_type" binding:"omitempty,oneof=in_store delivery"`
+	CustomerPhone *string `json:"customer_phone"`
+	CustomerName  *string `json:"customer_name"`
 }
 
 // TopSellingProductResponse represents the response for top selling products

@@ -291,6 +291,10 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 			sgst_amount REAL DEFAULT 0,
 			igst_rate REAL DEFAULT 0,
 			igst_amount REAL DEFAULT 0,
+			gst_amount_total REAL DEFAULT 0,
+			cgst_amount_total REAL DEFAULT 0,
+			sgst_amount_total REAL DEFAULT 0,
+			igst_amount_total REAL DEFAULT 0,
 			created_at DATETIME,
 			updated_at DATETIME,
 			deleted_at DATETIME,
@@ -569,8 +573,8 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 			email TEXT,
 			gst_number TEXT,
 			pan_number TEXT,
-			bank_account_no TEXT NOT NULL,
-			bank_ifsc TEXT NOT NULL,
+			bank_account_no TEXT,
+			bank_ifsc TEXT,
 			bank_name TEXT,
 			address_id TEXT,
 			experience TEXT,
@@ -1049,16 +1053,20 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 		return err
 	}
 
+	// GST-Only Tax System (December 2025)
+	// TaxSummary now uses sale_id/return_id instead of entity_type/entity_id
 	if err := db.Exec(`
 		CREATE TABLE tax_summaries (
 			id TEXT PRIMARY KEY,
-			entity_type TEXT NOT NULL,
-			entity_id TEXT NOT NULL,
-			total_tax REAL NOT NULL,
+			sale_id TEXT,
+			return_id TEXT,
 			cgst_amount REAL DEFAULT 0,
 			sgst_amount REAL DEFAULT 0,
 			igst_amount REAL DEFAULT 0,
-			custom_tax_amount REAL DEFAULT 0,
+			total_tax_amount REAL NOT NULL,
+			sub_total REAL NOT NULL,
+			grand_total REAL NOT NULL,
+			is_inter_state INTEGER DEFAULT 0,
 			created_at DATETIME,
 			updated_at DATETIME,
 			deleted_at DATETIME,
@@ -1072,7 +1080,12 @@ func CreateSQLiteCompatibleTables(db *gorm.DB) error {
 
 	// Create index for tax_summaries
 	if err := db.Exec(`
-		CREATE INDEX IF NOT EXISTS idx_tax_summary_entity ON tax_summaries(entity_type, entity_id)
+		CREATE INDEX IF NOT EXISTS idx_tax_summary_sale ON tax_summaries(sale_id)
+	`).Error; err != nil {
+		return err
+	}
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_tax_summary_return ON tax_summaries(return_id)
 	`).Error; err != nil {
 		return err
 	}

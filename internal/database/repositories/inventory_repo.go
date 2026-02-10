@@ -160,7 +160,8 @@ func (r *InventoryRepository) GetAllBatchesPaginatedWithExpired(limit, offset in
 	}
 
 	// Get paginated records - all batches including expired
-	if err := r.db.Preload("Warehouse").Preload("Variant").
+	// Preload Variant.Product to access category_id and subcategory_id for e-commerce filtering
+	if err := r.db.Preload("Warehouse").Preload("Variant").Preload("Variant.Product").
 		Order("expiry_date ASC, created_at DESC"). // Sort expired first for visibility
 		Limit(limit).Offset(offset).Find(&batches).Error; err != nil {
 		return nil, 0, errors.NewInternalServerError("Failed to retrieve all batches")

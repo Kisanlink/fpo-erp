@@ -383,14 +383,14 @@ func TestCalculateGST_RoundingBehavior(t *testing.T) {
 
 	// Test various amounts that exercise rounding to nearest paisa (0.01 INR)
 	testCases := []struct {
-		lineTotal      float64
-		gstRate        float64
-		isInterState   bool
-		expectedCGST   float64
-		expectedSGST   float64
-		expectedIGST   float64
-		expectedTotal  float64
-		name           string
+		lineTotal     float64
+		gstRate       float64
+		isInterState  bool
+		expectedCGST  float64
+		expectedSGST  float64
+		expectedIGST  float64
+		expectedTotal float64
+		name          string
 	}{
 		// Intra-state cases requiring rounding
 		{100.33, 5.0, false, 2.51, 2.51, 0.00, 5.02, "100.33 at 5% intra-state"},
@@ -437,14 +437,14 @@ func TestCalculateGST_TableDriven(t *testing.T) {
 	defer cleanup()
 
 	testCases := []struct {
-		lineTotal      float64
-		gstRate        float64
-		isInterState   bool
-		expectedCGST   float64
-		expectedSGST   float64
-		expectedIGST   float64
-		expectedTotal  float64
-		name           string
+		lineTotal     float64
+		gstRate       float64
+		isInterState  bool
+		expectedCGST  float64
+		expectedSGST  float64
+		expectedIGST  float64
+		expectedTotal float64
+		name          string
 	}{
 		// Standard GST rates - Intra-state
 		{100.00, 5.0, false, 2.50, 2.50, 0.00, 5.00, "Standard: 100 INR at 5% intra-state"},

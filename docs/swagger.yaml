@@ -45,6 +45,15 @@ definitions:
         description: Village/Town/City
         type: string
     type: object
+  kisanlink-erp_internal_database_models.AllCollaboratorsStatsResponse:
+    properties:
+      collaborators:
+        items:
+          $ref: '#/definitions/kisanlink-erp_internal_database_models.CollaboratorStatsSummary'
+        type: array
+      total_po_count:
+        type: integer
+    type: object
   kisanlink-erp_internal_database_models.AlternatePriceInfo:
     properties:
       min_quantity:
@@ -384,6 +393,32 @@ definitions:
       updated_at:
         type: string
     type: object
+  kisanlink-erp_internal_database_models.CollaboratorStats:
+    properties:
+      active_po_count:
+        type: integer
+      collaborator_id:
+        type: string
+      company_name:
+        type: string
+      grn_count:
+        type: integer
+      last_po_date:
+        type: string
+      po_count:
+        type: integer
+      total_amount:
+        type: number
+    type: object
+  kisanlink-erp_internal_database_models.CollaboratorStatsSummary:
+    properties:
+      collaborator_id:
+        type: string
+      company_name:
+        type: string
+      po_count:
+        type: integer
+    type: object
   kisanlink-erp_internal_database_models.CreateAddressRequest:
     properties:
       country:
@@ -476,6 +511,8 @@ definitions:
       applicable_categories:
         type: string
       applicable_products:
+        type: string
+      applicable_variants:
         type: string
       applicable_warehouses:
         type: string
@@ -686,8 +723,6 @@ definitions:
           $ref: '#/definitions/kisanlink-erp_internal_database_models.VariantPrice'
         type: array
       quantity:
-        type: string
-      sku:
         type: string
       usage_details:
         type: string
@@ -949,6 +984,8 @@ definitions:
         type: string
       applicable_products:
         type: string
+      applicable_variants:
+        type: string
       applicable_warehouses:
         type: string
       buy_quantity:
@@ -1171,9 +1208,11 @@ definitions:
     properties:
       created_at:
         type: string
-      grn_document:
-        description: Attachment ID for vendor's GRN PDF
-        type: string
+      documents:
+        description: Array of presigned URLs (auto-synced)
+        items:
+          type: string
+        type: array
       grn_number:
         type: string
       id:
@@ -1662,6 +1701,24 @@ definitions:
       total:
         type: integer
     type: object
+  kisanlink-erp_internal_database_models.PatchSaleRequest:
+    properties:
+      customer_name:
+        type: string
+      customer_phone:
+        type: string
+      payment_mode:
+        enum:
+        - cash
+        - upi
+        - online
+        type: string
+      sale_type:
+        enum:
+        - in_store
+        - delivery
+        type: string
+    type: object
   kisanlink-erp_internal_database_models.PaymentMethodInfo:
     properties:
       credit_days:
@@ -1687,6 +1744,9 @@ definitions:
     type: object
   kisanlink-erp_internal_database_models.ProductAvailabilityGroupedResponse:
     properties:
+      cgst_rate:
+        description: Central GST rate (GSTRate / 2)
+        type: number
       earliest_expiry:
         description: Earliest expiry date across all warehouses
         type: string
@@ -1696,6 +1756,22 @@ definitions:
       expiry_status:
         description: 'Overall status: "fresh", "expiring_soon", "expired"'
         type: string
+      gst_rate:
+        description: GST rate (0, 5, 12, 18, 28)
+        type: number
+      hsn_code:
+        description: GST Details (Issue 3)
+        type: string
+      image_urls:
+        description: Presigned URLs for variant images
+        items:
+          type: string
+        type: array
+      images:
+        description: Images (Issue 8)
+        items:
+          type: string
+        type: array
       prices:
         description: Active prices for this variant
         items:
@@ -1705,6 +1781,9 @@ definitions:
         type: string
       product_name:
         type: string
+      sgst_rate:
+        description: State GST rate (GSTRate / 2)
+        type: number
       sku:
         type: string
       total_quantity:
@@ -1938,6 +2017,11 @@ definitions:
         type: string
       created_at:
         type: string
+      documents:
+        description: Array of presigned URLs (auto-synced)
+        items:
+          type: string
+        type: array
       expected_delivery_date:
         type: string
       id:
@@ -2154,6 +2238,9 @@ definitions:
       final_amount:
         description: Final amount after discounts and taxes
         type: number
+      net_amount_before_tax:
+        description: BaseAmount - DiscountAmount
+        type: number
       tax_amount:
         description: Total tax amount
         type: number
@@ -2231,6 +2318,9 @@ definitions:
         type: number
       created_at:
         type: string
+      discount_amount:
+        description: Discount & net amounts
+        type: number
       id:
         type: string
       igst_amount:
@@ -2241,6 +2331,12 @@ definitions:
       margin:
         description: Profit margin
         type: number
+      net_line_total:
+        description: LineTotal - DiscountAmount
+        type: number
+      net_selling_price:
+        description: NetLineTotal / Quantity
+        type: number
       quantity:
         type: integer
       sale_id:
@@ -2249,6 +2345,9 @@ definitions:
         type: number
       sgst_amount:
         type: number
+      sku:
+        description: Product variant SKU (Issue 4)
+        type: string
       total_tax_amount:
         type: number
     type: object
@@ -2275,7 +2374,8 @@ definitions:
       id:
         type: string
       invoice_number:
-        description: 'Format: MMYYNNNN (e.g., 12250001)'
+        description: 'Format: MMYYXXXXXXXX (e.g., 122512345678 = Dec 2025 + sale ID
+          suffix)'
         type: string
       is_org_member:
         type: boolean
@@ -2540,6 +2640,8 @@ definitions:
         type: string
       applicable_products:
         type: string
+      applicable_variants:
+        type: string
       applicable_warehouses:
         type: string
       description:
@@ -2575,9 +2677,6 @@ definitions:
     type: object
   kisanlink-erp_internal_database_models.UpdateGRNRequest:
     properties:
-      grn_document:
-        description: Attachment ID for vendor's GRN PDF
-        type: string
       quality_status:
         description: accepted, rejected, partial
         type: string
@@ -2758,11 +2857,16 @@ definitions:
         items:
           type: string
         type: array
+      variant_ids:
+        items:
+          type: string
+        type: array
       warehouse_id:
         type: string
     required:
     - discount_code
     - order_value
+    - variant_ids
     - warehouse_id
     type: object
   kisanlink-erp_internal_database_models.VariantDetailResponse:
@@ -4985,6 +5089,94 @@ paths:
       summary: Get Purchase Orders by Collaborator
       tags:
       - Purchase Orders
+  /api/v1/collaborators/{id}/stats:
+    get:
+      description: Retrieve transaction statistics for a specific collaborator
+      parameters:
+      - description: 'Collaborator ID (format: CLAB_xxxxxxxx)'
+        example: CLAB_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Collaborator statistics
+          schema:
+            allOf:
+            - $ref: '#/definitions/kisanlink-erp_internal_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/kisanlink-erp_internal_database_models.CollaboratorStats'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+        "404":
+          description: Collaborator not found
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get Collaborator Transaction Statistics
+      tags:
+      - Collaborators
+  /api/v1/collaborators/{id}/variants:
+    get:
+      description: Retrieve all variants for a specific collaborator with pagination
+      parameters:
+      - description: 'Collaborator ID (format: CLAB_xxxxxxxx)'
+        example: CLAB_12345678
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 'Number of records to return (default: 50, max: 200)'
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of records to skip (default: 0)'
+        example: 0
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Variants retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/kisanlink-erp_internal_utils.PaginatedResponseModel'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/kisanlink-erp_internal_database_models.ProductVariantResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+        "404":
+          description: Collaborator not found
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+      summary: Get Variants by Collaborator
+      tags:
+      - Product Variants
   /api/v1/collaborators/active:
     get:
       description: Retrieve all active collaborators with pagination (requires authentication)
@@ -5099,6 +5291,31 @@ paths:
       security:
       - BearerAuth: []
       summary: Search Collaborators
+      tags:
+      - Collaborators
+  /api/v1/collaborators/stats:
+    get:
+      description: Retrieve transaction statistics for all collaborators (PO counts)
+        and total PO count
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: All collaborators statistics
+          schema:
+            allOf:
+            - $ref: '#/definitions/kisanlink-erp_internal_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/kisanlink-erp_internal_database_models.AllCollaboratorsStatsResponse'
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Get All Collaborators Stats
       tags:
       - Collaborators
   /api/v1/discounts:
@@ -8110,6 +8327,100 @@ paths:
       summary: Generate Customer Report
       tags:
       - Reports
+  /api/v1/reports/grn:
+    get:
+      description: Generate a goods receipt note report with filtering, pagination,
+        and export options
+      parameters:
+      - default: json
+        description: 'Output format: json, xlsx, pdf'
+        enum:
+        - json
+        - xlsx
+        - pdf
+        in: query
+        name: format
+        type: string
+      - default: 50
+        description: 'Records per page (max: 500)'
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Records to skip
+        in: query
+        name: offset
+        type: integer
+      - description: Filter by purchase order ID
+        in: query
+        name: po_id
+        type: string
+      - description: Search by PO number
+        in: query
+        name: po_number
+        type: string
+      - description: Filter by vendor/collaborator ID
+        in: query
+        name: vendor_id
+        type: string
+      - description: Filter by warehouse ID
+        in: query
+        name: warehouse_id
+        type: string
+      - collectionFormat: csv
+        description: Filter by quality status (comma-separated)
+        in: query
+        items:
+          type: string
+        name: quality_status
+        type: array
+      - description: Minimum received value
+        in: query
+        name: min_value
+        type: number
+      - description: Maximum received value
+        in: query
+        name: max_value
+        type: number
+      - description: Filter start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: Filter end date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      - application/pdf
+      responses:
+        "200":
+          description: Report generated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/kisanlink-erp_internal_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/kisanlink-erp_internal_database_models.ReportResponse'
+              type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Generate GRN Report
+      tags:
+      - Reports
   /api/v1/reports/inventory:
     get:
       description: Generate an inventory report with filtering, pagination, and export
@@ -9585,6 +9896,61 @@ paths:
       security:
       - BearerAuth: []
       summary: Get Sale
+      tags:
+      - Sales
+    patch:
+      consumes:
+      - application/json
+      description: Partially update a sale (payment_mode, sale_type, customer_phone,
+        customer_name)
+      parameters:
+      - description: Sale ID
+        example: SALE00000001
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/kisanlink-erp_internal_database_models.PatchSaleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sale updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/kisanlink-erp_internal_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/kisanlink-erp_internal_database_models.SaleResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+        "404":
+          description: Sale not found
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+        "422":
+          description: Unprocessable Entity - validation failed
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/kisanlink-erp_internal_utils.ErrorResponseModel'
+      security:
+      - BearerAuth: []
+      summary: Patch Sale
       tags:
       - Sales
     put:

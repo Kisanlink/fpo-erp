@@ -19,17 +19,23 @@ func stringPtr(s string) *string {
 	return &s
 }
 
-// generateInvoiceNumber generates an invoice number in the format MMYYNNNN
+// generateInvoiceNumber generates an invoice number in the format MMYY + 8-digit sale ID suffix
 // - MM: 2-digit month (01-12)
 // - YY: 2-digit year (e.g., 25 for 2025)
-// - NNNN: 4-digit sequence number (does NOT reset each month)
-// Example: 12250001 = December 2025, sequence 1
-func generateInvoiceNumber(lastSequence int) string {
+// - XXXXXXXX: 8-character suffix from sale ID (characters after "SALE" prefix)
+// Example: Sale ID "SALE12345678" in December 2025 -> Invoice "122512345678"
+func generateInvoiceNumber(saleID string) string {
 	now := time.Now()
 	month := now.Format("01") // MM
 	year := now.Format("06")  // YY
-	sequence := lastSequence + 1
-	return fmt.Sprintf("%s%s%04d", month, year, sequence)
+
+	// Extract 8 characters after "SALE" prefix
+	saleIDSuffix := ""
+	if len(saleID) >= 12 { // "SALE" (4 chars) + 8 chars = 12 chars minimum
+		saleIDSuffix = saleID[4:12] // Get characters from index 4 to 12 (8 chars)
+	}
+
+	return fmt.Sprintf("%s%s%s", month, year, saleIDSuffix)
 }
 
 type SalesService struct {
@@ -202,46 +208,48 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 			saleDate = time.Now()
 		}
 
-		// Handle ApplyTaxes - default to false if not provided
-		applyTaxes := false
+		// Handle ApplyTaxes - default to true if not provided (Issue 6: Breaking Change)
+		applyTaxes := true
 		if req.ApplyTaxes != nil {
 			applyTaxes = *req.ApplyTaxes
 		}
 
-		// Generate invoice number within transaction for concurrency safety
-		s.logger.Debug("Generating invoice number")
-		lastSequence, err := s.salesRepo.GetLastInvoiceSequenceWithTx(tx)
-		if err != nil {
-			s.logger.Error("Failed to get last invoice sequence",
-				zap.Error(err))
-			return errors.NewInternalServerError("failed to generate invoice number")
-		}
-		invoiceNumber := generateInvoiceNumber(lastSequence)
-		s.logger.Debug("Invoice number generated",
-			zap.String("invoice_number", invoiceNumber),
-			zap.Int("last_sequence", lastSequence))
-
-		// Create sale using the proper constructor with BRD requirements
+		// Create sale first to get sale ID (invoice number will be generated from it)
 		s.logger.Debug("Creating sale",
 			zap.String("warehouse_id", req.WarehouseID),
-			zap.String("invoice_number", invoiceNumber),
 			zap.Time("sale_date", saleDate),
 			zap.String("payment_mode", req.PaymentMode),
 			zap.String("sale_type", req.SaleType),
 			zap.Bool("apply_taxes", applyTaxes),
 			zap.Bool("is_org_member", req.IsOrgMember))
-		sale := models.NewSale(req.WarehouseID, invoiceNumber, saleDate, 0, models.SaleStatusPending, req.CustomerPhone, req.CustomerName, req.IsOrgMember, req.PaymentMode, req.SaleType, applyTaxes)
-		s.logger.Info("Sale created",
-			zap.String("sale_id", sale.ID),
-			zap.String("invoice_number", sale.InvoiceNumber),
-			zap.Bool("apply_taxes", sale.ApplyTaxes))
+
+		// Create sale with empty invoice number initially
+		sale := models.NewSale(req.WarehouseID, "", saleDate, 0, models.SaleStatusPending, req.CustomerPhone, req.CustomerName, req.IsOrgMember, req.PaymentMode, req.SaleType, applyTaxes)
 
 		if err := s.salesRepo.CreateSaleWithTx(tx, sale); err != nil {
 			s.logger.Error("Failed to create sale in database",
 				zap.Error(err))
 			return err
 		}
-		s.logger.Debug("Sale created successfully in database")
+		s.logger.Debug("Sale created successfully in database", zap.String("sale_id", sale.ID))
+
+		// Generate invoice number using sale ID
+		invoiceNumber := generateInvoiceNumber(sale.ID)
+		sale.InvoiceNumber = invoiceNumber
+		s.logger.Debug("Invoice number generated",
+			zap.String("invoice_number", invoiceNumber),
+			zap.String("sale_id", sale.ID))
+
+		// Update sale with invoice number
+		if err := s.salesRepo.UpdateSaleWithTx(tx, sale); err != nil {
+			s.logger.Error("Failed to update sale with invoice number",
+				zap.Error(err))
+			return err
+		}
+		s.logger.Info("Sale updated with invoice number",
+			zap.String("sale_id", sale.ID),
+			zap.String("invoice_number", sale.InvoiceNumber),
+			zap.Bool("apply_taxes", sale.ApplyTaxes))
 
 		// Create sale items using pre-fetched data
 		s.logger.Debug("Starting to process sale items",
@@ -384,6 +392,84 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 		discountAmount = totalDiscountAmount
 		appliedDiscounts = applications
 
+		// Allocate total discount across sale items and recompute tax & margin per line
+		if discountAmount > 0 && len(saleItems) > 0 && totalAmount > 0 {
+			s.logger.Debug("Allocating discount across sale items and recalculating taxes/margins",
+				zap.Float64("total_amount", totalAmount),
+				zap.Float64("discount_amount", discountAmount),
+				zap.Int("item_count", len(saleItems)))
+
+			var accumulatedDiscount float64
+
+			for i := range saleItems {
+				item := &saleItems[i]
+
+				// Pro-rate discount by line contribution to total (base before tax)
+				lineBase := item.LineTotal
+				if lineBase < 0 {
+					lineBase = 0
+				}
+
+				var lineDiscount float64
+				if i == len(saleItems)-1 {
+					// For the last item, adjust to ensure total matches exactly (handles rounding)
+					lineDiscount = discountAmount - accumulatedDiscount
+				} else if totalAmount > 0 {
+					share := lineBase / totalAmount
+					lineDiscount = utils.RoundPrice(discountAmount * share)
+				}
+
+				if lineDiscount < 0 {
+					lineDiscount = 0
+				}
+				if lineDiscount > lineBase {
+					lineDiscount = lineBase
+				}
+
+				item.DiscountAmount = lineDiscount
+				accumulatedDiscount += lineDiscount
+
+				// Recalculate taxes proportionally on discounted base
+				netLineTotal := lineBase - lineDiscount
+				if netLineTotal < 0 {
+					netLineTotal = 0
+				}
+
+				if lineBase > 0 {
+					factor := netLineTotal / lineBase
+					item.CGSTAmount = utils.RoundPrice(item.CGSTAmount * factor)
+					item.SGSTAmount = utils.RoundPrice(item.SGSTAmount * factor)
+					item.IGSTAmount = utils.RoundPrice(item.IGSTAmount * factor)
+					item.TotalTaxAmount = utils.RoundPrice(item.TotalTaxAmount * factor)
+				} else {
+					item.CGSTAmount = 0
+					item.SGSTAmount = 0
+					item.IGSTAmount = 0
+					item.TotalTaxAmount = 0
+				}
+
+				// Recalculate margin after discount (per-unit)
+				if item.Quantity > 0 {
+					netUnitPrice := 0.0
+					if netLineTotal > 0 {
+						netUnitPrice = netLineTotal / float64(item.Quantity)
+					}
+					item.Margin = utils.RoundPrice(netUnitPrice - item.CostPrice)
+				}
+
+				// Persist updated item within the same transaction
+				if err := s.salesRepo.UpdateSaleItemWithTx(tx, item); err != nil {
+					s.logger.Error("Failed to update sale item with discount and tax recalculation",
+						zap.Error(err),
+						zap.String("sale_item_id", item.ID))
+					return err
+				}
+			}
+
+			s.logger.Debug("Discount allocation and tax/margin recalculation completed",
+				zap.Float64("allocated_discount_total", accumulatedDiscount))
+		}
+
 		// Create discount usage records for applied discounts
 		for _, discount := range finalDiscounts {
 			discountUsage := s.discountsRepo.CalculateDiscount(&discount, totalAmount)
@@ -464,13 +550,14 @@ func (s *SalesService) CreateSale(req *models.CreateSaleRequest) (*models.SaleRe
 		}
 
 		response.Breakdown = &models.SaleBreakdown{
-			BaseAmount:       totalAmount,
-			AppliedDiscounts: appliedDiscounts,
-			DiscountAmount:   discountAmount,
-			TaxBreakdown:     taxBreakdown,
-			TaxAmount:        taxAmount,
-			TotalSavings:     discountAmount,
-			FinalAmount:      finalAmount,
+			BaseAmount:         totalAmount,
+			AppliedDiscounts:   appliedDiscounts,
+			DiscountAmount:     discountAmount,
+			NetAmountBeforeTax: utils.RoundPrice(totalAmount - discountAmount),
+			TaxBreakdown:       taxBreakdown,
+			TaxAmount:          taxAmount,
+			TotalSavings:       discountAmount,
+			FinalAmount:        finalAmount,
 		}
 
 		return nil
@@ -495,17 +582,46 @@ func (s *SalesService) GetSale(id string) (*models.SaleResponse, error) {
 	return s.mapSaleToResponse(sale), nil
 }
 
-// GetAllSales retrieves all sales with pagination
-func (s *SalesService) GetAllSales(limit, offset int) ([]models.SaleResponse, int64, error) {
+// GetAllSales retrieves all sales with pagination (returns list without items for performance)
+// Use GetSale(id) to get full details with items
+func (s *SalesService) GetAllSales(limit, offset int) ([]models.SaleListResponse, int64, error) {
 	sales, total, err := s.salesRepo.GetAllSales(limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	var responses []models.SaleResponse
+	var responses []models.SaleListResponse
 	for _, sale := range sales {
-		responses = append(responses, *s.mapSaleToResponse(&sale))
+		responses = append(responses, *s.mapSaleToListResponse(&sale))
 	}
+
+	return responses, total, nil
+}
+
+// GetSalesByCustomerPhone retrieves sales filtered by customer phone number (Issue 7)
+func (s *SalesService) GetSalesByCustomerPhone(phone string, limit, offset int) ([]models.SaleListResponse, int64, error) {
+	s.logger.Info("Retrieving sales by customer phone",
+		zap.String("phone", phone),
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
+
+	sales, total, err := s.salesRepo.GetSalesByCustomerPhone(phone, limit, offset)
+	if err != nil {
+		s.logger.Error("Failed to retrieve sales by customer phone",
+			zap.Error(err),
+			zap.String("phone", phone))
+		return nil, 0, err
+	}
+
+	var responses []models.SaleListResponse
+	for _, sale := range sales {
+		responses = append(responses, *s.mapSaleToListResponse(&sale))
+	}
+
+	s.logger.Info("Successfully retrieved sales by customer phone",
+		zap.String("phone", phone),
+		zap.Int64("total", total),
+		zap.Int("count", len(responses)))
 
 	return responses, total, nil
 }
@@ -606,6 +722,49 @@ func (s *SalesService) UpdateSale(id string, req *models.UpdateSaleRequest) (*mo
 // DeleteSale deletes a sale
 func (s *SalesService) DeleteSale(id string) error {
 	return s.salesRepo.DeleteSale(id)
+}
+
+// PatchSale partially updates a sale (Issue 9)
+// Only updates provided fields: payment_mode, sale_type, customer_phone, customer_name
+func (s *SalesService) PatchSale(id string, req *models.PatchSaleRequest) (*models.SaleResponse, error) {
+	s.logger.Info("Patching sale",
+		zap.String("sale_id", id))
+
+	// Get existing sale
+	sale, err := s.salesRepo.GetSaleByID(id)
+	if err != nil {
+		s.logger.Error("Failed to get sale for patching",
+			zap.Error(err),
+			zap.String("sale_id", id))
+		return nil, errors.NewNotFoundError("Sale not found")
+	}
+
+	// Only update provided fields
+	if req.PaymentMode != nil {
+		sale.PaymentMode = *req.PaymentMode
+	}
+	if req.SaleType != nil {
+		sale.SaleType = *req.SaleType
+	}
+	if req.CustomerPhone != nil {
+		sale.CustomerPhone = req.CustomerPhone
+	}
+	if req.CustomerName != nil {
+		sale.CustomerName = req.CustomerName
+	}
+
+	// Save changes
+	if err := s.salesRepo.UpdateSale(sale); err != nil {
+		s.logger.Error("Failed to update sale",
+			zap.Error(err),
+			zap.String("sale_id", id))
+		return nil, err
+	}
+
+	s.logger.Info("Sale patched successfully",
+		zap.String("sale_id", id))
+
+	return s.mapSaleToResponse(sale), nil
 }
 
 // handleCompletionInventory converts reservations to actual deductions when sale status changes to completed
@@ -926,24 +1085,77 @@ func (s *SalesService) mapSaleToResponse(sale *models.Sale) *models.SaleResponse
 
 	// Map items
 	for _, item := range sale.Items {
+		// Get SKU from batch's variant (Issue 4)
+		sku := ""
+		if item.Batch.Variant.SKU != nil {
+			sku = *item.Batch.Variant.SKU
+		}
+		netLineTotal := item.LineTotal - item.DiscountAmount
+		if netLineTotal < 0 {
+			netLineTotal = 0
+		}
+		netSellingPrice := 0.0
+		if item.Quantity > 0 && netLineTotal > 0 {
+			netSellingPrice = netLineTotal / float64(item.Quantity)
+		}
+
 		response.Items = append(response.Items, models.SaleItemResponse{
-			ID:           item.ID,
-			SaleID:       item.SaleID,
-			BatchID:      item.BatchID,
-			Quantity:     item.Quantity,
-			SellingPrice: utils.RoundPrice(item.SellingPrice),
-			LineTotal:    utils.RoundPrice(item.LineTotal),
-			// BRD Requirements - Cost and Margin
-			CostPrice:      utils.RoundPrice(item.CostPrice),
-			Margin:         utils.RoundPrice(item.Margin),
-			CGSTAmount:     utils.RoundPrice(item.CGSTAmount),
-			SGSTAmount:     utils.RoundPrice(item.SGSTAmount),
-			IGSTAmount:     utils.RoundPrice(item.IGSTAmount),
-			TotalTaxAmount: utils.RoundPrice(item.TotalTaxAmount),
-			CreatedAt:      item.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			ID:              item.ID,
+			SaleID:          item.SaleID,
+			BatchID:         item.BatchID,
+			VariantID:       item.Batch.VariantID,
+			ProductName:     item.Batch.Variant.Product.Name,
+			VariantName:     item.Batch.Variant.VariantName,
+			SKU:             sku,
+			Quantity:        item.Quantity,
+			SellingPrice:    utils.RoundPrice(item.SellingPrice),
+			LineTotal:       utils.RoundPrice(item.LineTotal),
+			CostPrice:       utils.RoundPrice(item.CostPrice),
+			Margin:          utils.RoundPrice(item.Margin),
+			DiscountAmount:  utils.RoundPrice(item.DiscountAmount),
+			NetLineTotal:    utils.RoundPrice(netLineTotal),
+			NetSellingPrice: utils.RoundPrice(netSellingPrice),
+			CGSTAmount:      utils.RoundPrice(item.CGSTAmount),
+			SGSTAmount:      utils.RoundPrice(item.SGSTAmount),
+			IGSTAmount:      utils.RoundPrice(item.IGSTAmount),
+			TotalTaxAmount:  utils.RoundPrice(item.TotalTaxAmount),
+			CreatedAt:       item.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		})
 	}
 
+	return response
+}
+
+// mapSaleToListResponse maps a Sale model to SaleListResponse (without items for performance)
+func (s *SalesService) mapSaleToListResponse(sale *models.Sale) *models.SaleListResponse {
+	response := &models.SaleListResponse{
+		ID:            sale.ID,
+		InvoiceNumber: sale.InvoiceNumber,
+		WarehouseID:   sale.WarehouseID,
+		SaleDate:      sale.SaleDate.Format("2006-01-02T15:04:05Z07:00"),
+		TotalAmount:   sale.TotalAmount,
+		Status:        sale.Status,
+		// BRD Requirements - Customer tracking
+		CustomerPhone: sale.CustomerPhone,
+		CustomerName:  sale.CustomerName,
+		IsOrgMember:   sale.IsOrgMember,
+		PaymentMode:   sale.PaymentMode,
+		SaleType:      sale.SaleType,
+		ApplyTaxes:    sale.ApplyTaxes,
+		CreatedAt:     sale.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:     sale.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}
+
+	// Add cancellation fields if present
+	if sale.CancelledAt != nil {
+		cancelledAtStr := sale.CancelledAt.Format("2006-01-02T15:04:05Z07:00")
+		response.CancelledAt = &cancelledAtStr
+	}
+	if sale.CancellationReason != nil {
+		response.CancellationReason = sale.CancellationReason
+	}
+
+	// Note: Items and Breakdown are omitted for performance
 	return response
 }
 
@@ -1143,7 +1355,13 @@ func (s *SalesService) applyTaxesToSaleWithTx(tx *gorm.DB, saleID string, saleIt
 		totalSGST += item.SGSTAmount
 		totalIGST += item.IGSTAmount
 		totalTax += item.TotalTaxAmount
-		subTotal += item.LineTotal
+
+		// Subtotal should reflect base after discount (for tax-after-discount calculation)
+		netLineTotal := item.LineTotal - item.DiscountAmount
+		if netLineTotal < 0 {
+			netLineTotal = 0
+		}
+		subTotal += netLineTotal
 		// If any item has IGST, it's an inter-state sale
 		if item.IGSTAmount > 0 {
 			isInterState = true
@@ -1183,7 +1401,13 @@ func (s *SalesService) applyTaxesToSale(saleID string, saleItems []models.SaleIt
 		totalSGST += item.SGSTAmount
 		totalIGST += item.IGSTAmount
 		totalTax += item.TotalTaxAmount
-		subTotal += item.LineTotal
+
+		// Subtotal should reflect base after discount (for tax-after-discount calculation)
+		netLineTotal := item.LineTotal - item.DiscountAmount
+		if netLineTotal < 0 {
+			netLineTotal = 0
+		}
+		subTotal += netLineTotal
 		// If any item has IGST, it's an inter-state sale
 		if item.IGSTAmount > 0 {
 			isInterState = true
@@ -1317,10 +1541,11 @@ func (s *SalesService) CancelSale(saleID string, req *models.CancelSaleRequest) 
 		s.logger.Info("Cancellation record created",
 			zap.String("cancellation_id", cancellation.ID))
 
-		// 4. For each SaleItem: restore inventory
-		s.logger.Debug("Processing sale items for inventory restoration",
+		// 4. For each SaleItem: restore inventory and compute refund based on final paid price
+		s.logger.Debug("Processing sale items for inventory restoration and refund calculation",
 			zap.Int("item_count", len(sale.Items)))
 		var inventoryRestored []models.InventoryRestoredItem
+		var totalRefundAmount float64
 
 		for i, saleItem := range sale.Items {
 			s.logger.Debug("Processing sale item",
@@ -1412,13 +1637,30 @@ func (s *SalesService) CancelSale(saleID string, req *models.CancelSaleRequest) 
 					zap.String("batch_id", saleItem.BatchID))
 			}
 
-			// Bug #2 Fix: Create SaleCancellationItem with accurate inventoryRestored flag
+			// Calculate final paid price (net after discount + tax) for this item
+			refundAmount := 0.0
+			if saleItem.Quantity > 0 {
+				netLineTotal := saleItem.LineTotal - saleItem.DiscountAmount
+				if netLineTotal < 0 {
+					netLineTotal = 0
+				}
+				netBasePerUnit := netLineTotal / float64(saleItem.Quantity)
+				taxPerUnit := 0.0
+				if saleItem.TotalTaxAmount > 0 {
+					taxPerUnit = saleItem.TotalTaxAmount / float64(saleItem.Quantity)
+				}
+				refundPerUnit := netBasePerUnit + taxPerUnit
+				refundAmount = refundPerUnit * float64(saleItem.Quantity)
+			}
+			totalRefundAmount += refundAmount
+
+			// Bug #2 Fix: Create SaleCancellationItem with accurate inventoryRestored flag and refund amount
 			cancellationItem := models.NewSaleCancellationItem(
 				cancellation.ID,
 				saleItem.ID,
 				saleItem.BatchID,
 				saleItem.Quantity,
-				saleItem.LineTotal,
+				refundAmount,
 				transactionID,
 				inventoryWasRestored, // Now accurately reflects whether inventory was restored
 			)
@@ -1752,11 +1994,18 @@ func (s *SalesService) CancelItems(saleID string, req *models.CancelItemsRequest
 				return errors.NewInternalServerError("Data integrity error: sale item has invalid quantity")
 			}
 
-			// Calculate refund amount for this item (including proportional taxes)
-			basePricePerUnit := saleItem.LineTotal / float64(saleItem.Quantity)
-			taxPerUnit := saleItem.TotalTaxAmount / float64(saleItem.Quantity)
-			totalPricePerUnit := basePricePerUnit + taxPerUnit
-			refundAmount := totalPricePerUnit * float64(itemReq.Quantity)
+			// Calculate refund amount for this item based on final paid price (net after discount + tax)
+			netLineTotal := saleItem.LineTotal - saleItem.DiscountAmount
+			if netLineTotal < 0 {
+				netLineTotal = 0
+			}
+			netBasePerUnit := netLineTotal / float64(saleItem.Quantity)
+			taxPerUnit := 0.0
+			if saleItem.TotalTaxAmount > 0 {
+				taxPerUnit = saleItem.TotalTaxAmount / float64(saleItem.Quantity)
+			}
+			refundPerUnit := netBasePerUnit + taxPerUnit
+			refundAmount := refundPerUnit * float64(itemReq.Quantity)
 			totalCancelledAmount += refundAmount
 
 			// Use transactional batch read (includes soft-deleted batches)
@@ -1835,14 +2084,36 @@ func (s *SalesService) CancelItems(saleID string, req *models.CancelItemsRequest
 			// Update sale item quantity if partial
 			if itemReq.Quantity < saleItem.Quantity {
 				newQuantity := saleItem.Quantity - itemReq.Quantity
-				// Recalculate all proportional fields (GST-only tax system)
-				newLineTotal := basePricePerUnit * float64(newQuantity)
-				marginPerUnit := saleItem.Margin / float64(saleItem.Quantity)
-				cgstPerUnit := saleItem.CGSTAmount / float64(saleItem.Quantity)
-				sgstPerUnit := saleItem.SGSTAmount / float64(saleItem.Quantity)
-				igstPerUnit := saleItem.IGSTAmount / float64(saleItem.Quantity)
+				// Recalculate all proportional fields using ratios to keep net/discount/tax consistent
+				ratio := float64(newQuantity) / float64(saleItem.Quantity)
 
-				newMargin := marginPerUnit * float64(newQuantity)
+				// Line totals and discount
+				newLineTotal := saleItem.LineTotal * ratio
+				newDiscountAmount := saleItem.DiscountAmount * ratio
+
+				// Net line totals and margin after discount
+				oldNetLineTotal := saleItem.LineTotal - saleItem.DiscountAmount
+				if oldNetLineTotal < 0 {
+					oldNetLineTotal = 0
+				}
+				newNetLineTotal := oldNetLineTotal * ratio
+				netUnitPriceNew := 0.0
+				if newQuantity > 0 && newNetLineTotal > 0 {
+					netUnitPriceNew = newNetLineTotal / float64(newQuantity)
+				}
+				newMarginPerUnit := netUnitPriceNew - saleItem.CostPrice
+				newMargin := newMarginPerUnit * float64(newQuantity)
+
+				// Tax amounts proportional to remaining quantity
+				cgstPerUnit := 0.0
+				sgstPerUnit := 0.0
+				igstPerUnit := 0.0
+				if saleItem.Quantity > 0 {
+					cgstPerUnit = saleItem.CGSTAmount / float64(saleItem.Quantity)
+					sgstPerUnit = saleItem.SGSTAmount / float64(saleItem.Quantity)
+					igstPerUnit = saleItem.IGSTAmount / float64(saleItem.Quantity)
+				}
+
 				newCGST := cgstPerUnit * float64(newQuantity)
 				newSGST := sgstPerUnit * float64(newQuantity)
 				newIGST := igstPerUnit * float64(newQuantity)
@@ -1851,6 +2122,7 @@ func (s *SalesService) CancelItems(saleID string, req *models.CancelItemsRequest
 				if err := tx.Model(&models.SaleItem{}).Where("id = ?", saleItem.ID).Updates(map[string]interface{}{
 					"quantity":         newQuantity,
 					"line_total":       newLineTotal,
+					"discount_amount":  newDiscountAmount,
 					"margin":           newMargin,
 					"cgst_amount":      newCGST,
 					"sgst_amount":      newSGST,
@@ -1954,13 +2226,12 @@ func (s *SalesService) CancelItems(saleID string, req *models.CancelItemsRequest
 			s.logger.Warn("Failed to update cancellation amount", zap.Error(err))
 		}
 
-		// 8. Update sale total (keep original status for partial cancellations)
+		// 8. Update sale total
 		newSaleTotal := sale.TotalAmount - totalCancelledAmount
 		if err := tx.Model(&models.Sale{}).Where("id = ?", sale.ID).Update("total_amount", newSaleTotal).Error; err != nil {
 			s.logger.Error("Failed to update sale total", zap.Error(err))
 			return errors.NewInternalServerError("Failed to update sale")
 		}
-		// Note: Status remains unchanged for partial cancellations (pending/completed)
 
 		// 9. Re-fetch sale to get updated items (avoids stale data in response)
 		updatedSale, err := s.salesRepo.GetSaleForUpdateWithTx(tx, sale.ID)
@@ -1970,7 +2241,28 @@ func (s *SalesService) CancelItems(saleID string, req *models.CancelItemsRequest
 			updatedSale.TotalAmount = newSaleTotal
 		}
 
-		// Build response with fresh data
+		// 10. If all items are effectively cancelled, treat this as a full sale cancellation
+		remainingItems := len(updatedSale.Items)
+		if remainingItems == 0 || newSaleTotal <= 0 {
+			s.logger.Info("All items cancelled via partial cancellation, marking sale as fully cancelled",
+				zap.String("sale_id", sale.ID))
+
+			updatedSale.Status = models.SaleStatusCancelled
+			now := time.Now()
+			updatedSale.CancelledAt = &now
+			updatedSale.CancellationReason = &req.Reason
+			updatedSale.TotalAmount = 0
+			newSaleTotal = 0
+
+			if err := s.salesRepo.UpdateSaleWithTx(tx, updatedSale); err != nil {
+				s.logger.Error("Failed to update sale status after full cancellation via cancel-items",
+					zap.Error(err),
+					zap.String("sale_id", sale.ID))
+				return errors.NewInternalServerError("Failed to update sale status after cancellation")
+			}
+		}
+
+		// 11. Build response with fresh data
 		response = &models.CancelItemsResponse{
 			Sale:                 *s.mapSaleToResponse(updatedSale),
 			ItemsCancelled:       cancelledItems,

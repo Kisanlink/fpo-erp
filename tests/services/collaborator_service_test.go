@@ -32,6 +32,7 @@ func setupCollaboratorService(t *testing.T) (*services.CollaboratorService, *gor
 		collaboratorRepo,
 		nil, // addressClient (not needed for validation tests)
 		nil, // s3Service (not needed for validation tests)
+		nil, // attachmentService (not needed for validation tests)
 		nil, // ecomClient (nil = use legacy path)
 		0,   // ecomTimeout
 		"",  // ecomAuthToken
@@ -403,10 +404,10 @@ func TestCollaboratorService_GetAllCollaborators_Success(t *testing.T) {
 
 	ctx := testutils.CreateTestContext()
 
-	// Create multiple collaborators
-	collab1 := testutils.FixtureCollaborator("Company A")
-	collab2 := testutils.FixtureCollaborator("Company B")
-	collab3 := testutils.FixtureCollaborator("Company C")
+	// Create multiple collaborators with unique IDs
+	collab1 := testutils.FixtureCollaboratorWithID("COLLAB-001", "Company A")
+	collab2 := testutils.FixtureCollaboratorWithID("COLLAB-002", "Company B")
+	collab3 := testutils.FixtureCollaboratorWithID("COLLAB-003", "Company C")
 
 	err := db.Create(collab1).Error
 	testutils.AssertNoError(t, err, "Should create collaborator 1")

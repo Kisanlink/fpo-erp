@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"kisanlink-erp/internal/aaa"
@@ -22,11 +23,21 @@ type InventoryService struct {
 	variantRepo   *repositories.ProductVariantRepository
 	priceRepo     *repositories.ProductPriceRepository
 	addressClient *aaa.AddressGRPCClient
+	s3Service     *S3Service
 	logger        interfaces.Logger
 }
 
 // NewInventoryService creates a new inventory service
-func NewInventoryService(inventoryRepo *repositories.InventoryRepository, warehouseRepo *repositories.WarehouseRepository, productRepo *repositories.ProductRepository, variantRepo *repositories.ProductVariantRepository, priceRepo *repositories.ProductPriceRepository, addressClient *aaa.AddressGRPCClient, logger interfaces.Logger) *InventoryService {
+func NewInventoryService(
+	inventoryRepo *repositories.InventoryRepository,
+	warehouseRepo *repositories.WarehouseRepository,
+	productRepo *repositories.ProductRepository,
+	variantRepo *repositories.ProductVariantRepository,
+	priceRepo *repositories.ProductPriceRepository,
+	addressClient *aaa.AddressGRPCClient,
+	s3Service *S3Service,
+	logger interfaces.Logger,
+) *InventoryService {
 	return &InventoryService{
 		inventoryRepo: inventoryRepo,
 		warehouseRepo: warehouseRepo,
@@ -34,6 +45,7 @@ func NewInventoryService(inventoryRepo *repositories.InventoryRepository, wareho
 		variantRepo:   variantRepo,
 		priceRepo:     priceRepo,
 		addressClient: addressClient,
+		s3Service:     s3Service,
 		logger:        logger,
 	}
 }
@@ -447,11 +459,46 @@ func (s *InventoryService) GetAllProductsAvailability(ctx context.Context, jwtTo
 
 		// Initialize variant entry if not exists
 		if _, exists := variantMap[sku]; !exists {
+			gstRate := batch.Variant.GSTRate
+			// Parse images from JSON string (Issue 8)
+			var images []string
+			if batch.Variant.Images != nil && *batch.Variant.Images != "" {
+				if err := json.Unmarshal([]byte(*batch.Variant.Images), &images); err != nil {
+					s.logger.Warn("Failed to parse variant images",
+						zap.Error(err),
+						zap.String("variant_id", batch.VariantID))
+				}
+			}
+			// Generate presigned URLs for each image (mirror product variant behavior)
+			var imageURLs []string
+			if s.s3Service != nil && len(images) > 0 {
+				for _, imagePath := range images {
+					if url, err := s.s3Service.GeneratePresignedURLForKey(ctx, imagePath, time.Hour); err == nil {
+						imageURLs = append(imageURLs, url)
+					} else {
+						s.logger.Warn("Failed to generate presigned URL for variant image",
+							zap.Error(err),
+							zap.String("variant_id", batch.VariantID),
+							zap.String("image_path", imagePath))
+					}
+				}
+			}
 			variantMap[sku] = &variantAvailability{
 				VariantID:          batch.VariantID,
 				ProductName:        batch.Variant.VariantName,
 				ProductDescription: batch.Variant.Description,
 				WarehouseDetails:   make(map[string]*warehouseDetail),
+				// Category Info (from Product - for e-commerce filtering)
+				CategoryID:    batch.Variant.Product.CategoryID,
+				SubcategoryID: batch.Variant.Product.SubcategoryID,
+				// GST Details
+				HSNCode:  batch.Variant.HSNCode,
+				GSTRate:  gstRate,
+				CGSTRate: gstRate / 2,
+				SGSTRate: gstRate / 2,
+				// Images (Issue 8)
+				Images:    images,
+				ImageURLs: imageURLs,
 			}
 		}
 
@@ -468,6 +515,7 @@ func (s *InventoryService) GetAllProductsAvailability(ctx context.Context, jwtTo
 				WarehouseID:   batch.WarehouseID,
 				WarehouseName: batch.Warehouse.Name,
 				AddressID:     batch.Warehouse.AddressID,
+				Address:       batch.Warehouse.BuildAddressInfo(), // Uses local fields - NO gRPC call!
 			}
 		}
 
@@ -496,6 +544,17 @@ func (s *InventoryService) GetAllProductsAvailability(ctx context.Context, jwtTo
 			ProductName:        variantData.ProductName,
 			ProductDescription: variantData.ProductDescription,
 			WarehouseDetails:   []models.WarehouseAvailabilityDetail{},
+			// Category Info (for e-commerce filtering)
+			CategoryID:    variantData.CategoryID,
+			SubcategoryID: variantData.SubcategoryID,
+			// GST Details
+			HSNCode:  variantData.HSNCode,
+			GSTRate:  variantData.GSTRate,
+			CGSTRate: variantData.CGSTRate,
+			SGSTRate: variantData.SGSTRate,
+			// Images (Issue 8)
+			Images:    variantData.Images,
+			ImageURLs: variantData.ImageURLs,
 		}
 
 		// Process warehouse details
@@ -518,35 +577,8 @@ func (s *InventoryService) GetAllProductsAvailability(ctx context.Context, jwtTo
 				}
 			}
 
-			// Fetch address details if warehouse has an address ID
-			if warehouseData.AddressID != nil {
-				s.logger.Debug("Fetching warehouse address",
-					zap.String("warehouse_id", warehouseData.WarehouseID),
-					zap.String("address_id", *warehouseData.AddressID))
-				address, err := s.addressClient.GetAddress(ctx, *warehouseData.AddressID, jwtToken)
-				if err == nil {
-					detail.Address = &models.AddressInfo{
-						ID:          address.ID,
-						Type:        address.Type,
-						House:       address.House,
-						Street:      address.Street,
-						Landmark:    address.Landmark,
-						PostOffice:  address.PostOffice,
-						Subdistrict: address.Subdistrict,
-						District:    address.District,
-						VTC:         address.VTC,
-						State:       address.State,
-						Country:     address.Country,
-						Pincode:     address.Pincode,
-						FullAddress: address.BuildFullAddress(),
-					}
-				} else {
-					s.logger.Error("Failed to fetch warehouse address",
-						zap.Error(err),
-						zap.String("warehouse_id", warehouseData.WarehouseID),
-						zap.String("address_id", *warehouseData.AddressID))
-				}
-			}
+			// Use pre-populated address from local cache (NO gRPC call!)
+			detail.Address = warehouseData.Address
 
 			response.TotalQuantity += warehouseData.Quantity
 			response.ExpiredQuantity += warehouseData.ExpiredQuantity
@@ -615,12 +647,24 @@ type variantAvailability struct {
 	ProductName        string
 	ProductDescription *string
 	WarehouseDetails   map[string]*warehouseDetail
+	// Category Info (for e-commerce filtering)
+	CategoryID    *string
+	SubcategoryID *string
+	// GST Details
+	HSNCode  string
+	GSTRate  float64
+	CGSTRate float64
+	SGSTRate float64
+	// Images (Issue 8)
+	Images    []string
+	ImageURLs []string
 }
 
 type warehouseDetail struct {
 	WarehouseID     string
 	WarehouseName   string
 	AddressID       *string
+	Address         *models.AddressInfo // Local cache - NO gRPC needed
 	Quantity        int64
 	ExpiredQuantity int64
 	EarliestExpiry  time.Time

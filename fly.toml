@@ -1,0 +1,65 @@
+# Fly.io configuration for Kisanlink ERP Service
+# This service handles FPO ERP operations
+# Connects to AAA service via gRPC for authentication/authorization
+
+app = "kisanlink-erp"
+primary_region = "sin"  # Singapore - closest to India
+
+[build]
+  dockerfile = "Dockerfile"
+
+# HTTP API - Public facing
+[[services]]
+  internal_port = 3000
+  protocol = "tcp"
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 100
+    soft_limit = 80
+
+  [[services.http_checks]]
+    interval = "10s"
+    timeout = "2s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/health"
+
+[env]
+  # Server configuration
+  SERVER_HTTP_PORT = "3000"
+
+  # AAA Service gRPC connection (Fly internal network)
+  AAA_GRPC_ADDRESS = "kisanlink-aaa.internal:50051"
+  AAA_GRPC_USE_TLS = "false"  # Fly handles encryption internally
+
+  # Environment
+  ENVIRONMENT = "production"
+
+  # Logging
+  LOG_LEVEL = "info"
+
+# Machine sizing
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512
+
+# Secrets to set via `fly secrets set`:
+# - DB_HOST
+# - DB_PORT
+# - DB_USER
+# - DB_PASSWORD
+# - DB_NAME
+# - AAA_API_KEY (if needed)

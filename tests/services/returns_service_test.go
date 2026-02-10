@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -14,6 +15,9 @@ import (
 
 	"gorm.io/gorm"
 )
+
+// Counter for generating unique invoice numbers
+var returnsInvoiceCounter int64
 
 // setupReturnsService creates a ReturnsService with test database
 func setupReturnsService(t *testing.T) (*services.ReturnsService, *gorm.DB, func()) {
@@ -69,8 +73,9 @@ func setupReturnTestSale(t *testing.T, db *gorm.DB) (*models.Warehouse, *models.
 		t.Fatalf("Failed to create batch: %v", err)
 	}
 
-	// Create sale
-	sale := models.NewSale(warehouse.ID, "INV-TEST-001", time.Now(), 500.0, "completed", nil, nil, false, "cash", "in_store", false)
+	// Create sale with unique invoice number
+	counter := atomic.AddInt64(&returnsInvoiceCounter, 1)
+	sale := models.NewSale(warehouse.ID, fmt.Sprintf("INV-RET-%d", counter), time.Now(), 500.0, "completed", nil, nil, false, "cash", "in_store", false)
 	if err := db.Create(sale).Error; err != nil {
 		t.Fatalf("Failed to create sale: %v", err)
 	}
@@ -707,8 +712,9 @@ func TestReturnsService_GetMostReturnedProducts_RespectsLimit(t *testing.T) {
 			t.Fatalf("Failed to create batch: %v", err)
 		}
 
-		// Create sale
-		sale := models.NewSale(warehouse.ID, "INV-TEST-002", time.Now(), 500.0, "completed", nil, nil, false, "cash", "in_store", false)
+		// Create sale with unique invoice number
+		counter := atomic.AddInt64(&returnsInvoiceCounter, 1)
+		sale := models.NewSale(warehouse.ID, fmt.Sprintf("INV-RET-%d", counter), time.Now(), 500.0, "completed", nil, nil, false, "cash", "in_store", false)
 		if err := db.Create(sale).Error; err != nil {
 			t.Fatalf("Failed to create sale: %v", err)
 		}

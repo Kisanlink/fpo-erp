@@ -20,11 +20,13 @@ import (
 
 // ProductVariantService handles product variant business logic
 type ProductVariantService struct {
-	variantRepo *repositories.ProductVariantRepository
-	productRepo *repositories.ProductRepository
-	priceRepo   *repositories.ProductPriceRepository
-	s3Service   *S3Service
-	logger      interfaces.Logger
+	variantRepo       *repositories.ProductVariantRepository
+	productRepo       *repositories.ProductRepository
+	priceRepo         *repositories.ProductPriceRepository
+	categoryRepo      *repositories.CategoryRepository
+	s3Service         *S3Service
+	attachmentService *AttachmentService // For S3 cleanup on image updates/deletes
+	logger            interfaces.Logger
 }
 
 // NewProductVariantService creates a new product variant service
@@ -32,15 +34,19 @@ func NewProductVariantService(
 	variantRepo *repositories.ProductVariantRepository,
 	productRepo *repositories.ProductRepository,
 	priceRepo *repositories.ProductPriceRepository,
+	categoryRepo *repositories.CategoryRepository,
 	s3Service *S3Service,
+	attachmentService *AttachmentService,
 	logger interfaces.Logger,
 ) *ProductVariantService {
 	return &ProductVariantService{
-		variantRepo: variantRepo,
-		productRepo: productRepo,
-		priceRepo:   priceRepo,
-		s3Service:   s3Service,
-		logger:      logger,
+		variantRepo:       variantRepo,
+		productRepo:       productRepo,
+		priceRepo:         priceRepo,
+		categoryRepo:      categoryRepo,
+		s3Service:         s3Service,
+		attachmentService: attachmentService,
+		logger:            logger,
 	}
 }
 
@@ -60,22 +66,7 @@ func (s *ProductVariantService) CreateProductVariant(ctx context.Context, produc
 	}
 	s.logger.Debug("Product found")
 
-	// Validate SKU uniqueness if provided
-	if request.SKU != nil && *request.SKU != "" {
-		s.logger.Debug("Validating SKU uniqueness",
-			zap.String("sku", *request.SKU))
-		exists, err := s.variantRepo.SKUExists(*request.SKU)
-		if err != nil {
-			s.logger.Error("Failed to check SKU existence",
-				zap.Error(err))
-			return nil, err
-		}
-		if exists {
-			s.logger.Error("SKU already exists",
-				zap.String("sku", *request.SKU))
-			return nil, errors.NewConflictError("variant with SKU " + *request.SKU + " already exists")
-		}
-	}
+	// Note: SKU is auto-generated after variant creation, not provided in request
 
 	// Validate barcode uniqueness if provided
 	if request.Barcode != nil && *request.Barcode != "" {
@@ -96,9 +87,9 @@ func (s *ProductVariantService) CreateProductVariant(ctx context.Context, produc
 	}
 
 	// Create variant with required HSNCode and GSTRate (GST-only tax system)
+	// Note: SKU is auto-generated after variant creation inside transaction
 	variant := models.NewProductVariant(productID, request.VariantName, request.Quantity, request.PackSize, request.HSNCode, request.GSTRate)
 	variant.Description = request.Description
-	variant.SKU = request.SKU
 	variant.Barcode = request.Barcode
 	// Note: Prices are stored in product_prices table, not embedded in variant
 
@@ -127,6 +118,25 @@ func (s *ProductVariantService) CreateProductVariant(ctx context.Context, produc
 				zap.Error(err))
 			return err
 		}
+
+		// Auto-generate SKU (always generated, not user-provided)
+		categoryName := "Others" // Default category name
+		if product.CategoryID != nil && s.categoryRepo != nil {
+			category, err := s.categoryRepo.GetByID(*product.CategoryID)
+			if err == nil && category != nil {
+				categoryName = category.Name
+			}
+		}
+		generatedSKU := variant.GenerateSKU(categoryName)
+		variant.SKU = &generatedSKU
+		if err := tx.Model(variant).Update("sku", generatedSKU).Error; err != nil {
+			s.logger.Error("Failed to update variant SKU",
+				zap.Error(err))
+			return err
+		}
+		s.logger.Info("Auto-generated SKU for variant",
+			zap.String("variant_id", variant.ID),
+			zap.String("sku", generatedSKU))
 
 		// Create ProductPrice records for each price in request
 		if len(request.Prices) > 0 && s.priceRepo != nil {
@@ -391,6 +401,44 @@ func (s *ProductVariantService) UpdateProductVariant(ctx context.Context, id str
 		variant.IsActive = *request.IsActive
 	}
 	if request.Images != nil {
+		// S3 CLEANUP: Delete old images that are being removed
+		if s.attachmentService != nil {
+			// Parse old images from variant
+			var oldImages []string
+			if variant.Images != nil && *variant.Images != "" {
+				if err := json.Unmarshal([]byte(*variant.Images), &oldImages); err != nil {
+					s.logger.Warn("Failed to parse old images for cleanup",
+						zap.Error(err),
+						zap.String("variant_id", id))
+				}
+			}
+
+			// Find images that are being removed (in old but not in new)
+			newImagesMap := make(map[string]bool)
+			for _, img := range *request.Images {
+				newImagesMap[img] = true
+			}
+
+			for _, oldImg := range oldImages {
+				if !newImagesMap[oldImg] {
+					// This image is being removed, delete from S3
+					s.logger.Info("Image being removed from variant, cleaning up from S3",
+						zap.String("variant_id", id),
+						zap.String("attachment_id", oldImg))
+
+					if err := s.attachmentService.DeleteAttachment(ctx, oldImg); err != nil {
+						s.logger.Warn("Failed to delete removed image attachment",
+							zap.Error(err),
+							zap.String("attachment_id", oldImg))
+						// Continue with update - don't fail the main operation
+					} else {
+						s.logger.Info("Removed image deleted successfully from S3",
+							zap.String("attachment_id", oldImg))
+					}
+				}
+			}
+		}
+
 		// Marshal attachment IDs to JSON
 		imagesBytes, err := json.Marshal(*request.Images)
 		if err != nil {
@@ -529,13 +577,39 @@ func (s *ProductVariantService) DeleteProductVariant(ctx context.Context, id str
 	s.logger.Info("Deleting product variant",
 		zap.String("variant_id", id))
 
-	// Validate variant exists
-	_, err := s.variantRepo.GetByID(id)
+	// Validate variant exists and get current data
+	variant, err := s.variantRepo.GetByID(id)
 	if err != nil {
 		s.logger.Error("Variant not found",
 			zap.Error(err),
 			zap.String("variant_id", id))
 		return err
+	}
+
+	// S3 CLEANUP: Delete all images before soft-deleting the variant
+	if s.attachmentService != nil && variant.Images != nil && *variant.Images != "" {
+		var images []string
+		if err := json.Unmarshal([]byte(*variant.Images), &images); err != nil {
+			s.logger.Warn("Failed to parse variant images for cleanup",
+				zap.Error(err),
+				zap.String("variant_id", id))
+		} else {
+			s.logger.Info("Deleting variant images from S3",
+				zap.String("variant_id", id),
+				zap.Int("image_count", len(images)))
+
+			for _, imageID := range images {
+				if err := s.attachmentService.DeleteAttachment(ctx, imageID); err != nil {
+					s.logger.Warn("Failed to delete variant image attachment",
+						zap.Error(err),
+						zap.String("attachment_id", imageID))
+					// Continue with other images - don't fail the deletion
+				} else {
+					s.logger.Info("Variant image deleted from S3",
+						zap.String("attachment_id", imageID))
+				}
+			}
+		}
 	}
 
 	if err = s.variantRepo.Delete(id); err != nil {
@@ -632,6 +706,89 @@ func (s *ProductVariantService) validatePrices(prices []models.VariantPrice) err
 	}
 
 	return nil
+}
+
+// GetVariantsByCollaborator retrieves all variants for a collaborator
+func (s *ProductVariantService) GetVariantsByCollaborator(ctx context.Context, collaboratorID string) ([]models.ProductVariantResponse, error) {
+	s.logger.Info("Retrieving variants by collaborator",
+		zap.String("collaborator_id", collaboratorID))
+
+	// Get all variants for this collaborator
+	variants, err := s.variantRepo.GetByCollaboratorID(collaboratorID)
+	if err != nil {
+		s.logger.Error("Failed to retrieve variants by collaborator",
+			zap.Error(err),
+			zap.String("collaborator_id", collaboratorID))
+		return nil, err
+	}
+
+	var responses []models.ProductVariantResponse
+	for _, variant := range variants {
+		// Get product details
+		product, err := s.productRepo.GetByID(variant.ProductID)
+		if err != nil {
+			s.logger.Warn("Failed to get product for variant",
+				zap.Error(err),
+				zap.String("variant_id", variant.ID),
+				zap.String("product_id", variant.ProductID))
+			continue // Skip on error
+		}
+
+		response, err := s.buildProductVariantResponse(ctx, &variant, product)
+		if err != nil {
+			continue // Skip on error
+		}
+		responses = append(responses, *response)
+	}
+
+	s.logger.Info("Variants retrieved successfully by collaborator",
+		zap.String("collaborator_id", collaboratorID),
+		zap.Int("count", len(responses)))
+
+	return responses, nil
+}
+
+// GetVariantsByCollaboratorPaginated retrieves variants for a collaborator with pagination
+func (s *ProductVariantService) GetVariantsByCollaboratorPaginated(ctx context.Context, collaboratorID string, limit, offset int) ([]models.ProductVariantResponse, int64, error) {
+	s.logger.Info("Retrieving variants by collaborator with pagination",
+		zap.String("collaborator_id", collaboratorID),
+		zap.Int("limit", limit),
+		zap.Int("offset", offset))
+
+	// Get paginated variants for this collaborator
+	variants, total, err := s.variantRepo.GetByCollaboratorIDPaginated(collaboratorID, limit, offset)
+	if err != nil {
+		s.logger.Error("Failed to retrieve paginated variants by collaborator",
+			zap.Error(err),
+			zap.String("collaborator_id", collaboratorID))
+		return nil, 0, err
+	}
+
+	var responses []models.ProductVariantResponse
+	for _, variant := range variants {
+		// Get product details
+		product, err := s.productRepo.GetByID(variant.ProductID)
+		if err != nil {
+			s.logger.Warn("Failed to get product for variant",
+				zap.Error(err),
+				zap.String("variant_id", variant.ID),
+				zap.String("product_id", variant.ProductID))
+			continue // Skip on error
+		}
+
+		response, err := s.buildProductVariantResponse(ctx, &variant, product)
+		if err != nil {
+			continue // Skip on error
+		}
+		responses = append(responses, *response)
+	}
+
+	s.logger.Info("Paginated variants retrieved successfully by collaborator",
+		zap.String("collaborator_id", collaboratorID),
+		zap.Int("count", len(responses)),
+		zap.Int64("total", total))
+
+	return responses, total, nil
 }
 
 // buildProductVariantResponse builds a response with product details and presigned image URLs

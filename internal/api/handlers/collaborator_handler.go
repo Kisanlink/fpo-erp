@@ -512,8 +512,94 @@ func (h *CollaboratorHandler) SearchCollaborators(c *gin.Context) {
 	utils.PaginatedOKResponse(c, response, total, params.Limit, params.Offset)
 }
 
+// GetCollaboratorStats handles GET /api/v1/collaborators/:id/stats
+// @Summary Get Collaborator Transaction Statistics
+// @Description Retrieve transaction statistics for a specific collaborator
+// @Tags Collaborators
+// @Produce json
+// @Param id path string true "Collaborator ID (format: CLAB_xxxxxxxx)" example(CLAB_12345678)
+// @Success 200 {object} utils.Response{data=models.CollaboratorStats} "Collaborator statistics"
+// @Failure 400 {object} utils.ErrorResponseModel "Bad request"
+// @Failure 404 {object} utils.ErrorResponseModel "Collaborator not found"
+// @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
+// @Security BearerAuth
+// @Router /api/v1/collaborators/{id}/stats [get]
+func (h *CollaboratorHandler) GetCollaboratorStats(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get collaborator stats request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
+	// Get ID from URL
+	id := c.Param("id")
+	if id == "" {
+		utils.BadRequestResponse(c, "Collaborator ID is required", nil)
+		return
+	}
+
+	// 3. Service Call Log
+	h.logger.Debug("Calling service to get collaborator stats",
+		zap.String("collaborator_id", id))
+
+	// Get collaborator stats
+	stats, err := h.collaboratorService.GetCollaboratorStats(c.Request.Context(), id)
+	if err != nil {
+		// 4. Service Error Log
+		h.logger.Error("Service error getting collaborator stats",
+			zap.Error(err),
+			zap.String("collaborator_id", id))
+		utils.HandleServiceError(c, "Failed to retrieve collaborator stats", err)
+		return
+	}
+
+	// 5. Success Log
+	h.logger.Info("Collaborator stats retrieved successfully",
+		zap.String("collaborator_id", id),
+		zap.String("company_name", stats.CompanyName),
+		zap.Int64("po_count", stats.POCount),
+		zap.Int64("grn_count", stats.GRNCount))
+
+	utils.OKResponse(c, "Collaborator statistics retrieved successfully", stats)
+}
+
+// GetAllCollaboratorsStats handles GET /api/v1/collaborators/stats
+// @Summary Get All Collaborators Stats
+// @Description Retrieve transaction statistics for all collaborators (PO counts) and total PO count
+// @Tags Collaborators
+// @Produce json
+// @Success 200 {object} utils.Response{data=models.AllCollaboratorsStatsResponse} "All collaborators statistics"
+// @Failure 500 {object} utils.ErrorResponseModel "Internal server error"
+// @Security BearerAuth
+// @Router /api/v1/collaborators/stats [get]
+func (h *CollaboratorHandler) GetAllCollaboratorsStats(c *gin.Context) {
+	// 1. Entry Log
+	h.logger.Info("Handling get all collaborators stats request",
+		zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
+
+	// 3. Service Call Log
+	h.logger.Debug("Calling service to get all collaborators stats")
+
+	// Get all collaborators stats
+	stats, err := h.collaboratorService.GetAllCollaboratorsStats(c.Request.Context())
+	if err != nil {
+		// 4. Service Error Log
+		h.logger.Error("Service error getting all collaborators stats",
+			zap.Error(err))
+		utils.HandleServiceError(c, "Failed to retrieve all collaborators stats", err)
+		return
+	}
+
+	// 5. Success Log
+	h.logger.Info("All collaborators stats retrieved successfully",
+		zap.Int("collaborators_count", len(stats.Collaborators)),
+		zap.Int64("total_po_count", stats.TotalPOCount))
+
+	utils.OKResponse(c, "All collaborators statistics retrieved successfully", stats)
+}
+
 // RegisterRoutes registers all collaborator routes
-func (h *CollaboratorHandler) RegisterRoutes(router *gin.RouterGroup) {
+func (h *CollaboratorHandler) RegisterRoutes(router *gin.RouterGroup, variantHandler *ProductVariantHandler) {
 	collaborators := router.Group("/collaborators")
 	{
 		// Apply authentication middleware to all routes
@@ -526,7 +612,12 @@ func (h *CollaboratorHandler) RegisterRoutes(router *gin.RouterGroup) {
 		collaborators.GET("", h.aaaMiddleware.RequireOrgPermission("collaborator", "read"), h.GetAllCollaborators)
 		collaborators.GET("/active", h.aaaMiddleware.RequireOrgPermission("collaborator", "read"), h.GetActiveCollaborators)
 		collaborators.GET("/search", h.aaaMiddleware.RequireOrgPermission("collaborator", "read"), h.SearchCollaborators)
+		collaborators.GET("/stats", h.aaaMiddleware.RequireOrgPermission("collaborator", "read"), h.GetAllCollaboratorsStats)
 		collaborators.GET("/:id", h.aaaMiddleware.RequireOrgPermission("collaborator", "read"), h.GetCollaborator)
+		collaborators.GET("/:id/stats", h.aaaMiddleware.RequireOrgPermission("collaborator", "read"), h.GetCollaboratorStats)
+
+		// Nested route: Get variants by collaborator
+		collaborators.GET("/:id/variants", h.aaaMiddleware.RequireOrgPermission("variant", "read"), variantHandler.GetVariantsByCollaborator)
 
 		// Update: AAA HTTP service will validate addresses permissions internally
 		collaborators.PUT("/:id", h.aaaMiddleware.RequireOrgPermission("collaborator", "update"), h.UpdateCollaborator)

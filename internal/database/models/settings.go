@@ -9,8 +9,8 @@ import (
 type Setting struct {
 	Key           string    `gorm:"type:varchar(50);primaryKey" json:"key"`
 	Value         string    `gorm:"type:text;not null" json:"value"`
-	DisplayLabel  *string   `gorm:"type:varchar(100)" json:"display_label"`  // Label for invoice header (e.g., "GSTIN", "Fert. Lic.")
-	DisplayOrder  int       `gorm:"type:int;default:0" json:"display_order"` // Order in invoice header
+	DisplayLabel  *string   `gorm:"type:varchar(100)" json:"display_label"`            // Label for invoice header (e.g., "GSTIN", "Fert. Lic.")
+	DisplayOrder  int       `gorm:"type:int;default:0" json:"display_order"`           // Order in invoice header
 	IsHeaderField bool      `gorm:"type:boolean;default:false" json:"is_header_field"` // Show in invoice header?
 	CreatedAt     time.Time `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt     time.Time `gorm:"autoUpdateTime" json:"updated_at"`

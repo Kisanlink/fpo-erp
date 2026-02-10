@@ -67,4 +67,22 @@ type PurchaseOrderInterface interface {
 
 	// FindByExternalOrderID finds a purchase order by external order ID (for webhook integration)
 	FindByExternalOrderID(externalOrderID string) (*models.PurchaseOrder, error)
+
+	// CountByCollaborator counts purchase orders for a collaborator
+	CountByCollaborator(collaboratorID string) (int64, error)
+
+	// SumAmountByCollaborator calculates total amount for a collaborator
+	SumAmountByCollaborator(collaboratorID string) (float64, error)
+
+	// CountActiveByCollaborator counts active purchase orders for a collaborator
+	CountActiveByCollaborator(collaboratorID string) (int64, error)
+
+	// GetLatestPODate retrieves the date of the most recent purchase order for a collaborator
+	GetLatestPODate(collaboratorID string) (*string, error)
+
+	// GetAllCollaboratorsStats retrieves PO counts for all collaborators
+	GetAllCollaboratorsStats() (map[string]int64, error)
+
+	// GetTotalPOCount returns the total count of all purchase orders
+	GetTotalPOCount() (int64, error)
 }

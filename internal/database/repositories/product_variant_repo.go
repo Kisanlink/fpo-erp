@@ -168,3 +168,24 @@ func (r *ProductVariantRepository) GetByCollaboratorID(collaboratorID string) ([
 	}
 	return variants, nil
 }
+
+// GetByCollaboratorIDPaginated retrieves variants for a collaborator with pagination
+func (r *ProductVariantRepository) GetByCollaboratorIDPaginated(collaboratorID string, limit, offset int) ([]models.ProductVariant, int64, error) {
+	var variants []models.ProductVariant
+	var total int64
+
+	// Use JSON contains operator for PostgreSQL
+	query := r.db.Model(&models.ProductVariant{}).
+		Where("collaborator_ids::jsonb @> ?::jsonb", `["`+collaboratorID+`"]`).
+		Where("is_active = ?", true)
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to count variants by collaborator")
+	}
+
+	if err := query.Limit(limit).Offset(offset).Order("created_at DESC").Find(&variants).Error; err != nil {
+		return nil, 0, errors.NewInternalServerError("Failed to retrieve variants by collaborator")
+	}
+
+	return variants, total, nil
+}

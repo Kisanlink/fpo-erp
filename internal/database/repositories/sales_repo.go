@@ -32,6 +32,11 @@ func (r *SalesRepository) CreateSaleItemWithTx(tx *gorm.DB, item *models.SaleIte
 	return tx.Create(item).Error
 }
 
+// UpdateSaleItemWithTx updates a sale item within a transaction
+func (r *SalesRepository) UpdateSaleItemWithTx(tx *gorm.DB, item *models.SaleItem) error {
+	return tx.Save(item).Error
+}
+
 // UpdateSaleWithTx updates a sale within a transaction
 func (r *SalesRepository) UpdateSaleWithTx(tx *gorm.DB, sale *models.Sale) error {
 	return tx.Save(sale).Error
@@ -54,7 +59,7 @@ func (r *SalesRepository) CreateSale(sale *models.Sale) error {
 
 func (r *SalesRepository) GetSaleByID(id string) (*models.Sale, error) {
 	var sale models.Sale
-	err := r.db.Preload("Items").First(&sale, "id = ?", id).Error
+	err := r.db.Preload("Items").Preload("Items.Batch").Preload("Items.Batch.Variant").Preload("Items.Batch.Variant.Product").First(&sale, "id = ?", id).Error
 	return &sale, err
 }
 
@@ -110,6 +115,24 @@ func (r *SalesRepository) GetSalesByStatus(status string, limit, offset int) ([]
 
 	// Get paginated records
 	err := r.db.Preload("Items").Where("status = ?", status).
+		Order("created_at DESC").Limit(limit).Offset(offset).Find(&sales).Error
+	return sales, total, err
+}
+
+// GetSalesByCustomerPhone retrieves sales filtered by customer phone number (Issue 7)
+func (r *SalesRepository) GetSalesByCustomerPhone(phone string, limit, offset int) ([]models.Sale, int64, error) {
+	var sales []models.Sale
+	var total int64
+
+	query := r.db.Model(&models.Sale{}).Where("customer_phone = ?", phone)
+
+	// Get total count
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Get paginated records (no Items preload for list performance)
+	err := r.db.Where("customer_phone = ?", phone).
 		Order("created_at DESC").Limit(limit).Offset(offset).Find(&sales).Error
 	return sales, total, err
 }

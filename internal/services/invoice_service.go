@@ -100,17 +100,17 @@ type BankDetailsJSON struct {
 
 // InvoiceLineItem represents a line item for invoice rendering
 type InvoiceLineItem struct {
-	SNo          int
-	ItemName     string
-	HSNCode      string
-	Units        string
-	Quantity     int64
-	Rate         float64
-	NetValue     float64
-	GSTRate      float64
-	CGSTAmount   float64
-	SGSTAmount   float64
-	TotalValue   float64
+	SNo        int
+	ItemName   string
+	HSNCode    string
+	Units      string
+	Quantity   int64
+	Rate       float64
+	NetValue   float64
+	GSTRate    float64
+	CGSTAmount float64
+	SGSTAmount float64
+	TotalValue float64
 }
 
 // GenerateInvoicePDF generates a PDF invoice for a sale
@@ -208,14 +208,17 @@ func (s *InvoiceService) buildLineItems(sale *models.Sale) ([]InvoiceLineItem, e
 			return nil, errors.NewInternalServerError("Failed to get product info")
 		}
 
-		// Build item name: Product Name + Variant (e.g., "NFL KISAN HEXA 500 ML")
+		// Build item name: Product Name + Variant quantity (e.g., "NFL KISAN HEXA 500 ML")
 		itemName := product.Name
 		if variant.Quantity != "" {
 			itemName = fmt.Sprintf("%s %s", product.Name, variant.Quantity)
 		}
 
-		// Calculate net value (before tax) = Rate × Quantity
+		// Calculate net value (before tax) = Excl. Rate × Quantity
 		netValue := saleItem.SellingPrice * float64(saleItem.Quantity)
+
+		// Total value including tax (for this line)
+		totalValue := netValue + saleItem.CGSTAmount + saleItem.SGSTAmount + saleItem.IGSTAmount
 
 		items = append(items, InvoiceLineItem{
 			SNo:        i + 1,
@@ -223,12 +226,12 @@ func (s *InvoiceService) buildLineItems(sale *models.Sale) ([]InvoiceLineItem, e
 			HSNCode:    variant.HSNCode,
 			Units:      variant.PackSize,
 			Quantity:   saleItem.Quantity,
-			Rate:       saleItem.SellingPrice,
+			Rate:       saleItem.SellingPrice, // Excl. Rate
 			NetValue:   netValue,
 			GSTRate:    variant.GSTRate,
 			CGSTAmount: saleItem.CGSTAmount,
 			SGSTAmount: saleItem.SGSTAmount,
-			TotalValue: saleItem.LineTotal,
+			TotalValue: totalValue,
 		})
 	}
 
@@ -330,7 +333,7 @@ func (s *InvoiceService) renderPDF(
 	s.renderInvoiceDetails(pdf, sale, headerFields, warehouse)
 
 	// =============== RECEIVER SECTION ===============
-	s.renderReceiverSection(pdf, sale)
+	s.renderReceiverSection(pdf, sale, warehouse)
 
 	// =============== LINE ITEMS TABLE ===============
 	totals := s.renderLineItemsTable(pdf, lineItems)
@@ -451,123 +454,186 @@ func detectImageType(data []byte) string {
 	return ""
 }
 
-// renderInvoiceDetails renders the invoice number, date, and dynamic header fields
-func (s *InvoiceService) renderInvoiceDetails(pdf *gofpdf.Fpdf, sale *models.Sale, headerFields []models.Setting, warehouse *models.Warehouse) {
-	// Draw a box for invoice details
+// renderInvoiceDetails renders the invoice number, date, and header fields
+func (s *InvoiceService) renderInvoiceDetails(
+	pdf *gofpdf.Fpdf,
+	sale *models.Sale,
+	headerFields []models.Setting,
+	warehouse *models.Warehouse,
+) {
 	pdf.SetDrawColor(0, 0, 0)
 	pdf.SetLineWidth(0.3)
+	pdf.SetFont("Arial", "", 10)
 
+	leftX := 10.0
+	rightX := 105.0
+	rowH := 6.0
 	y := pdf.GetY()
 
-	// Left side - Invoice details
-	pdf.SetFont("Arial", "", 10)
-	pdf.SetXY(10, y)
-	pdf.CellFormat(95, 6, fmt.Sprintf("Invoice No: %s", sale.InvoiceNumber), "LT", 0, "L", false, 0, "")
-
-	// Right side - Header fields (GSTIN, licenses, etc.)
-	pdf.SetXY(105, y)
-	if len(headerFields) > 0 {
-		firstField := headerFields[0]
-		label := ""
-		if firstField.DisplayLabel != nil {
-			label = *firstField.DisplayLabel
+	// Safe header accessor
+	getHeader := func(idx int) string {
+		if idx >= 0 && idx < len(headerFields) {
+			f := headerFields[idx]
+			if f.DisplayLabel != nil && *f.DisplayLabel != "" {
+				return fmt.Sprintf("%s: %s", *f.DisplayLabel, f.Value)
+			}
+			return f.Value
 		}
-		pdf.CellFormat(95, 6, fmt.Sprintf("%s: %s", label, firstField.Value), "RT", 0, "L", false, 0, "")
-	} else {
-		pdf.CellFormat(95, 6, "", "RT", 0, "L", false, 0, "")
+		return ""
 	}
 
-	y += 6
+	// -------- Row 1: Invoice No | GSTIN --------
+	pdf.SetXY(leftX, y)
+	pdf.CellFormat(95, rowH, fmt.Sprintf("Invoice No: %s", sale.InvoiceNumber), "LT", 0, "L", false, 0, "")
+	pdf.SetXY(rightX, y)
+	pdf.CellFormat(95, rowH, getHeader(0), "RT", 0, "L", false, 0, "")
+	y += rowH
 
-	// Row 2
-	pdf.SetXY(10, y)
-	pdf.CellFormat(95, 6, fmt.Sprintf("Invoice Date: %s", sale.SaleDate.Format("02/01/2006")), "L", 0, "L", false, 0, "")
-	pdf.SetXY(105, y)
-	if len(headerFields) > 1 {
-		field := headerFields[1]
-		label := ""
-		if field.DisplayLabel != nil {
-			label = *field.DisplayLabel
-		}
-		pdf.CellFormat(95, 6, fmt.Sprintf("%s: %s", label, field.Value), "R", 0, "L", false, 0, "")
-	} else {
-		pdf.CellFormat(95, 6, "", "R", 0, "L", false, 0, "")
+	// -------- Row 2: Invoice Date | Fert. Lic. --------
+	pdf.SetXY(leftX, y)
+	pdf.CellFormat(
+		95,
+		rowH,
+		fmt.Sprintf("Invoice Date: %s", sale.SaleDate.Format("02/01/2006")),
+		"L",
+		0,
+		"L",
+		false,
+		0,
+		"",
+	)
+	pdf.SetXY(rightX, y)
+	pdf.CellFormat(95, rowH, getHeader(1), "R", 0, "L", false, 0, "")
+	y += rowH
+
+	// -------- Row 3+: State | Pest & Seeds Lic (NO GAP, Pest on same row as State) --------
+	state := "Telangana"
+	if warehouse.State != nil && *warehouse.State != "" {
+		state = *warehouse.State
 	}
 
-	y += 6
-
-	// Row 3 - State and more header fields
-	pdf.SetXY(10, y)
-	warehouseState := "Telangana" // Default
-	// In production, this would come from warehouse.Address via AAA service
-	pdf.CellFormat(95, 6, fmt.Sprintf("State: %s", warehouseState), "LB", 0, "L", false, 0, "")
-	pdf.SetXY(105, y)
+	var pestLic, seedsLic string
 	if len(headerFields) > 2 {
-		field := headerFields[2]
-		label := ""
-		if field.DisplayLabel != nil {
-			label = *field.DisplayLabel
+		val := headerFields[2].Value
+
+		if strings.Contains(val, "Pest. Lic.:") {
+			p := strings.Split(val, "Pest. Lic.:")
+			if len(p) > 1 {
+				// take up to Seeds Lic if present
+				pestLic = strings.TrimSpace(strings.Split(p[1], "Seeds Lic.:")[0])
+			}
 		}
-		pdf.CellFormat(95, 6, fmt.Sprintf("%s: %s", label, field.Value), "RB", 0, "L", false, 0, "")
-	} else {
-		pdf.CellFormat(95, 6, "", "RB", 0, "L", false, 0, "")
+		if strings.Contains(val, "Seeds Lic.:") {
+			spl := strings.Split(val, "Seeds Lic.:")
+			if len(spl) > 1 {
+				seedsLic = strings.TrimSpace(spl[1])
+			}
+		}
 	}
 
-	// Additional header fields (4+)
-	for i := 3; i < len(headerFields); i++ {
-		y += 6
-		pdf.SetXY(105, y)
-		field := headerFields[i]
-		label := ""
-		if field.DisplayLabel != nil {
-			label = *field.DisplayLabel
-		}
-		pdf.CellFormat(95, 6, fmt.Sprintf("%s: %s", label, field.Value), "RB", 0, "L", false, 0, "")
-	}
-
-	pdf.Ln(8)
+	// We always want State cell to cover exactly 2 rows visually (Row3 + Row4),
+	// because Pest is Row3 and Seeds is Row4 (even if Seeds is empty we still close borders cleanly).
+	rows := 2
+	pdf.SetXY(leftX, y)
+	pdf.CellFormat(95, float64(rows)*rowH, fmt.Sprintf("State: %s", state), "LB", 0, "L", false, 0, "")
+	pdf.SetXY(rightX, y)
+	rightBorderRow3 := "R"
+	pdf.CellFormat(95, rowH, "Pest. Lic.: "+pestLic, rightBorderRow3, 0, "L", false, 0, "")
+	pdf.SetXY(rightX, y+rowH)
+	pdf.CellFormat(95, rowH, "Seeds Lic.: "+seedsLic, "RB", 0, "L", false, 0, "")
+	y += float64(rows) * rowH
+	pdf.SetY(y)
+	pdf.Ln(5)
 }
 
-// renderReceiverSection renders the "Billed To" section
-func (s *InvoiceService) renderReceiverSection(pdf *gofpdf.Fpdf, sale *models.Sale) {
+// renderReceiverSection renders the billed-to and place-of-supply sections side by side
+func (s *InvoiceService) renderReceiverSection(pdf *gofpdf.Fpdf, sale *models.Sale, warehouse *models.Warehouse) {
 	y := pdf.GetY()
+	leftX := 10.0
+	rightX := 105.0
+	width := 95.0
 
+	// Header row for both columns
 	pdf.SetFont("Arial", "B", 10)
-	pdf.CellFormat(190, 6, "Details of Receiver (Billed To)", "LTR", 1, "L", false, 0, "")
+	pdf.SetXY(leftX, y)
+	pdf.CellFormat(width, 6, "Details of Receiver (Billed To)", "LTR", 0, "L", false, 0, "")
+	pdf.SetXY(rightX, y)
+	pdf.CellFormat(width, 6, "Place of Supply / Shipped To", "LTR", 0, "L", false, 0, "")
+	pdf.Ln(-1)
 
-	pdf.SetFont("Arial", "", 10)
+	pdf.SetFont("Arial", "", 9)
+	pdf.SetY(y + 6)
 
-	// Customer Name
-	customerName := "Walk-in Customer"
+	// ----- Left column: Billed To -----
+	leftY := pdf.GetY()
+
+	billedName := "Walk-in Customer"
 	if sale.CustomerName != nil && *sale.CustomerName != "" {
-		customerName = *sale.CustomerName
+		billedName = *sale.CustomerName
 	}
-	pdf.CellFormat(190, 6, customerName, "LR", 1, "L", false, 0, "")
 
-	// Customer Phone (always render for consistent layout)
 	phoneText := "N/A"
 	if sale.CustomerPhone != nil && *sale.CustomerPhone != "" {
 		phoneText = *sale.CustomerPhone
 	}
-	pdf.CellFormat(190, 6, fmt.Sprintf("Phone: %s", phoneText), "LR", 1, "L", false, 0, "")
 
-	// Member status
 	memberStatus := "Non-Member"
 	if sale.IsOrgMember {
 		memberStatus = "Member"
 	}
-	pdf.CellFormat(190, 6, fmt.Sprintf("Customer Type: %s", memberStatus), "LRB", 1, "L", false, 0, "")
 
-	_ = y // Avoid unused variable warning
-	pdf.Ln(3)
+	leftLines := fmt.Sprintf("%s\nPhone: %s\nCustomer Type: %s",
+		billedName,
+		phoneText,
+		memberStatus,
+	)
+
+	pdf.SetXY(leftX, leftY)
+	pdf.MultiCell(width, 4.5, leftLines, "L", "L", false)
+	leftBottomY := pdf.GetY()
+
+	// ----- Right column: Place of Supply / Shipped To -----
+	// Get place of supply from warehouse state or default
+	placeOfSupply := "Telangana" // Default fallback
+	if warehouse.State != nil && *warehouse.State != "" {
+		placeOfSupply = *warehouse.State
+	}
+	shipToName := billedName
+	shipToAddress := "" // Customer address - can be extended when available in sale model
+	shipToGSTIN := ""   // Customer GSTIN - can be extended when available in sale model
+
+	rightLines := fmt.Sprintf("Place of Supply: %s\n%s", placeOfSupply, shipToName)
+	if shipToAddress != "" {
+		rightLines = fmt.Sprintf("%s\n%s", rightLines, shipToAddress)
+	}
+	if shipToGSTIN != "" {
+		rightLines = fmt.Sprintf("%s\nGSTIN: %s", rightLines, shipToGSTIN)
+	}
+
+	pdf.SetXY(rightX, leftY)
+	pdf.MultiCell(width, 4.5, rightLines, "R", "L", false)
+	rightBottomY := pdf.GetY()
+
+	// Determine bottom of the two-column block
+	bottomY := leftBottomY
+	if rightBottomY > bottomY {
+		bottomY = rightBottomY
+	}
+
+	// Draw rectangles around both columns to mimic two boxes
+	pdf.Rect(leftX, y+6, width, bottomY-(y+6), "")
+	pdf.Rect(rightX, y+6, width, bottomY-(y+6), "")
+
+	pdf.SetY(bottomY)
+	pdf.Ln(4)
 }
 
 // InvoiceTotals holds calculated totals for the invoice
 type InvoiceTotals struct {
-	TotalNetValue  float64
-	TotalCGST      float64
-	TotalSGST      float64
-	TotalAmount    float64
+	TotalNetValue float64
+	TotalCGST     float64
+	TotalSGST     float64
+	TotalAmount   float64
 }
 
 // renderLineItemsTable renders the items table
@@ -576,9 +642,34 @@ func (s *InvoiceService) renderLineItemsTable(pdf *gofpdf.Fpdf, items []InvoiceL
 	pdf.SetFont("Arial", "B", 8)
 	pdf.SetFillColor(240, 240, 240)
 
-	// Column widths
-	colWidths := []float64{10, 50, 20, 15, 12, 20, 20, 12, 15, 16}
-	headers := []string{"S.No", "Item Name", "HSN Code", "Units", "Qty", "Rate", "Net Value", "Rate%", "CGST", "SGST"}
+	// Column widths (sum should fit within ~190mm)
+	colWidths := []float64{
+		8,  // S.No
+		45, // Item Name
+		18, // HSN Code
+		12, // Units
+		8,  // Qty
+		18, // Excl. Rate
+		18, // Net Value
+		10, // GST%
+		13, // CGST
+		13, // SGST
+		18, // Total Value
+	}
+
+	headers := []string{
+		"S.No",
+		"Item Name",
+		"HSN Code",
+		"Units",
+		"Qty",
+		"Excl. Rate",
+		"Net Value",
+		"GST%",
+		"CGST",
+		"SGST",
+		"Total Value",
+	}
 
 	for i, header := range headers {
 		pdf.CellFormat(colWidths[i], 7, header, "1", 0, "C", true, 0, "")
@@ -602,6 +693,7 @@ func (s *InvoiceService) renderLineItemsTable(pdf *gofpdf.Fpdf, items []InvoiceL
 		pdf.CellFormat(colWidths[7], 6, fmt.Sprintf("%.2f", item.GSTRate), "1", 0, "C", false, 0, "")
 		pdf.CellFormat(colWidths[8], 6, fmt.Sprintf("%.2f", item.CGSTAmount), "1", 0, "R", false, 0, "")
 		pdf.CellFormat(colWidths[9], 6, fmt.Sprintf("%.2f", item.SGSTAmount), "1", 0, "R", false, 0, "")
+		pdf.CellFormat(colWidths[10], 6, fmt.Sprintf("%.2f", item.TotalValue), "1", 0, "R", false, 0, "")
 		pdf.Ln(-1)
 
 		totals.TotalNetValue += item.NetValue
@@ -610,7 +702,7 @@ func (s *InvoiceService) renderLineItemsTable(pdf *gofpdf.Fpdf, items []InvoiceL
 		totals.TotalAmount += item.TotalValue
 	}
 
-	pdf.Ln(3)
+	pdf.Ln(4)
 	return totals
 }
 

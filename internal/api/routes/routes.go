@@ -96,12 +96,12 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	warehouseService := services.NewWarehouseService(warehouseRepo, addressClient, logger)
 	productService := services.NewProductService(productRepo, priceRepo, productVariantRepo, categoryRepo, s3Service, logger)
 	priceService := services.NewProductPriceService(priceRepo, productRepo, productVariantRepo, logger)
-	inventoryService := services.NewInventoryService(inventoryRepo, warehouseRepo, productRepo, productVariantRepo, priceRepo, addressClient, logger)
+	inventoryService := services.NewInventoryService(inventoryRepo, warehouseRepo, productRepo, productVariantRepo, priceRepo, addressClient, s3Service, logger)
 	discountsService := services.NewDiscountsService(discountRepo, productRepo, warehouseRepo, logger)
 	taxService := services.NewTaxService(taxRepo, logger)
 	salesService := services.NewSalesService(salesRepo, productRepo, inventoryRepo, productVariantRepo, priceRepo, discountRepo, taxRepo, warehouseRepo, saleCancellationRepo, logger)
 	returnsService := services.NewReturnsService(returnsRepo, salesRepo, inventoryRepo, logger)
-	attachmentService := services.NewAttachmentService(attachmentRepo, productVariantRepo, s3Service, logger)
+	attachmentService := services.NewAttachmentService(attachmentRepo, productVariantRepo, collaboratorRepo, purchaseOrderRepo, grnRepo, s3Service, logger)
 	refundPoliciesService := services.NewRefundPoliciesService(refundPoliciesRepo, logger)
 	bankPaymentsService := services.NewBankPaymentsService(bankPaymentsRepo, salesRepo, returnsRepo, logger)
 
@@ -112,16 +112,19 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 	}
 	collaboratorService := services.NewCollaboratorService(
 		collaboratorRepo,
+		purchaseOrderRepo,
+		grnRepo,
 		addressClient,
 		s3Service,
+		attachmentService,
 		ecommerceClient,
 		ecommerceTimeout,
 		cfg.Ecommerce.AuthToken,
 		logger,
 	)
-	productVariantService := services.NewProductVariantService(productVariantRepo, productRepo, priceRepo, s3Service, logger)
-	purchaseOrderService := services.NewPurchaseOrderService(purchaseOrderRepo, collaboratorRepo, warehouseRepo, productRepo, productVariantRepo, grnRepo, inventoryRepo, addressClient, logger)
-	grnService := services.NewGRNService(grnRepo, purchaseOrderRepo, warehouseRepo, productRepo, inventoryRepo, logger)
+	productVariantService := services.NewProductVariantService(productVariantRepo, productRepo, priceRepo, categoryRepo, s3Service, attachmentService, logger)
+	purchaseOrderService := services.NewPurchaseOrderService(purchaseOrderRepo, collaboratorRepo, warehouseRepo, productRepo, productVariantRepo, grnRepo, inventoryRepo, addressClient, s3Service, logger)
+	grnService := services.NewGRNService(grnRepo, purchaseOrderRepo, warehouseRepo, productRepo, inventoryRepo, s3Service, logger)
 
 	// Category services
 	categoryService := services.NewCategoryService(categoryRepo, subcategoryRepo, logger)
@@ -234,6 +237,20 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 
 	// API v1 routes
 	v1 := router.Group("/api/v1")
+
+	// CRITICAL: Authentication must run FIRST to set organization_id in context
+	// RequireDeploymentOrg depends on organization_id being set by Authenticate
+	v1.Use(aaaMiddleware.Authenticate())
+
+	// Apply deployment-level organization validation middleware to ALL authenticated routes
+	// This ensures tokens can only access the FPO deployment they belong to.
+	// Requires EXPECTED_ORG_ID environment variable to be set per deployment.
+	// See: internal/aaa/middleware.go RequireDeploymentOrg() for details.
+	v1.Use(aaaMiddleware.RequireDeploymentOrg())
+
+	// Also validate X-Organization-Id header matches token (optional but recommended)
+	v1.Use(aaaMiddleware.ValidateOrganizationHeader())
+
 	{
 		// Register all handlers
 		warehouseHandler.RegisterRoutes(v1)
@@ -249,7 +266,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aaaMidd
 		bankPaymentsHandler.RegisterRoutes(v1)
 
 		// Procurement handlers
-		collaboratorHandler.RegisterRoutes(v1)
+		collaboratorHandler.RegisterRoutes(v1, productVariantHandler)
 		productVariantHandler.RegisterRoutes(v1)
 		priceHandler.RegisterRoutes(v1)
 		purchaseOrderHandler.RegisterRoutes(v1)

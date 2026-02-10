@@ -120,13 +120,19 @@ func TestInventoryRepo_ReleaseBatchReservation_InsufficientReserved(t *testing.T
 	batch := createTestBatch(t, repo, "WH-001", "VAR-001", 100, 20)
 
 	// ACT: Try to release 30 (more than reserved 20)
+	// Note: The repository is idempotent - it does not error on insufficient reservation
+	// This handles legacy sales and already-released reservations gracefully
 	tx := db.Begin()
 	err := repo.ReleaseBatchReservationWithTx(tx, batch.ID, 30)
-	tx.Rollback()
+	tx.Commit()
 
-	// ASSERT
-	testutils.AssertError(t, err, "Should return error for insufficient reserved")
-	testutils.AssertContains(t, err.Error(), "Cannot release more than reserved", "Error should mention cannot release")
+	// ASSERT: No error (idempotent operation)
+	testutils.AssertNoError(t, err, "Should not return error (idempotent operation)")
+
+	// Verify reserved quantity is unchanged (conditional update didn't match)
+	updatedBatch, err := repo.GetBatchByID(batch.ID)
+	testutils.AssertNoError(t, err, "GetBatchByID should succeed")
+	testutils.AssertEqual(t, updatedBatch.ReservedQuantity, int64(20), "Reserved should remain 20 (update skipped)")
 }
 
 // =============================================================================

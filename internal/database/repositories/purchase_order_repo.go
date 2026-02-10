@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"fmt"
+	"time"
 
 	"kisanlink-erp/internal/database/models"
 	"kisanlink-erp/internal/errors"
@@ -260,4 +261,93 @@ func (r *PurchaseOrderRepository) FindByExternalOrderID(externalOrderID string) 
 		return nil, errors.NewInternalServerError("Failed to find purchase order by external_order_id")
 	}
 	return &po, nil
+}
+
+// CountByCollaborator counts purchase orders for a collaborator
+func (r *PurchaseOrderRepository) CountByCollaborator(collaboratorID string) (int64, error) {
+	var count int64
+	if err := r.db.Model(&models.PurchaseOrder{}).Where("collaborator_id = ?", collaboratorID).Count(&count).Error; err != nil {
+		return 0, errors.NewInternalServerError("Failed to count purchase orders by collaborator")
+	}
+	return count, nil
+}
+
+// SumAmountByCollaborator calculates total amount for a collaborator
+func (r *PurchaseOrderRepository) SumAmountByCollaborator(collaboratorID string) (float64, error) {
+	var total float64
+	if err := r.db.Model(&models.PurchaseOrder{}).
+		Where("collaborator_id = ?", collaboratorID).
+		Select("COALESCE(SUM(total_amount), 0)").
+		Row().Scan(&total); err != nil {
+		return 0, errors.NewInternalServerError("Failed to sum amounts by collaborator")
+	}
+	return total, nil
+}
+
+// CountActiveByCollaborator counts active purchase orders for a collaborator (not paid or cancelled)
+func (r *PurchaseOrderRepository) CountActiveByCollaborator(collaboratorID string) (int64, error) {
+	var count int64
+	if err := r.db.Model(&models.PurchaseOrder{}).
+		Where("collaborator_id = ? AND status NOT IN ?", collaboratorID, []string{"paid", "cancelled"}).
+		Count(&count).Error; err != nil {
+		return 0, errors.NewInternalServerError("Failed to count active purchase orders by collaborator")
+	}
+	return count, nil
+}
+
+// GetLatestPODate retrieves the date of the most recent purchase order for a collaborator
+func (r *PurchaseOrderRepository) GetLatestPODate(collaboratorID string) (*string, error) {
+	var dates []time.Time
+
+	err := r.db.Model(&models.PurchaseOrder{}).
+		Where("collaborator_id = ?", collaboratorID).
+		Order("created_at DESC").
+		Limit(1).
+		Pluck("created_at", &dates).Error
+
+	if err != nil {
+		return nil, errors.NewInternalServerError("Failed to get latest purchase order date")
+	}
+
+	// If no results, return nil (valid state - no purchase orders yet)
+	if len(dates) == 0 {
+		return nil, nil
+	}
+
+	// Format the time to RFC3339 string (ISO 8601 format)
+	dateStr := dates[0].Format(time.RFC3339)
+	return &dateStr, nil
+}
+
+// GetAllCollaboratorsStats retrieves PO counts for all collaborators efficiently
+func (r *PurchaseOrderRepository) GetAllCollaboratorsStats() (map[string]int64, error) {
+	type statsResult struct {
+		CollaboratorID string
+		POCount        int64
+	}
+
+	var results []statsResult
+	err := r.db.Model(&models.PurchaseOrder{}).
+		Select("collaborator_id, COUNT(*) as po_count").
+		Group("collaborator_id").
+		Scan(&results).Error
+	if err != nil {
+		return nil, errors.NewInternalServerError("Failed to get collaborators stats")
+	}
+
+	statsMap := make(map[string]int64, len(results))
+	for _, result := range results {
+		statsMap[result.CollaboratorID] = result.POCount
+	}
+
+	return statsMap, nil
+}
+
+// GetTotalPOCount returns the total count of all purchase orders
+func (r *PurchaseOrderRepository) GetTotalPOCount() (int64, error) {
+	var total int64
+	if err := r.db.Model(&models.PurchaseOrder{}).Count(&total).Error; err != nil {
+		return 0, errors.NewInternalServerError("Failed to get total purchase order count")
+	}
+	return total, nil
 }

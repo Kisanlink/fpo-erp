@@ -16,8 +16,8 @@ type GRN struct {
 	// GRN Identification
 	GRNNumber string `gorm:"type:varchar(50);unique;not null" json:"grn_number"` // User-provided from vendor PDF
 
-	// Document Attachment
-	GRNDocument *string `gorm:"type:varchar(100)" json:"grn_document"` // Attachment ID (ATT_xxxxxxxx) for vendor's GRN PDF
+	// Document attachments (JSON array of S3 keys, auto-synced on upload)
+	Documents *string `gorm:"type:text" json:"documents"` // JSON array: ["grns/{id}/file1.pdf", "grns/{id}/file2.pdf"]
 
 	// Relationships
 	POID        string `gorm:"type:varchar(100);not null;index" json:"po_id"`
@@ -119,7 +119,7 @@ func (GRNItem) TableName() string {
 type GRNResponse struct {
 	ID            string            `json:"id"`
 	GRNNumber     string            `json:"grn_number"`
-	GRNDocument   *string           `json:"grn_document"` // Attachment ID for vendor's GRN PDF
+	Documents     []string          `json:"documents,omitempty"` // Array of presigned URLs (auto-synced)
 	POID          string            `json:"po_id"`
 	PONumber      string            `json:"po_number"`
 	WarehouseID   string            `json:"warehouse_id"`
@@ -179,8 +179,8 @@ type CreateGRNItemRequest struct {
 }
 
 // UpdateGRNRequest represents the request to update a GRN
+// Note: Documents are auto-synced via attachments API (POST /api/v1/attachments with entity_type="grn")
 type UpdateGRNRequest struct {
-	GRNDocument   *string `json:"grn_document,omitempty"` // Attachment ID for vendor's GRN PDF
 	Remarks       *string `json:"remarks,omitempty"`
 	QualityStatus *string `json:"quality_status,omitempty"` // accepted, rejected, partial
 }

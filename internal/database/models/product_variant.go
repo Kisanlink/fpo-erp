@@ -1,6 +1,9 @@
 package models
 
 import (
+	"fmt"
+	"strings"
+
 	"kisanlink-erp/internal/constants"
 
 	"github.com/Kisanlink/kisanlink-db/pkg/base"
@@ -104,6 +107,26 @@ func (ProductVariant) TableName() string {
 	return "product_variants"
 }
 
+// GenerateSKU generates an idempotent SKU from category name and variant ID
+// Pattern: SKU-{CATEGORY_CODE}-{8-CHAR-HASH}
+// Example: SKU-VEG-00000123
+func (v *ProductVariant) GenerateSKU(categoryName string) string {
+	categoryCode := "OTH" // default for "Others"
+	if len(categoryName) >= 3 {
+		categoryCode = strings.ToUpper(categoryName[:3])
+	} else if len(categoryName) > 0 {
+		categoryCode = strings.ToUpper(categoryName)
+	}
+
+	// Extract last 8 characters from variant ID as hash
+	hashStr := v.ID
+	if len(hashStr) > 8 {
+		hashStr = hashStr[len(hashStr)-8:]
+	}
+
+	return fmt.Sprintf("SKU-%s-%s", categoryCode, hashStr)
+}
+
 // ProductVariantResponse represents the API response for product variant
 type ProductVariantResponse struct {
 	ID                 string                 `json:"id"`
@@ -129,12 +152,12 @@ type ProductVariantResponse struct {
 }
 
 // CreateProductVariantRequest represents the request to create a product variant
+// Note: SKU is auto-generated, not accepted in request body
 type CreateProductVariantRequest struct {
 	VariantName        string         `json:"variant_name" binding:"required"`
 	Description        *string        `json:"description"`
 	Quantity           string         `json:"quantity" binding:"required"`
 	PackSize           string         `json:"pack_size" binding:"required"`
-	SKU                *string        `json:"sku"`
 	Barcode            *string        `json:"barcode"`
 	HSNCode            string         `json:"hsn_code" binding:"required"`     // Required: HSN code for GST classification
 	GSTRate            float64        `json:"gst_rate" binding:"min=0,max=28"` // Required: GST rate (0, 5, 12, 18, or 28)

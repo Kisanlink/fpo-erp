@@ -9851,3 +9851,6 @@ local-cookie-keys/
 
 # Local header keys
 header-keys
+
+# Git worktrees for parallel agent workflow
+worktrees/

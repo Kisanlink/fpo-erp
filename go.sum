@@ -1,9 +1,9 @@
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.6-20250613105001-9f2d3c737feb.1 h1:AUL6VF5YWL01j/1H/DQbPUSDkEwYqwVCNw7yhbpOxSQ=
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.6-20250613105001-9f2d3c737feb.1/go.mod h1:avRlCjnFzl98VPaeCtJ24RrV/wwHFzB8sWXhj26+n/U=
-github.com/Kisanlink/aaa-service/v2 v2.1.6 h1:/hxTDU4jJmCVUBEMMl8y9PtGTUE5AX7ryuMXo7gDwHA=
-github.com/Kisanlink/aaa-service/v2 v2.1.6/go.mod h1:amdB2vTtcXr/wAK8ZVaGFhtP444OJg63VvlIOUJkl/s=
-github.com/Kisanlink/kisanlink-db v0.3.0 h1:a3e2xR/s8tndeMpnPvKbk1O7jz9XpzBx/VbstmXmpj0=
-github.com/Kisanlink/kisanlink-db v0.3.0/go.mod h1:2n6w4zdbHmmzMmxDOFGQOsUW8U8srz0GgoL5k2Kbbmo=
+github.com/Kisanlink/aaa-service/v2 v2.1.20 h1:odSeTO5ixEweKt336d1n/z/gyXRek/Pgx9Z3tGBPGM8=
+github.com/Kisanlink/aaa-service/v2 v2.1.20/go.mod h1:jgG2HHDt+tABKT3kPPIh20x/BJX9dmx9U+hBoeqBiQ4=
+github.com/Kisanlink/kisanlink-db v0.3.1 h1:idtYvPO4CilMPVsa9QMOiZHBa5VOEaXq7WAsm8UbDsQ=
+github.com/Kisanlink/kisanlink-db v0.3.1/go.mod h1:2n6w4zdbHmmzMmxDOFGQOsUW8U8srz0GgoL5k2Kbbmo=
 github.com/Kisanlink/kisanlink-ecom v0.2.0 h1:dF0Mw/H9qyYhBomaDse0FNe1gC8QCez3l6eqDggelNg=
 github.com/Kisanlink/kisanlink-ecom v0.2.0/go.mod h1:Rbs1kHsBL7zaBPDjSZoqo0FYWuEQlM+j2mv3LUe3EOE=
 github.com/KyleBanks/depth v1.2.1 h1:5h8fQADFrWtarTdtDudMmGsC7GPbOAu6RVB3ffsVFHc=

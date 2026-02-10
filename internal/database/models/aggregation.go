@@ -33,10 +33,10 @@ type SalesContextRequest struct {
 // ProductDetailResponse represents the aggregated product detail response
 // Uses existing ProductResponse instead of custom ProductInfo
 type ProductDetailResponse struct {
-	Product      ProductResponse        `json:"product"`
-	Collaborator *CollaboratorResponse  `json:"collaborator,omitempty"`
-	Variants     []VariantWithAggData   `json:"variants,omitempty"`
-	Metadata     ProductMetadata        `json:"metadata"`
+	Product      ProductResponse       `json:"product"`
+	Collaborator *CollaboratorResponse `json:"collaborator,omitempty"`
+	Variants     []VariantWithAggData  `json:"variants,omitempty"`
+	Metadata     ProductMetadata       `json:"metadata"`
 }
 
 // VariantWithAggData extends ProductVariantResponse with aggregation-specific computed data
@@ -115,9 +115,9 @@ type VariantDetailResponse struct {
 
 // VariantDetailWithProduct extends ProductVariantResponse with parent product info
 type VariantDetailWithProduct struct {
-	VariantWithAggData                           // Embed variant with aggregation data
-	Product            *ProductResponse          `json:"product,omitempty"`
-	Collaborator       *CollaboratorResponse     `json:"collaborator,omitempty"`
+	VariantWithAggData                       // Embed variant with aggregation data
+	Product            *ProductResponse      `json:"product,omitempty"`
+	Collaborator       *CollaboratorResponse `json:"collaborator,omitempty"`
 }
 
 // ResponseMetadata represents common metadata
@@ -143,21 +143,21 @@ type SalesContextResponse struct {
 // InventoryWithPricing represents inventory batch with pricing and product info
 // Uses existing ProductVariantResponse and ProductResponse instead of custom types
 type InventoryWithPricing struct {
-	BatchID           string                  `json:"batch_id"`
-	VariantID         string                  `json:"variant_id"`
-	Variant           ProductVariantResponse  `json:"variant"`
-	Product           ProductResponse         `json:"product"`
-	QuantityTotal     int64                   `json:"quantity_total"`    // Total inventory
-	QuantityReserved  int64                   `json:"quantity_reserved"` // Reserved by pending sales
-	QuantitySellable  int64                   `json:"quantity_sellable"` // Available for new sales
-	CostPrice         float64                 `json:"cost_price"`
-	ExpiryDate        string                  `json:"expiry_date"`
-	ManufacturingDate *string                 `json:"manufacturing_date,omitempty"`
-	BatchNumber       *string                 `json:"batch_number,omitempty"`
-	SellingPrice      *SellingPriceInfo       `json:"selling_price,omitempty"`
-	AlternatePrices   []AlternatePriceInfo    `json:"alternate_prices,omitempty"`
-	TaxConfig         BatchTaxConfig          `json:"tax_config"`
-	Margin            *MarginInfo             `json:"margin,omitempty"`
+	BatchID           string                 `json:"batch_id"`
+	VariantID         string                 `json:"variant_id"`
+	Variant           ProductVariantResponse `json:"variant"`
+	Product           ProductResponse        `json:"product"`
+	QuantityTotal     int64                  `json:"quantity_total"`    // Total inventory
+	QuantityReserved  int64                  `json:"quantity_reserved"` // Reserved by pending sales
+	QuantitySellable  int64                  `json:"quantity_sellable"` // Available for new sales
+	CostPrice         float64                `json:"cost_price"`
+	ExpiryDate        string                 `json:"expiry_date"`
+	ManufacturingDate *string                `json:"manufacturing_date,omitempty"`
+	BatchNumber       *string                `json:"batch_number,omitempty"`
+	SellingPrice      *SellingPriceInfo      `json:"selling_price,omitempty"`
+	AlternatePrices   []AlternatePriceInfo   `json:"alternate_prices,omitempty"`
+	TaxConfig         BatchTaxConfig         `json:"tax_config"`
+	Margin            *MarginInfo            `json:"margin,omitempty"`
 }
 
 // SellingPriceInfo represents the primary selling price
@@ -270,15 +270,15 @@ type PODetailRequest struct {
 // PODetailResponse represents the aggregated purchase order detail response
 // Uses existing PurchaseOrderResponse, CollaboratorResponse, WarehouseResponse
 type PODetailResponse struct {
-	PurchaseOrder PurchaseOrderResponse          `json:"purchase_order"`
-	Collaborator  *CollaboratorResponse          `json:"collaborator,omitempty"`
-	Warehouse     *WarehouseResponse             `json:"warehouse,omitempty"`
-	Items         []PurchaseOrderItemResponse    `json:"items,omitempty"`
-	GRNs          []GRNDetail                    `json:"grns,omitempty"`
-	Payments      []POPaymentDetail              `json:"payments,omitempty"`
-	Summary       POSummary                      `json:"summary"`
-	Timeline      []POTimelineEvent              `json:"timeline,omitempty"`
-	Metadata      ResponseMetadata               `json:"metadata"`
+	PurchaseOrder PurchaseOrderResponse       `json:"purchase_order"`
+	Collaborator  *CollaboratorResponse       `json:"collaborator,omitempty"`
+	Warehouse     *WarehouseResponse          `json:"warehouse,omitempty"`
+	Items         []PurchaseOrderItemResponse `json:"items,omitempty"`
+	GRNs          []GRNDetail                 `json:"grns,omitempty"`
+	Payments      []POPaymentDetail           `json:"payments,omitempty"`
+	Summary       POSummary                   `json:"summary"`
+	Timeline      []POTimelineEvent           `json:"timeline,omitempty"`
+	Metadata      ResponseMetadata            `json:"metadata"`
 }
 
 // GRNDetail represents a goods receipt note with items and inventory

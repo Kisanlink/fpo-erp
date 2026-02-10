@@ -3,6 +3,7 @@ package aaa
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -190,6 +191,138 @@ func (m *AAAMiddleware) Authenticate() gin.HandlerFunc {
 			allGroups = append(allGroups, claims.UserContext.Groups...)
 		}
 		c.Set("groups", allGroups)
+
+		c.Next()
+	}
+}
+
+// RequireDeploymentOrg validates that the user's JWT organization matches this deployment's expected organization.
+// This is a CRITICAL security control for multi-tenant deployments.
+//
+// How it works:
+// 1. Each FPO-ERP deployment sets EXPECTED_ORG_ID environment variable to their organization ID
+// 2. When a user authenticates, their JWT contains their organization_id
+// 3. This middleware ensures the token's org matches the deployment's expected org
+//
+// This prevents:
+// - FPO-1 admin using their token to access FPO-2's ERP deployment
+// - Cross-tenant data access in case of misconfiguration
+//
+// Usage in routes:
+//
+//	router.Use(aaaMiddleware.Authenticate(), aaaMiddleware.RequireDeploymentOrg())
+func (m *AAAMiddleware) RequireDeploymentOrg() gin.HandlerFunc {
+	expectedOrgID := os.Getenv("EXPECTED_ORG_ID")
+
+	// Log at startup to verify EXPECTED_ORG_ID is loaded
+	if expectedOrgID != "" {
+		utils.Info("RequireDeploymentOrg middleware initialized with EXPECTED_ORG_ID:", expectedOrgID)
+	} else {
+		utils.Warn("RequireDeploymentOrg middleware initialized WITHOUT EXPECTED_ORG_ID - multi-tenant isolation DISABLED")
+	}
+
+	return func(c *gin.Context) {
+		// Skip OPTIONS requests (CORS preflight)
+		if c.Request.Method == "OPTIONS" {
+			c.Next()
+			return
+		}
+
+		// Early return if AAA disabled - skip validation in development
+		if !m.config.AAA.Enabled {
+			c.Next()
+			return
+		}
+
+		// Skip validation if EXPECTED_ORG_ID is not configured (development mode)
+		if expectedOrgID == "" {
+			utils.Warn("EXPECTED_ORG_ID not set - deployment org validation SKIPPED (configure for production)")
+			c.Next()
+			return
+		}
+
+		// Get all organization IDs from JWT token context (set by Authenticate middleware)
+		orgIDsVal, exists := c.Get("organization_ids")
+		if !exists {
+			utils.Error("Deployment org validation failed: no organization_ids in token context")
+			utils.ForbiddenResponse(c, "Access denied: organization context required")
+			c.Abort()
+			return
+		}
+
+		tokenOrgIDs, ok := orgIDsVal.([]string)
+		if !ok || len(tokenOrgIDs) == 0 {
+			utils.Error("Deployment org validation failed: organization_ids is empty or invalid type")
+			utils.ForbiddenResponse(c, "Access denied: organization context required")
+			c.Abort()
+			return
+		}
+
+		// Check if the expected deployment org is in ANY of the user's organizations
+		found := false
+		for _, orgID := range tokenOrgIDs {
+			if orgID == expectedOrgID {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			utils.Error("Deployment org validation failed: expected org", expectedOrgID, "not in user orgs", tokenOrgIDs)
+			utils.ForbiddenResponse(c, "Access denied: token organization does not match this deployment")
+			c.Abort()
+			return
+		}
+
+		// Override organization_id to the deployment org so downstream middleware
+		// (e.g. RequireOrgPermission) uses the correct value
+		c.Set("organization_id", expectedOrgID)
+
+		// Validation passed - allow request to proceed
+		utils.Debug("Deployment org validation passed for org:", expectedOrgID)
+		c.Next()
+	}
+}
+
+// ValidateOrganizationHeader checks that the X-Organization-Id header (if present) matches the JWT token's organization.
+// This provides an additional layer of security by ensuring frontend and token agree on organization context.
+func (m *AAAMiddleware) ValidateOrganizationHeader() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Skip OPTIONS requests (CORS preflight)
+		if c.Request.Method == "OPTIONS" {
+			c.Next()
+			return
+		}
+
+		// Early return if AAA disabled
+		if !m.config.AAA.Enabled {
+			c.Next()
+			return
+		}
+
+		// Get header value (optional - only validate if present)
+		headerOrgID := c.GetHeader("X-Organization-Id")
+		if headerOrgID == "" {
+			// Header not provided - skip validation (backwards compatibility)
+			c.Next()
+			return
+		}
+
+		// Get organization ID from JWT token context
+		tokenOrgID := c.GetString("organization_id")
+		if tokenOrgID == "" {
+			// No org in token but header provided - allow (the org could come from header in future)
+			c.Next()
+			return
+		}
+
+		// Validate header matches token
+		if headerOrgID != tokenOrgID {
+			utils.Error("X-Organization-Id header mismatch: header", headerOrgID, "!= token", tokenOrgID)
+			utils.ForbiddenResponse(c, "Access denied: organization header does not match token")
+			c.Abort()
+			return
+		}
 
 		c.Next()
 	}
