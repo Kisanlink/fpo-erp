@@ -1,35 +1,19 @@
 package middleware
 
 import (
+	"strings"
+
 	"kisanlink-erp/internal/config"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
-// CORSMiddleware provides CORS handling
+// CORSMiddleware provides CORS handling.
+// Supports exact origins and wildcard subdomain patterns (e.g., "https://*.kisanlink.in").
 func CORSMiddleware(cfg *config.Config) gin.HandlerFunc {
-	// Default CORS configuration
 	corsConfig := cors.DefaultConfig()
 
-	// Allow all origins in development, specific origins in production
-	if cfg.Server.Mode == "debug" {
-		corsConfig.AllowAllOrigins = true
-	} else {
-		// Use configured allowed origins
-		allowedOrigins := cfg.CORS.GetAllowedOrigins()
-		if len(allowedOrigins) > 0 {
-			corsConfig.AllowOrigins = allowedOrigins
-		} else {
-			// Fallback to default origins if none configured
-			corsConfig.AllowOrigins = []string{
-				"https://yourdomain.com",
-				"https://www.yourdomain.com",
-			}
-		}
-	}
-
-	// Allow credentials (cookies, authorization headers)
 	corsConfig.AllowCredentials = true
 
 	// Use configured allowed headers
@@ -37,35 +21,88 @@ func CORSMiddleware(cfg *config.Config) gin.HandlerFunc {
 	if len(allowedHeaders) > 0 {
 		corsConfig.AllowHeaders = allowedHeaders
 	} else {
-		// Fallback to default headers if none configured
 		corsConfig.AllowHeaders = []string{
-			"Origin",
-			"Content-Type",
-			"Accept",
-			"Authorization",
-			"X-Requested-With",
-			"X-Request-ID",
-			"X-Organization-ID",
+			"Origin", "Content-Type", "Accept", "Authorization",
+			"X-Requested-With", "X-Request-ID", "X-Organization-ID",
 		}
 	}
 
-	// Allow specific methods
-	corsConfig.AllowMethods = []string{
-		"GET",
-		"POST",
-		"PUT",
-		"PATCH",
-		"DELETE",
-		"OPTIONS",
+	corsConfig.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
+	corsConfig.ExposeHeaders = []string{"Content-Length", "X-Request-ID"}
+
+	// Allow all origins in development
+	if cfg.Server.Mode == "debug" {
+		corsConfig.AllowAllOrigins = true
+		return cors.New(corsConfig)
 	}
 
-	// Expose headers to client
-	corsConfig.ExposeHeaders = []string{
-		"Content-Length",
-		"X-Request-ID",
+	// Production: parse configured origins
+	allowedOrigins := cfg.CORS.GetAllowedOrigins()
+	if len(allowedOrigins) == 0 {
+		allowedOrigins = []string{"https://yourdomain.com", "https://www.yourdomain.com"}
+	}
+
+	// Check if any origin contains a wildcard pattern
+	hasWildcard := false
+	for _, o := range allowedOrigins {
+		if strings.Contains(o, "*.") {
+			hasWildcard = true
+			break
+		}
+	}
+
+	if !hasWildcard {
+		corsConfig.AllowOrigins = allowedOrigins
+		return cors.New(corsConfig)
+	}
+
+	// Separate exact origins from wildcard patterns
+	exactOrigins := make(map[string]bool)
+	var wildcardPatterns []string
+	for _, o := range allowedOrigins {
+		if strings.Contains(o, "*.") {
+			wildcardPatterns = append(wildcardPatterns, o)
+		} else {
+			exactOrigins[o] = true
+		}
+	}
+
+	corsConfig.AllowOriginFunc = func(origin string) bool {
+		if exactOrigins[origin] {
+			return true
+		}
+		for _, pattern := range wildcardPatterns {
+			if isOriginAllowed(origin, pattern) {
+				return true
+			}
+		}
+		return false
 	}
 
 	return cors.New(corsConfig)
+}
+
+// isOriginAllowed checks if an origin matches a wildcard subdomain pattern.
+// Pattern format: "https://*.kisanlink.in" matches "https://admin.kisanlink.in"
+// but not "https://a.b.kisanlink.in" (single subdomain level only).
+func isOriginAllowed(origin, pattern string) bool {
+	wildcardIdx := strings.Index(pattern, "*.")
+	if wildcardIdx < 0 {
+		return origin == pattern
+	}
+
+	scheme := pattern[:wildcardIdx]   // e.g., "https://"
+	suffix := pattern[wildcardIdx+1:] // e.g., ".kisanlink.in"
+
+	if !strings.HasPrefix(origin, scheme) {
+		return false
+	}
+	if !strings.HasSuffix(origin, suffix) {
+		return false
+	}
+
+	subdomain := origin[len(scheme) : len(origin)-len(suffix)]
+	return len(subdomain) > 0 && !strings.Contains(subdomain, ".") && !strings.Contains(subdomain, "/")
 }
 
 // SecurityHeadersMiddleware adds security headers to responses
